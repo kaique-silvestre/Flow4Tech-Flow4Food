@@ -241,5 +241,5 @@ Toda linha de `02c` está em alguma fase; o critério de saída da Fase 4 exige 
 
 **Em aberto:**
 1. **Cozinha (9) e fiscal (10)** podem ficar depois da virada, ou o restaurante atual precisa de algum antes?
-2. O restaurante atual usa **fiado**, **clientes** e **mesas**? Define o que a Fase 2 precisa trazer antes do piloto.
+2. O restaurante atual usa **clientes** e **mesas**? Define o que a Fase 2 precisa trazer antes do piloto. **Fiado:** resposta do dono (2026-10-22): "pode haver a opção de fiado". Tratar como recurso **opcional, ligado por organização/unidade** (D17); fica na Fase 2 (2.8 + 2.9) mas fora do caminho crítico do piloto.
 3. Posso seguir com o `05-ux-design`? O lançamento rápido é onde o design decide o sucesso.
