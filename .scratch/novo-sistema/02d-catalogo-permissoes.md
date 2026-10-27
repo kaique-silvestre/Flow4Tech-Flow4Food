@@ -266,6 +266,9 @@ Usuários, perfis, dispositivos, sessões.
 | `calendario:evento_editar` | Editar evento |  | ● | ● |  |  |  |  |  |  |
 | `calendario:evento_excluir` | Excluir evento | A | ● | ● |  |  |  |  |  |  |
 | `calendario:evento_recorrente_editar_serie` | Editar série recorrente |  | ● | ● |  |  |  |  |  |  |
+| `calendario:tarefa_criar` | Criar tarefa |  | ● | ● |  |  |  |  |  |  |
+| `calendario:tarefa_editar` | Editar e excluir tarefa |  | ● | ● |  |  |  |  |  |  |
+| `calendario:tarefa_concluir` | Marcar tarefa como concluída (quem não edita só marca as próprias) |  | ● | ● | ● | ● | ● | ● | ● |  |
 | `calendario:ver_pagamentos` | Ver camada de pagamentos (exige `financeiro:ver`) |  | ● | ● |  |  |  | ● |  | ● |
 | `calendario:ver_entregas` | Ver camada de entregas |  | ● | ● |  |  | ● |  |  | ● |
 | `calendario:ver_promocoes` | Ver camada de promoções |  | ● | ● | ● | ● |  |  |  | ● |

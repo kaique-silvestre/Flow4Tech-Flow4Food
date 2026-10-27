@@ -64,7 +64,7 @@ Requisito vindo do cliente: em horário de pico não há tempo de "marcar na com
 - **Opcional futuro:** pedido pelo próprio cliente via QR (reduz o trabalho do garçom), já descrito em `02e` G13.
 
 ### Mesas e mapa de mesas (como se integra à comanda)
-- **Mesa é um cadastro opcional** (área, número, capacidade, posição no mapa), por unidade. A unidade pode **ligar ou desligar o uso de mesas**: um bar que trabalha só com nome ou cartão de comanda não precisa de nenhuma.
+- **Mesa é um cadastro opcional** (área, número, capacidade), cadastrado em Configurações da unidade, não na tela de operação, por unidade. A unidade pode **ligar ou desligar o uso de mesas**: um bar que trabalha só com nome ou cartão de comanda não precisa de nenhuma.
 - **A comanda pode apontar para uma mesa** (a comanda continua existindo sem mesa). Uma mesa pode ter **várias comandas** (cada cliente com a sua) e uma comanda pode mudar de mesa.
 - **O status da mesa não é guardado, é calculado a partir das comandas:**
   - **livre** = sem comanda aberta;
@@ -73,7 +73,7 @@ Requisito vindo do cliente: em horário de pico não há tempo de "marcar na com
   - **reservada** = reserva ativa (quando existir reservas);
   - **tempo de ocupação** = tempo desde a abertura da primeira comanda da mesa.
 - O **mapa é apenas uma visão** sobre as comandas: tocar numa mesa abre a comanda dela (ou cria uma, se estiver livre). Nada fica duplicado nem pode divergir.
-- Permissões: `mesa:ver`, `mesa:gerenciar [A]` (criar, mover no mapa, desativar), `comanda:transferir_mesa` (já existia).
+- Permissões: `mesa:ver`, `mesa:gerenciar [A]` (criar, editar e desativar mesas e áreas), `comanda:transferir_mesa` (já existia).
 - **Regra de modelo (sem criar feature):** a comanda **não exige mesa**; tem um campo de tipo/canal reservado, com valor padrão "salão". Balcão e retirada hoje são comandas com nome. Delivery, se vier, entra por esse campo sem refazer o modelo.
 
 ### Decisões fechadas
@@ -83,7 +83,7 @@ Requisito vindo do cliente: em horário de pico não há tempo de "marcar na com
 
 ### Capacidades adicionais (completude)
 Do sistema atual e de pedidos de operação, também entram:
-- **Identificação por nome ou por mesa**, e **numeração sequencial diária** de comandas (zera a cada dia operacional).
+- **Identificação por nome ou por mesa**, e **número da comanda**: sequencial, mostrado como **#12** em toda tela onde a comanda aparece (cartão, tabela, detalhe, cozinha e bar, mesas), para dizer a ordem de abertura sem ambiguidade. É um número de **exibição**, diferente do ID interno único. Opção da unidade (Configurações › Operação, "Numeração das comandas"): **reinicia a cada dia operacional** (padrão) ou **contínua**. Dá para buscar pelo número e ordenar a tabela por ele. Comanda nova ganha o próximo número da unidade.
 - **Motivos padronizados de cancelamento** (cliente desistiu, erro de lançamento, item indisponível, outro), configuráveis.
 - **Tempo de comanda aberta em tempo real** (cronômetro e alerta por limite).
 - **Atalho do garçom ao abrir comanda** (o garçom logado já vem preenchido; troca com permissão).
@@ -136,8 +136,8 @@ A ficha técnica (recipe/BOM) é padrão em sistemas de restaurante e serve para
 | F2.1 | CRUD de produtos e categorias | Ativar/desativar sem apagar. |
 | F2.2 | Preço por unidade | Organização define base; unidade pode sobrescrever. |
 | F2.3 | Opções e adicionais | Com preço, limites min/max, obrigatórios. |
-| F2.4 | Promoções | Janela, recorrência, prioridade e regra de empilhamento. |
-| F2.5 | Combos | Fixos e com escolhas; preço próprio ou soma com desconto. |
+| F2.4 | Promoções | Tela própria **Promoções** (Gestão), fora do Cardápio. Regra de **quando vale** (pontual ou recorrente), **onde vale** (unidades), prioridade e empilhamento. Ver "Promoções e combos" abaixo. |
+| F2.5 | Combos | Mesma tela e mesma regra de quando/onde vale. Fixos (produto × quantidade, preço fechado) e, depois, com escolhas; preço próprio ou soma com desconto. |
 | F2.6 | Ficha técnica | Insumos, quantidades, rendimento, sub-receitas. |
 | F2.7 | Custo e margem | CMV por produto, margem, alerta de margem baixa. |
 | F2.8 | Disponibilidade | "Acabou" manual, ou automática quando insumo da ficha zera. |
@@ -145,6 +145,19 @@ A ficha técnica (recipe/BOM) é padrão em sistemas de restaurante e serve para
 | F2.10 | Categorias e subcategorias | Hierarquia de pelo menos dois níveis, filtro por subcategoria, ativar/desativar. |
 | F2.11 | Preço promocional | Preço de venda e promocional que se sobrepõe ao normal enquanto vigente. |
 | F2.12 | Promoções com tipo de desconto | Percentual ou valor fixo, vinculada a produtos, janela de datas e horas, recorrência por dias da semana ou do mês, ativação, visão mensal. |
+
+### Promoções e combos (F2.4, F2.5, F2.12)
+- **Tela própria "Promoções"**, em Gestão. Promoção é campanha (tem vigência e resultado), não cadastro de produto; o Cardápio fica com Produtos e Categorias e só **mostra** o preço promocional e as promoções do produto, com atalho para a tela. Reúne **promoções e combos** numa lista só, com filtro por tipo e por situação.
+- **Oferta:** promoção = desconto **percentual** ou **valor fixo** em um ou mais produtos (impede desconto que zera o preço). Combo = produtos × quantidade por **preço fechado**, mostrando quanto economiza sobre a soma dos itens.
+- **Quando vale (a primeira escolha do cadastro):**
+  - **Pontual:** **um dia específico** ou **de uma data até outra**, uma vez só.
+  - **Recorrente:** **dias da semana** (com atalhos todos, seg a sex, sáb e dom), data de início opcional e **como termina**: *termina em uma data* ou *continua sem data final*.
+  - **Horário** nas duas: o dia todo ou só um intervalo (pode virar a meia-noite).
+  - Situações: **Ativa agora, Agendada, Fora da janela, Encerrada, Desativada**.
+- **Onde vale:** todas as unidades ou só as escolhidas (o preço já é por unidade). Na unidade fora do alcance, o desconto não aparece.
+- **Escolha de produtos:** lista grande, com busca, filtro por categoria, "marcar os que aparecem", contagem e **prévia do preço com desconto** ao lado de cada produto. Resumo em frase no fim ("20% em 5 produtos, seg a sex das 17:00 às 19:00, sem data final, todas as unidades").
+- Permissões: `cardapio:promocao_gerenciar` e `cardapio:combo_gerenciar`; quem não tem nenhuma não vê a tela (candidato a virar `promocao:*`). Alterações entram no histórico.
+- **A decidir:** prioridade e empilhamento quando duas promoções cobrem o mesmo produto (hoje vale a primeira); combos **com escolhas** (ex.: "1 chope à escolha"); recorrência por **dia do mês**; "leve X pague Y"; aparecer no lançamento da comanda.
 
 ### Permissões derivadas
 ```
@@ -191,7 +204,7 @@ cardapio:marcar_indisponivel
 | F3.5 | Baixa por venda | Automática via ficha técnica. Momento da baixa: ver pontos a decidir. |
 | F3.6 | Inventário / contagem | Contar, comparar com saldo, gerar ajuste auditado. |
 | F3.7 | Perdas e consumo interno | Motivo obrigatório, entra no CMV/relatórios. |
-| F3.8 | Alertas | Abaixo do mínimo, sem movimentação, vencimento (se houver lote). |
+| F3.8 | Alertas | Abaixo do limite (fixo ou %, por insumo, com regra geral da unidade como padrão; ver abaixo), sem movimentação, vencimento (se houver lote). |
 | F3.9 | Histórico e rastreio | Extrato por insumo; quem moveu, quando, por quê. |
 | F3.10 | Transferência | Entre unidades/locais da organização. |
 | F3.11 | Consumo interno (dentro do estoque) | **Sem módulo nem tela própria.** É um **motivo de baixa do estoque**: na tela de estoque, a ação "Registrar consumo interno" baixa o insumo ou o produto (pela ficha), com consumidor opcional, observação e custo congelado, e aparece no extrato de movimentações e nos relatórios de estoque e CMV como categoria separada de perdas. Estorno por movimento de reversão. |
@@ -200,6 +213,7 @@ cardapio:marcar_indisponivel
 | F3.14 | Estorno de compra | Reverter uma compra recebida ajusta estoque e custo médio e cancela a conta a pagar vinculada. |
 | F3.15 | Compras por tipo | À vista (imediata), agendada (com data e hora previstas de recebimento) e a prazo (com data prevista de pagamento); confirmar recebimento, editar, cancelar. |
 | F3.16 | Importação de NF-e com conciliação | Ler o XML, identificar fornecedor por CNPJ, casar itens com insumos por EAN, código e descrição, mostrar divergências para conferência antes de confirmar, gerar a compra e a conta a pagar. Validação segura do arquivo (tamanho, tipo real, proteção contra XML malicioso). |
+| F3.17 | Rotina do fornecedor | Dia(s) fixo(s) de entrega e horário limite para pedir por fornecedor ('entrega terça e sexta; pedir até 16h na véspera'). Gera a ação 'Hora de pedir' (F13) e pré-preenche a compra agendada (F3.15). |
 
 ### Permissões derivadas
 ```
@@ -216,7 +230,13 @@ compra:importar_nfe          compra:ver_precos
 ### Decisões fechadas
 - **Baixa no lançamento do item.** Estorno ao cancelar/alterar.
 - **Estoque negativo** configurável por **organização** e por **unidade** (a unidade herda da organização e pode sobrescrever se permitido). Se bloqueado, lançar item sem saldo é recusado; se permitido, vende e gera alerta.
-- **Limite de alerta configurável por insumo** (ex.: avisar com 5 unidades, ou com 20% do mínimo), com canais configuráveis.
+- **Limite de alerta de estoque baixo, em camadas (F3.8):**
+  - **Regra geral da unidade** (Configurações › Estoque, "Alerta de estoque baixo"): vale para todo insumo que não tiver regra própria. Herda da organização e pode ser travada, como as demais opções (F14).
+  - **Regra própria por insumo** (`estoque:alerta_configurar`): cada insumo pode escolher **Usar a regra geral**, **Valor fixo** (ex.: avisar com 5, na unidade de medida do próprio insumo: kg, L, un) ou **Porcentagem** (ex.: avisar com 20%).
+  - O limite é **por unidade da organização**: o mesmo insumo pode ter valores diferentes em cada unidade (o saldo já é por unidade).
+  - Sem regra própria, vale a geral; mudar a geral muda todos que não foram configurados à mão. Voltar ao geral = limpar a regra do insumo. Mudança fica no histórico, com motivo.
+  - Canais de aviso configuráveis (notificações, `02f`).
+  - **A decidir:** a porcentagem é sobre o **estoque mínimo** do insumo ou sobre um **estoque ideal** (novo campo)? Hoje o texto da regra geral fala em "parte do ideal", mas o cadastro só tem o mínimo.
 
 ### Alertas de estoque: como manter sempre atualizado
 Polling constante é a pior opção (carga inútil, atraso). Melhor prática, em camadas:
@@ -299,10 +319,13 @@ conciliacao:ver             conciliacao:ajustar [A]
 - **Caixa**: ponto de recebimento da unidade (pode haver vários). Operado por um usuário durante um **turno**.
 - **Turno/sessão de caixa**: abertura (com fundo de troco) → movimentos → fechamento com conferência.
 - **Janela operacional da unidade**: período em que a unidade opera (24h, 12h, 8h, etc.), com **dia operacional** que pode atravessar a meia-noite.
+- **Agenda de funcionamento** (F5.9): a janela não é uma só para todos os dias. Há uma **semana padrão** (por dia da semana: aberto ou fechado, abre às, fecha às; cada dia pode ter horário diferente, ex.: seg a qui 17h às 23h, sex e sáb 17h às 02h, dom fechado) e **exceções por data** (feriado fechado, dia com horário especial, dia estendido, evento). **A agenda é sempre por unidade e não herda da organização:** horário é físico e local (endereço, movimento, feriado municipal), e travar horário não faz sentido. A organização ajuda só de dois jeitos: ao **criar uma unidade**, a semana começa copiando a de outra; e, ao cadastrar exceções, há a sugestão **"adicionar feriados nacionais do ano"**, que cada unidade aceita ou não. A agenda alimenta o dia operacional, o bloqueio de registro, o fechamento automático, os lembretes e a camada do Calendário.
 
 ### Configurável por organização e por unidade
-- Duração e horários da janela operacional; fuso horário.
+- Fuso horário. **Horários de funcionamento e janela operacional são só da unidade** (agenda, F5.9), sem herança da organização.
 - **Quando é permitido registrar**: horários específicos por perfil/usuário; fora da janela, bloquear lançamento, pagamento ou ambos.
+- **O que acontece fora do horário de funcionamento** (cada empresa escolhe, por unidade): **(a) só avisar** (não bloqueia, pois às vezes passa do horário); **(b) bloquear comandas novas** e deixar fechar as abertas; **(c) bloquear tudo** menos fechar conta. Opção de **tolerância** (ex.: 30 min depois de fechar) e de **liberar por permissão** (gerente autoriza e fica auditado). O aviso aparece antes de bloquear ("fecha em 10 min").
+- **Estender hoje:** o gerente pode **ficar aberto até** um horário só naquele dia, sem mexer na agenda (vira uma exceção por data, com motivo).
 - Exigir caixa aberto para receber pagamento (sim/não).
 - Um caixa por operador ou caixa compartilhado.
 - Conferência cega no fechamento (operador não vê o valor esperado).
@@ -319,7 +342,8 @@ conciliacao:ver             conciliacao:ajustar [A]
 | F5.5 | Fechamento do dia operacional | Consolida todos os caixas da unidade. |
 | F5.6 | Histórico | Turnos, movimentos, divergências, por operador. |
 | F5.7 | Reabertura | Exceção auditada. |
-| F5.8 | Regras de horário | Janela e restrições de registro configuráveis. |
+| F5.8 | Regras de horário | Janela e restrições de registro configuráveis; comportamento fora do horário (avisar, bloquear novas, bloquear tudo), tolerância e liberação por permissão. |
+| F5.9 | Agenda de funcionamento | Semana padrão com horário por dia da semana (e dias fechados), exceções por data (feriado, horário especial, dia estendido), **sempre por unidade** (sem herança da organização), copiada de outra unidade ao criar uma nova, com sugestão de feriados nacionais; "estender hoje" rápido; aparece no Calendário. |
 
 ### Como funciona a conferência e a aprovação de diferença
 1. No fechamento, o operador **conta o dinheiro** (e informa os totais dos demais métodos). O sistema calcula o **esperado**: abertura + recebimentos em dinheiro + suprimentos − sangrias − troco. A **diferença** (sobra ou falta) é a conta.
@@ -614,6 +638,8 @@ admin_plataforma:gerenciar [A]   auditoria_plataforma:ver
 
 ## F13. Notificações
 
+> Catálogo de avisos (tipo, gravidade, destinatário, canal, destino do clique) e regras de comportamento: `02f-catalogo-notificacoes.md`. Na tela: uma bolinha com abas **Ações** e **Avisos** (`05-ux-design` U5).
+
 Camada única que transforma **eventos do sistema** em avisos para as pessoas certas, no canal certo. Alertas de estoque (F3), pendências do dashboard (F10), pedido pronto na cozinha (F6), vencimentos (F8) e comunicados da plataforma (F12) usam todos esta mesma camada, sem cada módulo reinventar a sua.
 
 ### Modelo
@@ -633,14 +659,15 @@ Camada única que transforma **eventos do sistema** em avisos para as pessoas ce
 |---|---|---|
 | F13.1 | Central de notificações | Lista, filtros, marcar lida/todas, arquivar, link de ação. |
 | F13.2 | Tempo real | Aviso instantâneo no app aberto; reconexão sem perda (recupera pendentes). |
-| F13.3 | Regras por organização/unidade | Ligar/desligar tipos, limiares, severidade, destinatários, canais. |
-| F13.4 | Preferências pessoais | Canais e tipos por usuário, dentro do que a organização permite. |
-| F13.5 | Antirruído | Dispara na transição (não a cada ocorrência), agrupamento, silenciar tipo/insumo, janela de silêncio, resumos diários/semanais. |
+| F13.3 | Quem recebe o quê (matriz) | Tela **Configurações › Notificações**, para quem tem `notificacao:destinatarios_definir`: linhas = tipos de aviso (agrupados por área), colunas = perfis, uma caixa por célula. Já vem preenchida pelo padrão (quem tem permissão de agir recebe); o dono ajusta só as exceções. Célula desabilitada onde o perfil não tem permissão; obrigatórias (segurança, cobrança) travadas. Chave geral por tipo (desliga para todos), limiares e severidade. **Exceção por pessoa** na ficha do usuário (receber a mais, ou deixar de receber). Para separar bar de cozinha, duplicam-se perfis (ex.: "Bar" e "Cozinha"); não há conceito novo. |
+| F13.4 | Ajustes do aparelho | O funcionário **não escolhe o que recebe** (quem define é a gestão, F13.3). Só ajusta o que é do aparelho: som e vibração, push neste aparelho e e-mail de resumo, se a organização liberar. |
+| F13.5 | Antirruído | Dispara na transição (não a cada ocorrência), agrupamento, silenciar insumo (decisão da gestão, F13.3), janela de silêncio da organização, resumos diários/semanais. |
 | F13.6 | Severidade | `info`, `atenção`, `crítico`; crítico ignora silêncio e não pode ser desligado se for de segurança. |
 | F13.7 | Notificações obrigatórias | Segurança (login novo, senha/permissão alterada, impersonação), cobrança e comunicados críticos da plataforma: sempre entregues. |
 | F13.8 | Modelos de mensagem | Textos por tipo, idioma, variáveis; plataforma define o padrão, organização personaliza o permitido. |
 | F13.9 | Entregas e custos | Histórico de entrega por canal, falhas, consumo de mensagens pagas. |
 | F13.10 | Comunicados | Mensagens da plataforma a todas ou a segmentos de organizações (F12.5), pela mesma camada. |
+| F13.11 | Tipos: Ação, Aviso e Estado | **Ação** pede algo e some quando resolvida (inclusive por outra pessoa ou em outra tela); **Aviso** só informa e é lido ou arquivado; **Estado** é fato contínuo e fica em faixa, fora da central. Ação parada pode escalar a quem pode resolver (prazo e destino na regra). |
 
 ### Fontes previstas de notificação
 - **Estoque:** abaixo do limite configurado por insumo, estoque negativo, divergência de inventário.
@@ -656,6 +683,7 @@ Camada única que transforma **eventos do sistema** em avisos para as pessoas ce
 - **Sem dado sensível no corpo** de e-mail/WhatsApp (valores e dados de clientes só dentro do app).
 - **Desempenho**: criar uma notificação nunca atrasa a operação que a originou (assíncrono, fora da transação crítica; o evento é gravado na transação, a entrega vem depois).
 - **Retenção** definida (ex.: in-app por N dias, log de entrega por mais tempo).
+- **Ciclo de vida simples:** não existe arquivar nem silenciar. Aviso lido **some**; ação **some quando resolvida** (por qualquer pessoa). O que sobra é apagado pela retenção. O histórico que importa (quem aprovou, quem viu o alerta de segurança) vive na auditoria, não na central.
 
 ```
 notificacao:ver_proprias          notificacao:preferencias_editar
@@ -677,7 +705,7 @@ O in-app não é uma página escondida no menu: é **um conjunto de bolinhas flu
 - **Uma bolinha por grupo**, cada uma com **cor própria e contagem própria** (proposta inicial: laranja = precisa de ação, azul = informativo/plataforma, verde = concluído ou positivo). **Cor nunca é o único sinal**: cada bolinha e cada item também têm ícone e rótulo em texto (acessibilidade e daltonismo).
 - **Por perfil de permissão** (F13, destinatários por permissão e escopo): o que aparece e quais bolinhas existem depende de quem é o usuário. Um garçom vê "pedido pronto" e "comanda parada"; o administrador vê também cancelamento acima do limite, caixa com diferença, estoque e financeiro. Um usuário sem notificações de um grupo não vê a bolinha dele.
 - **Convive com a bolinha de lançamento rápido** (ver `05-ux-design`): no produto real são a de **lançar** e as de **notificação**. A bolinha de **configuração** do protótipo **não existe no produto**.
-- Cada item abre a tela de origem (link de ação) e o painel da bolinha oferece filtro, "marcar todas como lidas" e silenciar tipo (F13.5).
+- Cada item abre a tela de origem (link de ação) e o painel do sino oferece "marcar avisos como lidos" (lida some; ver F13.3 e `02f` §2b).
 - **Celular (decidido: "como for recomendado", o dono delegou):** uma bolinha só de notificações, mostrando o **total** e **pontinhos coloridos** com a contagem de cada grupo; ao tocar, o painel abre com **abas por grupo** (Ações, Avisos, Plataforma). A bolinha de **lançar** fica separada. Ficam no máximo duas bolinhas visíveis, acima da barra de ações, para não cobrir os botões. No computador, uma bolinha por grupo.
 - **Em aberto:** significado final das cores; se a organização pode renomear ou recolorir grupos.
 
@@ -745,7 +773,7 @@ Tudo abaixo é candidato; nem tudo entra na primeira entrega. Marcado: **F** = f
 - **Dados cadastrais:** razão social, nome fantasia, documento, contato, logotipo.
 - **Unidades:** criar, editar, desativar; vincular usuários e perfis a unidades.
 - **Segurança:** política de senha, duração de sessão, bloqueio, regras de dispositivo/PIN, "exigir 2FA" (reservado), login com Google liberado ou não.
-- **Padrões herdados pelas unidades:** estoque negativo, regras de comissão, taxa de serviço, métodos de pagamento, janela operacional, limites e condições de permissão, regras de notificação, política de retenção dentro do plano.
+- **Padrões herdados pelas unidades:** estoque negativo, regras de comissão, taxa de serviço, métodos de pagamento, limites e condições de permissão, regras de notificação, política de retenção dentro do plano.
 - **Catálogos compartilhados:** cardápio, insumos e fornecedores podem ser **da organização** (compartilhados entre unidades) ou **da unidade**; preço e disponibilidade podem ser sobrescritos por unidade.
 - **Plano e cobrança:** plano atual, limites e consumo, faturas (somente leitura; mudança de plano via plataforma ou autoatendimento futuro).
 - **Dados e privacidade:** exportação, solicitações de titulares (LGPD), contatos de privacidade.
@@ -793,7 +821,7 @@ Um **calendário de verdade** da organização e da unidade, no estilo de um cal
 - **Evento**: título, descrição, dia inteiro ou horário (início e fim), local/unidade, cor, responsável(is), lembretes.
 - **Evento recorrente**: diário, semanal (dias da semana), mensal (dia do mês ou "primeira segunda"), anual, com data final ou número de ocorrências; **exceções** (pular uma ocorrência, editar só uma, editar esta e as seguintes, editar todas).
 - **Camadas (calendários)**: cada tipo de item é uma camada que o usuário liga ou desliga e a organização configura:
-  - eventos próprios (shows, jogos, reservas, feriados, manutenção, treinamentos);
+  - eventos próprios (shows, jogos, reservas, feriados, manutenção, treinamentos) e **tarefas** com caixa de conclusão (F15.12). Só estes dois são criados à mão; as demais camadas vêm sozinhas das outras telas;
   - **pagamentos**: contas a pagar e a receber por vencimento, com valor e situação (aberta, paga, atrasada);
   - **entregas de insumo** (compras agendadas: fornecedor e itens);
   - **promoções** vigentes (início, fim, recorrência);
@@ -815,6 +843,7 @@ Um **calendário de verdade** da organização e da unidade, no estilo de um cal
 | F15.9 | Compartilhamento | Calendário por unidade, por organização e pessoal; visibilidade por perfil. |
 | F15.10 | Assinatura externa e exportação | Exportar/assinar em formato padrão (iCal) para Google Agenda e similares, somente leitura. |
 | F15.11 | Sugestões de impacto | Evento pode sugerir ajuste (reforço de estoque, promoção, escala); só indicação, nunca automático. |
+| F15.12 | Tarefas | Além de eventos, o usuário cria **tarefas** com caixa de conclusão (dia ou dia e hora, responsável, recorrência opcional). Entram numa camada própria; quem pode editar ou o responsável marca como concluída; tarefa vencida e não concluída aparece como atrasada. Permissões próprias: `tarefa_criar`, `tarefa_editar`, `tarefa_concluir` (quem não edita só marca as próprias). *(validada no protótipo)* |
 
 ### Permissões
 ```
@@ -825,6 +854,8 @@ calendario:ver_pagamentos          (camada financeira; exige financeiro:ver)
 calendario:ver_entregas            calendario:ver_promocoes
 calendario:configurar_camadas [A]  calendario:configurar_notificacoes [A]
 calendario:compartilhar            calendario:exportar_ical [A]
+calendario:tarefa_criar            calendario:tarefa_editar
+calendario:tarefa_concluir         (quem não edita só marca as tarefas em que é responsável)
 ```
 
 ---

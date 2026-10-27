@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receber · Mesa 12</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..650&display=swap" rel="stylesheet">
+<style>
+/* Estrutura de tela dividida e botao em tinta escura (padrao de checkout da Stripe).
+   Identidade Flow: numeros em Fraunces, acento verde-petroleo, tinta azul-marinho. */
+:root{
+  /* mesma identidade E da lista: leve, chapada, cor forte so no botao principal */
+  --ink:#15161d; --mut:#5a5d6e; --faint:#80839a;
+  --side:#f5f5f8; --card:#ffffff;
+  --line:#e7e7ee; --line2:#d4d5e0;
+  --acc:#4254d6; --acc-s:#eceefd;
+  --btn:#5266eb; --btn-h:#4254d6;
+  --bad:#b4281f;
+  --r:12px; --r-sm:8px;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:400 14.5px/1.5 "Inter",system-ui,sans-serif;font-feature-settings:"tnum","cv11";color:var(--ink);background:var(--card);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.page{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:100vh}
+
+/* ---------- esquerda: a conta ---------- */
+.conta{background:var(--side);border-right:1px solid var(--line);display:flex;justify-content:flex-end;padding:40px 56px 40px 40px}
+.conta__in{width:100%;max-width:460px;display:flex;flex-direction:column}
+.back{text-decoration:none;align-self:flex-start;display:inline-flex;gap:8px;align-items:center;border:0;background:none;padding:6px 0;color:var(--mut);font-weight:500}
+.back:hover{color:var(--ink)}
+.who{margin:28px 0 0;color:var(--mut);font-size:14px}
+.who b{color:var(--ink);font-weight:500}
+.total{margin:6px 0 0;font:450 56px/1.05 "Inter",sans-serif;letter-spacing:-.045em}
+.sub{margin:6px 0 0;color:var(--mut);font-size:14px}
+.itens{list-style:none;margin:32px 0 0;padding:0}
+.itens li{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.itens li i{font-style:normal;color:var(--mut)}
+.itens li span:last-child{font-weight:500}
+.resumo{margin:12px 0 0;display:grid;grid-template-columns:1fr auto;gap:8px 12px;color:var(--mut)}
+.resumo dd{margin:0;text-align:right;color:var(--ink)}
+.resumo .lnk{border:0;background:none;padding:0;color:var(--acc);font-weight:500;text-align:right}
+.resumo .lnk:hover{text-decoration:underline}
+.resumo label{display:flex;gap:8px;align-items:center;color:var(--mut)}
+.resumo input{accent-color:var(--btn);width:16px;height:16px;margin:0}
+.resumo .t{grid-column:1/-1;display:flex;justify-content:space-between;margin-top:6px;padding-top:12px;border-top:1px solid var(--line2);color:var(--ink);font-weight:500;font-size:16px}
+.recebido{margin:18px 0 0;padding:12px 14px;border:1px solid var(--line);background:var(--card);border-radius:var(--r);display:none;color:var(--mut);font-size:14px}
+.recebido b{color:var(--ink)}
+
+/* ---------- direita: pagamento ---------- */
+.pay{display:flex;justify-content:flex-start;padding:40px 40px 40px 56px}
+.pay__in{width:100%;max-width:440px;display:flex;flex-direction:column}
+.pay h2{margin:36px 0 14px;font-size:22px;line-height:1.2;font-weight:500;letter-spacing:-.025em}
+.lbl{display:block;margin:0 0 6px;font-size:13px;font-weight:500;color:var(--mut)}
+
+.qtd{display:grid;grid-template-columns:repeat(3,1fr);border-radius:999px;padding:3px;gap:3px;background:rgb(21 22 29/.06)}
+.qtd button{height:34px;border:0;border-radius:999px;background:none;color:var(--mut);font-weight:500;transition:background-color .15s,color .15s}
+.qtd button:hover{color:var(--ink)}
+.qtd button[aria-pressed=true]{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 0 0 1px var(--line2)}
+.qtd__x{display:none;margin-top:12px;gap:12px;align-items:center;flex-wrap:wrap;color:var(--mut);font-size:14px}
+.qtd__x[data-on=true]{display:flex}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:36px;height:36px;border:1px solid var(--line2);background:var(--card);border-radius:6px;font-size:18px;line-height:1}
+.step button:hover{border-color:var(--ink)}
+.step b{min-width:34px;text-align:center;color:var(--ink);font-size:16px}
+.field{height:42px;width:100%;border:1px solid var(--line2);border-radius:var(--r-sm);padding:0 12px;background:var(--card);transition:border-color .15s,box-shadow .15s}
+.field:hover{border-color:var(--faint)}
+.field:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-s)}
+
+/* lista de formas: cada linha abre o proprio conteudo */
+.meios{margin-top:22px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.meio{border-bottom:1px solid var(--line)}
+.meio:last-child{border-bottom:0}
+.meio__h{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:0 16px;border:0;background:none;text-align:left;font-weight:500;transition:background-color .15s}
+.meio__h:hover{background:var(--side)}
+.meio__rad{width:18px;height:18px;flex:none;border:1.5px solid var(--line2);border-radius:50%;display:grid;place-items:center;transition:border-color .15s}
+.meio__h svg{width:20px;height:20px;flex:none;fill:none;stroke:var(--mut);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.meio kbd{margin-left:auto;font:500 12px/1 "Geist",sans-serif;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:3px 6px}
+.meio[data-on=true]{background:var(--card);box-shadow:inset 0 0 0 1.5px var(--btn);position:relative;z-index:1;border-radius:var(--r)}
+.meio[data-on=true] .meio__rad{border-color:var(--btn)}
+.meio[data-on=true] .meio__rad::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--btn)}
+.meio[data-on=true] svg{stroke:var(--btn)}
+.meio__b{display:none;padding:0 16px 16px 46px}
+.meio[data-on=true] .meio__b{display:block;animation:in .22s var(--ease)}
+@keyframes in{from{opacity:0;transform:translateY(-4px)}}
+.meio__b p{margin:0;color:var(--mut);font-size:14px}
+.meio__b .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sec{height:34px;padding:0 14px;border:1px solid var(--line2);background:transparent;border-radius:999px;font-weight:500;font-size:13.5px;transition:border-color .15s,background-color .15s}
+.sec:hover{border-color:var(--ink);background:var(--side)}
+.sec[aria-pressed=true]{border-color:var(--btn);background:var(--acc-s);color:var(--acc)}
+.troco{margin-top:12px;font-weight:600;color:var(--acc);min-height:22px}
+.troco.bad{color:var(--bad)}
+
+.go{margin-top:20px;width:100%;height:48px;border:0;border-radius:999px;background:var(--btn);color:#fff;font-size:15px;font-weight:500;transition:background-color .15s,transform .1s}
+.go:hover{background:var(--btn-h)}
+.go:active{transform:translateY(1px)}
+.go:disabled{background:var(--line);color:var(--faint);cursor:not-allowed}
+.aux{display:flex;flex-wrap:wrap;gap:4px 4px;margin-top:12px;justify-content:center}
+.aux button{border:0;background:none;color:var(--mut);height:32px;padding:0 10px;border-radius:6px;font-size:14px;font-weight:500}
+.aux button:hover{background:var(--side);color:var(--ink)}
+.aux .bad{color:var(--bad)}
+
+.done{display:none;margin-top:36px;padding:24px;border:1px solid var(--line);border-radius:var(--r);background:var(--acc-s)}
+.done h3{margin:0 0 4px;font-size:18px;color:var(--acc)}
+.done p{margin:0;color:var(--mut)}
+body[data-done=true] .meios,body[data-done=true] .go,body[data-done=true] .aux,body[data-done=true] .qtd,body[data-done=true] .qtd__x,body[data-done=true] .lbl,body[data-done=true] .pay h2{display:none}
+body[data-done=true] .done{display:block}
+
+@media (max-width:860px){
+  .page{grid-template-columns:1fr}
+  .conta{border-right:0;border-bottom:1px solid var(--line);padding:24px 20px;justify-content:stretch}
+  .pay{padding:8px 20px 32px}
+  .total{font-size:44px}
+  .itens{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <section class="conta" aria-label="A conta">
+    <div class="conta__in">
+      <a class="back" href="identidade-v2.html">← Comandas</a>
+      <p class="who"><b>Mesa 12</b> · Carlos · aberta há 2h23</p>
+      <p class="total" data-total>R$ 459,80</p>
+      <p class="sub">20 itens · consumo R$ 418,00 + serviço R$ 41,80</p>
+      <ul class="itens">
+        <li><i>8×</i><span>Chope Pilsen 500ml</span><span>R$ 112,00</span></li>
+        <li><i>2×</i><span>Porção de fritas</span><span>R$ 68,00</span></li>
+        <li><i>1×</i><span>Picanha na chapa (2 p.)</span><span>R$ 118,00</span></li>
+        <li><i>2×</i><span>Água sem gás</span><span>R$ 12,00</span></li>
+        <li><i>6×</i><span>Chope Pilsen 500ml</span><span>R$ 84,00</span></li>
+        <li><i>1×</i><span>Caipirinha de maracujá</span><span>R$ 24,00</span></li>
+      </ul>
+      <dl class="resumo">
+        <dt>Consumo</dt><dd>R$ 418,00</dd>
+        <dt>Desconto</dt><dd><button class="lnk" type="button">Adicionar</button></dd>
+        <dt><label><input type="checkbox" checked aria-label="Cobrar serviço de 10%"> Serviço 10%</label></dt><dd>R$ 41,80</dd>
+        <div class="t"><span>Total</span><span>R$ 459,80</span></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="pay" aria-label="Receber">
+    <div class="pay__in">
+      <h2>Receber</h2>
+
+      <span class="lbl" id="l-qtd">Quanto receber agora</span>
+      <div class="qtd" role="group" aria-labelledby="l-qtd">
+        <button type="button" data-q="tudo" aria-pressed="true">Conta toda</button>
+        <button type="button" data-q="dividir" aria-pressed="false">Dividir</button>
+        <button type="button" data-q="outro" aria-pressed="false">Outro valor</button>
+      </div>
+      <div class="qtd__x" id="x-dividir" data-on="false">Dividir entre
+        <span class="step"><button type="button" data-step="-1" aria-label="Menos uma pessoa">−</button><b id="n">2</b><button type="button" data-step="1" aria-label="Mais uma pessoa">+</button></span>
+        pessoas · <b style="color:var(--ink)" id="cada"></b> cada</div>
+      <div class="qtd__x" id="x-outro" data-on="false"><label class="sr" for="v-outro">Valor a receber</label><input class="field" id="v-outro" inputmode="decimal" placeholder="Valor em R$, ex.: 100,00" style="max-width:240px"></div>
+
+      <div class="meios" role="radiogroup" aria-label="Forma de pagamento">
+        <div class="meio" data-m="Pix" data-on="true">
+          <button class="meio__h" type="button" role="radio" aria-checked="true"><span class="meio__rad"></span><svg viewBox="0 0 16 16"><path d="M8 1.6 14.4 8 8 14.4 1.6 8z"/></svg>Pix<kbd>1</kbd></button>
+          <div class="meio__b"><p>Mostre o QR na tela ou copie a chave. A comanda fecha quando o Pix cair.</p><div class="row"><button class="sec" type="button">Mostrar QR</button><button class="sec" type="button">Copiar chave</button></div></div>
+        </div>
+        <div class="meio" data-m="Crédito" data-on="false">
+          <button class="meio__h" type="button" role="radio" aria-checked="false"><span class="meio__rad"></span><svg viewBox="0 0 16 16"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><path d="M1.5 6.5h13"/></svg>Cartão de crédito<kbd>2</kbd></button>
+          <div class="meio__b"><label class="lbl" for="parc">Parcelas</label><select class="field" id="parc" style="max-width:240px"><option>1× sem juros</option><option>2× sem juros</option><option>3× sem juros</option><option>6× sem juros</option></select></div>
+        </div>
+        <div class="meio" data-m="Débito" data-on="false">
+          <button class="meio__h" type="button" role="radio" aria-checked="false"><span class="meio__rad"></span><svg viewBox="0 0 16 16"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><path d="M4 10h3"/></svg>Cartão de débito<kbd>3</kbd></button>
+          <div class="meio__b"><p>Passe o cartão na maquininha. Confirmado o pagamento, a comanda fecha.</p></div>
+        </div>
+        <div class="meio" data-m="Dinheiro" data-on="false">
+          <button class="meio__h" type="button" role="radio" aria-checked="false"><span class="meio__rad"></span><svg viewBox="0 0 16 16"><rect x="1.5" y="4" width="13" height="8" rx="1.5"/><circle cx="8" cy="8" r="1.8"/></svg>Dinheiro<kbd>4</kbd></button>
+          <div class="meio__b"><label class="lbl" for="recv">Valor entregue pelo cliente</label><input class="field" id="recv" inputmode="decimal" placeholder="0,00" style="max-width:240px"><div class="row" id="cash"></div><div class="troco" id="troco" aria-live="polite"></div></div>
+        </div>
+        <div class="meio" data-m="Outras" data-on="false">
+          <button class="meio__h" type="button" role="radio" aria-checked="false"><span class="meio__rad"></span><svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="12.5" cy="8" r="1"/></svg>Outras formas</button>
+          <div class="meio__b"><div class="row" id="outras"><button class="sec" type="button" data-o="Vale-refeição" aria-pressed="true">Vale-refeição</button><button class="sec" type="button" data-o="Fiado" aria-pressed="false">Fiado</button><button class="sec" type="button" data-o="Voucher" aria-pressed="false">Voucher</button></div></div>
+        </div>
+      </div>
+
+      <button class="go" type="button" id="go">Receber R$ 459,80</button>
+      <div class="aux"><button type="button">Imprimir pré-conta</button><button type="button">Mandar ao caixa</button><button type="button">Gorjeta</button><button type="button" class="bad">Cancelar comanda</button></div>
+
+      <div class="done" role="status"><h3>Conta fechada</h3><p id="done-t"></p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const TOTAL=459.80,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const fmt=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num=s=>{const v=parseFloat(String(s).replace(/\./g,'').replace(',','.'));return isFinite(v)?v:0};
+const S={m:'Pix',q:'tudo',n:2,outro:0,recv:0,o:'Vale-refeição'};
+const due=()=>S.q==='tudo'?TOTAL:S.q==='dividir'?Math.round(TOTAL/S.n*100)/100:Math.min(S.outro,TOTAL);
+const label=()=>S.m==='Outras'?S.o:S.m;
+function render(){
+  const d=due();
+  $$('.meio').forEach(m=>{const on=m.dataset.m===S.m;m.dataset.on=on;m.querySelector('.meio__h').setAttribute('aria-checked',on)});
+  $$('[data-q]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.q===S.q));
+  $('#x-dividir').dataset.on=S.q==='dividir';$('#x-outro').dataset.on=S.q==='outro';
+  $('#n').textContent=S.n;$('#cada').textContent=fmt(Math.round(TOTAL/S.n*100)/100);
+  $$('[data-o]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.o===S.o));
+  const go=$('#go');go.disabled=d<=0;
+  go.textContent=d>0?`Receber ${fmt(d)}${S.m==='Pix'?' com Pix':S.m==='Outras'?' · '+S.o:S.m==='Dinheiro'?' em dinheiro':' no '+S.m.toLowerCase()}`:'Informe o valor';
+  const cash=[...new Set([Math.ceil(d/10)*10,Math.ceil(d/50)*50,Math.ceil(d/100)*100])].filter(v=>v>0);
+  $('#cash').innerHTML=cash.map(v=>`<button class="sec" type="button" data-c="${v}">${fmt(v)}</button>`).join('')+`<button class="sec" type="button" data-c="x">Valor exato</button>`;
+  const t=$('#troco');
+  if(!S.recv){t.textContent='';t.className='troco'}
+  else if(S.recv<d){t.textContent=`Faltam ${fmt(d-S.recv)}`;t.className='troco bad'}
+  else{t.textContent=S.recv===d?'Sem troco':`Troco ${fmt(S.recv-d)}`;t.className='troco'}
+}
+function pick(m){S.m=m;S.recv=0;const r=$('#recv');if(r)r.value='';render()}
+document.addEventListener('click',e=>{
+  let t;
+  if(t=e.target.closest('.meio__h')){pick(t.parentElement.dataset.m);return}
+  if(t=e.target.closest('[data-q]')){S.q=t.dataset.q;render();if(S.q==='outro')$('#v-outro').focus();return}
+  if(t=e.target.closest('[data-step]')){S.n=Math.max(2,Math.min(12,S.n+ +t.dataset.step));render();return}
+  if(t=e.target.closest('[data-c]')){S.recv=t.dataset.c==='x'?due():+t.dataset.c;$('#recv').value=String(S.recv).replace('.',',');render();return}
+  if(t=e.target.closest('[data-o]')){S.o=t.dataset.o;render();return}
+  if(e.target.closest('#go')&&!$('#go').disabled){
+    if(S.m==='Dinheiro'&&S.recv<due()){$('#recv').focus();return}
+    const d=due();
+    if(d>=TOTAL-.001){document.body.dataset.done=true;$('#done-t').textContent=`${fmt(d)} recebido em ${label()}. A Mesa 12 foi fechada.`}
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='recv'){S.recv=num(e.target.value);render()}
+  if(e.target.id==='v-outro'){S.outro=num(e.target.value);render()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,select,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+  const i='1234'.indexOf(e.key);if(i>=0)pick(['Pix','Crédito','Débito','Dinheiro'][i]);
+});
+render();
+</script>
+</body>
+</html>

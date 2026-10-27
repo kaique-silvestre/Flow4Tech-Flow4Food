@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · paletas 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:400 14px/1.5 "Geist",system-ui,sans-serif;background:#16181c;color:#eceef0;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:16px;padding:12px 24px;background:#16181c;border-bottom:1px solid #2a2d33}
+.top h1{margin:0;font-size:16px;font-weight:600}
+.top p{margin:0;color:#a4a9b0;font-size:13px}
+.seg{margin-left:auto;display:flex;padding:3px;gap:2px;border-radius:999px;background:#22252a;border:1px solid #33363d}
+.seg button{height:28px;padding:0 14px;border:0;border-radius:999px;background:none;color:#a4a9b0;font:inherit;font-weight:500;font-size:13px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#eceef0;color:#16181c}
+.wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:24px;padding:24px;max-width:1500px;margin:0 auto}
+.opt h2{margin:0 0 2px;font-size:15px;font-weight:600}
+.opt>p{margin:0 0 10px;color:#a4a9b0;font-size:13px}
+.sw{display:flex;gap:4px;margin-bottom:10px}
+.sw i{flex:1;height:22px;border-radius:4px;border:1px solid rgb(255 255 255/.12)}
+/* mini app */
+.mini{display:grid;grid-template-columns:116px 1fr;height:330px;border-radius:12px;overflow:hidden;border:1px solid #33363d;background:var(--page);color:var(--ink)}
+.ms{background:var(--side);padding:12px 8px;display:flex;flex-direction:column;gap:2px;color:var(--sideink)}
+.ms .lg{display:flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:12px;padding:2px 6px 10px}
+.ms .lg b{width:22px;height:22px;border-radius:6px;background:var(--btn);display:grid;place-items:center;font-size:11px;color:var(--onbtn)}
+.ms a{height:28px;padding:0 8px;border-radius:6px;display:flex;align-items:center;font-size:12px;font-weight:500}
+.ms a.on{background:var(--sideon);color:#fff}
+.mc{padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.mh{display:flex;align-items:center;justify-content:space-between}
+.mh b{font-size:16px;font-weight:600}
+.mb{height:28px;padding:0 12px;border-radius:999px;border:0;background:var(--btn);color:var(--onbtn);font:inherit;font-size:12px;font-weight:600}
+.tb{display:flex;gap:12px;font-size:12px;color:var(--mut);border-bottom:1px solid var(--line)}
+.tb span{padding:0 0 6px}
+.tb .on{color:var(--ink);border-bottom:2px solid var(--ink);font-weight:600}
+.cs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.c.al{border-color:color-mix(in srgb,var(--bad) 50%,var(--line))}
+.c header{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--card2);border-bottom:1px solid var(--line);font-size:12px;font-weight:600}
+.c .v{padding:10px 10px 4px;font-size:20px;font-weight:500;letter-spacing:-.02em}
+.c .m{padding:0 10px 10px;font-size:11px;color:var(--mut)}
+.c .m em{font-style:normal;color:var(--bad);font-weight:600}
+.bd{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;background:var(--chip);border:1px solid var(--line);color:var(--ink)}
+.bd::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--dot)}
+.bd.bad{background:var(--badsolid);border-color:var(--badsolid);color:#fff;--dot:#fff}
+.row{display:flex;gap:6px;align-items:center}
+.lk{font-size:12px;color:var(--acc);font-weight:500}
+</style>
+</head>
+<body>
+<div class="top"><div><h1>Paletas sem azul</h1><p>Mesma tela em seis direções. O alerta muda por paleta para combinar.</p></div>
+<div class="seg" role="group" aria-label="Tema"><button type="button" data-th="dark" aria-pressed="true">Escuro</button><button type="button" data-th="light" aria-pressed="false">Claro</button></div></div>
+<div class="wrap" id="w"></div>
+<script>
+const P=[
+ {n:'G · Floresta',d:'Verde-floresta profundo. Ninguém no setor usa (Saipos roxo, Goomer e Colibri azul, Square preto, Toast laranja).',
+  bad:{dark:{bad:'#f19a6e',badsolid:'#b8461f'},light:{bad:'#b0431c',badsolid:'#b0431c'}},
+  dark:{side:'#08140f',page:'#0d1c16',card:'#13271f',card2:'#1a3329',line:'#284237',ink:'#e9f1ec',mut:'#a1b8ab',btn:'#23805a',onbtn:'#fff',acc:'#7fd1a8'},
+  light:{side:'#0d2a20',page:'#e4ece7',card:'#ffffff',card2:'#f0f5f2',line:'#c3d3ca',ink:'#0b1a14',mut:'#40574b',btn:'#1b6b4a',onbtn:'#fff',acc:'#1b6b4a'}},
+ {n:'H · Carvão e uísque',d:'Carvão quente com cobre/âmbar. Lembra balcão de bar, sério e acolhedor.',
+  bad:{dark:{bad:'#ef7b8f',badsolid:'#b02a46'},light:{bad:'#a8263f',badsolid:'#a8263f'}},
+  dark:{side:'#0c0b0a',page:'#141210',card:'#1d1a17',card2:'#26221e',line:'#38322c',ink:'#f1ede7',mut:'#b0a79b',btn:'#c58a3f',onbtn:'#1a1103',acc:'#e0b072'},
+  light:{side:'#1a1613',page:'#e9e7e4',card:'#ffffff',card2:'#f6f4f1',line:'#d3ccc1',ink:'#17130f',mut:'#55493d',btn:'#8f5a14',onbtn:'#fff',acc:'#8f5a14'}},
+ {n:'I · Vinho',d:'Bordô profundo. Remete a vinho e bar, premium e fechado. Alerta vira laranja.',
+  bad:{dark:{bad:'#f2a65a',badsolid:'#b5600f'},light:{bad:'#a65208',badsolid:'#a65208'}},
+  dark:{side:'#12070b',page:'#1a0d12',card:'#24131a',card2:'#2f1a23',line:'#452733',ink:'#f4eaed',mut:'#b9a3ab',btn:'#a23a54',onbtn:'#fff',acc:'#e59aac'},
+  light:{side:'#2a0f19',page:'#ece5e7',card:'#ffffff',card2:'#f7f2f3',line:'#d8cbd0',ink:'#1c0d12',mut:'#5a4149',btn:'#8a2b43',onbtn:'#fff',acc:'#8a2b43'}},
+ {n:'J · Grafite e sálvia',d:'Grafite neutro com verde-acinzentado suave. O mais discreto dos não-azuis.',
+  bad:{dark:{bad:'#f4916f',badsolid:'#bd4a26'},light:{bad:'#b5421f',badsolid:'#b5421f'}},
+  dark:{side:'#0c0e0d',page:'#141716',card:'#1c201e',card2:'#252a27',line:'#343a36',ink:'#eceeed',mut:'#a5aca8',btn:'#6f9a80',onbtn:'#0c140f',acc:'#a5cbb3'},
+  light:{side:'#181c1a',page:'#e8ebe9',card:'#ffffff',card2:'#f3f5f4',line:'#cdd3cf',ink:'#121513',mut:'#48514c',btn:'#3f6b53',onbtn:'#fff',acc:'#3f6b53'}},
+ {n:'K · Ameixa',d:'Roxo dessaturado e escuro. Mais próximo do Saipos, porém bem mais sóbrio.',
+  bad:{dark:{bad:'#f4916f',badsolid:'#bd4a26'},light:{bad:'#b5421f',badsolid:'#b5421f'}},
+  dark:{side:'#0e0a14',page:'#150f1d',card:'#1e1629',card2:'#281e36',line:'#3a2d4d',ink:'#efeaf5',mut:'#b0a6c0',btn:'#7a5bb0',onbtn:'#fff',acc:'#c3aaee'},
+  light:{side:'#1b1228',page:'#eae7ef',card:'#ffffff',card2:'#f5f3f8',line:'#d3cddf',ink:'#160f20',mut:'#51485f',btn:'#5f3f96',onbtn:'#fff',acc:'#5f3f96'}},
+ {n:'L · Preto e laranja queimado',d:'Carvão neutro com laranja-ferrugem. Energia de operação, sem ser colorido demais.',
+  bad:{dark:{bad:'#ef7b8f',badsolid:'#b02a46'},light:{bad:'#a8263f',badsolid:'#a8263f'}},
+  dark:{side:'#0a0a0b',page:'#111112',card:'#19191b',card2:'#222224',line:'#323235',ink:'#f0f0f1',mut:'#a8a8ad',btn:'#d4601f',onbtn:'#fff',acc:'#f2965f'},
+  light:{side:'#141415',page:'#e8e8e9',card:'#ffffff',card2:'#f4f4f5',line:'#d0d0d3',ink:'#111112',mut:'#4a4a50',btn:'#b84a10',onbtn:'#fff',acc:'#b84a10'}}
+];
+const bad={dark:{bad:'#f4916f',badsolid:'#bd4a26'},light:{bad:'#b5421f',badsolid:'#b5421f'}};
+const ok={dark:{open:'#3fbfae',wait:'#e0b04a'},light:{open:'#0f7a6c',wait:'#8a5a00'}};
+let th='dark';
+function draw(){
+  w.innerHTML=P.map(p=>{
+    const c=p[th],b=p.bad[th],o=ok[th];
+    const css=`--side:${c.side};--page:${c.page};--card:${c.card};--card2:${c.card2};--line:${c.line};--ink:${c.ink};--mut:${c.mut};--btn:${c.btn};--onbtn:${c.onbtn};--acc:${c.acc};--bad:${b.bad};--badsolid:${b.badsolid};--sideink:#a6b6cf;--sideon:rgb(255 255 255/.14);--chip:${th==='dark'?'rgb(255 255 255/.07)':'rgb(0 0 0/.04)'};--shadow:${th==='dark'?'none':'0 1px 2px rgb(0 0 0/.08)'}`;
+    return `<section class="opt"><h2>${p.n}</h2><p>${p.d}</p>
+    <div class="sw">${['side','page','card','card2','line','btn','acc'].map(k=>`<i style="background:${c[k]}" title="${k} ${c[k]}"></i>`).join('')}</div>
+    <div class="mini" style="${css}"><div class="ms"><div class="lg"><b>Z</b>Bar do Zé</div><a>Dashboard</a><a class="on">Comandas</a><a>Mesas</a><a>Estoque</a><a>Caixa</a></div>
+    <div class="mc"><div class="mh"><b>Comandas</b><button class="mb">Nova comanda</button></div>
+    <div class="tb"><span class="on">Todas</span><span>Abertas</span><span>Em alerta</span></div>
+    <div class="cs">
+      <div class="c"><header>Mesa 7<span class="bd" style="--dot:${o.wait}">Aguardando</span></header><div class="v">R$ 444,00</div><div class="m">1h44 · Carlos · 16 itens</div></div>
+      <div class="c al"><header>Mesa 12<span class="bd bad">Em alerta</span></header><div class="v">R$ 394,00</div><div class="m"><em>2h22</em> · Carlos · 19 itens</div></div>
+      <div class="c"><header>Balcão 3<span class="bd" style="--dot:${o.open}">Aberta</span></header><div class="v">R$ 115,00</div><div class="m">1h04 · Marcos · 9 itens</div></div>
+      <div class="c"><header>Mesa 11<span class="bd" style="--dot:${o.open}">Aberta</span></header><div class="v">R$ 100,00</div><div class="m">57 min · Rafael · 4 itens</div></div>
+    </div><div class="row"><span class="lk">Ver relatório →</span></div></div></div></section>`}).join('');
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-th]');if(!t)return;th=t.dataset.th;document.querySelectorAll('[data-th]').forEach(b=>b.setAttribute('aria-pressed',b===t));draw()});
+draw();
+</script>
+</body>
+</html>

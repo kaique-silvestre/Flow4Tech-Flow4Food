@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · identidade v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Geist:wght@400;500;600&family=Inter:wght@400..650&display=swap" rel="stylesheet">
+<style>
+/* IDENTIDADE V2
+   Base de estrutura: apps de gestao do tipo Stripe Dashboard (superficies brancas, bordas de 1px, sem sombra,
+   raio pequeno, botao principal em tinta escura, cor da marca so em links, foco e estados).
+   Assinatura Flow: valores em dinheiro em Fraunces; verde-petroleo como unico acento. */
+:root{
+  --ink:#06222f; --mut:#4a5b66; --faint:#6b7a85;
+  --page:#f6f8f9; --card:#ffffff; --hover:#eef3f4;
+  --line:#dde4e8; --line2:#c3cdd3;
+  --acc:#1b5e4f; --acc-s:#e6f1ee;
+  --warn:#8a4b08; --warn-s:#fbeed2;
+  --bad:#a1281e; --bad-s:#fbe6e3;
+  --r:8px; --r-sm:6px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --money:"Fraunces",Georgia,serif; --head:"Geist",system-ui,sans-serif;
+  --inkbtn:#06222f; --inkbtn-h:#0b3446; --onink:#fff; --shadow:none; --bar:var(--card);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:400 14px/1.5 "Geist",system-ui,sans-serif;color:var(--ink);background:var(--page);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);height:100vh}
+
+/* ---------- sidebar ---------- */
+.side{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:12px;overflow-y:auto}
+.org{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r);border:0;background:none;text-align:left;width:100%}
+.org:hover{background:var(--hover)}
+.org__l{width:30px;height:30px;border-radius:7px;background:var(--inkbtn);color:var(--onink);display:grid;place-items:center;font-weight:600;font-size:13px}
+.org b{display:block;font-weight:600;line-height:1.2}
+.org span{color:var(--mut);font-size:12px}
+.grp{margin:20px 8px 6px;font-size:12px;font-weight:500;color:var(--faint)}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;border-radius:var(--r-sm);color:var(--mut);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--hover);color:var(--ink)}
+.nav a[aria-current=page]{background:var(--hover);color:var(--ink);font-weight:600}
+.nav a[aria-current=page] svg{color:var(--acc)}
+.nav .n{margin-left:auto;font-size:12px;color:var(--faint)}
+.side__f{margin-top:auto;padding-top:16px}
+
+/* ---------- topo ---------- */
+.main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.top{display:flex;align-items:center;gap:12px;height:56px;padding:0 28px;background:var(--bar);border-bottom:1px solid var(--line);flex:none}
+.search{display:flex;align-items:center;gap:8px;width:360px;max-width:100%;height:36px;padding:0 12px;border:1px solid var(--line2);border-radius:var(--r);background:var(--card);color:var(--faint)}
+.search:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-s)}
+.search input{flex:1;border:0;outline:0;background:none;min-width:0}
+.search kbd{font:500 11px/1 "Geist",sans-serif;border:1px solid var(--line);border-radius:4px;padding:3px 5px}
+.top__r{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--mut)}
+.top__r b{color:var(--ink);font-weight:500}
+.ib{position:relative;width:36px;height:36px;border:1px solid var(--line2);background:var(--card);border-radius:var(--r);display:grid;place-items:center;color:var(--mut)}
+.ib:hover{color:var(--ink);border-color:var(--faint)}
+.ib .dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;padding:0 5px}
+
+.page{flex:1;overflow:auto;padding:24px 28px 40px}
+.crumb{color:var(--mut);font-size:13px;margin:0 0 14px}
+.crumb b{color:var(--ink);font-weight:500}
+.head{display:flex;align-items:flex-end;gap:12px;margin-bottom:20px}
+.head h1{font-family:var(--head);margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-.015em}
+.head p{margin:2px 0 0;color:var(--mut)}
+.head__a{margin-left:auto;display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--line2);border-radius:var(--r);background:var(--card);font-weight:500;transition:background-color .15s,border-color .15s}
+.btn:hover{background:var(--hover);border-color:var(--faint)}
+.btn--p{background:var(--inkbtn);border-color:var(--inkbtn);color:var(--onink)}
+.btn--p:hover{background:var(--inkbtn-h);border-color:var(--inkbtn-h)}
+.btn kbd{font:500 11px/1 "Geist",sans-serif;border:1px solid rgb(255 255 255/.4);border-radius:4px;padding:3px 5px}
+
+/* ---------- resumo: uma faixa, quatro celulas ---------- */
+.sum{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.sum div{padding:16px 20px;border-right:1px solid var(--line)}
+.sum div:last-child{border-right:0}
+.sum small{display:block;color:var(--mut);font-size:13px}
+.sum b{display:block;margin-top:4px;font:600 28px/1.1 var(--money);letter-spacing:-.01em}
+.sum b em{font:500 14px "Geist",sans-serif;color:var(--mut);font-style:normal}
+.sum span{display:block;margin-top:4px;color:var(--mut);font-size:12.5px}
+.sum .bad{color:var(--bad)}
+
+/* ---------- abas ---------- */
+.bar{display:flex;align-items:center;gap:16px;margin:24px 0 16px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:4px}
+.tabs button{height:40px;padding:0 12px;border:0;background:none;color:var(--mut);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.tabs i{font-style:normal;margin-left:6px;color:var(--faint);font-weight:500;font-size:13px}
+.tabs button[data-t=alerta] i{color:var(--bad)}
+.bar__r{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--mut);font-size:13px}
+.vw{display:flex;border:1px solid var(--line2);border-radius:var(--r-sm);overflow:hidden;background:var(--card)}
+.vw button{height:30px;padding:0 10px;border:0;background:none;color:var(--mut);font-weight:500}
+.vw button[aria-pressed=true]{background:var(--inkbtn);color:var(--onink)}
+
+/* ---------- cartoes ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.cm{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s,background-color .15s}
+.cm:hover{border-color:var(--line2)}
+.cm:hover .cm__go,.cm:focus-within .cm__go{opacity:1}
+.cm__t{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cm__t .bd{flex:none}
+.cm__t h3{min-width:0;margin:0;font-size:15px;font-weight:600;line-height:1.3}
+.cm__t h3 button{border:0;background:none;padding:0;text-align:left;font:inherit;cursor:pointer}
+.cm__v{font:600 28px/1 var(--money);letter-spacing:-.015em}
+.cm__v small{font:500 14px "Geist",sans-serif;color:var(--mut);margin-right:4px;letter-spacing:0}
+.cm__m{display:flex;gap:4px 12px;flex-wrap:wrap;color:var(--mut)}
+.cm__m .bad{color:var(--bad);font-weight:600}
+.cm__l{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+.cm__l span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm__go{position:absolute;right:16px;bottom:14px;opacity:0;border:0;background:var(--card);padding:2px 0 2px 14px;box-shadow:-10px 0 8px var(--card);color:var(--acc);font-weight:600;font-size:13px;white-space:nowrap;text-decoration:none;transition:opacity .15s}
+.cm__go:hover{text-decoration:underline}
+@media (hover:none){.cm__go{opacity:1}}
+
+/* ---------- status ---------- */
+.bd{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:4px;font-size:12px;font-weight:600;white-space:nowrap}
+.bd::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.bd--open{background:var(--acc-s);color:var(--acc)}
+.bd--wait{background:var(--warn-s);color:var(--warn)}
+.bd--bad{background:var(--bad-s);color:var(--bad)}
+
+/* ---------- tabela ---------- */
+.tw{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{height:38px;padding:0 16px;text-align:left;font-size:12.5px;font-weight:500;color:var(--mut);background:var(--page);border-bottom:1px solid var(--line)}
+td{height:48px;padding:0 16px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--page)}
+.r{text-align:right}
+td.v{font-weight:600}
+
+/* ---------- identidade (folha de regras) ---------- */
+.sheet{display:none;max-width:1000px}
+.sheet h2{margin:36px 0 12px;font-size:16px;font-weight:600}
+.sheet h2:first-child{margin-top:0}
+.sheet p{color:var(--mut);margin:0 0 12px;max-width:68ch}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw div{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.sw i{display:block;height:56px}
+.sw span{display:block;padding:8px 10px;font-size:12.5px}
+.sw b{display:block;font-weight:600}
+.sw em{font-style:normal;color:var(--mut)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tp{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 24px}
+.tp div{display:flex;align-items:baseline;gap:20px;padding:8px 0;border-bottom:1px solid var(--line)}
+.tp div:last-child{border-bottom:0}
+.tp small{width:150px;color:var(--faint);flex:none}
+body[data-v=identidade] .sheet{display:block}
+body[data-v=identidade] .lista{display:none}
+
+
+.sel{height:34px;border:1px solid var(--line2);border-radius:var(--r-sm);background:var(--card);color:var(--ink);padding:0 8px;font:inherit;font-weight:500}
+
+/* ===== B · escuro, denso, neutro (linha Linear/Vercel) ===== */
+body[data-th=b]{--ink:#ecedef;--mut:#a0a5af;--faint:#80858f;--page:#0d0e10;--card:#141518;--hover:#1c1e22;--line:#24262b;--line2:#34373e;--acc:#8e9cff;--acc-s:#1d2140;--warn:#f2b955;--warn-s:#2f2614;--bad:#ff8585;--bad-s:#381c1e;--r:6px;--r-sm:5px;--money:"Geist",sans-serif;--inkbtn:#ecedef;--inkbtn-h:#ffffff;--onink:#0d0e10;--bar:var(--page);color-scheme:dark}
+body[data-th=b] .side{background:var(--page)}
+body[data-th=b] .cm__v,body[data-th=b] .sum b{font-weight:600;letter-spacing:-.03em}
+body[data-th=b] .bd{border-radius:999px}
+body[data-th=b] .cm:hover{background:var(--hover)}
+body[data-th=b] .cm__go{background:var(--hover);box-shadow:-10px 0 8px var(--hover)}
+body[data-th=b] .search,body[data-th=b] .ib,body[data-th=b] .btn:not(.btn--p),body[data-th=b] .sel{background:var(--card)}
+
+/* ===== C · PDV vivo, alvos grandes (linha Square/Toast) ===== */
+body[data-th=c]{--ink:#0b1b2b;--mut:#44566a;--faint:#64768a;--page:#e9eef4;--card:#fff;--hover:#e1e9f2;--line:#cfd8e3;--line2:#b4c1d1;--acc:#0a5bd9;--acc-s:#dfeaff;--warn:#7a3d00;--warn-s:#ffe3a8;--bad:#fff;--bad-s:#d92d20;--r:12px;--r-sm:10px;--money:"Geist",sans-serif;--inkbtn:#0a5bd9;--inkbtn-h:#0848ae;--onink:#fff;--shadow:0 1px 0 rgb(11 27 43/.06)}
+body[data-th=c] .btn,body[data-th=c] .search,body[data-th=c] .ib,body[data-th=c] .sel{height:44px;border-width:1.5px}
+body[data-th=c] .ib{width:44px}
+body[data-th=c] .tabs button{height:48px;font-size:15px}
+body[data-th=c] .nav a{height:42px;font-size:15px}
+body[data-th=c] .cm{padding:18px;gap:12px;border-width:1.5px}
+body[data-th=c] .cm__v{font-weight:700;font-size:32px;letter-spacing:-.025em}
+body[data-th=c] .cm__t h3{font-size:17px;font-weight:700}
+body[data-th=c] .sum b{font-weight:700;letter-spacing:-.025em}
+body[data-th=c] .bd{height:26px;padding:0 10px;border-radius:999px;font-size:13px}
+body[data-th=c] .bd--bad{background:#d92d20;color:#fff}
+body[data-th=c] .bd--wait{background:#ffe3a8;color:#5c2d00}
+body[data-th=c] .bd--open{background:#d4f1df;color:#0b5a2b}
+body[data-th=c] .cm__m .bad,body[data-th=c] .sum .bad,body[data-th=c] td[style*=bad]{color:#c0261b}
+body[data-th=c] .tabs button[data-t=alerta] i{color:#c0261b}
+body[data-th=c] .org__l{border-radius:10px}
+body[data-th=c] .nav a[aria-current=page]{background:var(--acc-s);color:var(--acc)}
+body[data-th=c] .nav a[aria-current=page] svg{color:var(--acc)}
+
+/* ===== D · editorial calmo (linha Mercury/Ramp) ===== */
+body[data-th=d]{--ink:#14172e;--mut:#4d526b;--faint:#6d728a;--page:#f4f5fa;--card:#fff;--hover:#ecedf6;--line:#e2e4ef;--line2:#cbcfe2;--acc:#4a5ae8;--acc-s:#e8ebff;--warn:#7a4a00;--warn-s:#fdf0cf;--bad:#a8261f;--bad-s:#fde8e6;--r:10px;--r-sm:8px;--money:"Fraunces",Georgia,serif;--head:"Fraunces",Georgia,serif;--inkbtn:#4a5ae8;--inkbtn-h:#3a49cf;--onink:#fff;--shadow:0 1px 2px rgb(20 23 46/.05),0 4px 14px rgb(20 23 46/.04)}
+body[data-th=d] .head h1{font-weight:500;font-size:30px;letter-spacing:-.02em}
+body[data-th=d] .cm__v{font-weight:500}
+body[data-th=d] .sum b{font-weight:500}
+body[data-th=d] .cm__t h3{font-weight:600}
+body[data-th=d] .page{padding-top:32px}
+body[data-th=d] .nav a[aria-current=page]{background:var(--acc-s);color:var(--acc)}
+body[data-th=d] .nav a[aria-current=page] svg{color:var(--acc)}
+body[data-th=d] .tabs button[aria-selected=true]{border-bottom-color:var(--acc);color:var(--acc)}
+body[data-th=d] .bd{border-radius:999px}
+
+
+/* ===== E / F · identidade proposta: leve, chapada, uma cor forte so no botao principal =====
+   Medido em mercury.com, linear.app e ramp.com: pesos 400-510, titulos com tracking apertado,
+   borda finissima, sem sombra, botoes em pilula, cor de marca reservada ao CTA. */
+body[data-th=e],body[data-th=f]{--money:"Inter",system-ui,sans-serif;--head:"Inter",system-ui,sans-serif;--r:12px;--r-sm:8px;--shadow:none;font-family:"Inter",system-ui,sans-serif;font-feature-settings:"tnum","cv11";letter-spacing:-.003em}
+body[data-th=e]{--ink:#15161d;--mut:#5a5d6e;--faint:#80839a;--page:#f5f5f8;--card:#fff;--hover:rgb(21 22 29/.05);--line:#e7e7ee;--line2:#d4d5e0;--acc:#4254d6;--acc-s:#eceefd;--warn:#7a4a00;--warn-s:#fcefcf;--bad:#b4281f;--bad-s:#fdeceb;--inkbtn:#5266eb;--inkbtn-h:#4254d6;--onink:#fff}
+body[data-th=f]{--ink:#f7f8f8;--mut:#a4a9b6;--faint:#7d8290;--page:#08090a;--card:#0f1012;--hover:rgb(255 255 255/.05);--line:#1d1e22;--line2:#2c2d33;--acc:#98a3ff;--acc-s:rgb(94 106 210/.2);--warn:#f0bf00;--warn-s:rgb(240 191 0/.12);--bad:#ff8f86;--bad-s:rgb(255 90 80/.14);--inkbtn:#5e6ad2;--inkbtn-h:#6e7ae0;--onink:#fff;--bar:var(--page);color-scheme:dark}
+body[data-th=f] .side{background:var(--page)}
+body[data-th=e] .side{background:var(--page)}
+body[data-th=e] .top{background:var(--page)}
+body[data-th=e] .cm__go,body[data-th=f] .cm__go{background:var(--card);box-shadow:-10px 0 8px var(--card)}
+body[data-th=e] .btn,body[data-th=f] .btn,body[data-th=e] .sel,body[data-th=f] .sel{border-radius:999px;font-weight:500}
+body[data-th=e] .btn:not(.btn--p),body[data-th=f] .btn:not(.btn--p){background:transparent}
+body[data-th=e] .btn:not(.btn--p):hover,body[data-th=f] .btn:not(.btn--p):hover{background:var(--hover)}
+body[data-th=e] .btn--p,body[data-th=f] .btn--p{border-color:transparent}
+body[data-th=e] .search,body[data-th=f] .search{border-radius:999px;background:var(--card)}
+body[data-th=e] .ib,body[data-th=f] .ib{border-radius:50%;background:transparent}
+body[data-th=e] .org__l,body[data-th=f] .org__l{border-radius:8px;background:var(--ink);color:var(--page)}
+body[data-th=e] .head h1,body[data-th=f] .head h1{font-size:28px;font-weight:500;letter-spacing:-.03em}
+body[data-th=e] .sum b,body[data-th=f] .sum b{font-weight:450;font-size:30px;letter-spacing:-.035em}
+body[data-th=e] .cm__v,body[data-th=f] .cm__v{font-weight:450;font-size:30px;letter-spacing:-.035em}
+body[data-th=e] .cm__v small,body[data-th=f] .cm__v small,body[data-th=e] .sum b em,body[data-th=f] .sum b em{font-family:"Inter",sans-serif;font-size:14px;font-weight:450;color:var(--faint)}
+body[data-th=e] .cm__t h3,body[data-th=f] .cm__t h3{font-weight:500;font-size:15px}
+body[data-th=e] .cm,body[data-th=f] .cm,body[data-th=e] .sum,body[data-th=f] .sum,body[data-th=e] .tw,body[data-th=f] .tw{border-color:var(--line)}
+body[data-th=e] .cm:hover{background:#fcfcfd;border-color:var(--line2)}
+body[data-th=f] .cm:hover{background:#131417;border-color:var(--line2)}
+body[data-th=e] .nav a,body[data-th=f] .nav a{font-weight:450;height:32px}
+body[data-th=e] .nav a[aria-current=page],body[data-th=f] .nav a[aria-current=page]{background:var(--hover);font-weight:500}
+body[data-th=e] .nav a[aria-current=page] svg,body[data-th=f] .nav a[aria-current=page] svg{color:var(--ink)}
+body[data-th=e] .grp,body[data-th=f] .grp{font-weight:450}
+body[data-th=e] .tabs button,body[data-th=f] .tabs button{font-weight:450}
+body[data-th=e] .tabs button[aria-selected=true],body[data-th=f] .tabs button[aria-selected=true]{font-weight:500}
+body[data-th=e] .vw,body[data-th=f] .vw{border-radius:999px;padding:2px;background:var(--hover);border:0}
+body[data-th=e] .vw button,body[data-th=f] .vw button{border-radius:999px;height:28px;font-weight:450}
+body[data-th=e] .vw button[aria-pressed=true]{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 0 0 1px var(--line2)}
+body[data-th=f] .vw button[aria-pressed=true]{background:var(--line2);color:var(--ink);font-weight:500}
+body[data-th=e] .bd,body[data-th=f] .bd{border-radius:999px;font-weight:500;height:22px}
+body[data-th=e] .bd--open,body[data-th=f] .bd--open{background:var(--hover);color:var(--mut)}
+body[data-th=e] .bd--open::before{background:#2f9e60}
+body[data-th=f] .bd--open::before{background:#4cc38a}
+body[data-th=e] .bd--wait::before,body[data-th=f] .bd--wait::before{background:#e0a100}
+body[data-th=e] th,body[data-th=f] th{font-weight:450}
+
+@media (max-width:1280px){.top__r>span{display:none}}
+@media (max-width:1100px){.sum{grid-template-columns:repeat(2,1fr)}.sum div:nth-child(2){border-right:0}.sum div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media (max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.top{padding:0 16px}.page{padding:20px 16px 32px}.search{width:auto;flex:1}.top__r b{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-v="comandas">
+<div class="app">
+
+  <aside class="side" aria-label="Navegação">
+    <button class="org" type="button"><span class="org__l">Z</span><span><b>Bar do Zé</b><span>Unidade Centro</span></span></button>
+    <p class="grp">Operação</p>
+    <nav class="nav">
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>Dashboard</a>
+      <a href="#" aria-current="page" data-go="comandas"><svg class="i" viewBox="0 0 18 18"><path d="M4 2.5h10v13l-2-1.3-1.7 1.3L8.6 14.2 7 15.5l-1.6-1.3L4 15.5z"/><path d="M7 6.5h4M7 9.5h4"/></svg>Comandas<span class="n">17</span></a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><path d="M3 4h12M5 4v10M13 4v10M3 14h12"/></svg>Cozinha e bar</a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><rect x="2.5" y="3.5" width="13" height="4" rx="1"/><path d="M4.5 7.5v7M13.5 7.5v7"/></svg>Mesas</a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><path d="M4 2.5h10v13H4z"/><path d="M7 6h4M7 9h4"/></svg>Cardápio</a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><circle cx="9" cy="6.5" r="3"/><path d="M3 15.5c.6-3 3-4.5 6-4.5s5.4 1.5 6 4.5"/></svg>Clientes</a>
+    </nav>
+    <p class="grp">Gestão</p>
+    <nav class="nav">
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><path d="M9 2 15.5 5.5v7L9 16l-6.5-3.5v-7z"/><path d="M9 9 15.5 5.5M9 9v7M9 9 2.5 5.5"/></svg>Estoque<span class="n">3</span></a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><rect x="2.5" y="4.5" width="13" height="9" rx="1.5"/><path d="M2.5 8h13"/></svg>Caixa<span class="n">1</span></a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><path d="M2.5 13 7 8l3 3 5.5-6"/></svg>Financeiro</a>
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><path d="M4 15V9M9 15V4M14 15v-4"/></svg>Relatórios</a>
+    </nav>
+    <p class="grp">Administração</p>
+    <nav class="nav">
+      <a href="#"><svg class="i" viewBox="0 0 18 18"><circle cx="9" cy="9" r="2.5"/><path d="M9 2v2M9 14v2M2 9h2M14 9h2M4 4l1.4 1.4M12.6 12.6 14 14M14 4l-1.4 1.4M5.4 12.6 4 14"/></svg>Configurações</a>
+    </nav>
+    <div class="side__f nav"><a href="#" data-go="identidade"><svg class="i" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5"/><path d="M9 2.5v13M2.5 9h13"/></svg>Identidade visual</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <label class="search"><svg class="i" viewBox="0 0 18 18"><circle cx="8" cy="8" r="5"/><path d="m12 12 4 4"/></svg><span class="sr">Buscar</span><input placeholder="Buscar comanda, mesa ou item"><kbd>⌘K</kbd></label>
+      <div class="top__r"><label style="display:flex;align-items:center;gap:8px;font-size:13px">Identidade <select id="th" class="sel"><option value="e">E · Claro (Mercury + Ramp + Linear)</option><option value="f">F · Escuro (Linear)</option><option value="a">A · Stripe</option><option value="b">B · Linear escuro</option><option value="c">C · Square PDV</option><option value="d">D · Mercury editorial</option></select></label><span><b>Terça, 22 out</b> · Turno noite · 11:56</span>
+        <button class="ib" type="button" aria-label="Modo escuro"><svg class="i" viewBox="0 0 18 18"><path d="M14.5 10.5A6 6 0 0 1 7.5 3.5a6 6 0 1 0 7 7z"/></svg></button>
+        <button class="ib" type="button" aria-label="Notificações, 6 novas"><svg class="i" viewBox="0 0 18 18"><path d="M4.5 13h9l-1.2-1.8V8a3.3 3.3 0 0 0-6.6 0v3.2zM7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="dot">6</span></button></div>
+    </header>
+
+    <main class="page">
+      <!-- ===== COMANDAS ===== -->
+      <div class="lista">
+        <p class="crumb">Operação / <b>Comandas</b></p>
+        <div class="head"><div><h1>Comandas</h1><p>Turno noite, Unidade Centro</p></div>
+          <div class="head__a"><button class="btn" type="button"><svg class="i" viewBox="0 0 18 18"><path d="M3 5h12M5.5 9h7M8 13h2"/></svg>Filtros</button><button class="btn btn--p" type="button">Nova comanda <kbd>N</kbd></button></div></div>
+
+        <section class="sum" aria-label="Resumo" id="sum"></section>
+
+        <div class="bar">
+          <div class="tabs" role="tablist" id="tabs"></div>
+          <div class="bar__r"><span id="info"></span><div class="vw" role="group" aria-label="Visualização"><button type="button" data-vw="c" aria-pressed="true">Cartões</button><button type="button" data-vw="t" aria-pressed="false">Tabela</button></div></div>
+        </div>
+        <div id="out"></div>
+      </div>
+
+      <!-- ===== IDENTIDADE ===== -->
+      <div class="sheet">
+        <p class="crumb">Sistema / <b>Identidade visual</b></p>
+        <div class="head"><div><h1>Identidade visual v2</h1><p>As regras que valem para todas as telas.</p></div></div>
+
+        <h2>Princípios</h2>
+        <p>Superfícies brancas com borda de 1px e sem sombra. Raio pequeno (8px). A cor da marca aparece pouco: links, foco e estados. O botão principal é em tinta escura, não colorido. A assinatura do Flow são os valores em dinheiro, em fonte serifada.</p>
+
+        <h2>Cores</h2>
+        <div class="sw">
+          <div><i style="background:#06222f"></i><span><b>Tinta</b><em>#06222F · texto, botão</em></span></div>
+          <div><i style="background:#1b5e4f"></i><span><b>Petróleo</b><em>#1B5E4F · links, foco, aberta</em></span></div>
+          <div><i style="background:#f6f8f9;border-bottom:1px solid #dde4e8"></i><span><b>Página</b><em>#F6F8F9</em></span></div>
+          <div><i style="background:#fff;border-bottom:1px solid #dde4e8"></i><span><b>Superfície</b><em>#FFFFFF</em></span></div>
+          <div><i style="background:#dde4e8"></i><span><b>Borda</b><em>#DDE4E8</em></span></div>
+          <div><i style="background:#4a5b66"></i><span><b>Texto suave</b><em>#4A5B66 · 7,3:1 no branco</em></span></div>
+          <div><i style="background:#8a4b08"></i><span><b>Atenção</b><em>#8A4B08 sobre #FBEED2</em></span></div>
+          <div><i style="background:#a1281e"></i><span><b>Alerta</b><em>#A1281E sobre #FBE6E3</em></span></div>
+        </div>
+
+        <h2>Tipografia</h2>
+        <div class="tp">
+          <div><small>Valores (Fraunces 600)</small><span style="font:600 40px/1 var(--money);letter-spacing:-.02em">R$ 459,80</span></div>
+          <div><small>Título de página 24/600</small><span style="font-size:24px;font-weight:600;letter-spacing:-.015em">Comandas</span></div>
+          <div><small>Seção 16/600</small><span style="font-size:16px;font-weight:600">Forma de pagamento</span></div>
+          <div><small>Texto 14/400</small><span>Mesa 12 · Carlos · aberta há 2h23</span></div>
+          <div><small>Apoio 13/400</small><span style="font-size:13px;color:var(--mut)">20 itens · consumo R$ 418,00</span></div>
+        </div>
+
+        <h2>Botões e campos</h2>
+        <div class="row"><button class="btn btn--p">Receber R$ 459,80</button><button class="btn">Imprimir pré-conta</button><button class="btn" style="color:var(--bad)">Cancelar comanda</button>
+          <label class="search" style="width:240px"><input placeholder="Campo de texto"></label></div>
+
+        <h2>Status</h2>
+        <div class="row"><span class="bd bd--open">Aberta</span><span class="bd bd--wait">Aguardando pagamento</span><span class="bd bd--bad">Em alerta</span></div>
+        <p style="margin-top:12px">Status usa fundo suave, texto escuro do mesmo tom e ponto. Nunca depende só da cor. Em alerta, o tempo aberto também fica em vermelho no cartão.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+const D=[
+ ['Mesa 12','bad',394,'2h22',142,'Carlos',19,'6× Chope Pilsen 500ml · 11:33'],
+ ['Grupo Aniversário Beto','bad',545,'2h11',131,'Juliana',27,'4× Coca-Cola lata · 11:41'],
+ ['Mesa 5','bad',378,'1h58',118,'Carlos',21,'6× Dose de cachaça · 11:31'],
+ ['Mesa 7','wait',444,'1h44',104,'Carlos',16,'4× Dose de cachaça · 11:24'],
+ ['Mesa 1','bad',126,'1h37',97,'Rafael',7,'1× Porção de fritas · 11:05'],
+ ['Mesa 8','wait',174,'1h28',88,'Rafael',5,'2× Água sem gás · 10:45'],
+ ['Balcão 1','wait',71,'1h13',73,'Marcos',4,'1× Torresmo crocante · 10:55'],
+ ['Balcão 3','open',115,'1h04',64,'Marcos',9,'3× Chope Pilsen 300ml · 11:46'],
+ ['Mesa 11','open',100,'57 min',57,'Rafael',4,'2× Pastel de carne (4) · 11:11'],
+ ['Sra. Helena (reserva)','open',180,'51 min',51,'Juliana',7,'1× Água sem gás · 11:15'],
+ ['Mesa 14','open',103,'45 min',45,'Juliana',4,'1× Água com gás · 11:20'],
+ ['Mesa 3','open',104,'39 min',39,'Juliana',5,'1× Torresmo crocante · 11:33'],
+];
+const L={open:'Aberta',wait:'Aguardando',bad:'Em alerta'};
+const S={t:'todas',v:'c'};
+const brl=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2});
+const isOpen=c=>c[1]==='open'||c[1]==='bad';
+const cnt={todas:D.length,abertas:D.filter(isOpen).length,aguardando:D.filter(c=>c[1]==='wait').length,alerta:D.filter(c=>c[1]==='bad').length};
+function summary(){
+  const tot=D.reduce((a,c)=>a+c[2],0), wait=D.filter(c=>c[1]==='wait'), w=wait.reduce((a,c)=>a+c[2],0), avg=Math.round(D.reduce((a,c)=>a+c[4],0)/D.length);
+  const [r,c]=brl(tot).split(',');
+  sum.innerHTML=`<div><small>Abertas</small><b>${cnt.abertas}</b><span class="bad">${cnt.alerta} acima de 90 min</span></div>
+   <div><small>Em consumo</small><b><em>R$</em> ${r}<em>,${c}</em></b><span>${D.length} comandas ativas</span></div>
+   <div><small>Aguardando pagamento</small><b>${wait.length}</b><span>R$ ${brl(w)} a receber</span></div>
+   <div><small>Tempo médio aberta</small><b>${Math.floor(avg/60)}h${String(avg%60).padStart(2,'0')}</b><span>Alerta a partir de 1h30</span></div>`;
+}
+function render(){
+  const T=[['todas','Todas'],['abertas','Abertas'],['aguardando','Aguardando'],['alerta','Em alerta']];
+  tabs.innerHTML=T.map(([k,l])=>`<button role="tab" data-t="${k}" aria-selected="${S.t===k}">${l}<i>${cnt[k]}</i></button>`).join('');
+  const f=D.filter(c=>S.t==='todas'||(S.t==='abertas'&&isOpen(c))||(S.t==='aguardando'&&c[1]==='wait')||(S.t==='alerta'&&c[1]==='bad'));
+  info.textContent=`${f.length} de ${D.length} comandas`;
+  document.querySelectorAll('[data-vw]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vw===S.v));
+  out.innerHTML=S.v==='c'
+   ?`<div class="grid">${f.map(c=>`<article class="cm" data-n="${c[0]}"><div class="cm__t"><h3><button type="button">${c[0]}</button></h3><span class="bd bd--${c[1]}">${L[c[1]]}</span></div>
+      <div class="cm__v"><small>R$</small>${brl(c[2])}</div>
+      <div class="cm__m"><span class="${c[1]==='bad'?'bad':''}">${c[3]} aberta</span><span>${c[5]}</span><span>${c[6]} itens</span></div>
+      <div class="cm__l"><span>${c[7]}</span><a class="cm__go" href="fechamento-v2.html">Fechar conta →</a></div></article>`).join('')}</div>`
+   :`<div class="tw"><table><thead><tr><th>Comanda</th><th>Status</th><th>Garçom</th><th>Tempo aberta</th><th class="r">Itens</th><th class="r">Total</th></tr></thead><tbody>${f.map(c=>`<tr><td><b>${c[0]}</b></td><td><span class="bd bd--${c[1]}">${L[c[1]]}</span></td><td>${c[5]}</td><td style="${c[1]==='bad'?'color:var(--bad);font-weight:600':''}">${c[3]}</td><td class="r">${c[6]}</td><td class="r v">R$ ${brl(c[2])}</td></tr>`).join('')}</tbody></table></div>`;
+}
+document.addEventListener('click',e=>{
+  let t;
+  if(t=e.target.closest('[data-t]')){S.t=t.dataset.t;render()}
+  else if(t=e.target.closest('[data-vw]')){S.v=t.dataset.vw;render()}
+  else if(t=e.target.closest('[data-go]')){e.preventDefault();document.body.dataset.v=t.dataset.go;document.querySelectorAll('.nav a').forEach(a=>a.removeAttribute('aria-current'));t.setAttribute('aria-current','page')}
+  else if((t=e.target.closest('.cm'))&&!e.target.closest('a')){location.href='fechamento-v2.html'}
+});
+summary();render();
+(function(){let t='e';try{t=new URLSearchParams(location.search).get('th')||localStorage.getItem('th')||'a'}catch(_){}
+ const set=v=>{document.body.dataset.th=v;th.value=v;try{localStorage.setItem('th',v)}catch(_){}};
+ set(t);th.addEventListener('change',()=>set(th.value));
+ document.querySelector('[aria-label="Modo escuro"]').addEventListener('click',()=>{const c=document.body.dataset.th;set(c==='e'?'f':c==='f'?'e':c)})})();
+</script>
+</body>
+</html>

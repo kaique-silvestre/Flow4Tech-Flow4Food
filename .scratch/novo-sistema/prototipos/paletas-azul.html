@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · paletas</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:400 14px/1.5 "Geist",system-ui,sans-serif;background:#16181c;color:#eceef0;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:16px;padding:12px 24px;background:#16181c;border-bottom:1px solid #2a2d33}
+.top h1{margin:0;font-size:16px;font-weight:600}
+.top p{margin:0;color:#a4a9b0;font-size:13px}
+.seg{margin-left:auto;display:flex;padding:3px;gap:2px;border-radius:999px;background:#22252a;border:1px solid #33363d}
+.seg button{height:28px;padding:0 14px;border:0;border-radius:999px;background:none;color:#a4a9b0;font:inherit;font-weight:500;font-size:13px;cursor:pointer}
+.seg button[aria-pressed=true]{background:#eceef0;color:#16181c}
+.wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:24px;padding:24px;max-width:1500px;margin:0 auto}
+.opt h2{margin:0 0 2px;font-size:15px;font-weight:600}
+.opt>p{margin:0 0 10px;color:#a4a9b0;font-size:13px}
+.sw{display:flex;gap:4px;margin-bottom:10px}
+.sw i{flex:1;height:22px;border-radius:4px;border:1px solid rgb(255 255 255/.12)}
+/* mini app */
+.mini{display:grid;grid-template-columns:116px 1fr;height:330px;border-radius:12px;overflow:hidden;border:1px solid #33363d;background:var(--page);color:var(--ink)}
+.ms{background:var(--side);padding:12px 8px;display:flex;flex-direction:column;gap:2px;color:var(--sideink)}
+.ms .lg{display:flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:12px;padding:2px 6px 10px}
+.ms .lg b{width:22px;height:22px;border-radius:6px;background:var(--btn);display:grid;place-items:center;font-size:11px;color:var(--onbtn)}
+.ms a{height:28px;padding:0 8px;border-radius:6px;display:flex;align-items:center;font-size:12px;font-weight:500}
+.ms a.on{background:var(--sideon);color:#fff}
+.mc{padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.mh{display:flex;align-items:center;justify-content:space-between}
+.mh b{font-size:16px;font-weight:600}
+.mb{height:28px;padding:0 12px;border-radius:999px;border:0;background:var(--btn);color:var(--onbtn);font:inherit;font-size:12px;font-weight:600}
+.tb{display:flex;gap:12px;font-size:12px;color:var(--mut);border-bottom:1px solid var(--line)}
+.tb span{padding:0 0 6px}
+.tb .on{color:var(--ink);border-bottom:2px solid var(--ink);font-weight:600}
+.cs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.c.al{border-color:color-mix(in srgb,var(--bad) 50%,var(--line))}
+.c header{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--card2);border-bottom:1px solid var(--line);font-size:12px;font-weight:600}
+.c .v{padding:10px 10px 4px;font-size:20px;font-weight:500;letter-spacing:-.02em}
+.c .m{padding:0 10px 10px;font-size:11px;color:var(--mut)}
+.c .m em{font-style:normal;color:var(--bad);font-weight:600}
+.bd{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;background:var(--chip);border:1px solid var(--line);color:var(--ink)}
+.bd::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--dot)}
+.bd.bad{background:var(--badsolid);border-color:var(--badsolid);color:#fff;--dot:#fff}
+.row{display:flex;gap:6px;align-items:center}
+.lk{font-size:12px;color:var(--acc);font-weight:500}
+</style>
+</head>
+<body>
+<div class="top"><div><h1>Paletas para o Flow</h1><p>Mesma tela em seis direções. Alerta em coral-cobre em todas.</p></div>
+<div class="seg" role="group" aria-label="Tema"><button type="button" data-th="dark" aria-pressed="true">Escuro</button><button type="button" data-th="light" aria-pressed="false">Claro</button></div></div>
+<div class="wrap" id="w"></div>
+<script>
+const P=[
+ {n:'A · Petróleo',d:'Azul-esverdeado profundo. Sério e diferente do azul "de app".',
+  dark:{side:'#061418',page:'#0a1d22',card:'#10292f',card2:'#163640',line:'#214550',ink:'#e8f2f4',mut:'#9db8bf',btn:'#1f7a8c',onbtn:'#fff',acc:'#6cc4d4'},
+  light:{side:'#0b2a33',page:'#e3ecee',card:'#ffffff',card2:'#f0f6f7',line:'#c3d3d7',ink:'#0a1d22',mut:'#3d5860',btn:'#11586a',onbtn:'#fff',acc:'#11586a'}},
+ {n:'B · Ardósia',d:'Cinza-azulado dessaturado. O mais discreto e corporativo.',
+  dark:{side:'#0e131a',page:'#151b24',card:'#1d2531',card2:'#252f3e',line:'#323d4f',ink:'#e9edf3',mut:'#a1acbd',btn:'#5878a3',onbtn:'#fff',acc:'#9bb5d8'},
+  light:{side:'#1b2431',page:'#e7eaee',card:'#ffffff',card2:'#f2f4f7',line:'#cbd1da',ink:'#121923',mut:'#46505f',btn:'#3d5a80',onbtn:'#fff',acc:'#3d5a80'}},
+ {n:'C · Índigo sóbrio',d:'Azul puxado para o violeta, escuro e fechado.',
+  dark:{side:'#0c0b1a',page:'#121126',card:'#1a1932',card2:'#232146',line:'#302e55',ink:'#ececf7',mut:'#a9a8c8',btn:'#4f4ba8',onbtn:'#fff',acc:'#a5a2f0'},
+  light:{side:'#17163a',page:'#e8e8f2',card:'#ffffff',card2:'#f3f3f9',line:'#cdcce0',ink:'#12112a',mut:'#4a4966',btn:'#3f3b96',onbtn:'#fff',acc:'#3f3b96'}},
+ {n:'D · Grafite',d:'Neutro frio, sem azul nas superfícies. Azul só no botão e nos links.',
+  dark:{side:'#0b0c0e',page:'#131416',card:'#1b1d20',card2:'#232629',line:'#2f3338',ink:'#eceef0',mut:'#a4a9b0',btn:'#4a78b8',onbtn:'#fff',acc:'#8fb2e6'},
+  light:{side:'#17191c',page:'#e8e9eb',card:'#ffffff',card2:'#f3f4f5',line:'#cfd2d6',ink:'#121315',mut:'#484d54',btn:'#36598f',onbtn:'#fff',acc:'#36598f'}},
+ {n:'E · Denim',d:'Azul médio com um toque de verde. Mais claro e amigável, ainda sério.',
+  dark:{side:'#0c1a22',page:'#11222c',card:'#182e3a',card2:'#203a48',line:'#2b4856',ink:'#e8f0f5',mut:'#a0b3c0',btn:'#3b7a9e',onbtn:'#fff',acc:'#86bfdc'},
+  light:{side:'#12303d',page:'#e5edf1',card:'#ffffff',card2:'#f1f6f8',line:'#c5d4db',ink:'#0c1c24',mut:'#3f5865',btn:'#1d6283',onbtn:'#fff',acc:'#1d6283'}},
+ {n:'F · Marinho e dourado fosco',d:'Marinho profundo com botão em dourado fosco. Mais premium.',
+  dark:{side:'#080d1a',page:'#0d1424',card:'#141d33',card2:'#1b2644',line:'#26325a',ink:'#eef0f6',mut:'#a6adc4',btn:'#d2ad6a',onbtn:'#1a1405',acc:'#e0c58e'},
+  light:{side:'#10182e',page:'#e8eaf1',card:'#ffffff',card2:'#f3f4f8',line:'#cdd1de',ink:'#0e1424',mut:'#475069',btn:'#7a5c1e',onbtn:'#fff',acc:'#7a5c1e'}}
+];
+const bad={dark:{bad:'#f4916f',badsolid:'#bd4a26'},light:{bad:'#b5421f',badsolid:'#b5421f'}};
+const ok={dark:{open:'#3fbfae',wait:'#e0b04a'},light:{open:'#0f7a6c',wait:'#8a5a00'}};
+let th='dark';
+function draw(){
+  w.innerHTML=P.map(p=>{
+    const c=p[th],b=bad[th],o=ok[th];
+    const css=`--side:${c.side};--page:${c.page};--card:${c.card};--card2:${c.card2};--line:${c.line};--ink:${c.ink};--mut:${c.mut};--btn:${c.btn};--onbtn:${c.onbtn};--acc:${c.acc};--bad:${b.bad};--badsolid:${b.badsolid};--sideink:#a6b6cf;--sideon:rgb(255 255 255/.14);--chip:${th==='dark'?'rgb(255 255 255/.07)':'rgb(0 0 0/.04)'};--shadow:${th==='dark'?'none':'0 1px 2px rgb(0 0 0/.08)'}`;
+    return `<section class="opt"><h2>${p.n}</h2><p>${p.d}</p>
+    <div class="sw">${['side','page','card','card2','line','btn','acc'].map(k=>`<i style="background:${c[k]}" title="${k} ${c[k]}"></i>`).join('')}</div>
+    <div class="mini" style="${css}"><div class="ms"><div class="lg"><b>Z</b>Bar do Zé</div><a>Dashboard</a><a class="on">Comandas</a><a>Mesas</a><a>Estoque</a><a>Caixa</a></div>
+    <div class="mc"><div class="mh"><b>Comandas</b><button class="mb">Nova comanda</button></div>
+    <div class="tb"><span class="on">Todas</span><span>Abertas</span><span>Em alerta</span></div>
+    <div class="cs">
+      <div class="c"><header>Mesa 7<span class="bd" style="--dot:${o.wait}">Aguardando</span></header><div class="v">R$ 444,00</div><div class="m">1h44 · Carlos · 16 itens</div></div>
+      <div class="c al"><header>Mesa 12<span class="bd bad">Em alerta</span></header><div class="v">R$ 394,00</div><div class="m"><em>2h22</em> · Carlos · 19 itens</div></div>
+      <div class="c"><header>Balcão 3<span class="bd" style="--dot:${o.open}">Aberta</span></header><div class="v">R$ 115,00</div><div class="m">1h04 · Marcos · 9 itens</div></div>
+      <div class="c"><header>Mesa 11<span class="bd" style="--dot:${o.open}">Aberta</span></header><div class="v">R$ 100,00</div><div class="m">57 min · Rafael · 4 itens</div></div>
+    </div><div class="row"><span class="lk">Ver relatório →</span></div></div></div></section>`}).join('');
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-th]');if(!t)return;th=t.dataset.th;document.querySelectorAll('[data-th]').forEach(b=>b.setAttribute('aria-pressed',b===t));draw()});
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,1597 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Control Tower · protótipo</title>
+<!--
+  PROTOTIPO DESCARTAVEL - Control Tower (F12), arquivo unico, sem build. Outro sistema, com login e permissoes proprios (D12, D14).
+  Tokens e componentes sao copiados do index.html (mesma identidade). Dados de exemplo em localStorage "flow.ct"
+  ("Restaurar dados de exemplo" no rodape do menu). Valores de preco, limites [L] e textos sao de exemplo, nao decisao.
+
+  Hash (combinavel com &):
+    #screen=login[&ip=bloqueado]                  entrada (restricao por IP, S12/A10.1)
+    #screen=visao                                  visao geral / cockpit (F12.1, F12.14)
+    #screen=orgs[&q=&st=teste|ativa|atraso|suspensa|bloqueada|encerrada&plano=p1&page=1&size=10]
+    #screen=org&id=o1&tab=resumo|assin|unid|usu|func|hist      ficha da organizacao
+    #screen=cobranca   #screen=planos   #screen=flags   #screen=comunicados
+    #screen=operacao   #screen=auditoria[&tipo=&q=&adm=&page=]   #screen=admins[&tab=pessoas|perfis]
+    #screen=config&tab=assin|plat|acesso|hist     #screen=impersonacao (so com sessao ativa)
+    &profile=S|U|F|O|L     entra como Super admin | Suporte | Financeiro | Operacoes | Somente leitura
+    &theme=dark|light
+  Teclas: [ recolhe o menu / Ctrl+K busca organizacao / Esc fecha.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style id="tokens">
+:root,[data-scope=light]{
+  /* superficie e texto */
+  --bg:#F8F8F9; --card:#FFFFFF; --line:#E5E7EB; --line-strong:#D1D5DB;
+  --ink:#0F172A; --muted:#5B6678; --faint:#8A93A3;
+  /* marca */
+  --brand:#3367D6; --brand-ink:#FFFFFF; --brand-soft:#EAF1FE;
+  /* status: marcador + texto legivel + tom suave. Rosa-carmim, verde-azulado e ambar fosco: frios/calmos como o azul da marca; textos >= 4,5:1 */
+  --open:#2B7A62; --wait:#C48A1D; --alert:#BE3F55; --paid:#94A3B8;
+  --wait-ink:#85570F; --paid-ink:#5B6678;
+  --open-soft:#E8F4EF; --wait-soft:#FAF1DD; --alert-soft:#FBEFF1;
+  --closed:var(--paid); --closed-ink:var(--paid-ink);
+  /* superficies auxiliares */
+  --hl:#E6EDFC; --hover:#F1F2F4; --sidebar:#F8F8F9; --scrim:rgba(15,23,42,.45);
+  color-scheme:light;
+}
+/* [data-scope=light|dark] permite mostrar os dois temas lado a lado na mesma pagina (catalogo de componentes) */
+:root{
+  /* forma (ajustaveis pela bolinha de configuracao) */
+  --radius:14px; --radius-card:16px; --radius-sm:12px; --radius-sheet:20px;
+  --border-w:1px;        /* espessura das bordas */
+  --density:1;           /* escala de espacamentos e alturas de linha */
+  --text-scale:1;        /* escala do texto (1 = 100%) */
+  --r:var(--radius); --r-card:var(--radius-card);
+  /* tipografia: uma familia sans para tudo */
+  --font-title:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-ui:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:var(--font-title);
+  --sans:var(--font-ui);
+}
+:root[data-theme=dark],[data-scope=dark]{
+  --bg:#0F1115; --card:#171A1F; --line:#272B33; --line-strong:#383E48;
+  --ink:#F3F4F6; --muted:#A3AAB8; --faint:#7D8594;
+  --brand:#6AA8FF; --brand-ink:#0A1226; --brand-soft:#15233F;
+  --open:#5BC29A; --wait:#E0AC48; --alert:#F27C8E; --paid:#9AA1AE;
+  --wait-ink:#E0AC48; --paid-ink:#A3AAB8;
+  --open-soft:#12261F; --wait-soft:#2A2312; --alert-soft:#2C1820;
+  --hl:#1A2A4A; --hover:#1F232A; --sidebar:#0F1115; --scrim:rgba(0,0,0,.6);
+  --closed:var(--paid); --closed-ink:var(--paid-ink);
+  color-scheme:dark;
+}
+</style>
+
+<style id="components">
+:root,[data-scope]{
+  --fl-btn-h:34px;--fl-btn-hmin:0px;--fl-btn-px:14px;--fl-btn-fs:14px;--fl-btn-fw:500;--fl-btn-gap:6px;--fl-btn-jc:normal;
+  --fl-btn-bd:var(--line-strong);--fl-btn-hover:var(--hover);--fl-pri-hover:brightness(.93);--fl-press:translateY(1px);--fl-dis:.5;--fl-danger-bd:var(--line-strong);
+  --fl-sm-h:30px;--fl-sm-px:10px;--fl-sm-fs:13px;--fl-sm-fw:500;--fl-sm-minw:0px;--fl-icon-w:34px;
+  --fl-chip-h:30px;--fl-chip-px:10px;--fl-chip-fs:14px;--fl-chip-gap:6px;--fl-chip-bg:transparent;--fl-chip-fg:var(--muted);--fl-chip-on-bg:var(--card);--fl-chip-on-fg:var(--ink);--fl-chip-on-bd:var(--line-strong);
+  --fl-badge-gap:7px;--fl-badge-fw:500;--fl-badge-open-fg:inherit;
+  --fl-field-h:34px;--fl-field-px:10px;--fl-field-gap:8px;--fl-search-pl:10px;--fl-field-bd:var(--line);--fl-field-bg:var(--card);
+  --fl-search-ip:1px 2px;--fl-seg-h:28px;--fl-tab-h:46px;--fl-sk-r:var(--radius-sm);--fl-sk-op:1;--fl-sk-lo:.45;--fl-focus-w:2px;--fl-hit:34px
+}
+:root[data-flavor=mobile],:root[data-flavor=mobile] [data-scope],.flv-m{
+  --fl-btn-h:52px;--fl-btn-hmin:48px;--fl-btn-px:20px;--fl-btn-fs:17px;--fl-btn-fw:600;--fl-btn-gap:8px;--fl-btn-jc:center;
+  --fl-btn-bd:var(--line);--fl-btn-hover:var(--card);--fl-pri-hover:none;--fl-press:scale(.98);--fl-dis:.45;--fl-danger-bd:color-mix(in srgb,var(--alert) 55%,var(--line));
+  --fl-sm-h:44px;--fl-sm-px:12px;--fl-sm-fs:14px;--fl-sm-fw:500;--fl-sm-minw:44px;--fl-icon-w:44px;
+  --fl-chip-h:44px;--fl-chip-px:14px;--fl-chip-fs:15px;--fl-chip-gap:8px;--fl-chip-bg:var(--card);--fl-chip-fg:var(--ink);--fl-chip-on-bg:var(--brand);--fl-chip-on-fg:var(--brand-ink);--fl-chip-on-bd:var(--brand);
+  --fl-badge-gap:5px;--fl-badge-fw:600;--fl-badge-open-fg:var(--open);
+  --fl-field-h:48px;--fl-field-px:14px;--fl-field-gap:calc(9px + var(--border-w));--fl-search-pl:calc(13px - var(--border-w));--fl-field-bd:var(--line);--fl-field-bg:var(--card);
+  --fl-search-ip:0px;--fl-seg-h:44px;--fl-tab-h:46px;--fl-sk-r:var(--radius-card);--fl-sk-op:.55;--fl-sk-lo:.25;--fl-focus-w:3px;--fl-hit:44px
+}
+
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes shrink{from{width:100%}to{width:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes skeleton-pulse{50%{opacity:var(--fl-sk-lo)}}
+
+/* Button */
+.btn{display:inline-flex;align-items:center;justify-content:var(--fl-btn-jc);gap:var(--fl-btn-gap);min-height:max(var(--fl-btn-hmin),calc(var(--fl-btn-h)*var(--density)));padding:0 var(--fl-btn-px);border-radius:var(--r);border:var(--border-w) solid var(--fl-btn-bd);background:var(--card);color:inherit;font-family:inherit;font-size:calc(var(--fl-btn-fs)*var(--text-scale));font-weight:var(--fl-btn-fw);white-space:nowrap;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--fl-btn-hover)}
+.btn:active:not(:disabled){transform:var(--fl-press)}
+.btn--primary,.btn--primary:hover{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);--spin:var(--brand-ink)}
+.btn--primary:hover{filter:var(--fl-pri-hover)}
+.btn--ghost,.btn--ghost:hover{border-color:transparent;background:transparent;color:var(--muted)}
+.btn--ghost:hover{background:var(--hover);color:var(--ink)}
+.btn--danger{color:var(--alert);border-color:var(--fl-danger-bd)}
+.btn--sm{min-height:var(--fl-sm-h);min-width:var(--fl-sm-minw);padding:0 var(--fl-sm-px);font-size:calc(var(--fl-sm-fs)*var(--text-scale));font-weight:var(--fl-sm-fw)}
+.btn--icon{width:var(--fl-icon-w);padding:0;justify-content:center}
+.btn--pill{border-radius:999px}
+.btn--block{flex:1}
+.btn:disabled{opacity:var(--fl-dis);cursor:not-allowed}
+.btn.is-loading{position:relative;color:transparent!important;pointer-events:none}
+.btn.is-loading::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;border:2px solid var(--spin,var(--ink));border-right-color:transparent;animation:spin .7s linear infinite}
+
+/* Chip / filtro */
+.chip{display:inline-flex;align-items:center;gap:var(--fl-chip-gap);min-height:var(--fl-chip-h);padding:0 var(--fl-chip-px);border:var(--border-w) solid var(--line);border-radius:var(--r);background:var(--fl-chip-bg);color:var(--fl-chip-fg);font-family:inherit;font-size:calc(var(--fl-chip-fs)*var(--text-scale));font-weight:500;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--fl-chip-on-bg);color:var(--fl-chip-on-fg);border-color:var(--fl-chip-on-bd)}
+.chip__count{color:var(--muted);font-size:calc(13px*var(--text-scale))}
+.chip[aria-pressed=true] .chip__count{color:inherit;opacity:.8}
+
+/* Segmented control */
+.seg{display:inline-flex;border:var(--border-w) solid var(--line-strong);border-radius:var(--r);padding:2px;background:var(--card)}
+.seg button{border:0;background:none;min-height:var(--fl-seg-h);padding:0 12px;border-radius:var(--radius-sm);color:var(--muted);font-weight:500;font-family:inherit;font-size:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--brand);color:var(--brand-ink)}
+
+/* Tabs */
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none;padding:2px 8px 0;border-bottom:var(--border-w) solid var(--line)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;min-height:var(--fl-tab-h);padding:0 12px;font-family:inherit;font-weight:600;font-size:calc(15px*var(--text-scale));color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--brand)}
+
+/* Field */
+.field{display:block;height:var(--fl-field-h);padding:0 var(--fl-field-px);border:var(--border-w) solid var(--fl-field-bd);border-radius:var(--r);background:var(--fl-field-bg);color:var(--ink);font:inherit}
+.field:disabled{opacity:.6;cursor:not-allowed}
+.field--error{border-color:var(--alert)}
+.field--area{height:auto;min-height:88px;padding:10px var(--fl-field-px);resize:vertical;width:100%}
+.field--search{display:flex;align-items:center;gap:var(--fl-field-gap);padding-left:var(--fl-search-pl)}
+.field--search:focus-within{outline:var(--fl-focus-w) solid var(--brand);outline-offset:2px}
+.field--search svg{flex:none;color:var(--muted)}
+.field--search input{border:0;background:none;outline:0;flex:1;min-width:0;height:100%;padding:var(--fl-search-ip);font:inherit;color:inherit}
+.field-label{display:block;font-size:calc(12px*var(--text-scale));font-weight:500;color:var(--muted);margin:0 0 6px}
+.field-msg{display:flex;align-items:center;gap:6px;margin:6px 0 0;font-size:calc(12px*var(--text-scale));color:var(--muted)}
+.field-msg--error{color:var(--alert);font-weight:500}
+.field-msg svg{width:14px;height:14px}
+kbd{font:500 calc(11px*var(--text-scale)) var(--sans);color:var(--muted);border:var(--border-w) solid var(--line);border-radius:4px;padding:1px 5px;background:var(--bg)}
+
+/* Stepper e quantidade */
+.stepper{display:inline-flex;align-items:center}
+.stepper button{width:44px;height:44px;border:var(--border-w) solid var(--line);border-radius:var(--r);background:var(--card);display:grid;place-items:center;cursor:pointer}
+.stepper b{min-width:28px;text-align:center;font:600 calc(17px*var(--text-scale)) var(--serif)}
+.stepper--sm button{width:32px;height:32px}
+.sq{width:48px;height:48px;border:var(--border-w) solid var(--line);border-radius:var(--r);display:grid;place-items:center;background:var(--card);font-weight:600;font-size:calc(15px*var(--text-scale));cursor:pointer}
+.sq--add{width:56px;border-color:var(--ink)}
+.sq--add:active{background:var(--ink);color:var(--bg)}
+.sq--qty{font-size:calc(14px*var(--text-scale))}
+
+/* Escolhas: checkbox, radio, switch (novos) */
+.check,.radio,.switch{position:relative;display:inline-flex;align-items:center;gap:10px;min-height:var(--fl-hit);cursor:pointer}
+.check input,.radio input{appearance:none;-webkit-appearance:none;margin:0;width:20px;height:20px;flex:none;border:var(--border-w) solid var(--line-strong);background:var(--card);display:grid;place-items:center;cursor:pointer}
+.check input{border-radius:max(3px,calc(var(--radius-sm)/2))}
+.radio input{border-radius:50%}
+.check input:checked{background:var(--brand);border-color:var(--brand)}
+.check input:checked::after{content:"";width:10px;height:5px;border-left:2px solid var(--brand-ink);border-bottom:2px solid var(--brand-ink);transform:translateY(-1px) rotate(-45deg)}
+.radio input:checked{border:6px solid var(--brand)}
+.check input:disabled,.radio input:disabled{opacity:.5;cursor:not-allowed}
+.switch input{position:absolute;left:0;top:50%;width:44px;height:28px;margin:-14px 0 0;opacity:0;cursor:pointer}
+.switch__track{position:relative;flex:none;width:44px;height:26px;border-radius:999px;background:var(--line-strong);transition:background-color .15s}
+.switch__track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--card);transition:transform .15s}
+.switch input:checked+.switch__track{background:var(--brand)}
+.switch input:checked+.switch__track::after{transform:translateX(18px)}
+.switch input:focus-visible+.switch__track{outline:2px solid var(--brand);outline-offset:2px}
+.switch input:disabled+.switch__track{opacity:.5}
+
+/* Badge de status: marcador + palavra, nunca so cor */
+.badge{display:inline-flex;align-items:center;gap:var(--fl-badge-gap);font-size:calc(13px*var(--text-scale));font-weight:var(--fl-badge-fw);white-space:nowrap}
+.badge i{width:8px;height:8px;flex:none;background:var(--c);border-radius:50%}
+.badge svg{width:15px;height:15px}
+.badge--open{--c:var(--open);color:var(--fl-badge-open-fg)}
+.badge--wait{--c:var(--wait);color:var(--wait-ink)}
+.badge--alert{--c:var(--alert);color:var(--alert)}
+.badge--closed{--c:var(--paid);color:var(--paid-ink)}
+.badge--alert i{border-radius:1px;transform:rotate(45deg)}
+.badge--wait i{border-radius:1px}
+.badge--closed i{background:none;border:1.5px solid var(--c)}
+
+/* Card, avatar, empty, skeleton */
+.card{background:var(--card);border:var(--border-w) solid var(--line);border-radius:var(--r-card)}
+.card--alert{border-color:color-mix(in srgb,var(--alert) 55%,var(--line))}
+.card--selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.avatar{flex:none;width:28px;height:28px;border-radius:50%;border:var(--border-w) solid var(--line-strong);display:grid;place-items:center;font:600 calc(12px*var(--text-scale)) var(--sans);background:var(--card)}
+.avatar--lg{width:40px;height:40px;font-size:calc(14px*var(--text-scale))}
+.empty{border:1px dashed var(--line-strong);border-radius:var(--r-card);padding:56px 24px;text-align:center;background:var(--card)}
+.empty--plain{border:0;border-radius:0;background:none;padding:0}
+.skeleton{background:var(--line);border-radius:var(--fl-sk-r);opacity:var(--fl-sk-op);animation:skeleton-pulse 1.4s ease-in-out infinite}
+
+/* Banner */
+.banner{display:flex;align-items:center;gap:12px;padding:10px 14px;border:var(--border-w) solid var(--line);border-radius:var(--r)}
+.banner--error{border-color:color-mix(in srgb,var(--alert) 55%,var(--line));background:var(--alert-soft)}
+.banner--warning{border-color:var(--wait);background:var(--card);color:var(--wait-ink)}
+.banner--info{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:var(--brand-soft)}
+.banner--queue{margin:0 16px 10px;padding:10px 12px;gap:10px;font-size:calc(14px*var(--text-scale));font-weight:600;text-align:left;width:calc(100% - 32px);min-height:48px}
+.banner span.l{flex:1;min-width:0}
+.banner small{display:block;font-weight:400;color:var(--muted)}
+
+/* Toast: aparencia aqui; posicao em cada app */
+.toast{background:var(--ink);color:var(--bg);border-radius:var(--r)}
+.toast--action{position:relative;display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 4px 4px 14px}
+.toast--action span{flex:1;font-size:calc(15px*var(--text-scale))}
+.toast--action button{min-height:44px;padding:0 14px;font-weight:700;color:var(--bg);text-decoration:underline;text-underline-offset:3px;background:none;border:0;font-family:inherit;font-size:inherit;cursor:pointer}
+.toast--action i{position:absolute;left:0;bottom:0;height:3px;background:var(--bg);opacity:.5;animation:shrink var(--dur,8s) linear forwards;border-radius:0 0 0 var(--r)}
+
+/* Sheet (folha inferior) */
+.backdrop{position:absolute;inset:0;background:var(--scrim);z-index:var(--z-backdrop);animation:fade .2s var(--ease,cubic-bezier(.22,1,.36,1))}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:var(--z-sheet);background:var(--card);border-top:var(--border-w) solid var(--line);border-radius:var(--radius-sheet) var(--radius-sheet) 0 0;padding:6px 16px calc(16px + env(safe-area-inset-bottom));max-height:88%;overflow-y:auto;animation:up .28s var(--ease,cubic-bezier(.22,1,.36,1))}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
+.sheet h2{font:600 calc(20px*var(--text-scale))/1.25 var(--serif);letter-spacing:-.02em;margin:0 0 4px}
+.sheet .lead{color:var(--muted);font-size:calc(15px*var(--text-scale));margin:0 0 14px}
+.qty-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.qty-grid button{min-height:56px;border:var(--border-w) solid var(--line);border-radius:var(--r);background:var(--bg);color:inherit;font:600 calc(20px*var(--text-scale)) var(--serif);cursor:pointer}
+.qty-grid button:active{background:var(--ink);color:var(--bg)}
+.opt{min-height:52px;padding:0 14px;border:var(--border-w) solid var(--line);border-radius:var(--r);background:var(--bg);color:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:500;font-family:inherit;font-size:inherit;cursor:pointer}
+.opt[aria-pressed=true],.opt[aria-checked=true]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--card);font-weight:600}
+
+/* Dialog de confirmacao (novo) */
+.dialog{width:min(420px,100%);background:var(--card);border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-card);padding:20px;box-shadow:0 8px 24px rgb(15 23 42/.14)}
+.dialog h2{margin:0 0 6px;font:600 calc(18px*var(--text-scale))/1.25 var(--serif);letter-spacing:-.015em}
+.dialog p{margin:0;color:var(--muted)}
+.dialog__actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+
+/* Dados (novos): chave-valor, dinheiro, tempo aberto, linha de lista, paginacao */
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 20px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-weight:500;font-variant-numeric:tabular-nums lining-nums}
+.money{font-variant-numeric:tabular-nums lining-nums;font-weight:600;white-space:nowrap}
+.money small{color:var(--muted);font-weight:500;margin-right:4px}
+.money--lg{font:600 calc(26px*var(--text-scale))/1 var(--serif);letter-spacing:-.025em}
+.money--lg small{font-size:calc(14px*var(--text-scale))}
+.elapsed{font-variant-numeric:tabular-nums;color:var(--muted)}
+.elapsed--alert{color:var(--alert);font-weight:600}
+.list-row{display:flex;align-items:center;gap:12px;min-height:calc(52px*var(--density));padding:8px 0;border-bottom:var(--border-w) solid var(--line)}
+.list-row__main{flex:1;min-width:0}
+.list-row__main small{display:block;color:var(--muted)}
+.pager{display:inline-flex;align-items:center;gap:4px}
+.pager .btn[aria-current=page]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+</style>
+
+<style>
+:root{--z-menu:20;--z-sticky:10;--z-dialog:50;--z-toast:60;--z-imp:70;--ease:cubic-bezier(.25,1,.5,1)}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 calc(14px*var(--text-scale))/1.45 var(--sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.muted{color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:calc(12px*var(--text-scale))}
+.badge--info{--c:var(--brand);color:var(--brand)}
+.badge--info i{border-radius:50%}
+.btn svg,.field--search svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6}
+.btn--danger svg{stroke:var(--alert)}
+
+/* casco */
+#shell{display:flex;flex-direction:column;height:100vh}
+.app{--sw:248px;flex:1;min-height:0;display:grid;grid-template-columns:var(--sw) minmax(0,1fr);transition:grid-template-columns .22s var(--ease)}
+body.rail .app{--sw:72px}
+.side{background:var(--sidebar);border-right:var(--border-w) solid var(--line);display:flex;flex-direction:column;padding:12px;overflow-x:hidden;overflow-y:auto;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;padding:8px 9px;border:var(--border-w) solid var(--line);border-radius:var(--r);background:var(--card);white-space:nowrap;overflow:hidden;flex:none}
+.brand .mark{flex:none;width:28px;height:28px;border-radius:var(--radius-sm);background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.brand .mark svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.brand b{display:block;font-weight:600;font-size:calc(13px*var(--text-scale));line-height:1.2}
+.brand span{display:block;font-size:calc(12px*var(--text-scale));color:var(--muted)}
+.nav-label{margin:22px 8px 6px;font-size:calc(12px*var(--text-scale));color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden}
+.nav a{display:flex;align-items:center;gap:6px;padding:calc(7px*var(--density)) 8px;white-space:nowrap;min-height:calc(36px*var(--density));border-radius:var(--r);color:var(--muted);text-decoration:none;position:relative;font-weight:500}
+.nav a:hover{background:var(--hover);color:var(--ink)}
+.nav a[aria-current=page]{color:var(--ink);background:var(--card);box-shadow:inset 0 0 0 1px var(--line)}
+.nav .ico{width:32px;height:20px;flex:none;display:grid;place-items:center}
+.nav svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.nav .count{margin-left:auto;font-size:calc(12px*var(--text-scale));color:var(--muted)}
+.nav .count[data-alert]{color:var(--alert);font-weight:700}
+.nav .t,.brand .tx,.me .tx{transition:opacity .15s}
+body.rail .nav .t,body.rail .brand .tx,body.rail .me .tx{opacity:0;pointer-events:none}
+body.rail .nav-label{margin:14px 10px 8px;height:1px;background:var(--line);font-size:0}
+body.rail .nav .count{position:absolute;top:1px;right:2px;margin:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--brand);color:var(--brand-ink);font-size:calc(11px*var(--text-scale));font-weight:600;line-height:16px;text-align:center}
+body.rail .nav .count[data-alert]{background:var(--alert);color:var(--brand-ink)}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 2px;border:0;border-top:var(--border-w) solid var(--line);background:none;border-radius:0;text-align:left;width:100%;white-space:nowrap;overflow:hidden;flex:none}
+.me:hover{background:var(--hover)}
+.me b{font-weight:600;font-size:calc(13px*var(--text-scale));display:block;line-height:1.2}
+.me span{font-size:calc(12px*var(--text-scale));color:var(--muted)}
+.side-foot{flex:none;font-size:calc(12px*var(--text-scale));color:var(--faint);padding:8px 10px 0}
+.side-foot button{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:inherit}
+body.rail .side-foot{display:none}
+.main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 28px;border-bottom:var(--border-w) solid var(--line);background:var(--bg)}
+.topbar .sbtn{margin-left:-8px}
+body.rail .sbtn svg{transform:scaleX(-1)}
+.topbar .sw{position:relative;flex:0 1 380px}
+.topbar .field--search{width:100%}
+.topbar .grow{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:var(--border-w) solid var(--line-strong);border-radius:999px;background:var(--card);font-size:calc(12.5px*var(--text-scale));font-weight:500;color:var(--muted);white-space:nowrap}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--open)}
+.pill--env{color:var(--ink)}
+.pill--env i{background:var(--alert);border-radius:1px;transform:rotate(45deg)}
+.crumbs{padding:calc(14px*var(--density)) calc(28px*var(--density)) 0}
+.crumbs ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.crumbs li{display:flex;align-items:center;color:var(--muted);font-size:calc(13px*var(--text-scale));line-height:1.3}
+.crumbs li+li::before{content:"›";content:"›" / "";margin:0 4px;color:var(--faint)}
+.crumbs a{color:var(--muted);text-decoration:none;padding:2px 6px;margin:0 -2px;border-radius:var(--radius-sm)}
+.crumbs li:first-child>a{margin-left:-6px}
+.crumbs a:hover{color:var(--ink);background:var(--hover)}
+.crumbs li[aria-current=page]{color:var(--ink);font-weight:500;padding:2px 4px}
+.content{flex:1;overflow:auto;padding:calc(24px*var(--density)) calc(28px*var(--density)) calc(48px*var(--density));display:flex;flex-direction:column;gap:calc(20px*var(--density))}
+.content:focus{outline:0}
+.head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.head h1{margin:0;font:600 calc(28px*var(--text-scale))/1.15 var(--serif);letter-spacing:-.025em;text-wrap:balance}
+.head p{margin:4px 0 0;color:var(--muted)}
+.head .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+h2.sec{margin:0;font:600 calc(16px*var(--text-scale))/1.25 var(--serif);letter-spacing:-.01em}
+.sec-h{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sec-h .sub{color:var(--muted);font-size:calc(13px*var(--text-scale))}
+.sec-h .btn{margin-left:auto}
+
+/* stats */
+.sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(12px*var(--density))}
+.stat{padding:calc(16px*var(--density)) calc(18px*var(--density)) calc(14px*var(--density))}
+.stat .l{color:var(--muted);font-size:calc(13px*var(--text-scale))}
+.stat .v{font:600 calc(30px*var(--text-scale))/1.1 var(--serif);margin-top:6px;letter-spacing:-.025em}
+.stat .v small{font-size:calc(16px*var(--text-scale));color:var(--muted);font-weight:500;letter-spacing:0}
+.stat .n{font-size:calc(12px*var(--text-scale));color:var(--muted);margin-top:4px}
+.stat .n.al{color:var(--alert);font-weight:600}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:calc(16px*var(--density))}
+.pad{padding:calc(16px*var(--density)) calc(18px*var(--density))}
+
+/* barra de filtros */
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar .field--search{flex:0 1 320px}
+.bar .info{margin-left:auto;color:var(--muted);font-size:calc(13px*var(--text-scale))}
+.bar select.field{padding:0 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+
+/* tabela */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:0 14px;height:calc(52px*var(--density));text-align:left;border-bottom:var(--border-w) solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+th{height:calc(38px*var(--density));font-weight:500;font-size:calc(13px*var(--text-scale));color:var(--muted);background:color-mix(in srgb,var(--bg) 50%,var(--card))}
+thead th:first-child{border-top-left-radius:var(--r-card)} thead th:last-child{border-top-right-radius:var(--r-card)}
+td.r,th.r{text-align:right}
+tbody tr.go{cursor:pointer}
+tbody tr.go:hover{background:var(--hover)}
+td .two{display:flex;flex-direction:column;line-height:1.3}
+td .two small{color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+td .two a{font-weight:600;text-decoration:none}
+td .two a:hover{text-decoration:underline;text-underline-offset:3px}
+td .who{display:flex;align-items:center;gap:10px}
+td.wrap{white-space:normal}
+.tag{display:inline-block;padding:1px 8px;border:var(--border-w) solid var(--line-strong);border-radius:999px;font-size:calc(12px*var(--text-scale));font-weight:500;color:var(--muted)}
+.tag--brand{color:var(--brand);border-color:color-mix(in srgb,var(--brand) 45%,var(--line));background:var(--brand-soft)}
+.tag--wait{color:var(--wait-ink);border-color:var(--wait);background:var(--wait-soft)}
+.tag--alert{color:var(--alert);border-color:color-mix(in srgb,var(--alert) 55%,var(--line));background:var(--alert-soft)}
+.foot{display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:var(--border-w) solid var(--line);color:var(--muted);font-size:calc(13px*var(--text-scale));flex-wrap:wrap}
+.foot .pager{margin-left:auto}
+.foot select{height:30px;border:var(--border-w) solid var(--line-strong);border-radius:var(--r);background:var(--card);padding:0 6px}
+.foot .btn{min-width:34px}
+
+/* abas */
+.tabs-w{border-bottom:var(--border-w) solid var(--line);margin:0 calc(-28px*var(--density))}
+.tabs-w .tabs{border:0;padding:0 calc(22px*var(--density))}
+.tab small{margin-left:6px;color:var(--muted);font-weight:500}
+
+/* ficha */
+.org-h{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.org-h .logo{flex:none;width:52px;height:52px;border-radius:var(--r-card);border:var(--border-w) solid var(--line-strong);background:var(--card);display:grid;place-items:center;font:600 18px var(--sans);letter-spacing:-.02em}
+.org-h h1{margin:0;font:600 calc(26px*var(--text-scale))/1.15 var(--serif);letter-spacing:-.025em}
+.org-h .sub{display:flex;gap:4px 14px;align-items:center;flex-wrap:wrap;color:var(--muted);margin-top:4px;font-size:calc(13px*var(--text-scale))}
+.org-h .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.tk{padding:12px 14px;border:var(--border-w) dashed var(--line);border-radius:var(--r);color:var(--muted);display:flex;flex-direction:column;gap:2px;min-height:78px}
+.tk b{color:var(--ink);font-weight:600;display:flex;align-items:center;gap:8px}
+.tk small{font-size:calc(12px*var(--text-scale));line-height:1.3}
+.tk--now{border:var(--border-w) solid var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--card);color:var(--ink)}
+.tk--next{border-style:solid;border-color:var(--line-strong);background:var(--card)}
+.tk--off{opacity:.55}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px 24px;margin:0}
+.facts div{display:flex;flex-direction:column;gap:2px}
+.facts dt{color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+.facts dd{margin:0;font-weight:500}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.note{color:var(--muted);font-size:calc(13px*var(--text-scale));margin:0}
+.tl{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.tl li{position:relative;padding:0 0 16px 18px}
+.tl li::before{content:"";position:absolute;left:-21px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--line-strong)}
+.tl li:last-child{padding-bottom:0}
+.tl b{font-weight:600}
+.tl small{display:block;color:var(--muted);font-size:calc(12.5px*var(--text-scale));margin-top:1px}
+.tl .why{display:block;color:var(--ink);opacity:.85;margin-top:2px}
+.rows{display:flex;flex-direction:column}
+.rows>div{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:var(--border-w) solid var(--line)}
+.rows>div:last-child{border-bottom:0}
+.rows .grow{flex:1;min-width:0}
+.rows small{display:block;color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+.bar-st{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--line);gap:2px}
+.bar-st i{display:block;height:100%}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:12px;font-size:calc(13px*var(--text-scale))}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.meter{height:8px;border-radius:999px;background:var(--line);overflow:hidden;min-width:90px}
+.meter i{display:block;height:100%;background:var(--brand);border-radius:999px}
+
+/* atencao */
+.att{display:flex;flex-direction:column}
+.att>div{display:grid;grid-template-columns:30px 1fr auto;gap:2px 12px;align-items:center;padding:11px 0;border-bottom:var(--border-w) solid var(--line)}
+.att>div:last-child{border-bottom:0}
+.att .m{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);grid-row:span 2}
+.att .m svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.att [data-sev=atencao] .m{background:var(--wait-soft);color:var(--wait-ink)}
+.att [data-sev=critico] .m{background:var(--alert-soft);color:var(--alert)}
+.att b{font-weight:600}
+.att small{color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+.att .sev{font-size:calc(11px*var(--text-scale));font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-right:6px}
+.att [data-sev=atencao] .sev{color:var(--wait-ink)}
+.att [data-sev=critico] .sev{color:var(--alert)}
+.att [data-sev=info] .sev{color:var(--brand)}
+.att .btn{grid-row:span 2}
+
+/* matriz de permissoes */
+.mx th,.mx td{height:calc(40px*var(--density));padding:0 12px}
+.mx td.c,.mx th.c{text-align:center}
+.mx code{font:500 calc(12.5px*var(--text-scale)) ui-monospace,Menlo,monospace}
+.mx tbody tr.g td{background:color-mix(in srgb,var(--bg) 50%,var(--card));font-weight:600;color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+.dot-y{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ink)}
+.dot-n{color:var(--faint)}
+
+/* configuracao */
+.cf{display:flex;flex-direction:column}
+.cf-r{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:center;padding:14px 0;border-bottom:var(--border-w) solid var(--line)}
+.cf-r:last-child{border-bottom:0}
+.cf-r label,.cf-r .lb{font-weight:500}
+.cf-r small{display:block;color:var(--muted);font-size:calc(12.5px*var(--text-scale));font-weight:400}
+.cf-r .field{width:100%}
+.cf-r.ch{background:var(--hl);margin:0 -18px;padding-left:18px;padding-right:18px}
+.savebar{position:sticky;bottom:0;z-index:var(--z-sticky);display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border:var(--border-w) solid var(--line-strong);border-radius:var(--r-card);box-shadow:0 8px 24px rgb(15 23 42/.14)}
+.savebar span{flex:1}
+.savebar .btn{flex:none}
+
+/* dialogos */
+dialog{padding:0;color:var(--ink);max-height:92vh}
+dialog::backdrop{background:var(--scrim)}
+.dlg{width:min(480px,calc(100vw - 24px));border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-card);background:var(--card);box-shadow:0 14px 40px rgb(15 23 42/.22);padding:0;overflow:hidden}
+.dlg--wide{width:min(720px,calc(100vw - 24px))}
+.dlg__f{display:flex;flex-direction:column;max-height:92vh}
+.dlg__h{padding:20px 22px 6px}
+.dlg__h h2{margin:0 0 6px;font:600 calc(19px*var(--text-scale))/1.25 var(--serif);letter-spacing:-.015em}
+.dlg__h p{margin:0;color:var(--muted)}
+.dlg__b{padding:12px 22px 6px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.dlg .dialog__actions{padding:12px 22px 20px;margin:0}
+.dlg__err{padding:0 22px 4px;margin:0}
+.dlg .field{width:100%}
+.fg{display:flex;flex-direction:column}
+.fg--2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opts{display:flex;flex-direction:column;gap:2px}
+.opts .radio,.opts .check{align-items:flex-start;padding:4px 0}
+.opts .radio input,.opts .check input{margin-top:2px}
+.opts small{display:block;color:var(--muted);font-size:calc(12.5px*var(--text-scale))}
+.hint{color:var(--muted);font-size:calc(12.5px*var(--text-scale));margin:6px 0 0}
+.box{border:var(--border-w) solid var(--line);border-radius:var(--r);padding:10px 14px;background:var(--bg)}
+.box ul{margin:6px 0 0;padding-left:18px}
+.box li{margin:2px 0}
+.sc-list{max-height:200px;overflow:auto;border:var(--border-w) solid var(--line);border-radius:var(--r);padding:4px 12px}
+.menu{position:absolute;z-index:var(--z-menu);left:0;right:0;top:calc(100% + 6px);background:var(--card);border:var(--border-w) solid var(--line-strong);border-radius:var(--r);padding:4px;box-shadow:0 8px 24px rgb(15 23 42/.12)}
+.menu.fixed{position:fixed;left:auto;right:auto;min-width:230px}
+.menu button,.menu a{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:var(--radius-sm);text-decoration:none;color:var(--ink)}
+.menu button:hover,.menu a:hover,.menu button:focus-visible{background:var(--hover)}
+.menu small{color:var(--muted);font-size:calc(12px*var(--text-scale))}
+.menu hr{border:0;border-top:var(--border-w) solid var(--line);margin:4px 0}
+.menu .mh{padding:6px 10px 2px;font-size:calc(12px*var(--text-scale));color:var(--muted);font-weight:500}
+.menu button[aria-current=true]{background:var(--brand-soft)}
+
+/* toasts */
+#toasts{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:var(--z-toast);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(560px,calc(100vw - 24px))}
+.toast{pointer-events:auto;padding:12px 16px;box-shadow:0 8px 24px rgb(15 23 42/.2);animation:up .25s var(--ease);font-size:calc(14px*var(--text-scale))}
+.toast small{display:block;opacity:.75;font-size:calc(12.5px*var(--text-scale))}
+
+/* impersonacao */
+.impbar{flex:none;display:flex;align-items:center;gap:14px;padding:9px 20px;background:var(--alert);color:var(--brand-ink);font-weight:500;z-index:var(--z-imp);flex-wrap:wrap}
+.impbar b{font-weight:700}
+.impbar .sp{flex:1}
+.impbar .btn{background:transparent;color:inherit;border-color:color-mix(in srgb,var(--brand-ink) 70%,transparent);min-height:30px}
+.impbar .btn:hover{background:color-mix(in srgb,var(--brand-ink) 18%,transparent)}
+.impbar .t{font-variant-numeric:tabular-nums;font-weight:700}
+.imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ok-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ok-l li{display:flex;gap:10px;align-items:flex-start}
+.ok-l svg{width:16px;height:16px;flex:none;margin-top:3px;stroke:var(--open);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* login */
+.login{height:100vh;display:grid;place-items:center;padding:24px;overflow:auto}
+.login__c{width:min(420px,100%);display:flex;flex-direction:column;gap:18px}
+.login__logo{display:flex;align-items:center;gap:12px}
+.login__logo .mark{width:40px;height:40px;border-radius:var(--radius-sm);background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.login__logo .mark svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.login__logo h1{margin:0;font:600 22px/1.1 var(--serif);letter-spacing:-.02em}
+.login__logo span{color:var(--muted);font-size:13px}
+.login__f{padding:22px;display:flex;flex-direction:column;gap:14px}
+.login .field{width:100%}
+.demo{border:var(--border-w) dashed var(--line-strong);border-radius:var(--r-card);padding:14px 16px}
+.demo p{margin:0 0 8px;font-size:calc(12.5px*var(--text-scale));color:var(--muted)}
+.demo .chips{gap:6px}
+
+@media (max-width:1100px){.sum{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:1fr}.track{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:860px){.side-foot{display:none}.app{--sw:72px}.nav .t,.brand .tx,.me .tx{opacity:0;pointer-events:none}.nav-label{margin:14px 10px 8px;height:1px;background:var(--line);font-size:0}.topbar{padding:10px 16px;flex-wrap:wrap}.content{padding:16px}.crumbs{padding:12px 16px 0}.tabs-w{margin:0 -16px}.cf-r{grid-template-columns:1fr}.pill--ip{display:none}}
+@media (max-width:560px){.sum{grid-template-columns:1fr}.track{grid-template-columns:1fr}.fg--2{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div id="toasts" aria-live="polite"></div>
+<script>
+'use strict';
+/* ===== utilitarios ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const strip = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const D = 864e5, H = 36e5, MIN = 6e4;
+const now = () => Date.now();
+const p2 = n => String(n).padStart(2, '0');
+const fmtD = t => { const d = new Date(t); return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`; };
+const fmtDM = t => { const d = new Date(t); return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}`; };
+const fmtT = t => { const d = new Date(t); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtDT = t => `${fmtD(t)} ${fmtT(t)}`;
+const rel = t => { const m = Math.round((now() - t) / MIN); if (m < 1) return 'agora'; if (m < 60) return `há ${m} min`; const h = Math.round(m / 60); if (h < 24) return `há ${h} h`; const d = Math.round(h / 24); return `há ${d} d`; };
+const brl = n => (n || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL', maximumFractionDigits: 0});
+const brl2 = n => (n || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+const nf = n => (n || 0).toLocaleString('pt-BR');
+const plural = (n, a, b) => n === 1 ? a : b;
+const dateIn = d => new Date(now() + d * D).toISOString().slice(0, 10);
+const inits = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+function h53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
+}
+
+/* ===== icones (16x16, traco) ===== */
+const IC = {
+  tower: '<path d="M8 1.8v2.2M5.2 5.2h5.6l1.2 8.3H4zM6.2 9h3.6M7 5.2 6.2 9M9 5.2l.8 3.8"/>',
+  home: '<path d="M2.5 7.5 8 3l5.5 4.5V13h-11zM6.5 13V9.5h3V13"/>',
+  building: '<path d="M3.5 13.5v-10h6v10M9.5 6.5h3v7M5.5 6h2M5.5 8.5h2M5.5 11h2M1.5 13.5h13"/>',
+  card: '<path d="M2 4.5h12v8H2zM2 7.5h12M4 10.5h2.5"/>',
+  layers: '<path d="M8 2 14 5 8 8 2 5zM2 8l6 3 6-3M2 11l6 3 6-3"/>',
+  flag: '<path d="M3.5 14V2.5M3.5 3h8l-1.5 2.5L11.5 8h-8"/>',
+  mega: '<path d="M2.5 6.5v3h2l5 3.5V3L4.5 6.5zM12 6a2.5 2.5 0 0 1 0 4"/>',
+  pulse: '<path d="M1.5 8h3l2-4.5 3 9 2-4.5h3"/>',
+  scroll: '<path d="M4 2.5h8v11H4zM6 5.5h4M6 8h4M6 10.5h2"/>',
+  shield: '<path d="M8 1.8 13 3.5v4c0 3-2 5.2-5 6.7C5 12.700 3 10.500 3 7.500v-4z"/>',
+  gear: '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.400 1.400M11.200 11.200l1.400 1.400M12.600 3.400l-1.400 1.400M4.800 11.200l-1.400 1.400"/>',
+  search: '<circle cx="7" cy="7" r="4.5"/><path d="m10.500 10.500 3 3"/>',
+  moon: '<path d="M13 9.500A5.500 5.500 0 0 1 6.500 3a5.500 5.500 0 1 0 6.500 6.500Z"/>',
+  plus: '<path d="M8 3v10M3 8h10"/>',
+  x: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  down: '<path d="M4 6l4 4 4-4"/>',
+  out: '<path d="M6 2.500H3.500v11H6M10 5l3 3-3 3M13 8H6.500"/>',
+  eye: '<path d="M1.500 8S4 3.500 8 3.500 14.500 8 14.500 8 12 12.500 8 12.500 1.500 8 1.500 8z"/><circle cx="8" cy="8" r="1.800"/>',
+  lock: '<path d="M4 7h8v6.500H4zM5.500 7V5a2.500 2.500 0 0 1 5 0v2"/>',
+  dl: '<path d="M8 2v8M4.500 7 8 10.500 11.500 7M3 13.500h10"/>',
+  clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.500V8l2.500 1.500"/>',
+  cal: '<path d="M3 3.500h10v10H3zM3 6.500h10M5.500 2v3M10.500 2v3"/>',
+  ext: '<path d="M6 3H3v10h10v-3M9 2.500h4.500V7M13.500 2.500 7.500 8.500"/>',
+  check: '<path d="M3.500 8.500l3 3 6-7"/>',
+  warn: '<path d="M8 2.500 14 13H2zM8 6.500v3M8 11.300h.01"/>',
+  info: '<circle cx="8" cy="8" r="6"/><path d="M8 7.200V11M8 5h.01"/>',
+  panel: '<rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/>',
+  key: '<circle cx="5.500" cy="10.500" r="2.500"/><path d="M7.300 8.700 13 3M11 5l1.500 1.500"/>',
+  user: '<circle cx="8" cy="5.500" r="2.500"/><path d="M3 13.500c.5-2.700 2.500-4 5-4s4.500 1.300 5 4"/>',
+  alarm: '<path d="M8 1.800 14.200 13H1.800zM8 6v3.500M8 11.200h.01"/>'
+};
+const ico = (n, c = '') => `<svg class="${c}" viewBox="0 0 16 16" aria-hidden="true">${IC[n] || ''}</svg>`;
+
+/* ===== permissoes da plataforma (02d §4: 35 linhas; o texto do documento diz 34) =====
+   [chave, o que permite, marcada [A], perfis que concedem: S super, U suporte, F financeiro, O operacoes, L leitura, limite [L]] */
+const PROFILES = {
+  S: ['Super admin', 'Tudo, sem restrição. Conta protegida.'],
+  U: ['Suporte', 'Vê organizações e entra como usuário, conforme a política da pessoa.'],
+  F: ['Financeiro da plataforma', 'Assinaturas, planos e cobrança.'],
+  O: ['Operações', 'Funcionalidades, comunicados, saúde da plataforma.'],
+  L: ['Somente leitura', 'Consulta tudo que é de leitura.']
+};
+const PERMS = [
+  ['plataforma:ver', 'Ver painel e cockpit da plataforma', 0, 'SUFOL'],
+  ['organizacao:ver', 'Ver organizações, unidades e usuários', 0, 'SUFOL'],
+  ['organizacao:criar', 'Criar organização', 1, 'SO'],
+  ['organizacao:editar', 'Editar dados da organização', 1, 'SUO'],
+  ['organizacao:excluir', 'Excluir/anonimizar organização', 1, 'S'],
+  ['usuario_organizacao:gerenciar', 'Criar/editar usuários e perfis de uma organização, redefinir acesso', 1, 'SU'],
+  ['plano:gerenciar', 'Criar e editar planos e limites', 1, 'SF'],
+  ['cobranca:ver', 'Ver cobrança e pagamentos', 0, 'SFL'],
+  ['cobranca:ajustar', 'Ajustar cobrança (limite)', 1, 'SF', 1],
+  ['assinatura:ver', 'Ver assinatura e histórico', 0, 'SUFOL'],
+  ['assinatura:iniciar_teste', 'Iniciar teste com N dias', 1, 'SFO'],
+  ['assinatura:prorrogar_teste', 'Prorrogar teste (limite de dias)', 1, 'SFO', 1],
+  ['assinatura:converter', 'Converter teste em ativa', 1, 'SF'],
+  ['assinatura:conceder_cortesia', 'Conceder período gratuito (limite)', 1, 'SF', 1],
+  ['assinatura:registrar_pagamento', 'Registrar pagamento', 1, 'SF'],
+  ['assinatura:agendar_mudanca', 'Agendar mudança de estado', 1, 'SF'],
+  ['assinatura:excecao_manual', 'Exceção manual até uma data (limite)', 1, 'SF', 1],
+  ['assinatura:suspender', 'Suspender', 1, 'SFO'],
+  ['assinatura:bloquear', 'Bloquear (segurança/abuso/legal)', 1, 'SO'],
+  ['assinatura:reativar', 'Reativar', 1, 'SFO'],
+  ['assinatura:cancelar', 'Cancelar (agenda o encerramento)', 1, 'SF'],
+  ['assinatura:configurar_politicas', 'Padrões de teste, carência e fim de teste', 1, 'S'],
+  ['unidade_organizacao:definir_limite', 'Definir quantas unidades a organização pode ter', 1, 'SF'],
+  ['unidade_organizacao:criar', 'Criar unidades em nome da organização', 1, 'SUO'],
+  ['feature_flag:gerenciar', 'Liberar/retirar funcionalidades', 1, 'SO'],
+  ['comunicado:publicar', 'Publicar comunicados', 1, 'SO'],
+  ['configuracao_plataforma:editar', 'Parâmetros globais da plataforma', 1, 'S'],
+  ['suporte:impersonar', 'Entrar como usuário de uma organização', 1, 'SU'],
+  ['suporte:impersonar_escrita', 'Impersonar com escrita', 1, 'S'],
+  ['suporte:impersonar_politica_configurar', 'Definir política de impersonação de cada administrador', 1, 'S'],
+  ['admin_plataforma:gerenciar', 'Criar administradores e definir permissões', 1, 'S'],
+  ['auditoria_plataforma:ver', 'Ver auditoria da plataforma', 0, 'SUFOL'],
+  ['operacao:ver_filas_e_jobs', 'Ver filas, jobs e falhas de integração', 0, 'SO'],
+  ['seguranca:emergencia', 'Botões de emergência (revogar sessões, suspender, rotacionar segredos)', 1, 'S'],
+  ['exportacao_dados:cliente', 'Exportar dados de uma organização', 1, 'S']
+];
+const PERM_MAP = Object.fromEntries(PERMS.map(p => [p[0], p[3]]));
+/* limites [L] de exemplo por perfil (valores reais ainda sao decisao em aberto, 02d §5.3) */
+const LIM = {
+  'assinatura:prorrogar_teste': {S: Infinity, F: 30, O: 15},
+  'assinatura:conceder_cortesia': {S: Infinity, F: 60},
+  'assinatura:excecao_manual': {S: Infinity, F: 15},
+  'cobranca:ajustar': {S: Infinity, F: 20}
+};
+const TRANS = {em_teste: ['ativa', 'suspensa', 'encerrada'], ativa: ['suspensa', 'bloqueada', 'encerrada'], suspensa: ['ativa', 'bloqueada', 'encerrada'], bloqueada: ['ativa', 'suspensa', 'encerrada'], encerrada: []};
+const ST = {
+  em_teste: ['Em teste', 'info', 'Período experimental com duração própria por organização.'],
+  ativa: ['Ativa', 'open', 'Cliente regular, com tolerância de atraso.'],
+  suspensa: ['Suspensa', 'wait', 'Pausa temporária e reversível.'],
+  bloqueada: ['Bloqueada', 'alert', 'Segurança, abuso, fraude ou questão legal. Só o super admin libera.'],
+  encerrada: ['Encerrada', 'closed', 'Fim de vida. Dados retidos pelo prazo legal.']
+};
+const stBadge = e => `<span class="badge badge--${ST[e][1]}"><i></i>${ST[e][0]}</span>`;
+
+/* ===== dados de exemplo ===== */
+const AUD_TIPOS = {assinatura: 'Assinatura', impersonacao: 'Impersonação', admin: 'Administradores', flag: 'Funcionalidades', config: 'Configuração', seguranca: 'Segurança', comunicado: 'Comunicados', organizacao: 'Organização', exportacao: 'Exportação', plano: 'Planos'};
+const OPS_ORGS = ['o1', 'o2', 'o3'];
+
+function seed() {
+  const t = now();
+  const U = (id, n, p, c, ult, on = true) => ({id, n, p, c, ult: t - ult * H, on});
+  const orgs = [
+    {id: 'o1', nome: 'Bar do Zé', cnpj: '12.345.678/0001-90', cidade: 'Florianópolis, SC', plano: 'p1', estado: 'ativa', criada: t - 210 * D,
+      dono: {n: 'Maria Souza', email: 'maria@bardoze.com.br'}, limUn: null, usersN: 11, c30: 4218, fat30: 187430, ativos: 8, ult: t - 4 * MIN,
+      units: [{id: 'u1', n: 'Unidade Centro', end: 'Rua Felipe Schmidt, 410', on: true}, {id: 'u2', n: 'Unidade Praia', end: 'Av. Beira-Mar, 1200', on: true}],
+      users: [U('x1', 'Maria Souza', 'Dono', 'email', .1), U('x2', 'Zé Carlos', 'Gerente', 'email', 3), U('x3', 'Paula Reis', 'Caixa', 'op', 1), U('x4', 'Rafael Dias', 'Garçom', 'op', .5), U('x5', 'Helena Costa', 'Estoquista', 'email', 26)],
+      sub: {venc: t + 9 * D, tol: 5, trialEnd: null, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null, desde: t - 180 * D},
+      flags: {ia: 'on'},
+      hist: [{t: t - 180 * D, by: 'Kaique Silvestre', x: 'Converteu o teste em ativa (plano Essencial)', why: ''}, {t: t - 205 * D, by: 'Kaique Silvestre', x: 'Criou a organização e iniciou teste de 14 dias', why: 'Primeiro cliente'}]},
+    {id: 'o2', nome: 'Cantina da Marina', cnpj: '23.456.789/0001-01', cidade: 'Itajaí, SC', plano: 'p1', estado: 'em_teste', criada: t - 18 * D,
+      dono: {n: 'Marina Lopes', email: 'marina@cantinadamarina.com'}, limUn: null, usersN: 3, c30: 612, fat30: 24980, ativos: 3, ult: t - 2 * H,
+      units: [{id: 'u1', n: 'Cantina', end: 'Rua Hercílio Luz, 88', on: true}],
+      users: [U('x1', 'Marina Lopes', 'Dono', 'email', 2), U('x2', 'Tiago Alves', 'Gerente', 'email', 20), U('x3', 'Bruna Melo', 'Garçom', 'op', 5)],
+      sub: {venc: null, tol: 5, trialEnd: t + 12 * D, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null},
+      flags: {}, hist: [{t: t - 4 * D, by: 'Rafael Lima', x: 'Prorrogou o teste em 7 dias', why: 'Pediu mais tempo para cadastrar o cardápio'}, {t: t - 18 * D, by: 'Bia Nogueira', x: 'Criou a organização e iniciou teste de 14 dias', why: ''}]},
+    {id: 'o3', nome: 'Restô Pinheiros', cnpj: '34.567.890/0001-12', cidade: 'São Paulo, SP', plano: 'p2', estado: 'ativa', criada: t - 400 * D,
+      dono: {n: 'Carlos Pinheiro', email: 'carlos@restopinheiros.com.br'}, limUn: null, usersN: 24, c30: 9120, fat30: 612300, ativos: 17, ult: t - 25 * MIN,
+      units: [{id: 'u1', n: 'Pinheiros', end: 'R. dos Pinheiros, 640', on: true}, {id: 'u2', n: 'Vila Madalena', end: 'R. Aspicuelta, 77', on: true}, {id: 'u3', n: 'Itaim', end: 'R. Joaquim Floriano, 200', on: true}],
+      users: [U('x1', 'Carlos Pinheiro', 'Dono', 'email', 5), U('x2', 'Caio Matos', 'Gerente', 'email', 1), U('x3', 'Livia Prado', 'Financeiro', 'email', 30), U('x4', 'Ana Beatriz', 'Caixa', 'op', 2)],
+      sub: {venc: t - 3 * D, tol: 5, trialEnd: null, susMode: null, agenda: {when: t + 2 * D, to: 'suspensa', why: 'Duas cobranças sem retorno', by: 'Kaique Silvestre'}, excecaoAte: null, cancelaEm: null, desde: t - 380 * D},
+      flags: {}, hist: [{t: t - 7 * H, by: 'Kaique Silvestre', x: 'Agendou suspensão para ' + fmtD(t + 2 * D), why: 'Duas cobranças sem retorno'}, {t: t - 30 * D, by: 'Rafael Lima', x: 'Concedeu cortesia de 15 dias', why: 'Instabilidade em setembro'}]},
+    {id: 'o4', nome: 'Boteco Central', cnpj: '45.678.901/0001-23', cidade: 'Curitiba, PR', plano: 'p1', estado: 'suspensa', criada: t - 300 * D,
+      dono: {n: 'Jorge Nunes', email: 'jorge@botecocentral.com'}, limUn: null, usersN: 6, c30: 0, fat30: 0, ativos: 0, ult: t - 9 * D,
+      units: [{id: 'u1', n: 'Matriz', end: 'Rua XV de Novembro, 1010', on: true}],
+      users: [U('x1', 'Jorge Nunes', 'Dono', 'email', 220), U('x2', 'Sônia Leal', 'Gerente', 'email', 300)],
+      sub: {venc: t - 22 * D, tol: 5, trialEnd: null, susMode: 'leitura', agenda: null, excecaoAte: null, cancelaEm: null, desde: t - 290 * D},
+      flags: {}, hist: [{t: t - 16 * D, by: 'Rafael Lima', x: 'Suspendeu (somente leitura e exportação)', why: 'Inadimplência após a tolerância'}]},
+    {id: 'o5', nome: 'Choperia Vila Nova', cnpj: '56.789.012/0001-34', cidade: 'Belo Horizonte, MG', plano: 'p2', estado: 'bloqueada', criada: t - 150 * D,
+      dono: {n: 'Valéria Costa', email: 'valeria@choperiavn.com'}, limUn: null, usersN: 9, c30: 1830, fat30: 98210, ativos: 0, ult: t - 2 * D,
+      units: [{id: 'u1', n: 'Vila Nova', end: 'Av. do Contorno, 5200', on: true}, {id: 'u2', n: 'Savassi', end: 'R. Pernambuco, 1000', on: true}],
+      users: [U('x1', 'Valéria Costa', 'Dono', 'email', 50), U('x2', 'Diego Faria', 'Gerente', 'email', 48)],
+      sub: {venc: t + 4 * D, tol: 5, trialEnd: null, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null, desde: t - 140 * D},
+      flags: {}, hist: [{t: t - 2 * D, by: 'Kaique Silvestre', x: 'Bloqueou', why: 'Exportações em massa por conta comprometida; investigação aberta'}]},
+    {id: 'o6', nome: 'Café Lume', cnpj: '67.890.123/0001-45', cidade: 'Porto Alegre, RS', plano: 'p1', estado: 'encerrada', criada: t - 500 * D,
+      dono: {n: 'Rui Tavares', email: 'rui@cafelume.com'}, limUn: null, usersN: 4, c30: 0, fat30: 0, ativos: 0, ult: t - 40 * D,
+      units: [{id: 'u1', n: 'Lume', end: 'R. da Praia, 15', on: false}],
+      users: [U('x1', 'Rui Tavares', 'Dono', 'email', 960, false)],
+      sub: {venc: null, tol: 5, trialEnd: null, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null, encerradaEm: t - 40 * D},
+      flags: {}, hist: [{t: t - 38 * D, by: 'Kaique Silvestre', x: 'Exportou os dados (LGPD)', why: 'Pedido formal do titular'}, {t: t - 40 * D, by: 'Kaique Silvestre', x: 'Encerrou a assinatura', why: 'Cancelamento pedido pelo cliente'}]},
+    {id: 'o7', nome: 'Pizzaria Nonna', cnpj: '78.901.234/0001-56', cidade: 'Campinas, SP', plano: 'p1', estado: 'em_teste', criada: t - 12 * D,
+      dono: {n: 'Luigi Ferraro', email: 'luigi@pizzarianonna.com'}, limUn: null, usersN: 5, c30: 340, fat30: 15620, ativos: 4, ult: t - 50 * MIN,
+      units: [{id: 'u1', n: 'Nonna', end: 'Av. Norte-Sul, 300', on: true}],
+      users: [U('x1', 'Luigi Ferraro', 'Dono', 'email', 1), U('x2', 'Gina Ferraro', 'Caixa', 'op', 3)],
+      sub: {venc: null, tol: 5, trialEnd: t + 2 * D, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null},
+      flags: {}, hist: [{t: t - 12 * D, by: 'Bia Nogueira', x: 'Criou a organização e iniciou teste de 14 dias', why: ''}]},
+    {id: 'o8', nome: 'Empório 21', cnpj: '89.012.345/0001-67', cidade: 'Recife, PE', plano: 'p2', estado: 'ativa', criada: t - 260 * D,
+      dono: {n: 'Débora Vilela', email: 'debora@emporio21.com.br'}, limUn: 5, usersN: 31, c30: 7050, fat30: 441900, ativos: 22, ult: t - 9 * MIN,
+      units: [{id: 'u1', n: 'Boa Viagem', end: 'Av. Boa Viagem, 3000', on: true}, {id: 'u2', n: 'Casa Forte', end: 'Praça de Casa Forte, 12', on: true}, {id: 'u3', n: 'Recife Antigo', end: 'R. do Bom Jesus, 45', on: true}, {id: 'u4', n: 'Olinda', end: 'R. do Amparo, 70', on: true}],
+      users: [U('x1', 'Débora Vilela', 'Dono', 'email', 3), U('x2', 'Felipe Arruda', 'Gerente', 'email', 1), U('x3', 'Nina Campos', 'Financeiro', 'email', 6)],
+      sub: {venc: t + 17 * D, tol: 5, trialEnd: null, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null, desde: t - 240 * D},
+      flags: {fidelidade: 'on'}, hist: [{t: t - 220 * H / 24, by: 'Bia Nogueira', x: 'Ligou "Fidelidade" para esta organização', why: 'Piloto combinado com o cliente'}, {t: t - 240 * D, by: 'Kaique Silvestre', x: 'Converteu o teste em ativa (plano Profissional)', why: ''}]}
+  ];
+  const plans = [
+    {id: 'p1', n: 'Essencial', preco: 149, users: 15, units: 3},
+    {id: 'p2', n: 'Profissional', preco: 349, users: 40, units: 10},
+    {id: 'p3', n: 'Rede', preco: 990, users: 120, units: 30}
+  ];
+  const flags = [
+    {id: 'fiado', n: 'Fiado', d: 'Venda a prazo para clientes cadastrados (F16).', tipo: 'Estável', pl: [1, 1, 1]},
+    {id: 'mesas', n: 'Mesas e mapa do salão', d: 'Mapa por área e situação calculada das comandas.', tipo: 'Estável', pl: [1, 1, 1]},
+    {id: 'nfe', n: 'Importar NF-e', d: 'Conferência e entrada de compras por XML.', tipo: 'Estável', pl: [0, 1, 1]},
+    {id: 'multi', n: 'Comparação entre unidades', d: 'Configurações e indicadores lado a lado.', tipo: 'Estável', pl: [0, 1, 1]},
+    {id: 'qr', n: 'Cardápio digital por QR', d: 'Cardápio público para o cliente na mesa.', tipo: 'Beta', pl: [0, 0, 1]},
+    {id: 'fidelidade', n: 'Fidelidade', d: 'Programa de pontos e campanhas.', tipo: 'Beta', pl: [0, 0, 0]},
+    {id: 'ia', n: 'Assistente de IA de navegação', d: 'Ajuda a pessoa a se mover pelo sistema.', tipo: 'Beta', pl: [0, 0, 0]}
+  ];
+  const comms = [
+    {id: 'c1', t: 'Manutenção programada em 26/10', txt: 'O sistema ficará indisponível das 02h às 03h para atualização do banco de dados.', sev: 'atencao', alvo: 'all', orgs: [], st: 'publicado', pub: t - 30 * H, exp: t + 3 * D, lidos: 38, total: 52, by: 'Bia Nogueira'},
+    {id: 'c2', t: 'Novo: importação de NF-e', txt: 'Agora é possível importar o XML da nota e conferir antes de dar entrada no estoque.', sev: 'info', alvo: 'sel', orgs: ['o3', 'o8'], st: 'publicado', pub: t - 17 * D, exp: t + 13 * D, lidos: 21, total: 55, by: 'Bia Nogueira'},
+    {id: 'c3', t: 'Dica: ative o fiado só para quem confia', txt: 'Defina limite por cliente antes de liberar. A opção fica em Configurações › Venda.', sev: 'info', alvo: 'all', orgs: [], st: 'rascunho', pub: null, exp: null, lidos: 0, total: 0, by: 'Bia Nogueira'},
+    {id: 'c4', t: 'Mudança de preços dos planos', txt: 'Os novos valores valem a partir da próxima fatura.', sev: 'atencao', alvo: 'all', orgs: [], st: 'expirado', pub: t - 70 * D, exp: t - 40 * D, lidos: 49, total: 50, by: 'Kaique Silvestre'}
+  ];
+  const admins = [
+    {id: 'a1', n: 'Kaique Silvestre', email: 'kaique@flow4tech.com.br', p: 'S', on: true, prot: true, ult: t - 8 * MIN, ip: '203.0.113.24', escopo: 'all', pol: null},
+    {id: 'a2', n: 'Ana Costa', email: 'ana@flow4tech.com.br', p: 'U', on: true, ult: t - 35 * MIN, ip: '198.51.100.12', escopo: ['o1', 'o2', 'o3'], pol: {modo: 'leitura', max: 30, motivo: true, orgs: ['o1', 'o2', 'o3']}},
+    {id: 'a3', n: 'Rafael Lima', email: 'rafael@flow4tech.com.br', p: 'F', on: true, ult: t - 140 * MIN, ip: '203.0.113.31', escopo: 'all', pol: null},
+    {id: 'a4', n: 'Bia Nogueira', email: 'bia@flow4tech.com.br', p: 'O', on: true, ult: t - 220 * MIN, ip: '203.0.113.24', escopo: 'all', pol: null},
+    {id: 'a5', n: 'Lucas Prado', email: 'lucas@flow4tech.com.br', p: 'L', on: true, ult: t - 3 * D, ip: '203.0.113.40', escopo: 'all', pol: null}
+  ];
+  const cfg = {trialDias: 14, tolerancia: 5, fimTeste: 'suspensa', janelaLeitura: 30, retencao: 12, contato: 'suporte@flow4tech.com.br', whats: '(48) 99999-0000',
+    textoSusp: 'O acesso da sua organização está em pausa. Regularize o pagamento ou fale com o suporte para voltar a usar o sistema.', limUsers: 15, limUnits: 1};
+  const ips = [{ip: '203.0.113.24', n: 'Escritório (fibra)', by: 'Kaique Silvestre', t: t - 10 * D}, {ip: '203.0.113.31', n: 'Escritório (secundário)', by: 'Kaique Silvestre', t: t - 10 * D}, {ip: '203.0.113.40', n: 'Casa do Lucas', by: 'Kaique Silvestre', t: t - 4 * D}, {ip: '198.51.100.12', n: 'Casa da Ana', by: 'Kaique Silvestre', t: t - 20 * D}];
+  const cfgHist = [
+    {t: t - 1.5 * D, by: 'Kaique Silvestre', ch: ['Tolerância padrão de atraso: 3 dias → 5 dias'], why: 'Pedido do financeiro'},
+    {t: t - 10 * D, by: 'Kaique Silvestre', ch: ['Lista de IPs: adicionado 203.0.113.24 (Escritório)'], why: 'Novo escritório'},
+    {t: t - 60 * D, by: 'Kaique Silvestre', ch: ['Teste padrão: 7 dias → 14 dias'], why: 'Teste mais longo converte melhor'}
+  ];
+  const jobs = [
+    {n: 'E-mails transacionais', k: 'Fila', st: 'ok', back: 0, last: t - 40 * 1000, n24: 1284, fail: 0, note: ''},
+    {n: 'Importação de NF-e', k: 'Fila', st: 'alert', back: 3, last: t - 6 * MIN, n24: 41, fail: 1, note: 'XML inválido (Restô Pinheiros): entidade externa recusada'},
+    {n: 'Notificações push', k: 'Fila', st: 'wait', back: 12, last: t - 40 * 1000, n24: 5320, fail: 0, note: 'Atraso de 40 s na entrega'},
+    {n: 'Backup do banco', k: 'Rotina', st: 'ok', back: 0, last: t - 8 * H, n24: 1, fail: 0, note: 'Retenção de 30 dias; restauração testada há 12 dias'},
+    {n: 'Cópia da auditoria (fora do banco)', k: 'Rotina', st: 'ok', back: 0, last: t - 2 * MIN, n24: 288, fail: 0, note: 'Cadeia de hash verificada às 04:00'},
+    {n: 'Gateway de cobrança', k: 'Integração', st: 'wait', back: 0, last: t - 3 * H, n24: 76, fail: 2, note: '2 tempos esgotados, reenvio automático concluído'}
+  ];
+  const use = [['o3', 142, .4], ['o8', 118, .2], ['o1', 61, .1], ['o5', 0, 0], ['o7', 22, .0]];
+  const S = {ver: 3, seq: 0, orgs, plans, flags, comms, admins, cfg, ips, cfgHist, jobs, audit: [], chart: [812, 905, 870, 1010, 1234, 1480, 1390, 940, 902, 1002, 1180, 1310, 1520, 1126]};
+  /* auditoria: do mais antigo ao mais novo, cada linha encadeada pelo hash da anterior */
+  const A = {K: 'a1', A: 'a2', R: 'a3', B: 'a4'};
+  const nm = id => admins.find(a => a.id === id).n;
+  const L = [
+    [30000, 'K', 'admin', 'Criou o administrador Bia Nogueira (Operações)', '', ''],
+    [27000, 'K', 'assinatura', 'Converteu o teste em ativa (plano Profissional)', 'o8', ''],
+    [24000, 'B', 'comunicado', 'Publicou "Novo: importação de NF-e" para 2 organizações', '', ''],
+    [21000, 'A', 'organizacao', 'Redefiniu o acesso de Caio Matos (Gerente)', 'o3', 'Usuário esqueceu a senha; ticket #466'],
+    [19000, 'K', 'seguranca', 'Acesso negado: IP fora da lista (198.51.100.7)', '', ''],
+    [17000, 'R', 'assinatura', 'Concedeu cortesia de 15 dias', 'o3', 'Instabilidade em setembro'],
+    [15500, 'B', 'flag', 'Desligou "Cardápio digital por QR" para o plano Essencial', '', 'Ainda em beta'],
+    [14000, 'K', 'config', 'Lista de IPs: adicionou 203.0.113.24 (Escritório)', '', 'Novo escritório'],
+    [12500, 'A', 'organizacao', 'Criou a unidade "Praia" em nome da organização', 'o1', 'Cliente pediu pelo suporte'],
+    [11000, 'R', 'plano', 'Alterou o preço do plano Profissional de R$ 329 para R$ 349', '', 'Reajuste anual'],
+    [9800, 'K', 'seguranca', 'Login de administrador em IP novo (alerta enviado ao super admin)', '', ''],
+    [8600, 'B', 'organizacao', 'Criou a organização e iniciou teste de 14 dias', 'o7', ''],
+    [7200, 'K', 'assinatura', 'Encerrou a assinatura', 'o6', 'Cancelamento pedido pelo cliente'],
+    [5600, 'K', 'exportacao', 'Exportou os dados da organização (LGPD)', 'o6', 'Pedido formal do titular'],
+    [4800, 'K', 'admin', 'Criou o administrador Lucas Prado (Somente leitura)', '', ''],
+    [4200, 'A', 'impersonacao', 'Iniciou impersonação (somente leitura, 15 min) como Caio Matos (Gerente)', 'o3', 'Ticket #471: relatório não carrega'],
+    [4180, 'A', 'impersonacao', 'Encerrou a impersonação após 9 min', 'o3', ''],
+    [3300, 'K', 'assinatura', 'Bloqueou', 'o5', 'Exportações em massa por conta comprometida; investigação aberta'],
+    [2900, 'R', 'assinatura', 'Suspendeu (somente leitura e exportação)', 'o4', 'Inadimplência após a tolerância'],
+    [2100, 'K', 'config', 'Tolerância padrão de atraso: 3 dias → 5 dias', '', 'Pedido do financeiro'],
+    [1700, 'B', 'comunicado', 'Publicou "Manutenção programada em 26/10" para todas as organizações', '', ''],
+    [1500, 'K', 'admin', 'Alterou a política de impersonação de Ana Costa (leitura, 30 min, motivo obrigatório)', '', 'Revisão trimestral'],
+    [600, 'R', 'assinatura', 'Prorrogou o teste em 7 dias', 'o2', 'Pediu mais tempo para cadastrar o cardápio'],
+    [410, 'K', 'assinatura', 'Agendou suspensão para ' + fmtD(t + 2 * D), 'o3', 'Duas cobranças sem retorno'],
+    [220, 'B', 'flag', 'Ligou "Fidelidade" para esta organização', 'o8', 'Piloto combinado com o cliente'],
+    [140, 'R', 'assinatura', 'Registrou pagamento de R$ 349,00 (boleto)', 'o8', 'Conciliação do boleto de outubro'],
+    [52, 'A', 'impersonacao', 'Encerrou a impersonação após 18 min', 'o1', ''],
+    [35, 'A', 'impersonacao', 'Iniciou impersonação (somente leitura, 30 min) como Maria Souza (Dono)', 'o1', 'Ticket #482: dúvida no fechamento de caixa'],
+    [8, 'K', 'seguranca', 'Login de administrador', '', '']
+  ];
+  L.forEach(([mm, who, tipo, x, oid, why]) => {
+    const o = orgs.find(o => o.id === oid), prev = S.audit[0];
+    const e = {id: ++S.seq, t: t - mm * MIN, by: nm(A[who]), tipo, x, org: o ? o.nome : '', orgId: o ? o.id : '', why, ip: admins.find(a => a.id === A[who]).ip};
+    e.h = h53((prev ? prev.h : 'genesis') + e.id + e.t + e.by + e.tipo + e.x + e.org + e.why);
+    S.audit.unshift(e);
+  });
+  return S;
+}
+
+/* ===== estado e persistencia ===== */
+let S;
+function load() { try { const v = JSON.parse(localStorage.getItem('flow.ct') || 'null'); if (v && v.ver === 3) return v; } catch (_) {} return seed(); }
+function save() { try { localStorage.setItem('flow.ct', JSON.stringify(S)); } catch (_) {} }
+S = load();
+let ME = null;           /* perfil da demonstracao: S U F O L */
+try { ME = localStorage.getItem('ct.profile') || null; } catch (_) {}
+const UI = {imp: null, verify: null, cfgDraft: null};
+const PLAN = id => S.plans.find(p => p.id === id);
+const ORG = id => S.orgs.find(o => o.id === id);
+const ADM = id => S.admins.find(a => a.id === id);
+const meAdmin = () => S.admins.find(a => a.p === ME);
+const meName = () => (meAdmin() || {n: 'Administrador'}).n;
+const can = k => !!ME && (PERM_MAP[k] || '').includes(ME);
+const canAny = a => a.some(can);
+const lim = k => (LIM[k] || {})[ME] ?? (ME === 'S' ? Infinity : 0);
+const unitsLimit = o => o.limUn ?? PLAN(o.plano).units;
+const usersLimit = o => PLAN(o.plano).users;
+const unitsOn = o => o.units.filter(u => u.on).length;
+
+function audit(tipo, x, org, why) {
+  const prev = S.audit[0], a = meAdmin() || {n: 'Sistema', ip: ''};
+  const e = {id: ++S.seq, t: now(), by: a.n, tipo, x, org: org ? org.nome : '', orgId: org ? org.id : '', why: why || '', ip: a.ip || '203.0.113.24'};
+  e.h = h53((prev ? prev.h : 'genesis') + e.id + e.t + e.by + e.tipo + e.x + e.org + e.why);
+  S.audit.unshift(e);
+  return e;
+}
+function verifyChain() {
+  const L = [...S.audit].reverse(); let prev = 'genesis';
+  for (let i = 0; i < L.length; i++) {
+    const e = L[i];
+    if (h53(prev + e.id + e.t + e.by + e.tipo + e.x + e.org + e.why) !== e.h) return {ok: false, at: e, n: L.length};
+    prev = e.h;
+  }
+  return {ok: true, n: L.length};
+}
+
+/* ===== situacao da organizacao em texto ===== */
+function stInfo(o) {
+  const s = o.sub;
+  if (o.estado === 'em_teste') { const n = Math.ceil((s.trialEnd - now()) / D); return {t: n < 0 ? `teste venceu há ${-n} d` : n === 0 ? 'teste acaba hoje' : `teste acaba em ${n} d`, tone: n <= 3 ? 'wait' : ''}; }
+  if (o.estado === 'ativa') {
+    if (s.cancelaEm) return {t: `cancela em ${fmtDM(s.cancelaEm)}`, tone: 'wait'};
+    if (s.excecaoAte && s.excecaoAte > now()) return {t: `exceção até ${fmtDM(s.excecaoAte)}`, tone: 'wait'};
+    if (s.venc < now()) { const a = Math.floor((now() - s.venc) / D); return {t: `venceu há ${a} d · tolerância ${s.tol} d`, tone: 'wait', late: true}; }
+    return {t: `próxima cobrança em ${Math.ceil((s.venc - now()) / D)} d`, tone: ''};
+  }
+  if (o.estado === 'suspensa') return {t: s.susMode === 'total' ? 'bloqueio total do acesso' : 'só leitura e exportação', tone: 'wait'};
+  if (o.estado === 'bloqueada') return {t: 'só o super admin libera', tone: 'alert'};
+  return {t: `desde ${fmtD(s.encerradaEm)}`, tone: ''};
+}
+
+/* ===== dialogo e aviso ===== */
+function modal(o) {
+  const d = document.createElement('dialog');
+  d.className = 'dlg' + (o.wide ? ' dlg--wide' : '');
+  d.innerHTML = `<form class="dlg__f" novalidate><header class="dlg__h"><h2>${o.title}</h2>${o.lead ? `<p>${o.lead}</p>` : ''}</header><div class="dlg__b">${o.body || ''}</div><p class="field-msg field-msg--error dlg__err" role="alert" hidden></p><footer class="dialog__actions"><button type="button" class="btn" data-close>${o.cancel || 'Cancelar'}</button>${o.ok === null ? '' : `<button class="btn ${o.danger ? 'btn--danger' : 'btn--primary'}">${o.ok || 'Confirmar'}</button>`}</footer></form>`;
+  document.body.appendChild(d);
+  d.addEventListener('close', () => d.remove());
+  $('[data-close]', d).onclick = () => d.close();
+  $('form', d).addEventListener('submit', e => {
+    e.preventDefault();
+    const r = o.onOk && o.onOk(new FormData(e.target), d);
+    if (r) { const er = $('.dlg__err', d); er.textContent = r; er.hidden = false; return; }
+    d.close();
+  });
+  if (o.onOpen) o.onOpen(d);
+  d.showModal();
+  const f = $('input:not([type=radio]):not([type=checkbox]):not(:disabled),textarea,select', d); if (f) f.focus();
+  return d;
+}
+function toast(msg, sub) {
+  const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = esc(msg) + (sub ? `<small>${esc(sub)}</small>` : '');
+  $('#toasts').appendChild(t); setTimeout(() => t.remove(), 4200);
+}
+const fld = (label, inner, msg) => `<div class="fg"><label class="field-label">${label}</label>${inner}${msg ? `<p class="hint">${msg}</p>` : ''}</div>`;
+const inp = (name, label, o = {}) => fld(label, `<input class="field" name="${name}" type="${o.type || 'text'}" value="${esc(o.value ?? '')}" ${o.ph ? `placeholder="${esc(o.ph)}"` : ''} ${o.min != null ? `min="${o.min}"` : ''} ${o.max != null ? `max="${o.max}"` : ''} ${o.req ? 'required' : ''} autocomplete="off">`, o.msg);
+const sel = (name, label, opts, val, msg) => fld(label, `<select class="field" name="${name}">${opts.map(([v, t, dis]) => `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''} ${dis ? 'disabled' : ''}>${esc(t)}</option>`).join('')}</select>`, msg);
+const why = (label = 'Motivo') => fld(label + ' (fica no histórico e na auditoria)', `<textarea class="field field--area" name="why" placeholder="Ex.: ticket #123, pedido do cliente, decisão do financeiro" required></textarea>`);
+const checkWhy = fd => (fd.get('why') || '').trim().length >= 5 ? '' : 'Informe o motivo (mínimo de 5 caracteres).';
+const radios = (name, items, val) => `<div class="opts" role="radiogroup">${items.map(([v, t, d, dis]) => `<label class="radio"><input type="radio" name="${name}" value="${esc(v)}" ${v === val ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${t}${d ? `<small>${d}</small>` : ''}</span></label>`).join('')}</div>`;
+
+/* ===== roteamento ===== */
+const route = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const href = o => '#' + new URLSearchParams(Object.fromEntries(Object.entries(o).filter(([, v]) => v !== '' && v != null))).toString();
+const nav = o => { location.hash = href(o); };
+const navm = patch => nav(Object.assign(route(), patch));
+
+const NAV = [
+  {g: 'Plataforma', items: [
+    {id: 'visao', t: 'Visão geral', i: 'home', perm: ['plataforma:ver']},
+    {id: 'orgs', t: 'Organizações', i: 'building', perm: ['organizacao:ver'], count: () => S.orgs.length},
+    {id: 'cobranca', t: 'Cobrança', i: 'card', perm: ['cobranca:ver']},
+    {id: 'planos', t: 'Planos', i: 'layers', perm: ['cobranca:ver', 'plano:gerenciar']}]},
+  {g: 'Produto', items: [
+    {id: 'flags', t: 'Funcionalidades', i: 'flag', perm: ['plataforma:ver']},
+    {id: 'comunicados', t: 'Comunicados', i: 'mega', perm: ['plataforma:ver']}]},
+  {g: 'Operação e segurança', items: [
+    {id: 'operacao', t: 'Operação', i: 'pulse', perm: ['operacao:ver_filas_e_jobs'], count: () => S.jobs.filter(j => j.st !== 'ok').length, alert: true},
+    {id: 'auditoria', t: 'Auditoria', i: 'scroll', perm: ['auditoria_plataforma:ver']},
+    {id: 'admins', t: 'Administradores', i: 'shield', perm: ['admin_plataforma:gerenciar']},
+    {id: 'config', t: 'Configurações', i: 'gear', perm: ['plataforma:ver']}]}
+];
+const SCR = {
+  visao: ['Visão geral', ['plataforma:ver']], orgs: ['Organizações', ['organizacao:ver']], org: ['Organização', ['organizacao:ver']],
+  cobranca: ['Cobrança', ['cobranca:ver']], planos: ['Planos', ['cobranca:ver', 'plano:gerenciar']], flags: ['Funcionalidades', ['plataforma:ver']],
+  comunicados: ['Comunicados', ['plataforma:ver']], operacao: ['Operação', ['operacao:ver_filas_e_jobs']], auditoria: ['Auditoria', ['auditoria_plataforma:ver']],
+  admins: ['Administradores', ['admin_plataforma:gerenciar']], config: ['Configurações', ['plataforma:ver']], impersonacao: ['Sessão de impersonação', ['suporte:impersonar']]
+};
+
+/* ===== casco ===== */
+let lastScr = '';
+function render() {
+  const R = route();
+  if (R.theme) { document.documentElement.dataset.theme = R.theme; }
+  if (R.profile) {
+    if (PROFILES[R.profile]) { ME = R.profile; try { localStorage.setItem('ct.profile', ME); } catch (_) {} }
+    delete R.profile; history.replaceState(null, '', href(R));
+  }
+  const af = document.activeElement, afId = af && af.id, afSel = af && af.selectionStart;
+  const old = $('#content'), y = old ? old.scrollTop : 0;
+  if (!ME || R.screen === 'login') renderLogin(R);
+  else renderApp(R);
+  const c = $('#content'); if (c && lastScr === (R.screen || 'visao') + (R.id || '')) c.scrollTop = y;
+  lastScr = (R.screen || 'visao') + (R.id || '');
+  if (afId) { const e = document.getElementById(afId); if (e && e !== document.activeElement) { e.focus(); if (afSel != null && e.setSelectionRange) try { e.setSelectionRange(afSel, afSel); } catch (_) {} } }
+}
+
+function impBar() {
+  const i = UI.imp; if (!i) return '';
+  const o = ORG(i.org);
+  return `<div class="impbar" role="status"><b>Impersonando</b> ${esc(i.userName)} (${esc(i.userPerfil)}) em <b>${esc(o.nome)}</b> · ${i.modo === 'escrita' ? 'leitura e escrita' : 'somente leitura'}<span class="sp"></span><span>Restam <span class="t" id="impT">${impLeft()}</span></span><a class="btn btn--sm" href="${href({screen: 'impersonacao'})}">Detalhes</a><button class="btn btn--sm" data-act="imp-end">Encerrar sessão</button></div>`;
+}
+function impLeft() {
+  const i = UI.imp; if (!i || !i.ends) return 'sem limite';
+  const s = Math.max(0, Math.round((i.ends - now()) / 1000)); return `${p2(Math.floor(s / 60))}:${p2(s % 60)}`;
+}
+
+function crumbsFor(R, scr) {
+  const L = [['Control Tower', href({screen: 'visao'})]];
+  if (scr === 'org') { L.push(['Organizações', href({screen: 'orgs'})]); const o = ORG(R.id); L.push([o ? o.nome : 'Organização', null]); }
+  else if (scr === 'impersonacao') { L.push(['Organizações', href({screen: 'orgs'})]); L.push(['Sessão de impersonação', null]); }
+  else if (scr !== 'visao') L.push([SCR[scr][0], null]);
+  else L[0][1] = null;
+  return L.map(([t, h], i) => i === L.length - 1 ? `<li aria-current="page">${esc(t)}</li>` : `<li><a href="${h}">${esc(t)}</a></li>`).join('');
+}
+
+function renderApp(R) {
+  let scr = R.screen || 'visao';
+  if (!SCR[scr]) scr = 'visao';
+  const allowed = canAny(SCR[scr][1]);
+  const items = NAV.map(g => ({g: g.g, items: g.items.filter(i => canAny(i.perm))})).filter(g => g.items.length);
+  const cur = scr === 'org' || scr === 'impersonacao' ? 'orgs' : scr;
+  const nav_ = items.map(g => `<div class="nav-label">${g.g}</div>` + g.items.map(i => {
+    const c = i.count ? i.count() : 0;
+    return `<a href="${href({screen: i.id})}" ${i.id === cur ? 'aria-current="page"' : ''} title="${i.t}"><span class="ico">${ico(i.i)}</span><span class="t">${i.t}</span><span class="count" ${i.alert && c ? 'data-alert' : ''}>${c || ''}</span></a>`;
+  }).join('')).join('');
+  const a = meAdmin();
+  $('#shell').innerHTML = `${impBar()}<div class="app">
+    <aside class="side" id="side"><div class="brand"><span class="mark">${ico('tower')}</span><span class="tx"><b>Control Tower</b><span>Flow4Tech · plataforma</span></span></div>
+      <nav class="nav" aria-label="Menu da plataforma">${nav_}</nav>
+      <div style="flex:1"></div>
+      <div class="side-foot">Dados de exemplo · <button data-act="reset">Restaurar</button></div>
+      <button class="me" data-act="me-menu" aria-haspopup="menu"><span class="avatar">${esc(inits(a.n))}</span><span class="tx"><b>${esc(a.n)}</b><span>${PROFILES[ME][0]}</span></span></button></aside>
+    <div class="main"><header class="topbar">
+      <button class="btn btn--icon sbtn" data-act="rail" aria-label="Recolher menu lateral" title="Recolher ou expandir o menu ( [ )">${ico('panel')}</button>
+      <div class="sw"><label class="field field--search">${ico('search')}<span class="sr">Buscar organização</span><input id="gq" data-in="gq" placeholder="Buscar organização" autocomplete="off"><kbd>Ctrl K</kbd></label><div class="menu" id="gqm" hidden></div></div>
+      <span class="grow"></span>
+      <span class="pill pill--env" title="Todas as ações valem para a produção"><i></i>Produção</span>
+      <span class="pill pill--ip" title="A API só aceita a Control Tower de endereços da lista permitida (A10.1)"><i></i>IP permitido · ${esc(a.ip)}</span>
+      <button class="btn btn--icon" data-act="theme" aria-label="Alternar tema claro e escuro">${ico('moon')}</button>
+    </header>
+    <nav class="crumbs" aria-label="Você está em"><ol>${crumbsFor(R, scr)}</ol></nav>
+    <main class="content" id="content" tabindex="-1">${allowed ? SCREENS[scr](R) : noAccess(scr)}</main></div></div>`;
+  document.body.classList.toggle('rail', localStorage.getItem('ct.rail') === '1');
+  document.title = (scr === 'org' && ORG(R.id) ? ORG(R.id).nome : SCR[scr][0]) + ' · Control Tower';
+}
+
+function noAccess(scr) {
+  const need = SCR[scr][1];
+  return `<div class="empty"><h2 class="sec">Seu perfil não vê esta tela</h2><p class="muted">Perfil atual: <b>${PROFILES[ME][0]}</b>. Permissão necessária: <code>${need.join('</code> ou <code>')}</code>.</p><a class="btn" href="${href({screen: 'visao'})}">Voltar à visão geral</a></div>`;
+}
+
+/* ===== login ===== */
+function renderLogin(R) {
+  const bloq = R.ip === 'bloqueado';
+  $('#shell').innerHTML = `<div class="login"><div class="login__c">
+    <div class="login__logo"><span class="mark">${ico('tower')}</span><div><h1>Control Tower</h1><span>Acesso restrito à equipe da plataforma</span></div></div>
+    ${bloq ? `<div class="banner banner--error" role="alert">${ico('lock', 'i')}<span class="l"><b>Este endereço não está na lista permitida</b><small>O IP 198.51.100.7 não pode acessar a Control Tower. Peça ao super admin para incluí-lo. A tentativa foi registrada.</small></span></div>` : ''}
+    <form class="card login__f" id="lf" novalidate>
+      <div class="fg"><label class="field-label" for="le">E-mail</label><input class="field" id="le" type="email" placeholder="voce@flow4tech.com.br" autocomplete="off" ${bloq ? 'disabled' : ''}></div>
+      <div class="fg"><label class="field-label" for="lp">Senha</label><input class="field" id="lp" type="password" autocomplete="off" ${bloq ? 'disabled' : ''}></div>
+      <button class="btn btn--primary" style="width:100%;justify-content:center" ${bloq ? 'disabled' : ''}>Entrar</button>
+      <p class="note"><b>Protótipo:</b> "Entrar" ignora e-mail e senha e entra como Super admin. Para outro perfil, use os botões abaixo.</p><p class="note">Este login é separado do sistema dos clientes: uma conta não vale na outra. Após 5 tentativas erradas o acesso é bloqueado por 15 minutos e o super admin é avisado. Todo login de administrador gera alerta.</p>
+    </form>
+    <div class="demo"><p><b>Protótipo:</b> entrar direto como um perfil da plataforma (02d §4)</p><div class="chips">${Object.entries(PROFILES).map(([k, v]) => `<button class="chip" data-act="enter" data-p="${k}">${v[0]}</button>`).join('')}</div>
+      <p style="margin-top:10px"><a href="${href({screen: 'login', ip: bloq ? '' : 'bloqueado'})}">${bloq ? 'Ver login normal' : 'Ver o bloqueio por IP'}</a></p></div>
+  </div></div>`;
+}
+
+/* ===== componentes de tela ===== */
+function pager(total, R, o = {}) {
+  const pk = o.pk || 'page', sk = o.sk || 'size', sizes = o.sizes || [10, 25, 50];
+  const size = Math.min(100, +R[sk] || o.def || sizes[0]);
+  const pages = Math.max(1, Math.ceil(total / size)); const page = Math.min(pages, Math.max(1, +R[pk] || 1));
+  const a = total ? (page - 1) * size + 1 : 0, b = Math.min(total, page * size);
+  const nums = []; for (let i = 1; i <= pages; i++) if (i === 1 || i === pages || Math.abs(i - page) <= 1) nums.push(i); else if (nums[nums.length - 1] !== '…') nums.push('…');
+  return {page, size, from: (page - 1) * size, html: `<div class="foot"><span>Mostrando ${a} a ${b} de ${total}</span><label>Por página <select data-ch="size" data-sk="${sk}" data-pk="${pk}" aria-label="Por página">${sizes.map(s => `<option ${s === size ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+    <div class="pager" role="navigation" aria-label="Paginação"><button class="btn btn--sm" data-act="pg" data-pk="${pk}" data-p="${page - 1}" ${page <= 1 ? 'disabled' : ''}>Anterior</button>${nums.map(n => n === '…' ? '<span class="muted">…</span>' : `<button class="btn btn--sm" data-act="pg" data-pk="${pk}" data-p="${n}" ${n === page ? 'aria-current="page"' : ''}>${n}</button>`).join('')}<button class="btn btn--sm" data-act="pg" data-pk="${pk}" data-p="${page + 1}" ${page >= pages ? 'disabled' : ''}>Próxima</button></div></div>`};
+}
+const head = (h, sub, actions) => `<div class="head"><div><h1>${h}</h1>${sub ? `<p>${sub}</p>` : ''}</div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
+const stat = (l, v, n, al) => `<div class="card stat"><div class="l">${l}</div><div class="v num">${v}</div><div class="n ${al ? 'al' : ''}">${n || '&nbsp;'}</div></div>`;
+const monthly = o => PLAN(o.plano).preco;
+
+/* ===== VISAO GERAL ===== */
+function attention() {
+  const L = [];
+  S.orgs.forEach(o => {
+    const i = stInfo(o);
+    if (o.estado === 'em_teste' && i.tone === 'wait') L.push({sev: 'atencao', ic: 'clock', t: `Teste de ${o.nome} ${i.t.replace('teste ', '')}`, d: 'Prorrogar, converter em ativa ou deixar vencer.', go: href({screen: 'org', id: o.id, tab: 'assin'})});
+    if (i.late) L.push({sev: 'atencao', ic: 'card', t: `${o.nome}: pagamento em atraso`, d: `${i.t}. ${o.sub.agenda ? 'Já há suspensão agendada para ' + fmtDM(o.sub.agenda.when) + '.' : 'Sem mudança agendada.'}`, go: href({screen: 'org', id: o.id, tab: 'assin'})});
+    if (o.estado === 'bloqueada') L.push({sev: 'critico', ic: 'lock', t: `${o.nome} está bloqueada`, d: o.hist[0] ? o.hist[0].why : '', go: href({screen: 'org', id: o.id, tab: 'hist'})});
+  });
+  S.jobs.filter(j => j.st === 'alert').forEach(j => L.push({sev: 'critico', ic: 'alarm', t: `${j.n}: ${j.fail} ${plural(j.fail, 'falha', 'falhas')}`, d: j.note, go: href({screen: 'operacao'})}));
+  const ln = S.audit.find(e => e.tipo === 'seguranca' && /IP novo/.test(e.x)); if (ln) L.push({sev: 'info', ic: 'shield', t: 'Login de administrador em IP novo', d: `${ln.by} · ${rel(ln.t)} · alerta enviado ao super admin`, go: href({screen: 'auditoria', tipo: 'seguranca'})});
+  const w = {critico: 0, atencao: 1, info: 2}; return L.sort((a, b) => w[a.sev] - w[b.sev]);
+}
+function bars(data) {
+  const W = 560, Hh = 170, pl = 34, pb = 22, max = Math.max(...data) * 1.1, bw = (W - pl) / data.length;
+  const lab = i => { const d = new Date(now() - (data.length - 1 - i) * D); return fmtDM(d); };
+  const grid = [0, .5, 1].map(f => { const y = Hh - pb - (Hh - pb - 8) * f; return `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl - 6}" y="${y + 4}" text-anchor="end" fill="var(--muted)" font-size="11">${nf(Math.round(max * f / 10) * 10)}</text>`; }).join('');
+  const rects = data.map((v, i) => { const h = (Hh - pb - 8) * v / max, x = pl + i * bw + 4; return `<rect x="${x}" y="${Hh - pb - h}" width="${bw - 8}" height="${h}" rx="3" fill="${i === data.length - 1 ? 'var(--brand)' : 'color-mix(in srgb,var(--brand) 55%,var(--card))'}"><title>${lab(i)}: ${nf(v)} comandas</title></rect>${i % 2 === 1 || i === data.length - 1 ? `<text x="${x + (bw - 8) / 2}" y="${Hh - 6}" text-anchor="middle" fill="var(--muted)" font-size="11">${lab(i)}</text>` : ''}`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Comandas por dia nos últimos 14 dias, hoje ${nf(data[data.length - 1])}" style="width:100%;height:auto;display:block">${grid}${rects}</svg>`;
+}
+function visaoHtml(R) {
+  const by = e => S.orgs.filter(o => o.estado === e);
+  const ativas = by('ativa'), teste = by('em_teste'), fim = teste.filter(o => stInfo(o).tone === 'wait').length;
+  const mrr = ativas.reduce((s, o) => s + monthly(o), 0);
+  const late = S.orgs.filter(o => stInfo(o).late), lateV = late.reduce((s, o) => s + monthly(o), 0);
+  const online = S.orgs.reduce((s, o) => s + (o.estado === 'ativa' || o.estado === 'em_teste' ? o.ativos : 0), 0);
+  const att = attention();
+  const COLORS = {em_teste: 'var(--brand)', ativa: 'var(--open)', suspensa: 'var(--wait)', bloqueada: 'var(--alert)', encerrada: 'var(--paid)'};
+  const dist = Object.keys(ST).map(k => [k, by(k).length]);
+  const rows = [...S.orgs].sort((a, b) => b.c30 - a.c30);
+  const pg = pager(rows.length, R, {pk: 'vp', sk: 'vs', sizes: [5, 10], def: 5});
+  return head('Visão geral', `Saúde da plataforma em ${fmtD(now())}. Valores de exemplo.`, can('organizacao:criar') ? `<button class="btn btn--primary" data-act="org-new">${ico('plus')} Nova organização</button>` : '') + `
+  <div class="sum">${stat('Organizações ativas', ativas.length, `${S.orgs.length} no total · ${by('encerrada').length} encerrada`)}${stat('Em teste', teste.length, fim ? `${fim} ${plural(fim, 'acaba', 'acabam')} em até 3 dias` : 'nenhuma perto do fim', fim)}${stat('Receita mensal (MRR)', brl(mrr), late.length ? `${late.length} em atraso (${brl(lateV)})` : 'nada em atraso', late.length)}${stat('Comandas hoje', nf(S.chart[S.chart.length - 1]), `${online} usuários ativos agora`)}</div>
+  <div class="cols"><section class="card pad"><div class="sec-h"><h2 class="sec">Comandas por dia</h2><span class="sub">todas as organizações, últimos 14 dias</span></div>${bars(S.chart)}</section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Precisa de atenção</h2><span class="sub">${att.length}</span></div><div class="att">${att.length ? att.map(a => `<div data-sev="${a.sev}"><span class="m">${ico(a.ic)}</span><span><span class="sev">${a.sev === 'critico' ? 'Crítico' : a.sev === 'atencao' ? 'Atenção' : 'Info'}</span><b>${esc(a.t)}</b><br><small>${esc(a.d)}</small></span><a class="btn btn--sm" href="${a.go}">Abrir</a></div>`).join('') : '<p class="note">Nada pendente.</p>'}</div></section></div>
+  <div class="cols"><section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Uso por organização</h2><span class="sub">últimos 30 dias</span></div></div><div class="tw"><table><thead><tr><th>Organização</th><th>Situação</th><th class="r">Comandas</th><th class="r">Faturamento do cliente</th><th class="r">Usuários ativos</th></tr></thead><tbody>${rows.slice(pg.from, pg.from + pg.size).map(o => `<tr class="go" data-href="${href({screen: 'org', id: o.id})}"><td><span class="two"><a href="${href({screen: 'org', id: o.id})}">${esc(o.nome)}</a><small>${PLAN(o.plano).n}</small></span></td><td>${stBadge(o.estado)}</td><td class="r num">${nf(o.c30)}</td><td class="r num">${brl(o.fat30)}</td><td class="r num">${o.ativos}/${o.usersN}</td></tr>`).join('')}</tbody></table></div>${pg.html}</section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Situação das assinaturas</h2></div><div class="bar-st" role="img" aria-label="${dist.map(([k, n]) => ST[k][0] + ' ' + n).join(', ')}">${dist.filter(d => d[1]).map(([k, n]) => `<i style="flex:${n};background:${COLORS[k]}"></i>`).join('')}</div><div class="legend">${dist.map(([k, n]) => `<span><i style="background:${COLORS[k]}"></i>${ST[k][0]} <b class="num">${n}</b></span>`).join('')}</div>
+  <div class="sec-h" style="margin-top:22px"><h2 class="sec">Por plano</h2></div><div class="rows">${S.plans.map(p => { const n = S.orgs.filter(o => o.plano === p.id && o.estado !== 'encerrada').length; return `<div><span class="grow"><b>${p.n}</b><small>${brl(p.preco)}/mês</small></span><span class="num">${n} ${plural(n, 'organização', 'organizações')}</span></div>`; }).join('')}</div></section></div>`;
+}
+
+/* ===== ORGANIZACOES ===== */
+const matchSt = (o, st) => !st || (st === 'teste' ? o.estado === 'em_teste' : st === 'atraso' ? stInfo(o).late : o.estado === st);
+function orgsHtml(R) {
+  const base = S.orgs.filter(o => (!R.q || strip(o.nome + ' ' + o.cidade + ' ' + o.cnpj + ' ' + o.dono.n).includes(strip(R.q))) && (!R.plano || o.plano === R.plano));
+  const chips = [['', 'Todas'], ['teste', 'Em teste'], ['ativa', 'Ativas'], ['atraso', 'Em atraso'], ['suspensa', 'Suspensas'], ['bloqueada', 'Bloqueadas'], ['encerrada', 'Encerradas']];
+  const L = base.filter(o => matchSt(o, R.st)).sort((a, b) => a.nome.localeCompare(b.nome));
+  const pg = pager(L.length, R);
+  return head('Organizações', 'Cada organização é um cliente. Clique para ver assinatura, unidades, usuários e histórico.', can('organizacao:criar') ? `<button class="btn btn--primary" data-act="org-new">${ico('plus')} Nova organização</button>` : '') + `
+  <div class="bar"><label class="field field--search">${ico('search')}<span class="sr">Buscar</span><input id="oq" data-in="q" value="${esc(R.q || '')}" placeholder="Nome, cidade, CNPJ ou dono" autocomplete="off"></label>
+    <select class="field" data-ch="plano" aria-label="Plano"><option value="">Todos os planos</option>${S.plans.map(p => `<option value="${p.id}" ${R.plano === p.id ? 'selected' : ''}>${p.n}</option>`).join('')}</select>
+    <div class="chips">${chips.map(([k, t]) => `<button class="chip" data-act="chip" data-st="${k}" aria-pressed="${(R.st || '') === k}">${t} <span class="chip__count">${base.filter(o => matchSt(o, k)).length}</span></button>`).join('')}</div></div>
+  <section class="card"><div class="tw"><table><thead><tr><th>Organização</th><th>Plano</th><th>Situação</th><th class="r">Unidades</th><th class="r">Usuários</th><th>Último acesso</th></tr></thead><tbody>
+  ${L.slice(pg.from, pg.from + pg.size).map(o => { const i = stInfo(o); return `<tr class="go" data-href="${href({screen: 'org', id: o.id})}"><td><span class="two"><a href="${href({screen: 'org', id: o.id})}">${esc(o.nome)}</a><small>${esc(o.cidade)} · ${esc(o.dono.n)}</small></span></td><td>${PLAN(o.plano).n}</td><td><span class="two">${stBadge(o.estado)}<small ${i.tone === 'alert' ? 'style="color:var(--alert)"' : i.tone === 'wait' ? 'style="color:var(--wait-ink)"' : ''}>${esc(i.t)}</small></span></td><td class="r num">${unitsOn(o)}/${unitsLimit(o)}</td><td class="r num">${o.usersN}/${usersLimit(o)}</td><td class="muted">${o.estado === 'encerrada' ? '—' : rel(o.ult)}</td></tr>`; }).join('') || `<tr><td colspan="6" class="wrap" style="height:auto;padding:36px;text-align:center"><b>Nenhuma organização encontrada</b><br><span class="muted">Mude a busca ou os filtros.</span> <button class="btn btn--sm" data-act="clear">Limpar filtros</button></td></tr>`}
+  </tbody></table></div>${pg.html}</section>`;
+}
+
+/* ===== FICHA DA ORGANIZACAO ===== */
+const OTABS = [['resumo', 'Resumo'], ['assin', 'Assinatura'], ['unid', 'Unidades'], ['usu', 'Usuários'], ['func', 'Funcionalidades'], ['hist', 'Histórico']];
+function orgHtml(R) {
+  const o = ORG(R.id);
+  if (!o) return `<div class="empty"><h2 class="sec">Organização não encontrada</h2><a class="btn" href="${href({screen: 'orgs'})}">Voltar à lista</a></div>`;
+  const tab = OTABS.some(t => t[0] === R.tab) ? R.tab : 'resumo', i = stInfo(o), pol = polFor(o);
+  const canImp = can('suporte:impersonar');
+  const impBtn = canImp ? `<button class="btn" data-act="imp-start" data-id="${o.id}" ${pol.ok ? '' : 'disabled'} title="${esc(pol.ok ? 'Entrar como um usuário desta organização' : pol.why)}">${ico('eye')} Impersonar</button>` : '';
+  return `<div class="org-h"><span class="logo">${esc(inits(o.nome))}</span><div><h1>${esc(o.nome)}</h1><div class="sub">${stBadge(o.estado)}<span>${esc(i.t)}</span><span>·</span><span>${PLAN(o.plano).n}</span><span>·</span><span>${esc(o.cidade)}</span></div></div>
+    <div class="actions">${impBtn}${can('exportacao_dados:cliente') ? `<button class="btn" data-act="export" data-id="${o.id}">${ico('dl')} Exportar dados</button>` : ''}</div></div>
+  <div class="tabs-w"><div class="tabs" role="tablist">${OTABS.map(([k, t]) => `<a class="tab" role="tab" href="${href({screen: 'org', id: o.id, tab: k})}" aria-selected="${k === tab}" style="text-decoration:none;display:inline-flex;align-items:center">${t}</a>`).join('')}</div></div>
+  ${{resumo: orgResumo, assin: orgAssin, unid: orgUnid, usu: orgUsu, func: orgFunc, hist: orgHist}[tab](o)}`;
+}
+function polFor(o) {
+  if (ME === 'S') return {ok: true, modo: 'escrita', max: null, motivo: false};
+  const a = meAdmin(), p = a && a.pol;
+  if (!p) return {ok: false, why: 'Seu perfil não tem política de impersonação.'};
+  if (!(p.orgs === 'all' || p.orgs.includes(o.id))) return {ok: false, why: 'Fora das organizações atribuídas a você.'};
+  if (o.estado === 'encerrada') return {ok: true, ...p};
+  return {ok: true, ...p};
+}
+function orgResumo(o) {
+  const lateInfo = stInfo(o), warns = [];
+  if (o.sub.agenda) warns.push(`<div class="banner banner--warning">${ico('clock', 'i')}<span class="l"><b>Mudança agendada:</b> ${ST[o.sub.agenda.to][0].toLowerCase()} em ${fmtD(o.sub.agenda.when)}<small>${esc(o.sub.agenda.why)} · por ${esc(o.sub.agenda.by)}</small></span></div>`);
+  if (lateInfo.late) warns.push(`<div class="banner banner--warning">${ico('warn', 'i')}<span class="l"><b>Pagamento em atraso:</b> ${esc(lateInfo.t)}<small>Passando da tolerância a assinatura vira Suspensa sozinha.</small></span></div>`);
+  if (o.estado === 'bloqueada') warns.push(`<div class="banner banner--error">${ico('lock', 'i')}<span class="l"><b>Bloqueada.</b> Nenhum acesso, nem do dono.<small>${esc((o.hist[0] || {}).why || '')}</small></span></div>`);
+  return warns.join('') + `<div class="sum">${stat('Comandas (30 dias)', nf(o.c30))}${stat('Faturamento do cliente (30 dias)', brl(o.fat30), 'valor processado no sistema')}${stat('Usuários ativos', `${o.ativos}<small>/${o.usersN}</small>`, `limite do plano: ${usersLimit(o)}`)}${stat('Último acesso', o.estado === 'encerrada' ? '—' : rel(o.ult))}</div>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Dados da organização</h2></div><dl class="facts"><div><dt>CNPJ</dt><dd>${esc(o.cnpj)}</dd></div><div><dt>Cidade</dt><dd>${esc(o.cidade)}</dd></div><div><dt>Dono</dt><dd>${esc(o.dono.n)}<br><span class="muted">${esc(o.dono.email)}</span></dd></div><div><dt>Cliente desde</dt><dd>${fmtD(o.criada)}</dd></div><div><dt>Plano</dt><dd>${PLAN(o.plano).n} · ${brl(monthly(o))}/mês</dd></div><div><dt>Unidades</dt><dd>${unitsOn(o)} de ${unitsLimit(o)}</dd></div></dl></section>
+  ${o.estado === 'encerrada' && can('organizacao:excluir') ? `<section class="card pad card--alert"><div class="sec-h"><h2 class="sec">Excluir e anonimizar</h2></div><p class="note">Dados retidos pelo prazo legal (${S.cfg.retencao} meses, exemplo). Depois disso são eliminados ou anonimizados. Esta ação é auditada e a exportação deve ter sido feita antes.</p><div class="acts" style="margin-top:12px"><button class="btn btn--danger" data-act="org-del" data-id="${o.id}">Excluir e anonimizar…</button></div></section>` : ''}`;
+}
+
+/* acoes do ciclo da assinatura: cada uma com permissao, estados de origem, campos e efeito */
+function setState(o, to) {
+  if (!TRANS[o.estado].includes(to)) throw new Error('Transição inválida');
+  o.estado = to; const s = o.sub;
+  if (to === 'ativa') { s.susMode = null; s.trialEnd = null; }
+  if (to === 'encerrada') { s.encerradaEm = now(); s.agenda = null; s.cancelaEm = null; }
+}
+function commit(o, text, why, msg, tipo) {
+  o.hist.unshift({t: now(), by: meName(), x: text, why: why || ''});
+  audit(tipo || 'assinatura', text, o, why);
+  save(); render(); toast(msg || text, 'O dono foi avisado (e-mail e central de avisos) e o histórico foi atualizado.');
+}
+const limMsg = (k, un) => { const l = lim(k); return l === Infinity ? 'Sem limite para o seu perfil.' : `Seu limite: ${l} ${un}.`; };
+const ACTS = [
+  {id: 'prorrogar', t: 'Prorrogar teste', perm: 'assinatura:prorrogar_teste', from: ['em_teste'],
+    form: o => ({title: 'Prorrogar o teste', lead: `Hoje o teste acaba em ${fmtD(o.sub.trialEnd)}.`, body: inp('dias', 'Prorrogar por quantos dias?', {type: 'number', value: 7, min: 1, msg: limMsg('assinatura:prorrogar_teste', 'dias por prorrogação')}) + why()}),
+    run: (o, fd) => { const n = +fd.get('dias'); if (!(n >= 1) || n !== Math.floor(n)) return 'Informe um número inteiro de dias.'; if (n > lim('assinatura:prorrogar_teste')) return `Acima do seu limite de ${lim('assinatura:prorrogar_teste')} dias. Peça a um perfil com limite maior.`; const w = checkWhy(fd); if (w) return w; o.sub.trialEnd += n * D; commit(o, `Prorrogou o teste em ${n} dias (até ${fmtD(o.sub.trialEnd)})`, fd.get('why')); }},
+  {id: 'converter', t: 'Converter em ativa', perm: 'assinatura:converter', from: ['em_teste'], primary: true,
+    form: o => ({title: 'Converter em assinatura ativa', lead: 'O cliente passa a ser cobrado. A primeira cobrança vence em 30 dias.', body: sel('plano', 'Plano', S.plans.map(p => [p.id, `${p.n} · ${brl(p.preco)}/mês`]), o.plano) + why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; o.plano = fd.get('plano'); setState(o, 'ativa'); o.sub.venc = now() + 30 * D; o.sub.tol = S.cfg.tolerancia; o.sub.desde = now(); commit(o, `Converteu o teste em ativa (plano ${PLAN(o.plano).n})`, fd.get('why')); }},
+  {id: 'pagamento', t: 'Registrar pagamento', perm: 'assinatura:registrar_pagamento', from: ['ativa', 'suspensa'], primary: o => o.estado === 'ativa' && stInfo(o).late,
+    form: o => ({title: 'Registrar pagamento', lead: 'Soma 30 dias ao vencimento.', body: `<div class="fg--2 fg">${inp('valor', 'Valor (R$)', {type: 'number', value: monthly(o), min: 0})}${sel('forma', 'Forma', [['Boleto', 'Boleto'], ['Pix', 'Pix'], ['Cartão', 'Cartão'], ['Transferência', 'Transferência']], 'Boleto')}</div>` + (o.estado === 'suspensa' ? `<label class="check"><input type="checkbox" name="reativar" checked><span>Reativar a assinatura agora</span></label>` : '') + why('Observação')}),
+    run: (o, fd) => { const v = +fd.get('valor'); if (!(v > 0)) return 'Informe o valor pago.'; const w = checkWhy(fd); if (w) return w; o.sub.venc = Math.max(o.sub.venc || 0, now()) + 30 * D; let x = `Registrou pagamento de ${brl2(v)} (${fd.get('forma')})`; if (o.estado === 'suspensa' && fd.get('reativar')) { setState(o, 'ativa'); x += ' e reativou'; } commit(o, x, fd.get('why')); }},
+  {id: 'cortesia', t: 'Conceder cortesia', perm: 'assinatura:conceder_cortesia', from: ['ativa'],
+    form: o => ({title: 'Conceder período gratuito', lead: 'Empurra o próximo vencimento sem cobrar.', body: inp('dias', 'Quantos dias?', {type: 'number', value: 15, min: 1, msg: limMsg('assinatura:conceder_cortesia', 'dias')}) + why()}),
+    run: (o, fd) => { const n = +fd.get('dias'); if (!(n >= 1)) return 'Informe os dias.'; if (n > lim('assinatura:conceder_cortesia')) return `Acima do seu limite de ${lim('assinatura:conceder_cortesia')} dias.`; const w = checkWhy(fd); if (w) return w; o.sub.venc += n * D; commit(o, `Concedeu cortesia de ${n} dias (vencimento em ${fmtD(o.sub.venc)})`, fd.get('why')); }},
+  {id: 'excecao', t: 'Exceção manual', perm: 'assinatura:excecao_manual', from: ['ativa', 'suspensa'],
+    form: o => ({title: 'Manter liberado apesar do vencimento', lead: 'A organização não será suspensa até a data escolhida.', body: inp('dias', 'Por quantos dias?', {type: 'number', value: 7, min: 1, msg: limMsg('assinatura:excecao_manual', 'dias')}) + why()}),
+    run: (o, fd) => { const n = +fd.get('dias'); if (!(n >= 1)) return 'Informe os dias.'; if (n > lim('assinatura:excecao_manual')) return `Acima do seu limite de ${lim('assinatura:excecao_manual')} dias.`; const w = checkWhy(fd); if (w) return w; o.sub.excecaoAte = now() + n * D; commit(o, `Abriu exceção manual até ${fmtD(o.sub.excecaoAte)}`, fd.get('why')); }},
+  {id: 'agendar', t: 'Agendar mudança', perm: 'assinatura:agendar_mudanca', from: ['em_teste', 'ativa', 'suspensa'], when: o => !o.sub.agenda,
+    form: o => ({title: 'Agendar mudança de estado', lead: 'Só mudanças válidas aparecem. O dono é avisado agora e de novo no dia.', body: `<div class="fg--2 fg">${sel('para', 'Mudar para', TRANS[o.estado].filter(e => e !== 'encerrada' || true).map(e => [e, ST[e][0]]), TRANS[o.estado][0])}${inp('data', 'Em', {type: 'date', value: dateIn(7), min: dateIn(1)})}</div>` + why()}),
+    run: (o, fd) => { if (!fd.get('data') || fd.get('data') < dateIn(1)) return 'Escolha uma data futura.'; const w = checkWhy(fd); if (w) return w; const to = fd.get('para'); if (!TRANS[o.estado].includes(to)) return 'Transição inválida.'; const when = new Date(fd.get('data') + 'T08:00:00').getTime(); o.sub.agenda = {when, to, why: fd.get('why'), by: meName()}; commit(o, `Agendou ${ST[to][0].toLowerCase()} para ${fmtD(when)}`, fd.get('why')); }},
+  {id: 'desagendar', t: 'Cancelar agendamento', perm: 'assinatura:agendar_mudanca', from: ['em_teste', 'ativa', 'suspensa'], when: o => !!o.sub.agenda,
+    form: o => ({title: 'Cancelar a mudança agendada', lead: `Hoje: ${ST[o.sub.agenda.to][0].toLowerCase()} em ${fmtD(o.sub.agenda.when)}.`, body: why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; o.sub.agenda = null; commit(o, 'Cancelou a mudança agendada', fd.get('why')); }},
+  {id: 'suspender', t: 'Suspender', perm: 'assinatura:suspender', from: ['em_teste', 'ativa'],
+    form: o => ({title: 'Suspender a assinatura', lead: 'Pausa reversível. Escolha o que a organização consegue fazer.', body: radios('modo', [['leitura', 'Só leitura e exportação', 'Consulta e baixa os próprios dados, sem lançar nada.'], ['total', 'Bloqueio total', 'Ninguém entra; vê só a tela informativa com o motivo.']], 'leitura') + why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; setState(o, 'suspensa'); o.sub.susMode = fd.get('modo'); o.sub.agenda = null; commit(o, `Suspendeu (${o.sub.susMode === 'total' ? 'bloqueio total' : 'somente leitura e exportação'})`, fd.get('why')); }},
+  {id: 'bloquear', t: 'Bloquear', perm: 'assinatura:bloquear', from: ['ativa', 'suspensa'], danger: true,
+    form: o => ({title: 'Bloquear por segurança', lead: 'Nenhum acesso, nem do dono. Depois só o super admin libera. Use para abuso, fraude ou questão legal.', body: why('Motivo do bloqueio')}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; setState(o, 'bloqueada'); o.sub.agenda = null; commit(o, 'Bloqueou', fd.get('why')); }},
+  {id: 'reativar', t: 'Reativar', perm: 'assinatura:reativar', from: ['suspensa', 'bloqueada'], when: o => o.estado !== 'bloqueada' || ME === 'S', primary: o => o.estado === 'suspensa',
+    form: o => ({title: o.estado === 'bloqueada' ? 'Liberar o bloqueio' : 'Reativar a assinatura', lead: o.estado === 'bloqueada' ? 'Só o super admin libera. Escolha como a organização volta.' : 'O acesso volta por completo.', body: (o.estado === 'bloqueada' ? radios('dest', [['ativa', 'Voltar a Ativa'], ['suspensa', 'Voltar a Suspensa', 'Mantém só leitura até regularizar.']], 'ativa') : '') + why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; const was = o.estado, to = was === 'bloqueada' ? fd.get('dest') : 'ativa'; setState(o, to); if (to === 'suspensa') o.sub.susMode = 'leitura'; commit(o, was === 'bloqueada' ? `Liberou o bloqueio (voltou a ${ST[to][0]})` : 'Reativou', fd.get('why')); }},
+  {id: 'cancelar', t: 'Cancelar assinatura', perm: 'assinatura:cancelar', from: ['ativa'], when: o => !o.sub.cancelaEm, danger: true,
+    form: o => ({title: 'Cancelar a assinatura', lead: `Não encerra agora: o acesso segue até o fim do período pago (${fmtD(o.sub.venc)}).`, body: why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; o.sub.cancelaEm = o.sub.venc; commit(o, `Agendou o encerramento para ${fmtD(o.sub.venc)} (cancelamento)`, fd.get('why')); }},
+  {id: 'desfazer', t: 'Desfazer cancelamento', perm: 'assinatura:cancelar', from: ['ativa'], when: o => !!o.sub.cancelaEm,
+    form: o => ({title: 'Desfazer o cancelamento', lead: 'A assinatura continua normalmente.', body: why()}),
+    run: (o, fd) => { const w = checkWhy(fd); if (w) return w; o.sub.cancelaEm = null; commit(o, 'Desfez o cancelamento', fd.get('why')); }},
+  {id: 'encerrar', t: 'Encerrar agora', perm: 'assinatura:cancelar', from: ['em_teste', 'suspensa', 'bloqueada', 'ativa'], danger: true, when: o => o.estado !== 'ativa' || !!o.sub.cancelaEm,
+    form: o => ({title: 'Encerrar a assinatura agora', lead: `Fim de vida: não volta. Os dados ficam retidos por ${S.cfg.retencao} meses (exemplo) e o dono só lê e exporta por ${S.cfg.janelaLeitura} dias.`, body: inp('conf', `Digite o nome da organização para confirmar`, {ph: o.nome}) + why()}),
+    run: (o, fd) => { if (strip(fd.get('conf')).trim() !== strip(o.nome)) return 'O nome digitado não confere.'; const w = checkWhy(fd); if (w) return w; setState(o, 'encerrada'); commit(o, 'Encerrou a assinatura', fd.get('why')); }}
+];
+const actsFor = o => ACTS.filter(a => a.from.includes(o.estado) && can(a.perm) && (!a.when || a.when(o)));
+
+function orgAssin(o) {
+  const s = o.sub, cur = o.estado, next = TRANS[cur], acts = actsFor(o);
+  const i = stInfo(o);
+  const banners = [];
+  if (s.agenda) banners.push(`<div class="banner banner--warning">${ico('clock', 'i')}<span class="l"><b>Agendado:</b> ${ST[s.agenda.to][0].toLowerCase()} em ${fmtD(s.agenda.when)}<small>${esc(s.agenda.why)} · por ${esc(s.agenda.by)}</small></span></div>`);
+  if (s.cancelaEm) banners.push(`<div class="banner banner--warning">${ico('clock', 'i')}<span class="l"><b>Cancelamento pedido:</b> encerra em ${fmtD(s.cancelaEm)}, ao fim do período pago.</span></div>`);
+  if (s.excecaoAte && s.excecaoAte > now()) banners.push(`<div class="banner banner--info">${ico('info', 'i')}<span class="l"><b>Exceção manual:</b> liberada até ${fmtD(s.excecaoAte)} apesar do vencimento.</span></div>`);
+  const facts = [['Plano', `${PLAN(o.plano).n} · ${brl(monthly(o))}/mês`]];
+  if (cur === 'em_teste') facts.push(['Teste termina em', `${fmtD(s.trialEnd)} <span class="muted">(${i.t.replace('teste ', '')})</span>`], ['Ao fim do teste', S.cfg.fimTeste === 'suspensa' ? 'Vira Suspensa (padrão da plataforma)' : 'Vira Ativa com tolerância']);
+  if (cur === 'ativa') facts.push(['Próximo vencimento', `${fmtD(s.venc)}`], ['Tolerância de atraso', `${s.tol} dias`], ['Cliente ativo desde', fmtD(s.desde)]);
+  if (cur === 'suspensa') facts.push(['Acesso', s.susMode === 'total' ? 'Bloqueio total' : 'Só leitura e exportação'], ['Último vencimento', s.venc ? fmtD(s.venc) : '—']);
+  if (cur === 'bloqueada') facts.push(['Acesso', 'Nenhum, nem do dono'], ['Quem libera', 'Só o super admin']);
+  if (cur === 'encerrada') facts.push(['Encerrada em', fmtD(s.encerradaEm)], ['Janela de leitura', `${S.cfg.janelaLeitura} dias, depois nenhum acesso`], ['Retenção dos dados', `${S.cfg.retencao} meses`]);
+  return banners.join('') + `<section class="card pad"><div class="sec-h"><h2 class="sec">Ciclo da assinatura</h2><span class="sub">O estado é decidido no servidor em toda requisição</span></div>
+  <div class="track">${Object.keys(ST).map(k => `<div class="tk ${k === cur ? 'tk--now' : next.includes(k) ? 'tk--next' : 'tk--off'}"${k === cur ? ' aria-current="true"' : ''}><b>${stBadge(k)}${k === cur ? '<span class="tag">agora</span>' : ''}</b><small>${ST[k][2]}</small></div>`).join('')}</div>
+  <p class="note" style="margin-top:10px">Contorno cheio = estados para onde esta organização pode ir. Transição inválida é recusada.</p></section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Situação atual</h2></div><dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Ações</h2><span class="sub">Toda ação pede motivo, avisa o dono e entra na auditoria</span></div>
+  ${acts.length ? `<div class="acts">${acts.map(a => `<button class="btn ${(typeof a.primary === 'function' ? a.primary(o) : a.primary) ? 'btn--primary' : a.danger ? 'btn--danger' : ''}" data-act="sub" data-a="${a.id}" data-id="${o.id}">${a.t}</button>`).join('')}</div>` : `<p class="note">${cur === 'encerrada' ? 'Assinatura encerrada: estado final, sem ações.' : cur === 'bloqueada' && ME !== 'S' && can('assinatura:reativar') ? 'Só o super admin libera um bloqueio.' : 'Seu perfil não tem ações de assinatura para este estado.'}</p>`}
+  ${cur === 'bloqueada' && ME !== 'S' && acts.length ? '<p class="note" style="margin-top:8px">Só o super admin libera um bloqueio.</p>' : ''}</section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Últimos registros</h2><a class="btn btn--sm" href="${href({screen: 'org', id: o.id, tab: 'hist'})}">Ver tudo</a></div>${tl(o.hist.slice(0, 3))}</section>`;
+}
+const tl = L => L.length ? `<ul class="tl">${L.map(h => `<li><b>${esc(h.x)}</b><small>${esc(h.by)} · ${fmtDT(h.t)}</small>${h.why ? `<span class="why">Motivo: ${esc(h.why)}</span>` : ''}</li>`).join('')}</ul>` : '<p class="note">Sem registros.</p>';
+const orgHist = o => `<section class="card pad"><div class="sec-h"><h2 class="sec">Histórico da organização</h2><span class="sub">Cada linha tem autor, horário e motivo</span>${can('auditoria_plataforma:ver') ? `<a class="btn btn--sm" href="${href({screen: 'auditoria', q: o.nome})}">Abrir na auditoria</a>` : ''}</div>${tl(o.hist)}</section>`;
+
+function orgUnid(o) {
+  const L = unitsLimit(o), n = unitsOn(o), fonte = o.limUn != null ? 'limite próprio' : `limite do plano ${PLAN(o.plano).n}`;
+  return `<section class="card pad"><div class="sec-h"><h2 class="sec">Unidades</h2><span class="sub">${n} de ${L} (${fonte})</span>
+    <span style="margin-left:auto;display:flex;gap:8px">${can('unidade_organizacao:definir_limite') ? `<button class="btn btn--sm" data-act="unit-limit" data-id="${o.id}">Alterar limite</button>` : ''}${can('unidade_organizacao:criar') && o.estado !== 'encerrada' ? `<button class="btn btn--sm btn--primary" data-act="unit-new" data-id="${o.id}" ${n >= L ? 'disabled title="Limite atingido: aumente o limite primeiro"' : ''}>${ico('plus')} Criar unidade</button>` : ''}</span></div>
+    <div class="meter" style="margin-bottom:8px" role="img" aria-label="${n} de ${L} unidades"><i style="width:${Math.min(100, n / L * 100)}%"></i></div>
+    <div class="rows">${o.units.map(u => `<div><span class="grow"><b>${esc(u.n)}</b><small>${esc(u.end)}</small></span><span class="badge ${u.on ? 'badge--open' : 'badge--closed'}"><i></i>${u.on ? 'Ativa' : 'Desativada'}</span></div>`).join('')}</div>
+    <p class="note" style="margin-top:12px">A plataforma define quantas unidades a organização pode ter e pode criar a primeira em nome dela; o dono cria as demais até o limite (F12.17).</p></section>`;
+}
+function orgUsu(o) {
+  return `<section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Usuários</h2><span class="sub">mostrando ${o.users.length} de ${o.usersN} · limite do plano ${usersLimit(o)}</span></div></div>
+  <div class="tw"><table><thead><tr><th>Pessoa</th><th>Perfil</th><th>Conta</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody>${o.users.map(u => `<tr><td><span class="who"><span class="avatar">${esc(inits(u.n))}</span>${esc(u.n)}</span></td><td>${esc(u.p)}</td><td><span class="tag">${u.c === 'email' ? 'Com e-mail' : 'Operacional'}</span></td><td class="muted">${rel(u.ult)}</td><td><span class="badge ${u.on ? 'badge--open' : 'badge--closed'}"><i></i>${u.on ? 'Ativo' : 'Desativado'}</span></td><td class="r">${can('usuario_organizacao:gerenciar') && u.on && o.estado !== 'encerrada' ? `<button class="btn btn--sm" data-act="user-reset" data-id="${o.id}" data-u="${u.id}">Redefinir acesso</button>` : ''}</td></tr>`).join('')}</tbody></table></div></section>
+  <p class="note">A plataforma redefine o acesso e consulta; segredos (senhas, PIN, chaves) nunca aparecem aqui, nem para o super admin.</p>`;
+}
+const flagEff = (o, f) => o.flags[f.id] === 'on' ? [1, 'Exceção: ligada'] : o.flags[f.id] === 'off' ? [0, 'Exceção: desligada'] : [f.pl[S.plans.findIndex(p => p.id === o.plano)] ? 1 : 0, 'Pelo plano'];
+function orgFunc(o) {
+  return `<section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Funcionalidades</h2><span class="sub">O plano liga o padrão; a exceção vale só para esta organização</span></div></div><div class="tw"><table><thead><tr><th>Funcionalidade</th><th>Pelo plano ${PLAN(o.plano).n}</th><th>Nesta organização</th><th>Resultado</th></tr></thead><tbody>${S.flags.map(f => {
+    const pi = S.plans.findIndex(p => p.id === o.plano), [eff, src] = flagEff(o, f), ov = o.flags[f.id] || '';
+    return `<tr><td><span class="two"><b>${esc(f.n)}</b><small>${esc(f.d)}</small></span></td><td>${f.pl[pi] ? 'Ligada' : 'Desligada'} ${f.tipo === 'Beta' ? '<span class="tag tag--brand">Beta</span>' : ''}</td><td>${can('feature_flag:gerenciar') ? `<select class="field" style="height:32px;width:170px" data-ch="orgflag" data-id="${o.id}" data-f="${f.id}" aria-label="${esc(f.n)}"><option value="" ${!ov ? 'selected' : ''}>Seguir o plano</option><option value="on" ${ov === 'on' ? 'selected' : ''}>Ligar (exceção)</option><option value="off" ${ov === 'off' ? 'selected' : ''}>Desligar (exceção)</option></select>` : src}</td><td><span class="badge ${eff ? 'badge--open' : 'badge--closed'}"><i></i>${eff ? 'Ligada' : 'Desligada'}</span></td></tr>`;
+  }).join('')}</tbody></table></div></section>`;
+}
+
+/* ===== COBRANCA ===== */
+function cobrancaHtml(R) {
+  const ativas = S.orgs.filter(o => o.estado === 'ativa'), late = S.orgs.filter(o => stInfo(o).late);
+  const prox = ativas.filter(o => !stInfo(o).late && o.sub.venc - now() < 15 * D).sort((a, b) => a.sub.venc - b.sub.venc);
+  const mrr = ativas.reduce((s, o) => s + monthly(o), 0), rec = prox.reduce((s, o) => s + monthly(o), 0), lv = late.reduce((s, o) => s + monthly(o), 0);
+  const susp = S.orgs.filter(o => o.estado === 'suspensa');
+  const tb = (L, late_) => `<div class="tw"><table><thead><tr><th>Organização</th><th>Plano</th><th class="r">Valor</th><th>Vencimento</th><th>${late_ ? 'Tolerância' : 'Faltam'}</th><th></th></tr></thead><tbody>${L.map(o => { const dd = Math.floor((now() - o.sub.venc) / D); return `<tr class="go" data-href="${href({screen: 'org', id: o.id, tab: 'assin'})}"><td><span class="two"><a href="${href({screen: 'org', id: o.id, tab: 'assin'})}">${esc(o.nome)}</a><small>${o.sub.agenda ? 'Suspensão agendada para ' + fmtDM(o.sub.agenda.when) : esc(o.dono.email)}</small></span></td><td>${PLAN(o.plano).n}</td><td class="r num">${brl2(monthly(o))}</td><td>${fmtD(o.sub.venc)}</td><td>${late_ ? `<span class="tag tag--wait">venceu há ${dd} d · restam ${Math.max(0, o.sub.tol - dd)} d</span>` : `${Math.ceil((o.sub.venc - now()) / D)} d`}</td><td class="r">${can('assinatura:registrar_pagamento') ? `<button class="btn btn--sm ${late_ ? 'btn--primary' : ''}" data-act="sub" data-a="pagamento" data-id="${o.id}">Registrar pagamento</button>` : ''}</td></tr>`; }).join('') || `<tr><td colspan="6" class="wrap" style="height:auto;padding:28px;text-align:center" class="muted">Nada aqui.</td></tr>`}</tbody></table></div>`;
+  return head('Cobrança', 'Receita recorrente, atrasos e vencimentos. Valores de exemplo.') + `<div class="sum">${stat('Receita mensal (MRR)', brl(mrr), `${ativas.length} assinaturas ativas`)}${stat('A receber em 15 dias', brl(rec), `${prox.length} ${plural(prox.length, 'vencimento', 'vencimentos')}`)}${stat('Em atraso', brl(lv), `${late.length} ${plural(late.length, 'organização', 'organizações')} na tolerância`, late.length)}${stat('Suspensas', susp.length, `${brl(susp.reduce((s, o) => s + monthly(o), 0))}/mês parado`)}</div>
+  <section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Em atraso</h2><span class="sub">Passando da tolerância a assinatura vira Suspensa sozinha</span></div></div>${tb(late, true)}</section>
+  <section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Próximos vencimentos</h2><span class="sub">15 dias</span></div></div>${tb(prox, false)}</section>`;
+}
+
+/* ===== PLANOS ===== */
+function planosHtml() {
+  const edit = can('plano:gerenciar');
+  return head('Planos', 'Catálogo com preço mensal e limites de usuários e unidades. Valores de exemplo.', edit ? `<button class="btn btn--primary" data-act="plan-edit">${ico('plus')} Novo plano</button>` : '') + `<section class="card"><div class="tw"><table><thead><tr><th>Plano</th><th class="r">Preço mensal</th><th class="r">Usuários</th><th class="r">Unidades</th><th class="r">Organizações</th><th class="r">Receita</th><th></th></tr></thead><tbody>${S.plans.map(p => { const L = S.orgs.filter(o => o.plano === p.id && o.estado !== 'encerrada'); return `<tr><td><b>${esc(p.n)}</b></td><td class="r num">${brl2(p.preco)}</td><td class="r num">até ${p.users}</td><td class="r num">até ${p.units}</td><td class="r num">${L.length}</td><td class="r num">${brl(L.filter(o => o.estado === 'ativa').length * p.preco)}</td><td class="r">${edit ? `<button class="btn btn--sm" data-act="plan-edit" data-id="${p.id}">Editar</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div></section><p class="note">A organização pode ter limite de unidades próprio (acima ou abaixo do plano). Trocar de plano é feito na ficha, em Assinatura › Converter em ativa. ${edit ? '' : 'Seu perfil só consulta.'}</p>`;
+}
+
+/* ===== FUNCIONALIDADES ===== */
+function flagsHtml() {
+  const edit = can('feature_flag:gerenciar');
+  return head('Funcionalidades', 'Liga ou retira recursos por plano. Exceções valem para uma organização só.') + `<section class="card"><div class="tw"><table><thead><tr><th>Funcionalidade</th>${S.plans.map(p => `<th class="c" style="text-align:center">${esc(p.n)}</th>`).join('')}<th>Exceções</th></tr></thead><tbody>${S.flags.map(f => { const ex = S.orgs.filter(o => o.flags[f.id]); return `<tr><td><span class="two"><b>${esc(f.n)} ${f.tipo === 'Beta' ? '<span class="tag tag--brand">Beta</span>' : ''}</b><small>${esc(f.d)}</small></span></td>${f.pl.map((v, i) => `<td style="text-align:center"><label class="switch" style="min-height:0"><input type="checkbox" ${v ? 'checked' : ''} ${edit ? '' : 'disabled'} data-ch="flagplan" data-f="${f.id}" data-i="${i}" aria-label="${esc(f.n)} no plano ${esc(S.plans[i].n)}"><span class="switch__track"></span></label></td>`).join('')}<td>${ex.length ? `<span class="tag">${ex.length} ${plural(ex.length, 'organização', 'organizações')}</span>` : '<span class="muted">nenhuma</span>'} ${edit ? `<button class="btn btn--sm" data-act="flag-ex" data-f="${f.id}">Gerenciar</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div></section>`;
+}
+
+/* ===== COMUNICADOS ===== */
+const COMM_ST = {rascunho: ['Rascunho', 'closed'], publicado: ['Publicado', 'open'], expirado: ['Expirado', 'closed']};
+function targetTotal(c) { return S.orgs.filter(o => (c.alvo === 'all' || c.orgs.includes(o.id)) && !['encerrada', 'bloqueada'].includes(o.estado)).reduce((s, o) => s + o.usersN, 0); }
+function comunicadosHtml() {
+  const pub = can('comunicado:publicar');
+  return head('Comunicados', 'Avisos dentro do sistema, para todas as organizações ou para as escolhidas.', pub ? `<button class="btn btn--primary" data-act="comm-new">${ico('plus')} Novo comunicado</button>` : '') + `<section class="card"><div class="tw"><table><thead><tr><th>Comunicado</th><th>Alvo</th><th>Situação</th><th>Leitura</th><th></th></tr></thead><tbody>${S.comms.map(c => { const tot = c.st === 'rascunho' ? targetTotal(c) : c.total; return `<tr><td class="wrap" style="min-width:300px;padding-top:10px;padding-bottom:10px"><span class="two"><b>${esc(c.t)} <span class="tag ${c.sev === 'atencao' ? 'tag--wait' : 'tag--brand'}">${c.sev === 'atencao' ? 'Atenção' : 'Info'}</span></b><small>${esc(c.txt)}</small></span></td><td>${c.alvo === 'all' ? 'Todas as organizações' : `${c.orgs.length} ${plural(c.orgs.length, 'organização', 'organizações')}`}</td><td><span class="two"><span class="badge badge--${COMM_ST[c.st][1]}"><i></i>${COMM_ST[c.st][0]}</span><small>${c.st === 'publicado' ? `expira em ${fmtD(c.exp)}` : c.st === 'expirado' ? `expirou em ${fmtD(c.exp)}` : `${tot} destinatários`}</small></span></td><td>${c.st === 'rascunho' ? '<span class="muted">—</span>' : `<span class="two"><div class="meter"><i style="width:${Math.round(c.lidos / c.total * 100)}%"></i></div><small>${c.lidos} de ${c.total} (${Math.round(c.lidos / c.total * 100)}%)</small></span>`}</td><td class="r">${pub && c.st === 'rascunho' ? `<button class="btn btn--sm btn--primary" data-act="comm-pub" data-id="${c.id}">Publicar</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div></section>`;
+}
+
+/* ===== OPERACAO ===== */
+function operacaoHtml() {
+  const em = can('seguranca:emergencia'), JS = {ok: ['Normal', 'open'], wait: ['Atenção', 'wait'], alert: ['Com falha', 'alert']};
+  return head('Operação', 'Filas, rotinas e integrações. Visão técnica de leitura.') + `<div class="sum">${stat('Filas e rotinas', S.jobs.length, `${S.jobs.filter(j => j.st === 'ok').length} normais`)}${stat('Falhas em 24 h', S.jobs.reduce((s, j) => s + j.fail, 0), 'em filas e integrações', S.jobs.some(j => j.fail))}${stat('Último backup', fmtT(S.jobs[3].last), `hoje · retenção de 30 dias`)}${stat('Cópia da auditoria', 'Em dia', 'enviada há 2 min')}</div>
+  <section class="card"><div class="tw"><table><thead><tr><th>Item</th><th>Tipo</th><th>Situação</th><th class="r">Na fila</th><th class="r">Execuções 24 h</th><th class="r">Falhas</th><th>Último</th><th>Detalhe</th></tr></thead><tbody>${S.jobs.map(j => `<tr><td><b>${esc(j.n)}</b></td><td><span class="tag">${j.k}</span></td><td><span class="badge badge--${JS[j.st][1]}"><i></i>${JS[j.st][0]}</span></td><td class="r num">${j.back}</td><td class="r num">${nf(j.n24)}</td><td class="r num" ${j.fail ? 'style="color:var(--alert);font-weight:600"' : ''}>${j.fail}</td><td class="muted">${rel(j.last)}</td><td class="muted wrap" style="min-width:260px">${esc(j.note) || '—'}</td></tr>`).join('')}</tbody></table></div></section>
+  <section class="card pad ${em ? 'card--alert' : ''}"><div class="sec-h"><h2 class="sec">Emergência</h2><span class="sub">Só o super admin. Cada botão pede confirmação digitada e motivo.</span></div>
+  ${em ? `<div class="acts"><button class="btn btn--danger" data-act="emerg" data-k="sessoes">Revogar sessões de administradores</button><button class="btn btn--danger" data-act="emerg" data-k="suspender">Suspender uma organização agora</button><button class="btn btn--danger" data-act="emerg" data-k="segredos">Rotacionar segredos</button></div>` : `<p class="note">${ico('lock', 'i')} Seu perfil (${PROFILES[ME][0]}) não tem <code>seguranca:emergencia</code>.</p>`}</section>`;
+}
+
+/* ===== AUDITORIA ===== */
+function auditoriaHtml(R) {
+  const q = strip(R.q || ''), tipos = Object.entries(AUD_TIPOS);
+  const base = S.audit.filter(e => (!q || strip(e.x + ' ' + e.org + ' ' + e.why + ' ' + e.by).includes(q)) && (!R.adm || e.by === R.adm));
+  const L = base.filter(e => !R.tipo || e.tipo === R.tipo);
+  const pg = pager(L.length, R, {sizes: [10, 25, 50], def: 25});
+  const v = UI.verify;
+  return head('Auditoria da plataforma', 'Todo ato de administrador, imutável. Cada linha carrega o hash da anterior.', `<button class="btn" data-act="verify">${ico('shield')} Verificar integridade</button>`) +
+  (v ? (v.ok ? `<div class="banner banner--info" role="status">${ico('check', 'i')}<span class="l"><b>Cadeia íntegra.</b> ${v.n} registros conferidos às ${fmtT(now())}.<small>Falha de integridade é tratada como incidente (S14).</small></span></div>` : `<div class="banner banner--error" role="alert">${ico('alarm', 'i')}<span class="l"><b>Integridade quebrada no registro #${v.at.id}</b> (${fmtDT(v.at.t)}, ${esc(v.at.by)}).<small>O texto não confere com o hash gravado. Isso abre incidente de segurança.</small></span></div>`) : `<div class="banner banner--info">${ico('shield', 'i')}<span class="l"><b>Cópia fora do banco principal:</b> sincronizada há 2 min.<small>A verificação periódica da cadeia roda às 04:00.</small></span></div>`) + `
+  <div class="bar"><label class="field field--search">${ico('search')}<span class="sr">Buscar</span><input id="aq" data-in="q" value="${esc(R.q || '')}" placeholder="Pessoa, organização ou motivo" autocomplete="off"></label>
+  <select class="field" data-ch="adm" aria-label="Administrador"><option value="">Todos os administradores</option>${S.admins.map(a => `<option ${R.adm === a.n ? 'selected' : ''}>${esc(a.n)}</option>`).join('')}</select>
+  <div class="chips"><button class="chip" data-act="chipt" data-t="" aria-pressed="${!R.tipo}">Tudo <span class="chip__count">${base.length}</span></button>${tipos.map(([k, t]) => { const n = base.filter(e => e.tipo === k).length; return n || R.tipo === k ? `<button class="chip" data-act="chipt" data-t="${k}" aria-pressed="${R.tipo === k}">${t} <span class="chip__count">${n}</span></button>` : ''; }).join('')}</div></div>
+  <section class="card"><div class="tw"><table><thead><tr><th>Quando</th><th>Quem</th><th>Tipo</th><th>O que aconteceu</th><th>Hash</th></tr></thead><tbody>${L.slice(pg.from, pg.from + pg.size).map(e => `<tr><td><span class="two">${fmtD(e.t)} ${fmtT(e.t)}<small>${rel(e.t)}</small></span></td><td><span class="two">${esc(e.by)}<small class="mono">${esc(e.ip)}</small></span></td><td><span class="tag">${AUD_TIPOS[e.tipo]}</span></td><td class="wrap" style="min-width:340px;padding:10px 14px"><span class="two"><span>${esc(e.x)}${e.org ? ` <a href="${href({screen: 'org', id: e.orgId})}" style="font-weight:600">${esc(e.org)}</a>` : ''}</span>${e.why ? `<small>Motivo: ${esc(e.why)}</small>` : ''}</span></td><td class="mono muted" title="${e.h}">#${e.id} · ${e.h.slice(0, 8)}</td></tr>`).join('') || `<tr><td colspan="5" class="wrap" style="height:auto;padding:36px;text-align:center"><b>Nada encontrado</b><br><span class="muted">Mude a busca ou os filtros.</span> <button class="btn btn--sm" data-act="clear">Limpar filtros</button></td></tr>`}</tbody></table></div>${pg.html}</section>
+  <p class="note">Protótipo: <button class="btn btn--sm btn--ghost" data-act="tamper">${S.tamper ? 'Desfazer a adulteração simulada' : 'Simular adulteração de um registro'}</button></p>`;
+}
+
+/* ===== ADMINISTRADORES ===== */
+function polText(a) {
+  if (!(PERM_MAP['suporte:impersonar'] || '').includes(a.p)) return '<span class="muted">Perfil não impersona</span>';
+  if (a.p === 'S') return 'Sem restrição';
+  const p = a.pol; if (!p) return '<span class="muted">Sem política</span>';
+  return `${p.modo === 'escrita' ? 'Leitura e escrita' : 'Somente leitura'} · ${p.max ? p.max + ' min' : 'sem limite'} · ${p.motivo ? 'motivo obrigatório' : 'sem motivo'} · ${p.orgs === 'all' ? 'todas as organizações' : p.orgs.length + ' organizações'}`;
+}
+function adminsHtml(R) {
+  const tab = R.tab === 'perfis' ? 'perfis' : 'pessoas';
+  const tabs = `<div class="tabs-w"><div class="tabs" role="tablist">${[['pessoas', 'Pessoas'], ['perfis', 'Perfis e permissões']].map(([k, t]) => `<a class="tab" role="tab" href="${href({screen: 'admins', tab: k})}" aria-selected="${k === tab}" style="text-decoration:none;display:inline-flex;align-items:center">${t}</a>`).join('')}</div></div>`;
+  if (tab === 'perfis') {
+    const groups = {}; PERMS.forEach(p => { const g = p[0].split(':')[0]; (groups[g] = groups[g] || []).push(p); });
+    const names = Object.keys(PROFILES);
+    return head('Administradores', 'Domínio de identidade separado do sistema dos clientes (D12, D14).') + tabs + `<section class="card"><div class="tw"><table class="mx"><thead><tr><th>Permissão</th>${names.map(k => `<th class="c">${PROFILES[k][0]}</th>`).join('')}</tr></thead><tbody>${PERMS.map(p => `<tr><td><code>${p[0]}</code> ${p[2] ? '<span class="tag tag--brand" title="Ação auditada">A</span>' : ''} ${p[4] ? '<span class="tag tag--wait" title="Com limite">L</span>' : ''}<br><span class="muted" style="font-size:12.5px">${esc(p[1])}</span></td>${names.map(k => `<td class="c">${p[3].includes(k) ? `<span class="dot-y" role="img" aria-label="concede"></span>` : '<span class="dot-n" aria-label="não concede">–</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section><p class="note">${PERMS.length} permissões (o texto de 02d §4 diz 34, mas a tabela tem ${PERMS.length}). A = ação auditada. L = com limite por perfil (valores de exemplo).</p>`;
+  }
+  return head('Administradores', 'Quem entra na Control Tower e o que pode fazer.', `<button class="btn btn--primary" data-act="adm-new">${ico('plus')} Novo administrador</button>`) + tabs + `<section class="card"><div class="tw"><table><thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th>Último login</th><th>Impersonação</th></tr></thead><tbody>${S.admins.map(a => `<tr class="go" data-act="adm-open" data-id="${a.id}"><td><span class="who"><span class="avatar">${esc(inits(a.n))}</span><span class="two"><b>${esc(a.n)}</b><small>${esc(a.email)}</small></span></span></td><td>${PROFILES[a.p][0]} ${a.prot ? '<span class="tag">Protegida</span>' : ''}</td><td><span class="badge ${a.on ? (a.pend ? 'badge--wait' : 'badge--open') : 'badge--closed'}"><i></i>${a.on ? (a.pend ? 'Convite pendente' : 'Ativo') : 'Desativado'}</span></td><td><span class="two">${a.ult ? rel(a.ult) : '—'}<small class="mono">${esc(a.ip || '')}</small></span></td><td class="wrap" style="min-width:260px;padding:8px 14px;font-size:13px">${polText(a)}</td></tr>`).join('')}</tbody></table></div></section><p class="note">A conta do super admin é protegida: ninguém a remove ou rebaixa. Criar ou alterar administrador pede a sua senha de novo (S13).</p>`;
+}
+
+/* ===== CONFIGURACOES ===== */
+const CFG_F = {
+  assin: [
+    ['trialDias', 'Duração padrão do teste', 'num', 'dias', 'Cada organização pode ter outro prazo ao iniciar o teste.', 'assinatura:configurar_politicas', {min: 1, max: 365}],
+    ['tolerancia', 'Tolerância de atraso', 'num', 'dias', 'Vencida dentro da tolerância continua ativa, com avisos ao dono.', 'assinatura:configurar_politicas', {min: 0, max: 30}],
+    ['fimTeste', 'Ao fim do teste', 'sel', '', 'O que acontece se ninguém converter nem prorrogar.', 'assinatura:configurar_politicas', {o: [['suspensa', 'Vira Suspensa'], ['ativa_tol', 'Vira Ativa com tolerância']]}],
+    ['janelaLeitura', 'Janela de leitura após encerrar', 'num', 'dias', 'Só leitura e exportação, depois nenhum acesso.', 'assinatura:configurar_politicas', {min: 0, max: 365}],
+    ['retencao', 'Retenção dos dados após encerrar', 'num', 'meses', 'Depois disso os dados são eliminados ou anonimizados.', 'assinatura:configurar_politicas', {min: 1, max: 120}]],
+  plat: [
+    ['contato', 'E-mail de suporte', 'txt', '', 'Aparece nas telas informativas de suspensa, bloqueada e encerrada.', 'configuracao_plataforma:editar'],
+    ['whats', 'Telefone de suporte', 'txt', '', '', 'configuracao_plataforma:editar'],
+    ['limUsers', 'Limite padrão de usuários', 'num', '', 'Para organizações criadas sem plano.', 'configuracao_plataforma:editar', {min: 1, max: 1000}],
+    ['limUnits', 'Limite padrão de unidades', 'num', '', 'O primeiro cliente começa com 1.', 'configuracao_plataforma:editar', {min: 1, max: 100}],
+    ['textoSusp', 'Texto da tela de suspensa', 'area', '', 'Mostrado ao dono e à equipe da organização.', 'configuracao_plataforma:editar']]
+};
+const CFG_LABEL = Object.fromEntries(Object.values(CFG_F).flat().map(f => [f[0], f[1]]));
+const cfgDraft = () => UI.cfgDraft || (UI.cfgDraft = {});
+const cfgDiffs = () => Object.entries(cfgDraft()).filter(([k, v]) => String(v) !== String(S.cfg[k]));
+function configHtml(R) {
+  const tab = ['assin', 'plat', 'acesso', 'hist'].includes(R.tab) ? R.tab : 'assin';
+  const tabs = `<div class="tabs-w"><div class="tabs" role="tablist">${[['assin', 'Assinaturas'], ['plat', 'Plataforma'], ['acesso', 'Acesso e IP'], ['hist', 'Histórico']].map(([k, t]) => `<a class="tab" role="tab" href="${href({screen: 'config', tab: k})}" aria-selected="${k === tab}" style="text-decoration:none;display:inline-flex;align-items:center">${t}</a>`).join('')}</div></div>`;
+  let body = '';
+  if (CFG_F[tab]) {
+    const dr = cfgDraft(), rows = CFG_F[tab].map(([k, l, t, u, d, perm, o]) => {
+      const dis = !can(perm), v = k in dr ? dr[k] : S.cfg[k], ch = k in dr && String(dr[k]) !== String(S.cfg[k]);
+      const ctl = t === 'sel' ? `<select class="field" id="ci-${k}" data-ci="${k}" ${dis ? 'disabled' : ''}>${o.o.map(([a, b]) => `<option value="${a}" ${a === v ? 'selected' : ''}>${b}</option>`).join('')}</select>` : t === 'area' ? `<textarea class="field field--area" id="ci-${k}" data-ci="${k}" ${dis ? 'disabled' : ''}>${esc(v)}</textarea>` : `<div style="display:flex;align-items:center;gap:8px"><input class="field" id="ci-${k}" data-ci="${k}" type="${t === 'num' ? 'number' : 'text'}" value="${esc(v)}" ${o && o.min != null ? `min="${o.min}" max="${o.max}"` : ''} ${dis ? 'disabled' : ''}>${u ? `<span class="muted">${u}</span>` : ''}</div>`;
+      return `<div class="cf-r ${ch ? 'ch' : ''}"><div><span class="lb">${l}</span><small>${d}${ch ? ` · hoje: ${esc(S.cfg[k])}` : ''}</small></div>${ctl}</div>`;
+    }).join('');
+    const perm = CFG_F[tab][0][5];
+    body = `<section class="card pad">${can(perm) ? '' : `<div class="banner banner--info" style="margin-bottom:8px">${ico('lock', 'i')}<span class="l">Só leitura: falta <code>${perm}</code>.</span></div>`}<div class="cf">${rows}</div></section>`;
+    const n = cfgDiffs().length; if (n) body += `<div class="savebar"><span><b>${n}</b> ${plural(n, 'alteração não salva', 'alterações não salvas')}</span><button class="btn" data-act="cfg-discard">Descartar</button><button class="btn btn--primary" data-act="cfg-save">Salvar…</button></div>`;
+  } else if (tab === 'acesso') {
+    const ed = can('admin_plataforma:gerenciar'), my = meAdmin().ip;
+    body = `<section class="card"><div class="pad" style="padding-bottom:0"><div class="sec-h"><h2 class="sec">Endereços permitidos</h2><span class="sub">A API recusa a Control Tower fora desta lista (A10.1)</span>${ed ? `<button class="btn btn--sm btn--primary" data-act="ip-add">${ico('plus')} Adicionar IP</button>` : ''}</div></div><div class="tw"><table><thead><tr><th>Endereço</th><th>Descrição</th><th>Adicionado por</th><th></th></tr></thead><tbody>${S.ips.map(p => `<tr><td class="mono">${esc(p.ip)} ${p.ip === my ? '<span class="tag tag--brand">seu IP</span>' : ''}</td><td>${esc(p.n)}</td><td class="muted">${esc(p.by)} · ${fmtD(p.t)}</td><td class="r">${ed ? `<button class="btn btn--sm btn--danger" data-act="ip-del" data-ip="${p.ip}">Remover</button>` : ''}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card pad"><div class="sec-h"><h2 class="sec">Proteções ligadas</h2></div><ul class="ok-l">${['Bloqueio progressivo: 5 tentativas erradas bloqueiam por 15 minutos', 'Alerta ao super admin em todo login de administrador, e a todos em IP ou dispositivo novo', 'Cookies da Control Tower com nome e escopo próprios; token com audiência separada do app dos clientes', 'Criar ou alterar administrador, e impersonar, geram auditoria; a reautenticação por senha está preparada e desligada (S12)', '2FA fora do escopo agora: o encaixe está pronto e se liga por configuração'].map(t => `<li>${ico('check')}<span>${t}</span></li>`).join('')}</ul></section>`;
+  } else {
+    body = `<section class="card pad"><div class="sec-h"><h2 class="sec">Versões da configuração</h2><span class="sub">Cada salvamento é uma versão, com autor e motivo</span></div>${S.cfgHist.length ? `<ul class="tl">${S.cfgHist.map(h => `<li><b>${h.ch.map(esc).join('; ')}</b><small>${esc(h.by)} · ${fmtDT(h.t)}</small><span class="why">Motivo: ${esc(h.why)}</span></li>`).join('')}</ul>` : '<p class="note">Sem alterações.</p>'}</section>`;
+  }
+  return head('Configurações da plataforma', 'Parâmetros globais, versionados e auditados.') + tabs + body;
+}
+
+/* ===== SESSAO DE IMPERSONACAO ===== */
+function impersonacaoHtml() {
+  const i = UI.imp;
+  if (!i) return `<div class="empty"><h2 class="sec">Nenhuma sessão de impersonação ativa</h2><p class="muted">Abra uma organização e use Impersonar.</p><a class="btn" href="${href({screen: 'orgs'})}">Ver organizações</a></div>`;
+  const o = ORG(i.org), app = `index.html#m=web&profile=${i.perfilKey}`;
+  return head('Sessão de impersonação', `Você está operando como ${esc(i.userName)} em ${esc(o.nome)}.`, `<a class="btn btn--primary" href="${app}" target="_blank" rel="noopener">${ico('ext')} Abrir o app do cliente</a><button class="btn" data-act="imp-end">Encerrar sessão</button>`) + `
+  <div class="imp-grid">${stat('Tempo restante', `<span id="impT2">${impLeft()}</span>`, i.ends ? `termina às ${fmtT(i.ends)}` : 'sem limite de tempo')}${stat('Modo', i.modo === 'escrita' ? 'Leitura e escrita' : 'Somente leitura', 'definido pela sua política')}${stat('Início', fmtT(i.start), `há ${Math.max(0, Math.round((now() - i.start) / MIN))} min`)}</div>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">O que está garantido</h2></div><ul class="ok-l">
+    <li>${ico('check')}<span><b>A organização foi informada.</b> No log de auditoria dela aparece: "Administrador da plataforma acessou em ${fmtDT(i.start)}".</span></li>
+    <li>${ico('check')}<span><b>Todo ato é atribuído a você</b> (${esc(meName())}), nunca a ${esc(i.userName)}.</span></li>
+    <li>${ico('check')}<span><b>A sessão é identificada na tela</b> do cliente por uma faixa fixa e no registro imutável da plataforma.</span></li>
+    <li>${ico('check')}<span><b>Sem acesso a segredos:</b> hash de senha, PIN, certificado fiscal e chaves nunca aparecem, nem para o super admin.</span></li>
+    <li>${ico('check')}<span><b>A política é aplicada no servidor:</b> ${i.ends ? `tempo máximo de ${i.min} min` : 'sem limite de tempo'}, ${i.modo === 'escrita' ? 'escrita liberada' : 'escrita bloqueada'}.</span></li></ul></section>
+  <section class="card pad"><div class="sec-h"><h2 class="sec">Motivo informado</h2></div><p style="margin:0">${i.why ? esc(i.why) : '<span class="muted">Não exigido para o seu perfil.</span>'}</p></section>`;
+}
+
+const SCREENS = {visao: visaoHtml, orgs: orgsHtml, org: orgHtml, cobranca: cobrancaHtml, planos: planosHtml, flags: flagsHtml, comunicados: comunicadosHtml, operacao: operacaoHtml, auditoria: auditoriaHtml, admins: adminsHtml, config: configHtml, impersonacao: impersonacaoHtml};
+
+/* ===== acoes ===== */
+const PERFIL_KEY = {'Dono': 'dono', 'Gerente': 'gerente', 'Caixa': 'caixa', 'Garçom': 'garcom', 'Estoquista': 'estoquista', 'Financeiro': 'financeiro'};
+const activeOrgs = () => S.orgs.filter(o => o.estado !== 'encerrada');
+const orgChecks = (name, sel = [], all = activeOrgs()) => `<div class="sc-list">${all.map(o => `<label class="check"><input type="checkbox" name="${name}" value="${o.id}" ${sel.includes(o.id) ? 'checked' : ''}><span>${esc(o.nome)}</span></label>`).join('')}</div>`;
+const confirmWord = (w = 'CONFIRMAR') => inp('conf', `Digite ${w} para continuar`, {ph: w});
+const pushCfgHist = (ch, why_) => S.cfgHist.unshift({t: now(), by: meName(), ch, why: why_});
+
+const ACT = {
+  rail() { const v = !document.body.classList.contains('rail'); document.body.classList.toggle('rail', v); try { localStorage.setItem('ct.rail', v ? '1' : '0'); } catch (_) {} },
+  theme() { const d = document.documentElement; d.dataset.theme = d.dataset.theme === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('ct.theme', d.dataset.theme); } catch (_) {} },
+  reset() { S = seed(); save(); UI.imp = null; UI.cfgDraft = null; UI.verify = null; render(); toast('Dados de exemplo restaurados'); },
+  enter(el) { if (UI.imp) impEnd(); ME = el.dataset.p; try { localStorage.setItem('ct.profile', ME); } catch (_) {} closeMenus(); if (route().screen === 'login' || !route().screen) nav({screen: 'visao'}); else render(); },
+  logout() { if (UI.imp) impEnd(); ME = null; try { localStorage.removeItem('ct.profile'); } catch (_) {} closeMenus(); nav({screen: 'login'}); },
+  'me-menu'(el) {
+    if ($('#memenu')) return closeMenus();
+    const m = document.createElement('div'); m.className = 'menu fixed'; m.id = 'memenu'; m.setAttribute('role', 'menu');
+    m.innerHTML = `<div class="mh">Entrar como (demonstração)</div>${Object.entries(PROFILES).map(([k, v]) => `<button role="menuitem" data-act="enter" data-p="${k}" ${k === ME ? 'aria-current="true"' : ''}>${v[0]}<small>${v[1]}</small></button>`).join('')}<hr><button role="menuitem" data-act="logout">Sair</button>`;
+    document.body.appendChild(m); const r = el.getBoundingClientRect();
+    m.style.left = Math.max(8, r.left) + 'px'; m.style.top = Math.max(8, r.top - m.offsetHeight - 6) + 'px';
+  },
+  chip(el) { navm({st: el.dataset.st, page: ''}); },
+  chipt(el) { navm({tipo: el.dataset.t, page: ''}); },
+  clear() { nav({screen: route().screen}); },
+  pg(el) { navm({[el.dataset.pk]: el.dataset.p}); },
+  verify() { UI.verify = verifyChain(); render(); },
+  tamper() {
+    if (S.tamper) { const e = S.audit.find(x => x.id === S.tamper.id); if (e) e.x = S.tamper.orig; S.tamper = null; }
+    else { const e = S.audit[7]; S.tamper = {id: e.id, orig: e.x}; e.x += ' (texto alterado)'; }
+    UI.verify = null; save(); render();
+  },
+  /* ---- assinatura ---- */
+  sub(el) {
+    const o = ORG(el.dataset.id), a = ACTS.find(x => x.id === el.dataset.a); if (!o || !a) return;
+    if (!can(a.perm)) return toast('Seu perfil não pode fazer isso', a.perm);
+    const f = a.form(o);
+    modal({title: f.title, lead: f.lead, body: f.body, ok: a.t, danger: a.danger, onOk: fd => { try { return a.run(o, fd); } catch (e) { return e.message; } }});
+  },
+  'org-new'() {
+    modal({title: 'Nova organização', lead: 'Cria a organização com uma unidade e abre um período de teste.', body: inp('nome', 'Nome fantasia', {req: 1}) + `<div class="fg--2 fg">${inp('cnpj', 'CNPJ', {ph: '00.000.000/0000-00'})}${inp('cidade', 'Cidade e UF')}</div><div class="fg--2 fg">${inp('dono', 'Nome do dono')}${inp('email', 'E-mail do dono', {type: 'email'})}</div><div class="fg--2 fg">${sel('plano', 'Plano', S.plans.map(p => [p.id, `${p.n} · ${brl(p.preco)}`]), 'p1')}${inp('dias', 'Dias de teste', {type: 'number', value: S.cfg.trialDias, min: 1, max: 365, msg: 'Padrão da plataforma: ' + S.cfg.trialDias})}</div>`, ok: 'Criar organização',
+      onOk: fd => {
+        const n = fd.get('nome').trim(), em = fd.get('email').trim(), dias = +fd.get('dias');
+        if (n.length < 2) return 'Informe o nome da organização.'; if (!fd.get('dono').trim()) return 'Informe o nome do dono.'; if (!/^\S+@\S+\.\S+$/.test(em)) return 'Informe um e-mail válido para o convite do dono.'; if (!(dias >= 1)) return 'Informe os dias de teste.';
+        if (S.orgs.some(o => strip(o.nome) === strip(n))) return 'Já existe uma organização com este nome.';
+        const o = {id: 'o' + (S.orgs.length + 1 + Math.floor(Math.random() * 90)), nome: n, cnpj: fd.get('cnpj') || '—', cidade: fd.get('cidade') || '—', plano: fd.get('plano'), estado: 'em_teste', criada: now(), dono: {n: fd.get('dono').trim(), email: em}, limUn: null, usersN: 1, c30: 0, fat30: 0, ativos: 0, ult: now(), units: [{id: 'u1', n: 'Matriz', end: '—', on: true}], users: [{id: 'x1', n: fd.get('dono').trim(), p: 'Dono', c: 'email', ult: now(), on: true}], sub: {venc: null, tol: S.cfg.tolerancia, trialEnd: now() + dias * D, susMode: null, agenda: null, excecaoAte: null, cancelaEm: null}, flags: {}, hist: []};
+        o.hist.unshift({t: now(), by: meName(), x: `Criou a organização e iniciou teste de ${dias} dias`, why: ''}); S.orgs.push(o);
+        audit('organizacao', `Criou a organização e iniciou teste de ${dias} dias`, o, ''); save(); nav({screen: 'org', id: o.id}); toast('Organização criada', `Convite enviado a ${em}.`);
+      }});
+  },
+  'org-del'(el) {
+    const o = ORG(el.dataset.id);
+    modal({title: 'Excluir e anonimizar', lead: `Remove a identificação de ${esc(o.nome)}. Só restam totais. Não tem volta.`, body: inp('conf', 'Digite o nome da organização', {ph: o.nome}) + why(), ok: 'Excluir e anonimizar', danger: true,
+      onOk: fd => { if (strip(fd.get('conf')).trim() !== strip(o.nome)) return 'O nome digitado não confere.'; const w = checkWhy(fd); if (w) return w; audit('organizacao', 'Excluiu e anonimizou a organização', o, fd.get('why')); o.nome = `Organização removida (${o.id})`; o.cnpj = '—'; o.cidade = '—'; o.dono = {n: '—', email: '—'}; o.users = []; o.usersN = 0; o.hist = []; save(); nav({screen: 'orgs'}); toast('Organização anonimizada'); }});
+  },
+  export(el) {
+    const o = ORG(el.dataset.id);
+    modal({title: 'Exportar dados da organização', lead: 'Gera um arquivo com os dados da organização (LGPD). A organização é informada e a exportação fica na auditoria.', body: why(), ok: 'Gerar exportação',
+      onOk: fd => { const w = checkWhy(fd); if (w) return w; o.hist.unshift({t: now(), by: meName(), x: 'Exportou os dados da organização', why: fd.get('why')}); audit('exportacao', 'Exportou os dados da organização (LGPD)', o, fd.get('why')); save(); render(); toast('Exportação gerada (simulada)', 'Aviso enviado ao dono e registro criado na auditoria.'); }});
+  },
+  'unit-limit'(el) {
+    const o = ORG(el.dataset.id);
+    modal({title: 'Alterar limite de unidades', lead: `Hoje: ${unitsLimit(o)} (${o.limUn != null ? 'limite próprio' : 'do plano ' + PLAN(o.plano).n}). Em uso: ${unitsOn(o)}.`, body: inp('n', 'Novo limite', {type: 'number', value: unitsLimit(o), min: 1}) + `<label class="check"><input type="checkbox" name="plano"><span>Voltar ao limite do plano (${PLAN(o.plano).units})</span></label>` + why(), ok: 'Salvar limite',
+      onOk: fd => { const n = +fd.get('n'), vp = !!fd.get('plano'); if (!vp && (!(n >= 1) || n !== Math.floor(n))) return 'Informe um número inteiro maior que zero.'; if (!vp && n < unitsOn(o)) return `A organização já usa ${unitsOn(o)} unidades. Desative alguma antes.`; const w = checkWhy(fd); if (w) return w; o.limUn = vp ? null : n; commit(o, vp ? 'Voltou o limite de unidades ao do plano' : `Alterou o limite de unidades para ${n}`, fd.get('why'), null, 'organizacao'); }});
+  },
+  'unit-new'(el) {
+    const o = ORG(el.dataset.id);
+    modal({title: 'Criar unidade em nome da organização', lead: `Usa ${unitsOn(o) + 1} de ${unitsLimit(o)} unidades. O dono é avisado e dá acesso às pessoas.`, body: inp('n', 'Nome da unidade', {req: 1}) + inp('end', 'Endereço') + why(), ok: 'Criar unidade',
+      onOk: fd => { const n = fd.get('n').trim(); if (n.length < 2) return 'Informe o nome da unidade.'; if (o.units.some(u => strip(u.n) === strip(n))) return 'Já existe uma unidade com este nome.'; if (unitsOn(o) >= unitsLimit(o)) return 'Limite de unidades atingido.'; const w = checkWhy(fd); if (w) return w; o.units.push({id: 'u' + (o.units.length + 1), n, end: fd.get('end') || '—', on: true}); commit(o, `Criou a unidade "${n}" em nome da organização`, fd.get('why'), null, 'organizacao'); }});
+  },
+  'user-reset'(el) {
+    const o = ORG(el.dataset.id), u = o.users.find(x => x.id === el.dataset.u);
+    modal({title: `Redefinir o acesso de ${esc(u.n)}`, lead: u.p === 'Dono' ? 'É a conta do dono. Ele recebe um link de uso único e todas as sessões dele são encerradas.' : u.c === 'email' ? 'A pessoa recebe um link de uso único por e-mail. Sessões ativas são encerradas.' : 'Gera uma credencial temporária com troca obrigatória, entregue pela gerência da organização.', body: why(), ok: 'Redefinir acesso',
+      onOk: fd => { const w = checkWhy(fd); if (w) return w; o.hist.unshift({t: now(), by: meName(), x: `Redefiniu o acesso de ${u.n} (${u.p})`, why: fd.get('why')}); audit('organizacao', `Redefiniu o acesso de ${u.n} (${u.p})`, o, fd.get('why')); save(); render(); toast('Acesso redefinido', 'Nenhuma senha é exibida aqui: a pessoa define a nova ao abrir o link.'); }});
+  },
+  /* ---- planos ---- */
+  'plan-edit'(el) {
+    const p = el.dataset.id ? S.plans.find(x => x.id === el.dataset.id) : null;
+    modal({title: p ? `Editar plano ${esc(p.n)}` : 'Novo plano', lead: p ? `${S.orgs.filter(o => o.plano === p.id && o.estado !== 'encerrada').length} organizações usam este plano.` : '', body: inp('n', 'Nome', {value: p ? p.n : '', req: 1}) + `<div class="fg--2 fg">${inp('preco', 'Preço mensal (R$)', {type: 'number', value: p ? p.preco : '', min: 0})}${inp('users', 'Limite de usuários', {type: 'number', value: p ? p.users : '', min: 1})}</div>` + inp('units', 'Limite de unidades', {type: 'number', value: p ? p.units : '', min: 1}) + why(), ok: 'Salvar plano',
+      onOk: fd => {
+        const n = fd.get('n').trim(), preco = +fd.get('preco'), us = +fd.get('users'), un = +fd.get('units');
+        if (n.length < 2) return 'Informe o nome do plano.'; if (!(preco >= 0) || fd.get('preco') === '') return 'Informe o preço.'; if (!(us >= 1) || !(un >= 1)) return 'Os limites precisam ser maiores que zero.';
+        if (S.plans.some(x => x !== p && strip(x.n) === strip(n))) return 'Já existe um plano com este nome.';
+        if (p) { const over = S.orgs.filter(o => o.plano === p.id && o.estado !== 'encerrada' && (o.usersN > us || unitsOn(o) > (o.limUn ?? un))); if (over.length) return `${over.length} ${plural(over.length, 'organização já passa', 'organizações já passam')} dos novos limites: ${over.map(o => o.nome).join(', ')}.`; }
+        const w = checkWhy(fd); if (w) return w;
+        if (p) { const ch = []; if (p.n !== n) ch.push(`nome ${p.n} → ${n}`); if (p.preco !== preco) ch.push(`preço ${brl2(p.preco)} → ${brl2(preco)}`); if (p.users !== us) ch.push(`usuários ${p.users} → ${us}`); if (p.units !== un) ch.push(`unidades ${p.units} → ${un}`); Object.assign(p, {n, preco, users: us, units: un}); audit('plano', `Alterou o plano ${n}: ${ch.join(', ') || 'sem mudanças'}`, null, fd.get('why')); }
+        else { S.plans.push({id: 'p' + (S.plans.length + 1), n, preco, users: us, units: un}); S.flags.forEach(f => f.pl.push(0)); audit('plano', `Criou o plano ${n} (${brl2(preco)}, ${us} usuários, ${un} unidades)`, null, fd.get('why')); }
+        save(); render(); toast('Plano salvo');
+      }});
+  },
+  /* ---- funcionalidades ---- */
+  'flag-ex'(el) {
+    const f = S.flags.find(x => x.id === el.dataset.f), L = activeOrgs();
+    modal({title: `Exceções de "${esc(f.n)}"`, lead: 'Seguir o plano é o normal. Use exceção só para piloto ou acordo com o cliente.', wide: false, body: `<div class="sc-list" style="max-height:260px">${L.map(o => { const ov = o.flags[f.id] || ''; return `<div class="rows"><div><span class="grow">${esc(o.nome)}<small>${PLAN(o.plano).n} · pelo plano: ${f.pl[S.plans.findIndex(p => p.id === o.plano)] ? 'ligada' : 'desligada'}</small></span><select class="field" name="o_${o.id}" style="width:150px;height:32px"><option value="" ${!ov ? 'selected' : ''}>Seguir o plano</option><option value="on" ${ov === 'on' ? 'selected' : ''}>Ligar</option><option value="off" ${ov === 'off' ? 'selected' : ''}>Desligar</option></select></div></div>`; }).join('')}</div>` + why(), ok: 'Salvar exceções',
+      onOk: fd => { const chg = L.filter(o => (fd.get('o_' + o.id) || '') !== (o.flags[f.id] || '')); if (!chg.length) return 'Nenhuma exceção mudou.'; const w = checkWhy(fd); if (w) return w; chg.forEach(o => { const v = fd.get('o_' + o.id); if (v) o.flags[f.id] = v; else delete o.flags[f.id]; const x = v ? `${v === 'on' ? 'Ligou' : 'Desligou'} "${f.n}" para esta organização (exceção)` : `Voltou "${f.n}" a seguir o plano`; o.hist.unshift({t: now(), by: meName(), x, why: fd.get('why')}); audit('flag', x, o, fd.get('why')); }); save(); render(); toast('Exceções salvas', `${chg.length} ${plural(chg.length, 'organização', 'organizações')} alterada${chg.length > 1 ? 's' : ''}.`); }});
+  },
+  /* ---- comunicados ---- */
+  'comm-new'() {
+    modal({title: 'Novo comunicado', lead: 'Aparece dentro do sistema para as pessoas da organização.', wide: true, body: inp('t', 'Título', {req: 1}) + fld('Texto', '<textarea class="field field--area" name="txt" required></textarea>') + `<div class="fg--2 fg">${sel('sev', 'Importância', [['info', 'Informação'], ['atencao', 'Atenção']], 'info')}${inp('exp', 'Some em', {type: 'date', value: dateIn(14), min: dateIn(1)})}</div>` + fld('Quem recebe', radios('alvo', [['all', 'Todas as organizações'], ['sel', 'Só as escolhidas']], 'all') + orgChecks('orgs')) + `<label class="check"><input type="checkbox" name="pub" checked><span>Publicar agora (se desmarcar, fica como rascunho)</span></label>`, ok: 'Salvar comunicado',
+      onOk: fd => {
+        const t = fd.get('t').trim(), txt = fd.get('txt').trim(), alvo = fd.get('alvo'), orgs = fd.getAll('orgs');
+        if (t.length < 3) return 'Informe o título.'; if (txt.length < 5) return 'Escreva o texto do comunicado.'; if (alvo === 'sel' && !orgs.length) return 'Escolha pelo menos uma organização.'; if (!fd.get('exp') || fd.get('exp') < dateIn(1)) return 'Escolha uma data de expiração futura.';
+        const c = {id: 'c' + (S.comms.length + 1) + Math.floor(Math.random() * 99), t, txt, sev: fd.get('sev'), alvo, orgs: alvo === 'sel' ? orgs : [], st: 'rascunho', pub: null, exp: new Date(fd.get('exp') + 'T23:59:00').getTime(), lidos: 0, total: 0, by: meName()};
+        if (fd.get('pub')) { c.st = 'publicado'; c.pub = now(); c.total = targetTotal(c); audit('comunicado', `Publicou "${t}" para ${alvo === 'all' ? 'todas as organizações' : orgs.length + ' organizações'}`, null, ''); }
+        S.comms.unshift(c); save(); render(); toast(c.st === 'publicado' ? 'Comunicado publicado' : 'Rascunho salvo');
+      }});
+  },
+  'comm-pub'(el) {
+    const c = S.comms.find(x => x.id === el.dataset.id), n = targetTotal(c);
+    modal({title: `Publicar "${esc(c.t)}"`, lead: `Chega a ${n} ${plural(n, 'pessoa', 'pessoas')} de ${c.alvo === 'all' ? 'todas as organizações' : c.orgs.length + ' organizações'} (encerradas e bloqueadas ficam de fora).`, body: '', ok: 'Publicar',
+      onOk: () => { c.st = 'publicado'; c.pub = now(); c.total = n; c.exp = c.exp && c.exp > now() ? c.exp : now() + 14 * D; audit('comunicado', `Publicou "${c.t}"`, null, ''); save(); render(); toast('Comunicado publicado'); }});
+  },
+  /* ---- emergencia ---- */
+  emerg(el) {
+    const k = el.dataset.k, L = activeOrgs().filter(o => !['suspensa', 'bloqueada'].includes(o.estado));
+    const C = {
+      sessoes: {t: 'Revogar sessões de administradores', lead: 'Todos os administradores, exceto você, precisarão entrar de novo agora.', body: ''},
+      suspender: {t: 'Suspender uma organização agora', lead: 'Bloqueio total e imediato, sem aviso prévio de prazo. O dono é avisado.', body: sel('org', 'Organização', L.map(o => [o.id, o.nome]), L[0] && L[0].id)},
+      segredos: {t: 'Rotacionar segredos', lead: 'Gera novas chaves. Todas as sessões ativas, dos clientes e da plataforma, precisarão entrar de novo.', body: sel('seg', 'O que rotacionar', [['tokens', 'Chaves de assinatura de tokens'], ['integracoes', 'Chaves de integração (e-mail, gateway)'], ['ambas', 'Todas']], 'tokens')}
+    }[k];
+    modal({title: C.t, lead: C.lead, body: C.body + confirmWord() + why(), ok: 'Executar', danger: true,
+      onOk: fd => {
+        if ((fd.get('conf') || '').trim() !== 'CONFIRMAR') return 'Digite CONFIRMAR para executar.'; const w = checkWhy(fd); if (w) return w; const m = fd.get('why');
+        if (k === 'sessoes') { audit('seguranca', 'Revogou as sessões de todos os administradores (exceto a própria)', null, m); save(); render(); toast('Sessões revogadas', 'Os outros administradores precisam entrar de novo.'); }
+        else if (k === 'suspender') { const o = ORG(fd.get('org')); if (!o) return 'Escolha a organização.'; setState(o, 'suspensa'); o.sub.susMode = 'total'; o.sub.agenda = null; commit(o, 'Suspendeu em emergência (bloqueio total)', m, 'Organização suspensa'); }
+        else { audit('seguranca', `Rotacionou segredos (${{tokens: 'tokens', integracoes: 'integrações', ambas: 'tokens e integrações'}[fd.get('seg')]})`, null, m); save(); render(); toast('Segredos rotacionados', 'As sessões ativas serão encerradas.'); }
+      }});
+  },
+  /* ---- administradores ---- */
+  'adm-new'() {
+    modal({title: 'Novo administrador', lead: 'Ele recebe um convite por link de uso único. O super admin é único e não é criado aqui.', wide: true, body: `<div class="fg--2 fg">${inp('n', 'Nome', {req: 1})}${inp('email', 'E-mail', {type: 'email'})}</div>` + sel('p', 'Perfil', Object.entries(PROFILES).filter(([k]) => k !== 'S').map(([k, v]) => [k, `${v[0]} — ${v[1]}`]), 'U') + fld('Onde pode atuar', radios('esc', [['all', 'Todas as organizações'], ['sel', 'Só as escolhidas']], 'all') + orgChecks('orgs')) + inp('senha', 'Sua senha, para confirmar', {type: 'password', msg: 'Protótipo: qualquer valor serve.'}) + why(), ok: 'Criar e enviar convite',
+      onOk: fd => {
+        const n = fd.get('n').trim(), em = fd.get('email').trim(), esc_ = fd.get('esc'), orgs = fd.getAll('orgs');
+        if (n.length < 2) return 'Informe o nome.'; if (!/^\S+@\S+\.\S+$/.test(em)) return 'Informe um e-mail válido.'; if (S.admins.some(a => a.email === em)) return 'Já existe administrador com este e-mail.'; if (esc_ === 'sel' && !orgs.length) return 'Escolha pelo menos uma organização.'; if (!(fd.get('senha') || '').length) return 'Confirme a sua senha.'; const w = checkWhy(fd); if (w) return w;
+        const p = fd.get('p'), a = {id: 'a' + (S.admins.length + 1) + Math.floor(Math.random() * 90), n, email: em, p, on: true, pend: true, ult: null, ip: '', escopo: esc_ === 'all' ? 'all' : orgs, pol: p === 'U' ? {modo: 'leitura', max: 30, motivo: true, orgs: esc_ === 'all' ? 'all' : orgs} : null};
+        S.admins.push(a); audit('admin', `Criou o administrador ${n} (${PROFILES[p][0]})`, null, fd.get('why')); save(); render(); toast('Administrador criado', `Convite enviado a ${em}.`);
+      }});
+  },
+  'adm-open'(el) {
+    const a = ADM(el.dataset.id), self = a.p === ME, locked = !!a.prot, pol = a.pol, canPol = can('suporte:impersonar_politica_configurar') && a.p === 'U';
+    const escAll = a.escopo === 'all', polAll = !pol || pol.orgs === 'all';
+    modal({title: esc(a.n), lead: `${esc(a.email)} · ${a.ult ? 'último login ' + rel(a.ult) + ' de ' + esc(a.ip) : 'convite pendente'}`, wide: true,
+      body: (locked ? `<div class="banner banner--info">${ico('lock', 'i')}<span class="l"><b>Conta protegida.</b> Não pode ser removida nem rebaixada por outros; recuperação só por procedimento controlado.</span></div>` : '') +
+      sel('p', 'Perfil', Object.entries(PROFILES).map(([k, v]) => [k, v[0], k === 'S' && a.p !== 'S']), a.p, locked ? 'Perfil travado.' : '').replace('<select', locked ? '<select disabled' : '<select') +
+      fld('Onde pode atuar', radios('esc', [['all', 'Todas as organizações', '', locked], ['sel', 'Só as escolhidas', '', locked]], escAll ? 'all' : 'sel') + orgChecks('orgs', escAll ? [] : a.escopo)) +
+      (canPol ? `<div class="box"><b>Política de impersonação</b><p class="hint" style="margin-top:2px">Aplicada no servidor. O limite real é o menor entre a política e as permissões do perfil.</p><div class="fg--2 fg" style="margin-top:10px">${sel('modo', 'Modo', [['leitura', 'Somente leitura'], ['escrita', 'Leitura e escrita', !can('suporte:impersonar_escrita') || !(PERM_MAP['suporte:impersonar_escrita'] || '').includes(a.p)]], pol ? pol.modo : 'leitura', (PERM_MAP['suporte:impersonar_escrita'] || '').includes(a.p) ? '' : 'O perfil Suporte não tem escrita.')}${sel('max', 'Tempo máximo', [[15, '15 minutos'], [30, '30 minutos'], [60, '1 hora'], [120, '2 horas'], [0, 'Sem limite']], pol ? (pol.max || 0) : 30)}</div><label class="check"><input type="checkbox" name="motivo" ${!pol || pol.motivo ? 'checked' : ''}><span>Motivo ou ticket obrigatório</span></label>${radios('pall', [['all', 'Em todas as organizações'], ['sel', 'Só nas escolhidas abaixo']], polAll ? 'all' : 'sel')}${orgChecks('porgs', polAll ? [] : pol.orgs)}</div>` : a.p === 'S' ? `<p class="note">Super admin impersona sem restrição, sem motivo e sem limite de tempo (D15). Sempre com aviso à organização e atribuição ao administrador real.</p>` : `<p class="note">Este perfil não impersona. Impersonação: ${polText(a)}</p>`) +
+      (locked || self ? '' : `<label class="check"><input type="checkbox" name="off" ${a.on ? '' : 'checked'}><span>Conta desativada (encerra as sessões na hora)</span></label>`) +
+      inp('senha', 'Sua senha, para confirmar', {type: 'password', msg: 'Protótipo: qualquer valor serve.'}) + why(), ok: 'Salvar alterações',
+      onOk: fd => {
+        const esc_ = fd.get('esc') || 'all', orgs = fd.getAll('orgs'); if (esc_ === 'sel' && !orgs.length && !locked) return 'Escolha pelo menos uma organização.';
+        if (!(fd.get('senha') || '').length) return 'Confirme a sua senha.'; const w = checkWhy(fd); if (w) return w;
+        const ch = [], np = locked ? a.p : fd.get('p');
+        if (np !== a.p) { ch.push(`perfil ${PROFILES[a.p][0]} → ${PROFILES[np][0]}`); a.p = np; if (np !== 'U') a.pol = null; else if (!a.pol) a.pol = {modo: 'leitura', max: 30, motivo: true, orgs: 'all'}; }
+        if (!locked) { const ne = esc_ === 'all' ? 'all' : orgs; if (JSON.stringify(ne) !== JSON.stringify(a.escopo)) { ch.push('escopo de organizações'); a.escopo = ne; } }
+        if (canPol && fd.get('modo')) { const pm = fd.get('pall') === 'all' ? 'all' : fd.getAll('porgs'); if (fd.get('pall') === 'sel' && !pm.length) return 'Escolha as organizações da política.'; const np_ = {modo: fd.get('modo'), max: +fd.get('max') || 0, motivo: !!fd.get('motivo'), orgs: pm}; if (JSON.stringify(np_) !== JSON.stringify(a.pol)) { a.pol = np_; ch.push(`política de impersonação (${np_.modo === 'escrita' ? 'escrita' : 'leitura'}, ${np_.max ? np_.max + ' min' : 'sem limite'}, motivo ${np_.motivo ? 'obrigatório' : 'opcional'})`); } }
+        if (!locked && !self) { const off = !!fd.get('off'); if (off === a.on) { a.on = !off; ch.push(off ? 'desativou a conta' : 'reativou a conta'); } }
+        if (!ch.length) return 'Nada mudou.';
+        audit('admin', `Alterou ${a.n}: ${ch.join('; ')}`, null, fd.get('why')); save(); render(); toast('Administrador atualizado');
+      }});
+  },
+  'ip-add'() {
+    modal({title: 'Adicionar endereço permitido', lead: 'A API passa a aceitar a Control Tower deste IP.', body: inp('ip', 'Endereço IPv4', {ph: '203.0.113.50'}) + inp('n', 'Descrição') + why(), ok: 'Adicionar',
+      onOk: fd => { const ip = fd.get('ip').trim(); if (!/^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(ip)) return 'Informe um IPv4 válido.'; if (S.ips.some(p => p.ip === ip)) return 'Este IP já está na lista.'; if (!fd.get('n').trim()) return 'Descreva de onde é este IP.'; const w = checkWhy(fd); if (w) return w; S.ips.push({ip, n: fd.get('n').trim(), by: meName(), t: now()}); const x = `Lista de IPs: adicionou ${ip} (${fd.get('n').trim()})`; pushCfgHist([x], fd.get('why')); audit('config', x, null, fd.get('why')); save(); render(); toast('IP adicionado'); }});
+  },
+  'ip-del'(el) {
+    const ip = el.dataset.ip, mine = meAdmin().ip === ip;
+    modal({title: `Remover ${ip}`, lead: mine ? 'Este é o seu IP de agora. Remover pode deixar você sem acesso na próxima requisição.' : 'Quem usa este endereço deixa de acessar a Control Tower.', body: why(), ok: 'Remover', danger: true,
+      onOk: fd => { if (S.ips.length <= 1) return 'A lista não pode ficar vazia.'; if (mine) return 'Remova o seu próprio IP só de outro endereço permitido.'; const w = checkWhy(fd); if (w) return w; S.ips = S.ips.filter(p => p.ip !== ip); const x = `Lista de IPs: removeu ${ip}`; pushCfgHist([x], fd.get('why')); audit('config', x, null, fd.get('why')); save(); render(); toast('IP removido'); }});
+  },
+  'cfg-discard'() { UI.cfgDraft = null; render(); },
+  'cfg-save'() {
+    const df = cfgDiffs(); if (!df.length) return;
+    const bad = []; Object.values(CFG_F).flat().forEach(f => { const v = cfgDraft()[f[0]]; if (v === undefined) return; if (f[2] === 'num' && (v === '' || isNaN(+v) || +v < f[6].min || +v > f[6].max)) bad.push(`${f[1]}: entre ${f[6].min} e ${f[6].max}`); if (f[2] === 'txt' && !String(v).trim()) bad.push(`${f[1]}: não pode ficar vazio`); });
+    if (bad.length) return toast('Há valores inválidos', bad.join(' · '));
+    const show = v => v === 'suspensa' ? 'Vira Suspensa' : v === 'ativa_tol' ? 'Vira Ativa com tolerância' : v;
+    modal({title: 'Salvar configurações', lead: `${df.length} ${plural(df.length, 'alteração', 'alterações')}. Cria uma nova versão, com autor e motivo.`, body: `<div class="box"><ul>${df.map(([k, v]) => `<li><b>${CFG_LABEL[k]}</b>: ${esc(show(S.cfg[k]))} → ${esc(show(v))}</li>`).join('')}</ul></div>` + why(), ok: 'Salvar',
+      onOk: fd => { const w = checkWhy(fd); if (w) return w; const ch = df.map(([k, v]) => `${CFG_LABEL[k]}: ${show(S.cfg[k])} → ${show(v)}`); df.forEach(([k, v]) => { S.cfg[k] = typeof S.cfg[k] === 'number' ? +v : v; }); pushCfgHist(ch, fd.get('why')); audit('config', ch.join('; '), null, fd.get('why')); UI.cfgDraft = null; save(); render(); toast('Configuração salva', 'Nova versão registrada e auditada.'); }});
+  },
+  /* ---- impersonacao ---- */
+  'imp-start'(el) { impStart(el.dataset.id); },
+  'imp-end'() { impEnd(); }
+};
+
+function impStart(id) {
+  const o = ORG(id), pol = polFor(o); if (!pol.ok) return toast('Impersonação indisponível', pol.why);
+  if (UI.imp) return toast('Já existe uma sessão de impersonação ativa', 'Encerre a atual antes de iniciar outra.');
+  const us = o.users.filter(u => u.on); if (!us.length) return toast('Esta organização não tem usuário ativo');
+  const writeOk = can('suporte:impersonar_escrita') && pol.modo === 'escrita';
+  const durs = ME === 'S' ? [[15, '15 minutos'], [30, '30 minutos'], [60, '1 hora'], [120, '2 horas'], [0, 'Sem limite']] : [15, 30, 60, 120].filter(m => !pol.max || m <= pol.max).map(m => [m, m < 60 ? m + ' minutos' : (m / 60) + ' h']);
+  modal({title: `Impersonar em ${esc(o.nome)}`, lead: 'Você opera como a pessoa escolhida. A organização é informada, todo ato fica atribuído a você e segredos nunca aparecem.',
+    body: sel('u', 'Entrar como', us.map(u => [u.id, `${u.n} · ${u.p}`]), us[0].id) + fld('Modo', radios('modo', [['leitura', 'Somente leitura'], ['escrita', 'Leitura e escrita', writeOk ? '' : (can('suporte:impersonar_escrita') ? 'Sua política não libera escrita.' : 'Seu perfil não tem escrita.'), !writeOk]], 'leitura')) + sel('min', 'Duração', durs, durs[Math.min(1, durs.length - 1)][0], pol.max ? `Sua política limita a ${pol.max} minutos.` : '') + fld(pol.motivo ? 'Motivo ou ticket' : 'Motivo ou ticket (opcional para você)', '<textarea class="field field--area" name="why" placeholder="Ex.: ticket #482, dúvida no fechamento de caixa"></textarea>'), ok: 'Iniciar sessão',
+    onOk: fd => {
+      const why_ = (fd.get('why') || '').trim(); if (pol.motivo && why_.length < 5) return 'Sua política exige motivo ou ticket (mínimo de 5 caracteres).';
+      const u = us.find(x => x.id === fd.get('u')), modo = fd.get('modo') === 'escrita' && writeOk ? 'escrita' : 'leitura', min = +fd.get('min');
+      UI.imp = {org: o.id, userName: u.n, userPerfil: u.p, perfilKey: PERFIL_KEY[u.p] || 'dono', modo, start: now(), min, ends: min ? now() + min * MIN : null, why: why_};
+      const mt = modo === 'escrita' ? 'leitura e escrita' : 'somente leitura';
+      o.hist.unshift({t: now(), by: 'Plataforma', x: `Administrador da plataforma acessou como ${u.n} (${mt})`, why: ''});
+      audit('impersonacao', `Iniciou impersonação (${mt}, ${min ? min + ' min' : 'sem limite'}) como ${u.n} (${u.p})`, o, why_);
+      save(); startTimer(); nav({screen: 'impersonacao'}); toast('Sessão de impersonação iniciada', 'A organização foi informada.');
+    }});
+}
+let timer = null;
+function startTimer() { clearInterval(timer); timer = setInterval(() => { const i = UI.imp; if (!i) return clearInterval(timer); const t = impLeft(); $$('#impT,#impT2').forEach(e => e.textContent = t); if (i.ends && now() >= i.ends) impEnd(true); }, 1000); }
+function impEnd(auto) {
+  const i = UI.imp; if (!i) return; const o = ORG(i.org), m = Math.max(1, Math.round((now() - i.start) / MIN));
+  UI.imp = null; clearInterval(timer);
+  o.hist.unshift({t: now(), by: 'Plataforma', x: `Acesso da plataforma encerrado após ${m} min`, why: ''});
+  audit('impersonacao', `Encerrou a impersonação após ${m} min${auto ? ' (limite de tempo)' : ''}`, o, '');
+  save(); nav({screen: 'org', id: o.id}); render(); toast(auto ? 'Sessão encerrada por limite de tempo' : 'Sessão de impersonação encerrada');
+}
+function closeMenus() { const m = $('#memenu'); if (m) m.remove(); }
+
+/* ===== eventos ===== */
+document.addEventListener('click', e => {
+  if (!e.target.closest('.me,#memenu')) closeMenus();
+  if (!e.target.closest('.sw')) { const m = $('#gqm'); if (m) m.hidden = true; }
+  const el = e.target.closest('[data-act]');
+  if (el) { const f = ACT[el.dataset.act]; if (f) { e.preventDefault(); f(el, e); } return; }
+  const tr = e.target.closest('tr.go[data-href]'); if (tr && !e.target.closest('a,button')) location.hash = tr.dataset.href.slice(1);
+});
+document.addEventListener('change', e => {
+  const t = e.target, k = t.dataset.ch; if (!k) return;
+  if (k === 'size') navm({[t.dataset.sk]: t.value, [t.dataset.pk]: ''});
+  else if (k === 'plano') navm({plano: t.value, page: ''});
+  else if (k === 'adm') navm({adm: t.value, page: ''});
+  else if (k === 'orgflag') {
+    const o = ORG(t.dataset.id), f = S.flags.find(x => x.id === t.dataset.f), v = t.value;
+    const d = modal({title: `${esc(f.n)} em ${esc(o.nome)}`, lead: v ? `Abre uma exceção: ${v === 'on' ? 'ligada' : 'desligada'} só para esta organização.` : 'Volta a seguir o que o plano define.', body: why(), ok: 'Aplicar',
+      onOk: fd => { const w = checkWhy(fd); if (w) return w; if (v) o.flags[f.id] = v; else delete o.flags[f.id]; const x = v ? `${v === 'on' ? 'Ligou' : 'Desligou'} "${f.n}" para esta organização (exceção)` : `Voltou "${f.n}" a seguir o plano`; o.hist.unshift({t: now(), by: meName(), x, why: fd.get('why')}); audit('flag', x, o, fd.get('why')); save(); toast('Funcionalidade atualizada'); }});
+    d.addEventListener('close', render);
+  } else if (k === 'flagplan') {
+    const f = S.flags.find(x => x.id === t.dataset.f), i = +t.dataset.i, on = t.checked, p = S.plans[i];
+    const n = S.orgs.filter(o => o.plano === p.id && o.estado !== 'encerrada' && !o.flags[f.id]).length;
+    const d = modal({title: `${on ? 'Ligar' : 'Desligar'} "${esc(f.n)}" no plano ${esc(p.n)}`, lead: `Muda para ${n} ${plural(n, 'organização', 'organizações')} sem exceção. ${on ? '' : 'Quem já usa perde o acesso na hora.'}`, body: why(), ok: on ? 'Ligar' : 'Desligar', danger: !on,
+      onOk: fd => { const w = checkWhy(fd); if (w) return w; f.pl[i] = on ? 1 : 0; audit('flag', `${on ? 'Ligou' : 'Desligou'} "${f.n}" para o plano ${p.n}`, null, fd.get('why')); save(); toast('Funcionalidade atualizada', `${n} ${plural(n, 'organização afetada', 'organizações afetadas')}.`); }});
+    d.addEventListener('close', render);
+  }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.in === 'q') { const R = route(); R.q = t.value; delete R.page; location.hash = href(R); }
+  else if (t.dataset.in === 'gq') globalSearch(t);
+  else if (t.dataset.ci) { cfgDraft()[t.dataset.ci] = t.type === 'number' ? t.value : t.value; render(); }
+});
+function globalSearch(inp_) {
+  const m = $('#gqm'), q = strip(inp_.value.trim()); if (!q) { m.hidden = true; return; }
+  const L = S.orgs.filter(o => strip(o.nome + ' ' + o.cnpj + ' ' + o.dono.n + ' ' + o.dono.email).includes(q)).slice(0, 6);
+  m.innerHTML = L.length ? L.map(o => `<a href="${href({screen: 'org', id: o.id})}"><span>${esc(o.nome)}</span><small>${esc(o.cidade)} · ${ST[o.estado][0]}</small></a>`).join('') : '<div class="mh" style="padding:10px">Nenhuma organização encontrada</div>'; m.hidden = false;
+}
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase(), typing = ['input', 'textarea', 'select'].includes(tag);
+  if (e.key === 'Escape') { closeMenus(); const m = $('#gqm'); if (m) m.hidden = true; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { const g = $('#gq'); if (g) { e.preventDefault(); g.focus(); } }
+  if (e.key === '[' && !typing && !e.target.closest('dialog')) ACT.rail();
+  if (e.key === 'Enter' && e.target.id === 'gq') { const a = $('#gqm a'); if (a) { location.hash = a.getAttribute('href').slice(1); } }
+  if (e.key === 'Enter' && e.target.id === 'lf') e.preventDefault();
+});
+document.addEventListener('submit', e => { if (e.target.id === 'lf') { e.preventDefault(); ME = 'S'; try { localStorage.setItem('ct.profile', ME); } catch (_) {} nav({screen: 'visao'}); } });
+
+/* ===== inicio ===== */
+try { const th = localStorage.getItem('ct.theme') || localStorage.getItem('theme'); if (th) document.documentElement.dataset.theme = th; else if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark'; } catch (_) {}
+window.addEventListener('hashchange', render);
+if (!location.hash && !ME) location.hash = '#screen=login';
+render();
+
+</script>
+</body>
+</html>

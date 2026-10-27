@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cozinha e bar · opções por comanda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8F8F9;--card:#FFFFFF;--line:#E5E7EB;--line-strong:#D1D5DB;--ink:#0F172A;--muted:#5B6678;--faint:#8A93A3;
+  --brand:#3367D6;--brand-ink:#FFFFFF;--brand-soft:#EAF1FE;
+  --open:#2B7A62;--wait:#C48A1D;--alert:#BE3F55;--wait-ink:#85570F;
+  --open-soft:#E8F4EF;--wait-soft:#FAF1DD;--alert-soft:#FBEFF1;--hover:#F1F2F4;--hl:#E6EDFC;
+  --r:14px;--rs:10px;color-scheme:light;
+}
+:root[data-theme=dark]{
+  --bg:#0F1115;--card:#171A1F;--line:#272B33;--line-strong:#383E48;--ink:#F3F4F6;--muted:#A3AAB8;--faint:#7D8594;
+  --brand:#6AA8FF;--brand-ink:#0A1226;--brand-soft:#15233F;
+  --open:#5BC29A;--wait:#E0AC48;--alert:#F27C8E;--wait-ink:#E0AC48;
+  --open-soft:#12261F;--wait-soft:#2A2312;--alert-soft:#2C1820;--hover:#1F232A;--hl:#1A2A4A;color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.4 "Geist",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 24px 60px}
+h1{margin:0;font-size:28px;font-weight:600;letter-spacing:-.01em}
+.sub{margin:4px 0 0;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.opt{border:1px solid var(--line-strong);background:var(--card);border-radius:var(--r);padding:8px 14px;text-align:left;min-width:0}
+.opt b{display:block;font-weight:600}.opt small{color:var(--muted)}
+.opt[aria-pressed=true]{border-color:var(--brand);background:var(--brand-soft);box-shadow:inset 0 0 0 1px var(--brand)}
+.why{margin:0 0 16px;padding:10px 14px;border-left:3px solid var(--brand);background:var(--card);border-radius:0 var(--rs) var(--rs) 0;color:var(--muted)}
+.why b{color:var(--ink)}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.seg{display:inline-flex;padding:3px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);gap:2px}
+.seg button{border:0;background:none;padding:7px 12px;border-radius:calc(var(--r) - 3px);color:var(--muted);font-weight:500}
+.seg button[aria-pressed=true]{background:var(--brand);color:var(--brand-ink)}
+.seg .n{opacity:.75;margin-left:4px}
+.sum{color:var(--muted)}.sum b{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:var(--r);border:1px solid var(--line-strong);background:var(--card);font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn--p{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}.btn--p:hover{background:var(--brand);filter:brightness(1.08)}
+.btn--ok{background:var(--open);border-color:var(--open);color:#fff}.btn--ok:hover{background:var(--open);filter:brightness(1.08)}
+.btn--g{border-color:transparent;background:none;color:var(--muted);font-weight:500;padding:0 10px}
+.btn--l{min-height:56px;font-size:17px;width:100%}
+.btn--s{min-height:34px;padding:0 12px;font-size:14px}
+.mut{color:var(--muted)}.num{font-variant-numeric:tabular-nums}
+/* tom por tempo */
+.t-late{--tone:var(--alert)}.t-warn{--tone:var(--wait)}.t-ok{--tone:var(--open)}.t-rdy{--tone:var(--line-strong)}
+.clock{font-weight:700;font-variant-numeric:tabular-nums;font-size:17px}
+.t-late .clock{color:var(--alert)}.t-warn .clock{color:var(--wait-ink)}
+.late{display:inline-flex;gap:6px;align-items:center;color:var(--alert);font-weight:600;font-size:13px}
+.late::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--alert)}
+/* progresso por segmentos */
+.seg-bar{display:flex;gap:3px;align-items:center}
+.seg-bar i{flex:1;height:6px;border-radius:3px;background:var(--line-strong);min-width:10px;max-width:34px}
+.seg-bar i.prep{background:var(--wait)}.seg-bar i.ready{background:var(--open)}
+.prog{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.pr{padding:1px 8px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid var(--line-strong);color:var(--muted)}
+.pr--b{color:var(--brand);background:var(--brand-soft);border-color:color-mix(in srgb,var(--brand) 40%,var(--line))}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.st::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.st--prep::before{background:var(--wait)}.st--ready::before{background:var(--open)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.div{margin:18px 4px 8px;font-weight:600;color:var(--muted);font-size:13px;text-transform:none;display:flex;gap:8px;align-items:center}
+.cnt{padding:0 8px;border:1px solid var(--line-strong);border-radius:99px;background:var(--card);color:var(--ink);font-size:12px;font-weight:700}
+/* linha base */
+.row{display:grid;align-items:center;gap:16px;padding:12px 16px;border-top:1px solid var(--line);box-shadow:inset 4px 0 0 var(--tone);background:var(--card)}
+.row:first-child{border-top:0}
+.row.sel{background:var(--hl)}
+.row.clk{cursor:pointer}.row.clk:hover{background:var(--hover)}.row.sel.clk:hover{background:var(--hl)}
+.rid b{display:block;font-weight:600;font-size:16px}.rid small{color:var(--muted)}
+.rdy{opacity:.88}
+.list{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.acts{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.items{display:flex;flex-wrap:wrap;gap:2px 14px}
+.items small{color:var(--muted)}
+/* A: lista + painel */
+.A{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+.A .row{grid-template-columns:70px 150px minmax(0,1fr) 190px}
+.A .row .acts{grid-column:auto}
+.panel{position:sticky;top:16px;padding:0;overflow:hidden}
+.panel header{padding:16px 18px 12px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:1px solid var(--line)}
+.panel h2{margin:0;font-size:22px;font-weight:600}
+.pbody{padding:6px 18px 8px}
+.pgrp{margin:12px 0 4px;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-weight:600}
+.pit{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;margin:6px 0;border:1px solid var(--line);border-radius:var(--rs);background:var(--card);text-align:left}
+.pit:hover{background:var(--hover)}
+.pit .q{font-weight:700;min-width:26px}
+.pit .nm{flex:1;min-width:0}.pit .nm small{display:block;color:var(--muted)}
+.pit .tag{font-size:13px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.pit .tag::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.pit.prep .tag{color:var(--wait-ink)}.pit.prep .tag::before{background:var(--wait)}
+.pit.ready{background:var(--open-soft);border-color:color-mix(in srgb,var(--open) 35%,var(--line))}
+.pit.ready .tag{color:var(--open)}.pit.ready .tag::before{background:var(--open)}
+.pfoot{padding:12px 18px 18px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line)}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
+/* B: expande na linha */
+.B .row{grid-template-columns:20px 70px 150px minmax(0,1fr) 150px 190px}
+.chev{width:20px;color:var(--muted);transition:transform .15s}.open .chev{transform:rotate(90deg)}
+.exp{padding:4px 16px 16px 56px;background:color-mix(in srgb,var(--bg) 55%,var(--card));border-top:1px solid var(--line);box-shadow:inset 4px 0 0 var(--tone)}
+.exp .pit{max-width:640px}
+/* C: toque único */
+.C .row{grid-template-columns:70px 140px minmax(0,1fr) 170px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.ch{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--rs);background:var(--card);font-weight:500}
+.ch b{font-weight:700}
+.ch::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--line-strong);flex:none}
+.ch.prep{background:var(--wait-soft);border-color:color-mix(in srgb,var(--wait) 50%,var(--line))}.ch.prep::before{background:var(--wait)}
+.ch.ready{background:var(--open-soft);border-color:color-mix(in srgb,var(--open) 45%,var(--line))}.ch.ready::before{background:var(--open)}
+.ch.ready{text-decoration:none}
+.ch small{color:var(--muted)}
+.legend{display:flex;gap:16px;color:var(--muted);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.legend i{width:10px;height:10px;border-radius:50%;background:var(--line-strong)}
+.legend .p i{background:var(--wait)}.legend .r i{background:var(--open)}
+/* D: foco */
+.D{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
+.D .row{grid-template-columns:56px minmax(0,1fr);gap:12px;padding:12px 14px}
+.D .rid b{font-size:15px}
+.focus{padding:0;overflow:hidden}
+.focus header{padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);box-shadow:inset 0 4px 0 var(--tone)}
+.focus h2{margin:0;font-size:34px;font-weight:600;letter-spacing:-.01em}
+.focus .clock{font-size:34px}
+.focus .pbody{padding:8px 24px}
+.focus .pit{padding:16px 16px;font-size:18px}
+.focus .pit .q{font-size:20px}
+.focus .pfoot{flex-direction:row;padding:16px 24px 20px}
+.focus .pfoot .btn--l{flex:1}
+.focus .pfoot .btn--g{min-height:56px}
+.nxt{padding:12px 24px;background:var(--brand-soft);color:var(--ink);font-size:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r);display:flex;gap:14px;align-items:center;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.foot{margin-top:24px;color:var(--faint);font-size:13px}
+@media (max-width:1000px){.A,.D{grid-template-columns:1fr}.panel{position:static}.A .row,.B .row,.C .row{display:flex;flex-wrap:wrap;gap:8px 14px}.A .row>span:nth-child(3),.B .row>span:nth-child(4),.C .row>.chips{flex-basis:100%;order:3}.B .row .chev{display:none}.acts{justify-content:flex-start;margin-left:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>Cozinha e bar</h1><p class="sub">Quatro jeitos de trabalhar por comanda inteira, só em lista. Tudo clicável: marque, avance, desfaça.</p></div>
+    <div style="display:flex;gap:8px"><button class="btn btn--s" id="sim">Simular pedido</button><button class="btn btn--s" id="reset">Recomeçar</button><button class="btn btn--s" id="theme">Tema</button></div>
+  </div>
+  <div class="opts" id="opts"></div>
+  <p class="why" id="why"></p>
+  <div class="bar" id="bar"></div>
+  <div id="view"></div>
+  <p class="foot">Protótipo de exploração. Dados de exemplo; o tempo-alvo é 20 min. Sem passar o mouse: tudo funciona por toque, que é como a cozinha vai usar.</p>
+</div>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ALVO = 20;
+let T0 = Date.now();
+const seed = () => [
+  {id:1,n:'Mesa 14',g:'Juliana',m:32,items:[{n:'Picanha na chapa (2 p.)',q:1,p:'c',ks:'prep'},{n:'Torresmo crocante',q:1,p:'c',ks:'prep'}]},
+  {id:2,n:'Mesa 15',g:'Rafael',m:18,items:[{n:'Coca-Cola lata',q:3,p:'b',ks:'prep'},{n:'Pastel de carne (4)',q:1,p:'c',ks:'prep'},{n:'Porção de fritas',q:1,p:'c',ks:'sent',obs:'sem sal'}]},
+  {id:3,n:'Balcão 3',g:'Marcos',m:17,items:[{n:'Chope Pilsen 300ml',q:3,p:'b',ks:'prep'}]},
+  {id:4,n:'Grupo Aniversário Beto',g:'Juliana',m:17,items:[{n:'Bolinho de bacalhau (6)',q:2,p:'c',ks:'prep'},{n:'Chope Pilsen 500ml',q:4,p:'b',ks:'ready'},{n:'Caldinho de feijão',q:2,p:'c',ks:'sent'}]},
+  {id:5,n:'Mesa 12',g:'Carlos',m:13,items:[{n:'Porção de fritas',q:1,p:'c',ks:'prep'},{n:'Chope Pilsen 500ml',q:2,p:'b',ks:'prep'}]},
+  {id:6,n:'Mesa 11',g:'Rafael',m:11,items:[{n:'Caipirinha de limão',q:2,p:'b',ks:'sent'}]},
+  {id:7,n:'Mesa 1',g:'Rafael',m:9,items:[{n:'Caldinho de feijão',q:2,p:'c',ks:'sent'}]},
+  {id:8,n:'Mesa 3',g:'Marcos',m:7,items:[{n:'Cerveja long neck',q:2,p:'b',ks:'ready'},{n:'Torresmo crocante',q:1,p:'c',ks:'ready'}]},
+  {id:9,n:'Mesa 9',g:'Carlos',m:4,items:[{n:'Água com gás',q:2,p:'b',ks:'sent'},{n:'Isca de frango',q:1,p:'c',ks:'sent'}]},
+];
+let D, S = {op:(location.hash.match(/op=(\w)/)||[])[1]||'a', pr:'all', sel:null, open:new Set(), undo:null, nid:10};
+const load = () => { T0 = Date.now(); D = seed().map(c=>({...c,at:T0-c.m*60000})); };
+load();
+const mins = c => Math.floor((Date.now()-c.at)/60000);
+const scope = c => c.items.filter(i=>!i.done && (S.pr==='all'||i.p===S.pr));
+const pend = c => scope(c).filter(i=>i.ks!=='ready');
+const isReady = c => scope(c).length>0 && pend(c).length===0;
+const tone = c => { if(isReady(c)) return 't-rdy'; const m=mins(c); return m>=ALVO?'t-late':m>=ALVO*.6?'t-warn':'t-ok'; };
+const late = c => !isReady(c) && mins(c)>=ALVO;
+const dur = m => m<60 ? m+' min' : Math.floor(m/60)+'h'+String(m%60).padStart(2,'0');
+const hh = c => new Date(c.at).toTimeString().slice(0,5);
+const live = () => D.filter(c=>scope(c).length>0);
+const todo = () => live().filter(c=>!isReady(c)).sort((a,b)=>(late(b)-late(a))||(a.at-b.at));
+const done = () => live().filter(isReady).sort((a,b)=>a.at-b.at);
+const PRL = {c:'Cozinha',b:'Bar'};
+const STL = {sent:'Novo',prep:'Em preparo',ready:'Pronto'};
+
+/* ---------- ações ---------- */
+function snap(label){ S.undo = {label, d:JSON.stringify(D)}; }
+function toast(msg,undo){ document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div'); t.className='toast'; t.setAttribute('role','status'); t.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-a="undo">Desfazer</button>':''}`; document.body.appendChild(t); clearTimeout(toast.t); toast.t=setTimeout(()=>t.remove(),8000); }
+function quick(c){ const p = pend(c); return p.length && p.every(i=>i.ks==='sent') ? 'Começar' : 'Tudo pronto'; }
+function advAll(id){
+  const c = D.find(x=>x.id===id), p = pend(c), starting = p.every(i=>i.ks==='sent'); snap();
+  p.forEach(i=>i.ks = starting ? 'prep' : 'ready');
+  toast(starting ? `${c.n}: começou` : `${c.n}: tudo pronto, garçom avisado`, true);
+  if(!starting && S.op==='d') S.sel = null;
+}
+function deliver(id){ const c = D.find(x=>x.id===id); snap(); scope(c).forEach(i=>i.done=1); toast(`${c.n}: entregue`, true); if(S.sel===id) S.sel=null; }
+function back(id){ const c = D.find(x=>x.id===id); snap(); scope(c).forEach(i=>{ if(i.ks==='ready') i.ks='prep'; }); toast(`${c.n}: voltou para preparo`, true); }
+function cycle(id,k){ const i = D.find(x=>x.id===id).items[k]; snap(); i.ks = {sent:'prep',prep:'ready',ready:'prep'}[i.ks]; }
+function sim(){
+  const pool=[['Mesa 6','Marcos',[['Costela no bafo',1,'c'],['Suco de laranja',2,'b']]],['Mesa 18','Carlos',[['Moqueca individual',2,'c']]],['Balcão 1','Juliana',[['Chope Pilsen 300ml',2,'b'],['Pastel de queijo (4)',1,'c']]]];
+  const [n,g,its]=pool[Math.floor(Math.random()*pool.length)]; const at=Date.now(); D.unshift({id:S.nid++,n:n+' ('+(S.nid-10)+')',g,m:0,at,items:its.map(([n,q,p])=>({n,q,p,ks:'sent'}))}); toast('Novo pedido: '+n);
+}
+
+/* ---------- peças ---------- */
+const clock = c => `<span class="clock num" title="Lançado às ${hh(c)}">${dur(mins(c))}</span>`;
+const rid = c => `<span class="rid"><b>${esc(c.n)}</b><small>${esc(c.g)} · ${hh(c)}</small></span>`;
+const prs = c => [...new Set(scope(c).map(i=>i.p))].map(p=>`<span class="pr ${p==='b'?'pr--b':''}">${PRL[p]}</span>`).join(' ');
+function prog(c){
+  const s = scope(c), r = s.filter(i=>i.ks==='ready').length;
+  return `<span class="prog"><span class="seg-bar" aria-hidden="true">${s.map(i=>`<i class="${i.ks}"></i>`).join('')}</span><span>${r} de ${s.length} ${s.length===1?'pronto':'prontos'}</span></span>`;
+}
+function summary(c){ const p = pend(c); if(isReady(c)) return '<span class="st st--ready">Tudo pronto · garçom avisado</span>'; return p.every(i=>i.ks==='sent') ? '<span class="st">Novo</span>' : '<span class="st st--prep">Em preparo</span>'; }
+const itemsTxt = c => `<span class="items">${scope(c).map(i=>`<span><b>${i.q}×</b> ${esc(i.n)}${i.ks==='ready'?' <small>(pronto)</small>':''}${i.obs?` <small>${esc(i.obs)}</small>`:''}</span>`).join('')}</span>`;
+function quickBtns(c,big){
+  if(isReady(c)) return `<button class="btn btn--s ${big?'':''}" data-a="deliver" data-id="${c.id}">Entregue</button><button class="btn btn--g btn--s" data-a="back" data-id="${c.id}">Voltar</button>`;
+  const q = quick(c); return `<button class="btn btn--s ${q==='Começar'?'btn--p':'btn--ok'}" data-a="all" data-id="${c.id}">${q}</button>`;
+}
+function pitems(c){
+  const s = scope(c), groups = S.pr==='all' ? ['c','b'] : [S.pr];
+  return groups.map(g=>{ const xs = c.items.map((i,k)=>[i,k]).filter(([i])=>!i.done&&i.p===g&&(S.pr==='all'||S.pr===g)); if(!xs.length) return '';
+    return `${S.pr==='all'&&groups.length>1?`<div class="pgrp"><span class="pr ${g==='b'?'pr--b':''}">${PRL[g]}</span></div>`:''}${xs.map(([i,k])=>`<button class="pit ${i.ks}" data-a="cyc" data-id="${c.id}" data-k="${k}"><span class="q num">${i.q}×</span><span class="nm">${esc(i.n)}${i.obs?`<small>${esc(i.obs)}</small>`:''}</span><span class="tag">${STL[i.ks]}</span></button>`).join('')}`; }).join('');
+}
+const grp = (t,n) => n ? `<div class="div">${t} <span class="cnt">${n}</span></div>` : '';
+
+/* ---------- visões ---------- */
+const V = {};
+V.a = () => {
+  const t = todo(), d = done(), c = D.find(x=>x.id===S.sel && scope(x).length);
+  const row = x => `<div class="row clk ${tone(x)} ${x.id===S.sel?'sel':''} ${isReady(x)?'rdy':''}" data-a="sel" data-id="${x.id}" tabindex="0">${clock(x)}${rid(x)}<span>${itemsTxt(x)}</span><span class="acts" data-stop>${quickBtns(x)}</span></div>`;
+  const panel = c ? `<aside class="card panel"><header><div><h2>${esc(c.n)}</h2><span class="mut">${esc(c.g)} · lançada às ${hh(c)}</span></div><div style="text-align:right">${clock(c)}${late(c)?'<br><span class="late">Atrasado</span>':''}</div></header>
+    <div class="pbody"><p class="mut" style="margin:10px 0 0;font-size:13px">Toque num item para avançar só ele. Ou use o botão grande para a comanda toda.</p>${pitems(c)}</div>
+    <div class="pfoot">${isReady(c)?`<button class="btn btn--l" data-a="deliver" data-id="${c.id}">Entregue</button><button class="btn btn--g" data-a="back" data-id="${c.id}">Voltar para preparo</button>`:`<button class="btn btn--l ${quick(c)==='Começar'?'btn--p':'btn--ok'}" data-a="all" data-id="${c.id}">${quick(c)==='Começar'?'Começar a comanda':'Marcar a comanda toda pronta'}</button>`}</div></aside>`
+    : `<aside class="card panel"><div class="empty">Toque numa comanda para ver os itens e marcar um por um.<br><br>Para a comanda inteira, use o botão na própria linha.</div></aside>`;
+  return `<div class="A"><div>${t.length?`<div class="list">${t.map(row).join('')}</div>`:'<div class="card empty">Nada na fila</div>'}${grp('Prontas, esperando o garçom',d.length)}${d.length?`<div class="list">${d.map(row).join('')}</div>`:''}</div>${panel}</div>`;
+};
+V.b = () => {
+  const t = todo(), d = done();
+  const row = x => { const o = S.open.has(x.id); return `<div class="${o?'open':''}"><div class="row clk ${tone(x)} ${isReady(x)?'rdy':''}" data-a="tog" data-id="${x.id}" tabindex="0" aria-expanded="${o}"><span class="chev">›</span>${clock(x)}${rid(x)}<span>${itemsTxt(x)}</span>${prog(x)}<span class="acts" data-stop>${quickBtns(x)}</span></div>${o?`<div class="exp ${tone(x)}">${pitems(x)}</div>`:''}</div>`; };
+  return `<div class="B">${t.length?`<div class="list">${t.map(row).join('')}</div>`:'<div class="card empty">Nada na fila</div>'}${grp('Prontas, esperando o garçom',d.length)}${d.length?`<div class="list">${d.map(row).join('')}</div>`:''}</div>`;
+};
+V.c = () => {
+  const t = todo(), d = done();
+  const chips = x => `<span class="chips" data-stop>${scope(x).map(i=>{ const k = x.items.indexOf(i); return `<button class="ch ${i.ks}" data-a="cyc" data-id="${x.id}" data-k="${k}" aria-label="${i.q} ${esc(i.n)}, ${STL[i.ks]}"><b class="num">${i.q}×</b> ${esc(i.n)}${S.pr==='all'?` <small>${i.p==='b'?'bar':'cozinha'}</small>`:''}</button>`; }).join('')}</span>`;
+  const row = x => `<div class="row ${tone(x)} ${isReady(x)?'rdy':''}">${clock(x)}${rid(x)}${chips(x)}<span class="acts">${quickBtns(x)}</span></div>`;
+  return `<div class="C"><p class="legend"><span><i></i>Novo</span><span class="p"><i></i>Em preparo</span><span class="r"><i></i>Pronto</span><span>Toque num item para avançar só ele; o botão da linha avança a comanda toda.</span></p>${t.length?`<div class="list">${t.map(row).join('')}</div>`:'<div class="card empty">Nada na fila</div>'}${grp('Prontas, esperando o garçom',d.length)}${d.length?`<div class="list">${d.map(row).join('')}</div>`:''}</div>`;
+};
+V.d = () => {
+  const t = todo(), d = done(), all = t.concat(d);
+  let c = all.find(x=>x.id===S.sel) || t[0] || d[0];
+  const row = x => `<div class="row clk ${tone(x)} ${x===c?'sel':''} ${isReady(x)?'rdy':''}" data-a="sel" data-id="${x.id}" tabindex="0">${clock(x)}<span class="rid"><b>${esc(x.n)}</b><small>${esc(x.g)} · ${isReady(x)?'pronta':x.items.filter(i=>!i.done&&i.ks==='ready').length+'/'+scope(x).length+' prontos'}</small></span></div>`;
+  const nx = c && !isReady(c) ? t.filter(x=>x!==c)[0] : null;
+  const focus = !c ? '<div class="card empty">Nada na fila. Bom trabalho.</div>' : `<section class="card focus"><header class="${tone(c)}"><div><h2>${esc(c.n)}</h2><span class="mut">${esc(c.g)} · lançada às ${hh(c)} · ${prs(c)}</span></div><div style="text-align:right">${clock(c)}${late(c)?'<br><span class="late">Atrasado</span>':''}</div></header>
+    <div class="pbody">${pitems(c)}</div>
+    <div class="pfoot">${isReady(c)?`<button class="btn btn--l" data-a="deliver" data-id="${c.id}">Entregue</button><button class="btn btn--g" data-a="back" data-id="${c.id}">Voltar</button>`:`<button class="btn btn--l ${quick(c)==='Começar'?'btn--p':'btn--ok'}" data-a="all" data-id="${c.id}">${quick(c)==='Começar'?'Começar a comanda':'Comanda toda pronta'}</button>`}</div>
+    ${nx?`<div class="nxt"><span>Próxima: <b>${esc(nx.n)}</b> · ${dur(mins(nx))}</span><button class="btn btn--s" data-a="sel" data-id="${nx.id}">Ir para ela</button></div>`:''}</section>`;
+  return `<div class="D"><div><div class="list">${t.map(row).join('')||'<div class="empty">Nada na fila</div>'}</div>${grp('Prontas',d.length)}${d.length?`<div class="list">${d.map(row).join('')}</div>`:''}</div>${focus}</div>`;
+};
+
+const OPS = {
+  a:['A · Lista com painel','Linha + painel dos itens','<b>Para quando</b> a cozinha quer ver tudo e abrir uma comanda só quando precisa. Botão na linha avança a comanda inteira; abrir o painel serve para marcar item por item.'],
+  b:['B · Linha que abre','Abre embaixo, sem painel','<b>Para quando</b> a tela é estreita (tablet na parede). Mesmo comportamento da A, mas os itens aparecem dentro da própria linha. Barrinha mostra quantos itens já saíram.'],
+  c:['C · Um toque por item','Itens viram botões na linha','<b>Para quando</b> o que mais importa é velocidade. Não abre nada: cada item é um botão que muda de cor (novo, preparo, pronto) e o botão da linha fecha a comanda toda.'],
+  d:['D · Uma por vez (foco)','Fila curta + comanda grande','<b>Para quando</b> o cozinheiro trabalha comanda a comanda. Fila estreita à esquerda, a mais antiga já aberta à direita, botão enorme e atalho para a próxima.'],
+};
+function render(){
+  $('#opts').innerHTML = Object.entries(OPS).map(([k,v])=>`<button class="opt" data-a="op" data-k="${k}" aria-pressed="${S.op===k}"><b>${v[0]}</b><small>${v[1]}</small></button>`).join('');
+  $('#why').innerHTML = OPS[S.op][2];
+  const cnt = p => D.filter(c=>c.items.some(i=>!i.done&&(p==='all'||i.p===p))).length, l = D.filter(c=>late(c)).length;
+  $('#bar').innerHTML = `<div class="seg" role="group" aria-label="Praça">${[['all','Todas'],['c','Cozinha'],['b','Bar']].map(([k,v])=>`<button data-a="pr" data-k="${k}" aria-pressed="${S.pr===k}">${v}<span class="n num">${cnt(k)}</span></button>`).join('')}</div>
+    <span class="sum"><b>${l}</b> ${l===1?'atrasada':'atrasadas'} (passou de ${ALVO} min)</span>
+    ${S.pr!=='all'?`<span class="sum">Você vê e marca só os itens do ${PRL[S.pr].toLowerCase()}. A comanda vira "pronta" para o garçom quando as duas praças terminarem.</span>`:''}`;
+  $('#view').innerHTML = V[S.op]();
+}
+document.addEventListener('click',e=>{
+  const b = e.target.closest('[data-a]'); if(!b) return;
+  const a = b.dataset.a, id = +b.dataset.id, k = b.dataset.k;
+  if(e.target.closest('[data-stop]') && a==='sel') return;
+  if(a==='op'){ S.op=k; history.replaceState(null,'','#op='+k); }
+  else if(a==='pr') S.pr=k;
+  else if(a==='sel') S.sel = S.sel===id && S.op==='a' ? null : id;
+  else if(a==='tog'){ S.open.has(id) ? S.open.delete(id) : S.open.add(id); }
+  else if(a==='all') advAll(id);
+  else if(a==='deliver') deliver(id);
+  else if(a==='back') back(id);
+  else if(a==='cyc') cycle(id,+b.dataset.k);
+  else if(a==='undo'){ if(S.undo){ const at = D.map(c=>c.at); D = JSON.parse(S.undo.d); S.undo=null; document.querySelectorAll('.toast').forEach(t=>t.remove()); } }
+  render();
+});
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches('.row.clk')){ e.preventDefault(); e.target.click(); } });
+$('#sim').onclick = ()=>{ sim(); render(); };
+$('#reset').onclick = ()=>{ load(); S.sel=null; S.open.clear(); render(); };
+$('#theme').onclick = ()=>{ const r=document.documentElement; r.dataset.theme = r.dataset.theme==='dark'?'light':'dark'; };
+setInterval(render,30000);
+render();
+</script>
+</body>
+</html>

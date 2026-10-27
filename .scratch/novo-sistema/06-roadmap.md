@@ -87,13 +87,14 @@ Ordem **dentro** da fase: lançamento rápido primeiro, o resto depois.
 | 2.1 | **App do garçom (PWA) de lançamento rápido** (D16): favoritos e mais vendidos, repetir a última rodada, busca e código de barras, teclado numérico, adicionais em um toque, enviar rodada de uma vez, **fila de ações pendentes visível**, reconexão sem perder lançamento | F1, RNF2, RNF8 | G |
 | 2.2 | Cardápio: produtos, categorias (2 níveis), preço, preço promocional, ativo/inativo, disponibilidade | F2.1, F2.2, F2.10, F2.11 | M |
 | 2.3 | Opções e adicionais; combos | F2.3, F2.5 | M |
-| 2.4 | Promoções com aplicação automática | F2.4, F2.12 | M |
+| 2.4 | Tela Promoções (promoções e combos): pontual/recorrente, horário, unidades, aplicação automática | F2.4, F2.5, F2.12 | M |
 | 2.5 | **Central de comandas na web**: lista e mapa em tempo real, filtros por garçom, mesa e tempo aberto, edição com permissão | F1, F18.2 base | M |
 | 2.6 | Mesas, áreas e mapa derivado das comandas | F1.16 | M |
 | 2.7 | Comandas completas: alterar/cancelar item (motivos), cortesia, brinde, desconto com limite, taxa de serviço, transferir, juntar, dividir, observações, cronômetro, histórico, versão (concorrência) | F1 | G |
 | 2.8 | Pagamentos: métodos cadastráveis, parcial, dividido (6 formas), troco, gorjeta, estorno, fiado | F4 | G |
 | 2.9 | Clientes (base mínima) e consentimento | F16 | M |
 | 2.10 | Caixa completo: janela, sangria, suprimento, conferência cega, diferença e aprovação | F5 | M |
+| 2.10b | Agenda de funcionamento: horário por dia da semana, exceções por data, comportamento fora do horário | F5.8, F5.9 | M |
 | 2.11 | Comprovantes e pré-conta | F7 agora | M |
 | 2.12 | **Importação do cardápio** por planilha (primeiro uso de F17, para o piloto) | F17 | M |
 
@@ -132,7 +133,7 @@ Nada novo de valor: é **reproduzir o que o restaurante usa hoje**, conforme `02
 | 4.2 | Dashboard com os widgets do sistema atual e pendências por permissão | F10 | M |
 | 4.3 | Contas a pagar (lista, parcelas, pagar, a partir de compras) | F8.1, F8.2 | M |
 | 4.4 | Equipe e comissões (regra simples), pagamento | F9 | M |
-| 4.5 | Calendário base (eventos, recorrência, camadas de pagamentos e entregas) | F15 | M |
+| 4.5 | Calendário base (eventos e tarefas, recorrência, camadas de pagamentos e entregas) | F15 | M |
 | 4.6 | Gestão de usuários e perfis completa; perfis padrão | F11, `02d` | M |
 | 4.7 | Importação de clientes, comissões em aberto e saldos pendentes | F17 | P |
 | 4.8 | Resumo do dia e painel ao vivo (barato e visível) | F18.1, F18.2 | M |
@@ -180,7 +181,7 @@ Contas a receber, contas financeiras, fluxo de caixa, DRE gerencial completo, ca
 
 ## R11. Fase 8: Gestão avançada
 
-Alerta de margem e simulador (F18.3); chope, doses e garrafas (F18.4); painel de exceções (F18.5); documentos e vencimentos (F18.6); rentabilidade por evento (F18.7); compras avançadas (F18.8). **Critério:** cada item validado com um mês de operação real.
+Alerta de margem e simulador (F18.3); chope, doses e garrafas (F18.4); painel de exceções (F18.5, adiado: a tela Auditoria já filtra "só sensíveis"); documentos e vencimentos (F18.6, adiado: fora do menu, vencimentos como lembrete no calendário); rentabilidade por evento (F18.7); compras avançadas (F18.8). **Critério:** cada item validado com um mês de operação real.
 
 ## R12. Fases 9 e 10: Cozinha e fiscal
 
