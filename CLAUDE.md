@@ -4,10 +4,11 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 
 ## Structure
 - `backend/Flow4Tech.sln`
-  - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; `Events/IDomainEvent`; later decision engine contract, audit).
+  - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; `Events/IDomainEvent`; `Authorization/IAuthorizationEngine`: the single decision interface, ADR-006; later audit).
   - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`). Project names `Flow4Tech.<Module>.<Layer>`.
   - `src/Infrastructure/Data`: shared technical data access (`Flow4Tech.Infrastructure.Data`: `TenantDatabase`, `MigrationRunner`); not a module; only a module's Infrastructure layer (and Api) may reference it.
   - `src/Infrastructure/Outbox`: transactional outbox and background-job seam (`Flow4Tech.Infrastructure.Outbox`: `OutboxWriter`, `OutboxDispatcher`, `IOutboxConsumer`, `IdempotentConsumer`, `IBackgroundJobs`); not a module, built on `TenantDatabase`; module Infrastructure layers may reference it.
+  - `tests/Authorization`: authorization engine contract (profile x permission matrix, cases 1-3, deny precedence) plus the cumulative-limit concurrency test against real PostgreSQL (classes named `*Integration*`).
   - `src/Api`: host (`Flow4Tech.Api`, Web SDK); health endpoints.
   - `tests/Flow4Tech.Tests`: xUnit. `tests/Isolation`: tenant isolation + RLS architecture tests against real PostgreSQL (classes named `*Integration*`). `tests/Outbox`: outbox, dispatcher, idempotent consumer and job-context tests against real PostgreSQL.
   - `backend/migrations`: versioned plain SQL (`NNNN_name.sql`), see Data and tenant isolation.
@@ -37,6 +38,7 @@ One pipeline on every pull request and on push to `main`. Merge requires the agg
 - `openapi-contract`: regenerates `openapi.json` + client and fails if the committed output differs (`git diff --exit-code`); runs client tests; runs `oasdiff breaking --fail-on ERR` (pinned `tufin/oasdiff` image) between the base revision (PR base / push `before`) and the head contract, so removing or narrowing anything clients rely on fails the PR.
 - `isolation-tests`: `backend/tests/Isolation` (tenant isolation + RLS architecture rule, real PostgreSQL via Testcontainers, app credential). Own project, so the `unit-tests`/`integration-tests` name filters (which target `Flow4Tech.Tests` only) neither run nor miss it.
 - `outbox-tests`: `backend/tests/Outbox` (outbox atomicity, at-least-once dispatcher, idempotent consumer, organization context restored in background jobs under RLS; real PostgreSQL via Testcontainers). Own project, same reason as isolation.
+- `authorization-tests`: `backend/tests/Authorization` (engine contract on every engine, daily-cap concurrency under RLS on real PostgreSQL via Testcontainers, app credential). Own project, same reason as isolation.
 - Later tickets add: permission gates (10).
 - No secrets in the repo: config via environment variables; gitleaks fails the pipeline on any finding in history.
 
@@ -69,7 +71,16 @@ Duration budget (TARGET, not yet measured; replace with the first real run): who
 - Enforced by `tests/Architecture` (`ModuleGraph.CheckTenantDataAccess`): `Npgsql` only in `src/Infrastructure/Data` (exemption: the readiness probe in `src/Api`); EF Core only in Data and module Infrastructure layers; Dapper and EF Design/Tools banned; only a module Infrastructure layer may reference the Data project. Get connections only from `TenantDatabase`.
 - `backend/spikes/**` is disposable (Dapper vs EF evidence, Wolverine/Hangfire/Quartz comparison), outside `Flow4Tech.sln` (no CI gate builds it); never reference it from `src`.
 - Background work and events (ADR-003): there is no ambient organization. A job carries `Job.Organization`; the handler restores it with `TenantDatabase.BeginAsync(job.Organization)` before touching data. Publish a domain event with `OutboxWriter.AddAsync(tx, organization, event)` on the SAME `TenantTransaction` as the state change (never its own transaction). `OutboxDispatcher.DispatchAsync(organization)` delivers at least once, running consumers inside a `BeginAsync` for the event's organization; consumers must be idempotent on `OutboxMessage.Id` (`IdempotentConsumer` + inbox table does it for database effects), and must not assume ordering. Queue/worker libraries only ever sit behind `IBackgroundJobs` (Quartz chosen; Wolverine and Hangfire compared in ADR-003). Name event types stably (`amostra.item-criado`); never rename one once published.
+- Authorization (ADR-006): see "Authorization: asking Decidir" below.
 - Open item (ADR-003): how the dispatcher finds which organizations have pending events (RLS hides them without a context).
+
+## Authorization: asking Decidir (ADR-006)
+- One door: `IAuthorizationEngine.DecidirAsync(Subject who, string permission, Scope where, DecisionContext context, ct)` (`Flow4Tech.Kernel.Authorization`). Permission is `resource:action` from the catalog (`PolicySet.KnownPermissions`); unknown permission, no matching rule, no organization all deny. Precedence: explicit deny > allow > default deny. Callers and tests depend only on the interface (the engine is swappable: rules-as-data today in `Permissoes.Application`, `RulesAuthorizationEngine`); never evaluate profiles/roles yourself and never branch on a profile name.
+- Ask in the Application handler, after loading the real operation and BEFORE any change: build `Scope` from the session (`OrganizationContext`; `UnitId` of the object being touched) and `DecisionContext` from server-side facts (`Value` = the computed total, `Percent` = from the stored order; there is no time field: the daily window uses the engine IClock). Never feed it numbers taken from the request body. A limited permission without the measured value is denied (fails closed).
+- `Decision.IsAllowed` false means stop and return 403 (do not leak why; log `Decision.Reason`). An Allow on a capped permission (cumulative daily limit) has ALREADY reserved the budget atomically (one upsert in `PostgresCumulativeLimitStore`, own tenant transaction, RLS): do the work right after, and if it then fails, the reservation stays (conservative; joining the business transaction is open, see ADR-006).
+- ASP.NET: resource-based authorization. A `PermissionHandler : AuthorizationHandler<PermissionRequirement, OperationFacts>` maps the user's claims to `Subject` and calls `DecidirAsync` (working sample in `backend/spikes/authz/AspNetIntegrationTests.cs`). A name-only `[Authorize(Policy=..)]` never sees the values, so it cannot enforce limits: use it only for coarse "is signed in" gates, not for permissions with limits or unit scope.
+- Test a new permission: add it to the catalog and to the profile x permission matrix in `AuthorizationEngineContract` (a test fails if a profile x catalog pair is missing), then run `dotnet test backend/tests/Authorization/Flow4Tech.Authorization.Tests.csproj`. A new engine implementation subclasses `AuthorizationEngineContract` and must pass it unchanged.
+- Cumulative counters live in `limites_consumo` (migration 0003, key organization+user+permission+day, RLS). Never read-then-write a counter in application code: the concurrency test (`Harness_detects_a_counter_without_locking`) shows that overshoots.
 
 ## Writing a route the secure way
 1. Resolve the organization/unit from `OrganizationContext` (authenticated session), never from client input.
@@ -78,4 +89,4 @@ Duration budget (TARGET, not yet measured; replace with the first real run): who
 4. Scope every query by organization (and unit when applicable).
 5. Audit state-changing actions; return no data the caller's permission does not cover.
 6. Cover the route with a test for the allowed case and for the denied/cross-organization case.
-(The concrete mechanisms land in later tickets; keep this list in sync.)
+(Step 2 is `IAuthorizationEngine.DecidirAsync`, see above. Other mechanisms land in later tickets; keep this list in sync.)

@@ -10,5 +10,6 @@ tickets:
 - 06 · rls-isolation-spike · done · rounds: 3 · PASS (note: no-context write asserted on one table). STOPPED for owner review
 - 07 · data-access-choice · done · rounds: 3 · EF Core (owner decision); review PASS WITH RISKS, fixes 1-2 applied without a third review; own MigrationRunner kept w/ checksums
 - 08 · outbox-queue-spike · done-local · rounds: 2 · PASS WITH RISKS · Quartz chosen; PENDING-OWNER: staging latency (ticket 12), first GitHub run of outbox-tests, confirm Quartz; follow-ups F1 parked events, F2 org discovery
-- 09..12 · pending
+- 09 · authorization-spike · done · rounds: 2 · PASS (2 independent reviews) · ADR-006: build own engine · STOPPED for owner review; owner items: day boundary, reserve-then-fail, currency
+- 10..12 · pending
 lessons: 0

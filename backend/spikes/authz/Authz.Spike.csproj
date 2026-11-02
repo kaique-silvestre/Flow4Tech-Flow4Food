@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- DISPOSABLE SPIKE (ticket 09, ADR-006). See README.md. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/Kernel/Flow4Tech.Kernel.csproj" />
+    <ProjectReference Include="../../src/Permissoes/Domain/Flow4Tech.Permissoes.Domain.csproj" />
+    <ProjectReference Include="../../src/Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />
+    <ProjectReference Include="../../src/Permissoes/Infrastructure/Flow4Tech.Permissoes.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <Compile Include="../../tests/Isolation/PostgresFixture.cs" Link="Shared/PostgresFixture.cs" />
+    <!-- The very same behavioural contract the production engine passes, compiled in so every spike engine runs it. -->
+    <Compile Include="../../tests/Authorization/AuthorizationEngineContract.cs" Link="Shared/AuthorizationEngineContract.cs" />
+    <Compile Include="../../tests/Authorization/TestSupport.cs" Link="Shared/TestSupport.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Casbin.NET" Version="2.21.3" />
+    <PackageReference Include="MonoCloud.Cedar" Version="0.1.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

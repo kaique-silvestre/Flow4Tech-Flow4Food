@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Unit (decision engine), Integration (cumulative limit under concurrency)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A single interface `Decidir(who, resource:action, where, context)` exists; tests depend only on it
 - [ ] Case 1: waiter may give discount up to X% by profile; above it is denied
