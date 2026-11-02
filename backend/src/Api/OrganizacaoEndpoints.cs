@@ -22,7 +22,7 @@ internal static class OrganizacaoEndpoints
                 return TypedResults.Ok(lista.Select(u => new UnidadeResponse(u.Id, u.Nome)).ToList());
             })
             .WithName("listUnidades")
-            .RequireSession()
+            .RequireSession(allowWithoutUnit: true)
             .RequirePermission(OrganizacaoPermissions.VerUnidades)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -51,7 +51,8 @@ internal static class OrganizacaoEndpoints
                 return Results.Ok(new UnidadeAtivaResponse(body.UnidadeDestinoId));
             })
             .WithName("trocarUnidadeAtiva")
-            .RequireSession()
+            .RequireSession(allowWithoutUnit: true)
+            .WithBodyLimit(1024)
             .RequirePermission(OrganizacaoPermissions.TrocarUnidade)
             .Produces<UnidadeAtivaResponse>()
             .Produces(StatusCodes.Status401Unauthorized)

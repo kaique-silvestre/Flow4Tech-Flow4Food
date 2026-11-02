@@ -3,4 +3,8 @@ conta:criar
 conta:definir-dono
 conta:desativar
 conta:trocar-senha
+sessao:encerrar
+sessao:iniciar
+sessao:refresh-reutilizado
+sessao:revogar
 sessao:trocar-unidade

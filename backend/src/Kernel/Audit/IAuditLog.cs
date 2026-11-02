@@ -79,6 +79,7 @@ public static class AuditLogExtensions
         {
             UserId = entry.UserId ?? request.UserId,
             SessionId = entry.SessionId ?? request.SessionId,
-            UnitId = entry.UnitId ?? request.Organization.UnitId,
+            // A session that has not chosen a unit yet carries Guid.Empty: the record has no unit then (it would break the foreign key).
+            UnitId = entry.UnitId ?? (request.Organization.UnitId == Guid.Empty ? null : request.Organization.UnitId),
         };
 }

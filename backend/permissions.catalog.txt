@@ -1,3 +1,10 @@
 organizacao:trocar-unidade
 organizacao:ver-unidades
+sessao:entrar
+sessao:renovar
+sessao:revogar
+sessao:sair
+sessao:trocar-senha
+sessao:ver-proprias
+sessao:ver-todas
 sistema:ver-versao

@@ -9,6 +9,8 @@ namespace Flow4Tech.Tests;
 /// <summary>Starts the real published host as a process, the way Railway does: PORT and DATABASE_URL injected, nothing else.</summary>
 public sealed class PortBindingIntegrationTests : IAsyncLifetime
 {
+    private const string TokenKey = "chave-de-teste-nao-usar-em-producao-0123456789";
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
     public Task InitializeAsync() => _postgres.StartAsync();
@@ -19,7 +21,7 @@ public sealed class PortBindingIntegrationTests : IAsyncLifetime
     public async Task The_host_listens_on_the_injected_PORT()
     {
         var port = FreePort();
-        using var process = StartHost(("PORT", port.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        using var process = StartHost(("PORT", port.ToString(System.Globalization.CultureInfo.InvariantCulture)), ("Flow4Tech__Tokens__AppKey", TokenKey));
         try
         {
             var response = await GetWhenUp(new Uri($"http://127.0.0.1:{port}/health/live"));
@@ -37,7 +39,7 @@ public sealed class PortBindingIntegrationTests : IAsyncLifetime
         var b = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString());
         var databaseUrl = $"postgres://{Uri.EscapeDataString(b.Username!)}:{Uri.EscapeDataString(b.Password!)}@{b.Host}:{b.Port}/{b.Database}";
         var port = FreePort();
-        using var process = StartHost(("PORT", port.ToString(System.Globalization.CultureInfo.InvariantCulture)), ("DATABASE_URL", databaseUrl));
+        using var process = StartHost(("PORT", port.ToString(System.Globalization.CultureInfo.InvariantCulture)), ("DATABASE_URL", databaseUrl), ("Flow4Tech__Tokens__AppKey", TokenKey));
         try
         {
             var response = await GetWhenUp(new Uri($"http://127.0.0.1:{port}/health/ready"));
@@ -47,6 +49,17 @@ public sealed class PortBindingIntegrationTests : IAsyncLifetime
         {
             process.Kill(entireProcessTree: true);
         }
+    }
+
+    [Fact]
+    public async Task The_production_host_does_not_start_without_the_token_signing_key_and_names_the_setting_not_a_value()
+    {
+        using var process = StartHost(("PORT", FreePort().ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        var output = await process.StandardOutput.ReadToEndAsync() + await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        Assert.NotEqual(0, process.ExitCode);
+        Assert.Contains("Flow4Tech:Tokens:AppKey", output, StringComparison.Ordinal);
     }
 
     [Fact]

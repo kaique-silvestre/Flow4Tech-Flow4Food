@@ -13,6 +13,25 @@ using static Flow4Tech.Isolation.Tests.TestDatabase;
 
 namespace Flow4Tech.Identidade.Tests;
 
+/// <summary>The host adapter of <see cref="IUnidadesDaConta"/> reads the Organizacao port; the tests read the same table directly.</summary>
+internal sealed class SqlUnidadesDaConta : IUnidadesDaConta
+{
+    public async Task<IReadOnlyList<Guid>> ListarAsync(Guid organizacaoId, Guid contaId, CancellationToken cancellationToken)
+    {
+        var tx = TenantUnitOfWork.Require(organizacaoId);
+        await using var command = new NpgsqlCommand("SELECT unidade_id FROM usuario_unidades WHERE usuario_id = @c ORDER BY unidade_id", tx.Connection, tx.Transaction);
+        command.Parameters.AddWithValue("c", contaId);
+        var ids = new List<Guid>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            ids.Add(reader.GetGuid(0));
+        }
+
+        return ids;
+    }
+}
+
 internal sealed class FixedClock : IClock
 {
     public DateTimeOffset UtcNow { get; set; } = new(2026, 11, 2, 12, 0, 0, TimeSpan.Zero);
@@ -124,6 +143,8 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
 
     public Autenticacao Auth => _services.GetRequiredService<Autenticacao>();
 
+    public Sessoes Sessoes => _services.GetRequiredService<Sessoes>();
+
     public IPreAuthLookup Lookup => _services.GetRequiredService<IPreAuthLookup>();
 
     public IContaStore Store => _services.GetRequiredService<IContaStore>();
@@ -149,6 +170,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
         var options = new IdentidadeOptions();
         options.Argon2 = FastArgon;
         options.TempoMinimoDeLogin = TimeSpan.Zero;
+        options.Tokens.AppKey = "chave-de-teste-nao-usar-em-producao-0123456789";
         tweak?.Invoke(options);
 
         var services = new ServiceCollection();
@@ -164,7 +186,10 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
             o.UsarHibp = false;
             o.CredencialTemporariaHoras = options.CredencialTemporariaHoras;
             o.HibpIndisponivelRecusa = options.HibpIndisponivelRecusa;
+            o.Tokens = options.Tokens;
+            o.Sessoes = options.Sessoes;
         });
+        services.AddSingleton<IUnidadesDaConta, SqlUnidadesDaConta>();
         services.Replace(ServiceDescriptor.Singleton<IPasswordHasher>(_ => new CountingHasher(new Argon2PasswordHasher(options.Argon2))));
         services.Replace(ServiceDescriptor.Singleton<IResponseTimeFloor>(new CountingFloor()));
         if (compromised is not null)
@@ -187,6 +212,37 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
         await App.DisposeAsync();
         await Owner.DisposeAsync();
     }
+
+    private async Task RunAsync(Guid org, Func<TenantTransaction, Task> work)
+    {
+        await using var tx = await Tenant.BeginAsync(Ctx(org));
+        await work(tx);
+        await tx.CommitAsync();
+    }
+
+    /// <summary>A second unit in the organization (the seed has one).</summary>
+    public async Task<Guid> AddUnitAsync(Guid org)
+    {
+        var id = EntityId.New().Value;
+        await RunAsync(org, tx => Exec(tx, "INSERT INTO unidades (id, organizacao_id, nome) VALUES (@i, @o, 'Outra')", ("i", id), ("o", org)));
+        return id;
+    }
+
+    public Task VincularAsync(Guid org, Guid conta, Guid unidade) =>
+        RunAsync(org, tx => Exec(tx, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @c, @u)", ("o", org), ("c", conta), ("u", unidade)));
+
+    public Task DesvincularAsync(Guid org, Guid conta, Guid unidade) =>
+        RunAsync(org, tx => Exec(tx, "DELETE FROM usuario_unidades WHERE organizacao_id = @o AND usuario_id = @c AND unidade_id = @u", ("o", org), ("c", conta), ("u", unidade)));
+
+    /// <summary>A raw session row written with the app credential (to prove the composite foreign keys).</summary>
+    public Task InsertSessionRowAsync(Guid org, Guid conta, Guid? unidade) =>
+        RunAsync(org, tx => Exec(
+            tx,
+            """
+            INSERT INTO sessoes (id, organizacao_id, conta_id, unidade_ativa_id, familia_id, versao_credencial, criada_em, ultima_atividade_em, expira_inatividade_em, expira_em)
+            VALUES (@i, @o, @c, @u, @f, 1, now(), now(), now() + interval '1 hour', now() + interval '1 day')
+            """,
+            ("i", EntityId.New().Value), ("o", org), ("c", conta), ("u", (object?)unidade ?? DBNull.Value), ("f", EntityId.New().Value)));
 
     public static OrganizationContext Pre(Guid org) => OrganizationContext.WithoutUnit(org);
 

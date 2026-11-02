@@ -1,6 +1,9 @@
 using Flow4Tech.Identidade.Application;
+using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
+using Flow4Tech.Infrastructure.Outbox;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Flow4Tech.Identidade.Infrastructure;
 
@@ -24,6 +27,24 @@ public sealed class IdentidadeOptions
     /// typed result <c>VerificacaoIndisponivel</c> (the person tries again later). With HIBP off the option does nothing: there is no check to be unavailable.
     /// </summary>
     public bool HibpIndisponivelRecusa { get; set; }
+
+    /// <summary>Signing keys and lifetime of the access token (ticket 04). <c>AppKey</c> is required.</summary>
+    public TokensOptions Tokens { get; set; } = new();
+
+    /// <summary>The two session clocks (ticket 04). Ticket 10 moves them to layered settings per profile and organization.</summary>
+    public SessoesOptions Sessoes { get; set; } = new();
+}
+
+public sealed class SessoesOptions
+{
+    /// <summary>The session ends after this long without activity (default 12 hours: a shift).</summary>
+    public TimeSpan Inatividade { get; set; } = TimeSpan.FromHours(12);
+
+    /// <summary>The session ends this long after it started, activity or not (default 14 days).</summary>
+    public TimeSpan Absoluta { get; set; } = TimeSpan.FromDays(14);
+
+    /// <summary>The activity write happens at most once per this interval (default 1 minute).</summary>
+    public TimeSpan IntervaloDeAtividade { get; set; } = TimeSpan.FromMinutes(1);
 }
 
 public static class IdentidadeServices
@@ -59,6 +80,18 @@ public static class IdentidadeServices
         services.AddSingleton<IResponseTimeFloor>(_ => new ResponseTimeFloor(options.TempoMinimoDeLogin));
         services.AddSingleton<IContaStore, PostgresContaStore>();
         services.AddSingleton<IPreAuthLookup, PostgresPreAuthLookup>();
+        if (options.Sessoes.Inatividade <= TimeSpan.Zero || options.Sessoes.Absoluta <= TimeSpan.Zero || options.Sessoes.IntervaloDeAtividade < TimeSpan.Zero)
+        {
+            throw new InvalidOperationException("The session clocks must be positive.");
+        }
+
+        // The emitter is built lazily so the host can resolve it at start and refuse to boot without a signing key (Program.cs).
+        services.AddSingleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(provider.GetRequiredService<IClock>(), options.Tokens));
+        services.AddSingleton(new RelogiosDaSessao(options.Sessoes.Inatividade, options.Sessoes.Absoluta, options.Sessoes.IntervaloDeAtividade));
+        services.TryAddSingleton<OutboxWriter>();
+        services.AddSingleton<ISessaoStore, PostgresSessaoStore>();
+        services.AddSingleton<IEventosDeSeguranca, OutboxEventosDeSeguranca>();
+        services.AddSingleton<Sessoes>();
         services.AddSingleton<GestaoDeContas>();
         services.AddSingleton<TrocaDeSenha>();
         services.AddSingleton<Autenticacao>();

@@ -33,6 +33,8 @@ services:
     environment:
       DATABASE_URL: postgres://flow4tech_app:flow4tech_app_dev@db:5432/flow4tech
       PORT: "8080"
+      # Signing key of the access tokens (ticket 04): throwaway local-dev value, the host refuses to start without one outside Development/Testing.
+      Flow4Tech__Tokens__AppKey: local-dev-only-token-key-do-not-use-elsewhere
     ports:
       - "8080:8080"
     depends_on:

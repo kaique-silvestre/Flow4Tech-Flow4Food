@@ -43,6 +43,7 @@ Railway, API service (set separately in `staging` and `production`):
 - The restricted-credential check is REQUIRED by default: a missing `DATABASE_URL` fails the pre-deploy (exit 1). `SKIP_APP_CHECK=1` is the explicit opt-out for a migrate-only run; never set it in staging or production.
 - `GIT_SHA`: written by `deploy.yml` before each deploy (`RAILWAY_GIT_COMMIT_SHA` is the fallback); `/health/ready` returns it as `commit` and the smoke test requires it to equal the deployed SHA.
 - `APP_DB_PASSWORD`: password of `flow4tech_app`, secret, different per environment.
+- `Flow4Tech__Tokens__AppKey`: signing key of the access tokens (ticket 04, ADR-010), secret, at least 32 bytes, different per environment (`openssl rand -base64 48`). REQUIRED: the API does not start without it outside Development/Testing. To rotate: move the current value to `Flow4Tech__Tokens__AppKeyPrevious`, set a new `AppKey`, deploy; after the access token lifetime (5 minutes by default, plus 30 s of skew) remove `AppKeyPrevious`. `Flow4Tech__Tokens__ControlKey` is reserved for the Control Tower realm (phase 1B). Optional tuning: `Flow4Tech__Sessoes__InatividadeHoras` (12), `Flow4Tech__Sessoes__AbsolutaDias` (14), `Flow4Tech__Sessoes__AllowedOrigins__0` (the front origin when it is not the API's own).
 - `PORT`: injected by Railway; the app binds to it (8080 when absent). Do not set it.
 - Optional: `MIGRATIONS_DIR` (default `/app/migrations`, already in the image).
 

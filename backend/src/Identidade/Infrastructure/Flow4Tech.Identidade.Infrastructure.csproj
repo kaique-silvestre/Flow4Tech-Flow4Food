@@ -7,12 +7,15 @@
   <ItemGroup>
     <ProjectReference Include="../Application/Flow4Tech.Identidade.Application.csproj" />
     <ProjectReference Include="../../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <!-- Security events (refresh reuse) go through the transactional outbox, on the unit of work of the action. -->
+    <ProjectReference Include="../../Infrastructure/Outbox/Flow4Tech.Infrastructure.Outbox.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <!-- Argon2id (RFC 9106), ADR-005: managed implementation, validated against the RFC test vector in the tests. -->
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.14.0" />
   </ItemGroup>
 
 </Project>

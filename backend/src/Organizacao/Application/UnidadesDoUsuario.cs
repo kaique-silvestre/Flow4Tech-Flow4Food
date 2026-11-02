@@ -56,7 +56,7 @@ public sealed class UnidadesDoUsuario(IUnitOfWork unitOfWork, IUnidadeVinculos v
             Result = result,
             ObjectType = "unidade",
             ObjectId = destino.ToString("D"),
-            Before = new JsonObject { ["unidadeId"] = origem.ToString("D") },
+            Before = origem == Guid.Empty ? null : new JsonObject { ["unidadeId"] = origem.ToString("D") }, // none yet when the session had no active unit
             After = new JsonObject { ["unidadeId"] = destino.ToString("D") },
         };
 

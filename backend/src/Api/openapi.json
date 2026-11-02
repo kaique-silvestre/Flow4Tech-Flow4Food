@@ -156,6 +156,240 @@
           }
         }
       }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          }
+        }
+      }
+    },
+    "/refresh": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "refresh",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/sessao/trocar-senha": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "trocarSenha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocarSenhaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessaoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrocarSenhaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrocarSenhaErro"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessoes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listSessoes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessaoItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/sessoes/todas": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listSessoesTodas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessaoItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/sessoes/{id}/revogar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "revogarSessao",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -170,6 +404,185 @@
             "type": "string"
           },
           "commit": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": [
+          "organizacaoDoLogin",
+          "usuario",
+          "email",
+          "senha"
+        ],
+        "type": "object",
+        "properties": {
+          "organizacaoDoLogin": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "usuario": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "senha": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SessaoItem": {
+        "required": [
+          "id",
+          "contaId",
+          "unidadeAtivaId",
+          "criadaEm",
+          "ultimaAtividadeEm",
+          "expiraEm",
+          "ip",
+          "agente",
+          "atual"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unidadeAtivaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "criadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ultimaAtividadeEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ip": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "agente": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atual": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SessaoResponse": {
+        "required": [
+          "accessToken",
+          "expiraEmSegundos",
+          "sessaoId",
+          "unidadeAtivaId",
+          "deveTrocarSenha",
+          "requerSelecaoDeUnidade",
+          "sessaoExpiraEm"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "expiraEmSegundos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sessaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unidadeAtivaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "deveTrocarSenha": {
+            "type": "boolean"
+          },
+          "requerSelecaoDeUnidade": {
+            "type": "boolean"
+          },
+          "sessaoExpiraEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TrocarSenhaErro": {
+        "required": [
+          "codigo",
+          "problemas"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "problemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TrocarSenhaRequest": {
+        "required": [
+          "senhaAtual",
+          "novaSenha"
+        ],
+        "type": "object",
+        "properties": {
+          "senhaAtual": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "novaSenha": {
             "type": [
               "null",
               "string"

@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using Flow4Tech.Api;
+using System.Net.Http.Headers;
+using Flow4Tech.Identidade.Application;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Infrastructure.Migrator;
 using Flow4Tech.Kernel;
@@ -17,8 +19,8 @@ using Testcontainers.PostgreSql;
 namespace Flow4Tech.Tests;
 
 /// <summary>
-/// Ticket 01 (spec 5.1): organization and unit come from the session only. Real PostgreSQL, application credential (RLS on), test session
-/// (signed header, Development/Testing only; ticket 04 replaces it with the real session).
+/// Ticket 01 (spec 5.1): organization and unit come from the session only. Real PostgreSQL, application credential (RLS on). Since ticket 04 the sessions
+/// are REAL: a row in <c>sessoes</c> and a signed access token issued by the same service the login uses (no forgeable test header exists any more).
 /// </summary>
 public sealed class RequestContextEndpointsTests : IAsyncLifetime
 {
@@ -122,12 +124,16 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     private static HttpRequestMessage Get(string path, string? token)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, new Uri(path, UriKind.Relative));
+        WithToken(request, token);
+        return request;
+    }
+
+    private static void WithToken(HttpRequestMessage request, string? token)
+    {
         if (token is not null)
         {
-            request.Headers.Add(TestSession.HeaderName, token);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
-
-        return request;
     }
 
     private static async Task<HttpResponseMessage> Send(HttpClient client, string path, string? token)
@@ -136,8 +142,29 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         return await client.SendAsync(request);
     }
 
-    private static string Token(Guid user, Guid org, Guid? unit, Guid? session = null, string key = Key) =>
-        TestSession.CreateToken(key, session ?? Guid.NewGuid(), user, org, unit);
+    /// <summary>A real session for the user (row in <c>sessoes</c>, signed token) whose active unit is <paramref name="unit"/> (null: none).</summary>
+    private static async Task<(string Token, Guid SessionId)> IssueAsync(ApiFactory api, Guid user, Guid org, Guid? unit)
+    {
+        var sessoes = api.Services.GetRequiredService<Sessoes>();
+        var emitida = await sessoes.IniciarAsync(user, org, 1, false, new ClienteDaSessao("127.0.0.1", "testes"));
+        if (emitida.UnidadeAtivaId != unit)
+        {
+            var uow = api.Services.GetRequiredService<IUnitOfWork>();
+            await uow.ExecuteAsync(OrganizationContext.WithoutUnit(org), ct => unit is null ? SetNoUnit(org, emitida.SessaoId, ct) : sessoes.DefinirUnidadeAtivaAsync(org, emitida.SessaoId, unit.Value, ct));
+        }
+
+        return (emitida.AccessToken, emitida.SessaoId);
+    }
+
+    private static async Task SetNoUnit(Guid org, Guid session, CancellationToken ct)
+    {
+        var tx = TenantUnitOfWork.Require(org);
+        await using var command = new NpgsqlCommand("UPDATE sessoes SET unidade_ativa_id = NULL WHERE id = @i", tx.Connection, tx.Transaction);
+        command.Parameters.AddWithValue("i", session);
+        await command.ExecuteNonQueryAsync(ct);
+    }
+
+    private static async Task<string> TokenAsync(ApiFactory api, Guid user, Guid org, Guid? unit) => (await IssueAsync(api, user, org, unit)).Token;
 
     private sealed record UnidadeDto(Guid Id, string Nome);
 
@@ -155,38 +182,38 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_forged_or_wrongly_signed_session_answers_401()
+    public async Task A_forged_or_tampered_token_answers_401()
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        var good = Token(UserMulti, OrgA, UnitA1);
+        var good = await TokenAsync(api, UserMulti, OrgA, UnitA1);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Send(client, "/unidades", Token(UserMulti, OrgA, UnitA1, key: "outra-chave-outra-chave-outra-chave-123"))).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Send(client, "/unidades", "lixo")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await Send(client, "/unidades", good[..^3] + "AAA")).StatusCode);
+        // The old signed test header does not exist any more: it is just an unknown header.
+        using var legacy = Get("/unidades", null);
+        legacy.Headers.Add("X-Test-Session", good);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(legacy)).StatusCode);
     }
 
     [Fact]
-    public async Task A_session_without_an_active_unit_has_no_resolved_context_and_answers_401()
+    public async Task A_session_without_an_active_unit_cannot_reach_business_routes_and_answers_403()
     {
         await using var api = Api();
         using var client = api.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await Send(client, "/unidades", Token(UserMulti, OrgA, null))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/sessao/unidade-ativa", await TokenAsync(api, UserMulti, OrgA, null))).StatusCode);
     }
 
     [Fact]
-    public async Task A_user_without_a_link_to_the_requested_unit_answers_403()
+    public async Task A_session_whose_active_unit_has_no_link_answers_403()
     {
         await using var api = Api();
         using var client = api.CreateClient();
 
-        // UserSolo is linked to A1 only; A2 exists in the same organization but there is no link.
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/unidades", Token(UserSolo, OrgA, UnitA2))).StatusCode);
-        // A unit of another organization (and an organization the user does not belong to) never resolves.
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/unidades", Token(UserMulti, OrgA, UnitB1))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/unidades", Token(UserMulti, OrgB, UnitA1))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/unidades", Token(UserMulti, Guid.NewGuid(), Guid.NewGuid()))).StatusCode);
+        // UserSolo is linked to A1 only; A2 exists in the same organization but there is no link (a session row can point at it: the link is checked on every request).
+        Assert.Equal(HttpStatusCode.Forbidden, (await Send(client, "/unidades", await TokenAsync(api, UserSolo, OrgA, UnitA2))).StatusCode);
+        // A unit of another organization can no longer even be stored in a session: the composite foreign key refuses it (SessoesIntegrationTests).
     }
 
     // ---- context feeds the unit of work; the user only sees linked units ----
@@ -197,17 +224,17 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         await using var api = Api();
         using var client = api.CreateClient();
 
-        var response = await Send(client, "/unidades", Token(UserMulti, OrgA, UnitA1));
+        var response = await Send(client, "/unidades", await TokenAsync(api, UserMulti, OrgA, UnitA1));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var units = await response.Content.ReadFromJsonAsync<List<UnidadeDto>>();
         Assert.Equal([UnitA1, UnitA2], units!.Select(u => u.Id).Order());
         Assert.DoesNotContain(units!, u => u.Id == UnitA3 || u.Id == UnitB1);
 
-        var solo = await Send(client, "/unidades", Token(UserSolo, OrgA, UnitA1));
+        var solo = await Send(client, "/unidades", await TokenAsync(api, UserSolo, OrgA, UnitA1));
         Assert.Equal([UnitA1], (await solo.Content.ReadFromJsonAsync<List<UnidadeDto>>())!.Select(u => u.Id));
 
-        var b = await Send(client, "/unidades", Token(UserB, OrgB, UnitB1));
+        var b = await Send(client, "/unidades", await TokenAsync(api, UserB, OrgB, UnitB1));
         Assert.Equal([UnitB1], (await b.Content.ReadFromJsonAsync<List<UnidadeDto>>())!.Select(u => u.Id));
     }
 
@@ -216,7 +243,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        using var request = Get($"/unidades?organizacaoId={OrgB}&unidadeId={UnitB1}&organizationId={OrgB}", Token(UserMulti, OrgA, UnitA1));
+        using var request = Get($"/unidades?organizacaoId={OrgB}&unidadeId={UnitB1}&organizationId={OrgB}", await TokenAsync(api, UserMulti, OrgA, UnitA1));
         request.Headers.Add("X-Organizacao-Id", OrgB.ToString());
         request.Headers.Add("X-Unidade-Id", UnitB1.ToString());
         request.Headers.Add("Cookie", $"organizacaoId={OrgB}");
@@ -235,7 +262,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        var token = Token(UserMulti, OrgA, UnitA1, session: Guid.NewGuid());
+        var token = await TokenAsync(api, UserMulti, OrgA, UnitA1);
 
         using var before = Get("/sessao/unidade-ativa", token);
         Assert.Equal(UnitA1, (await (await client.SendAsync(before)).Content.ReadFromJsonAsync<UnidadeAtivaDto>())!.UnidadeId);
@@ -244,7 +271,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         {
             Content = JsonContent.Create(new { unidadeDestinoId = UnitA2 }),
         };
-        switchRequest.Headers.Add(TestSession.HeaderName, token);
+        WithToken(switchRequest, token);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(switchRequest)).StatusCode);
 
         using var after = Get("/sessao/unidade-ativa", token);
@@ -259,14 +286,14 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        var token = Token(UserMulti, OrgA, UnitA1, session: Guid.NewGuid());
+        var token = await TokenAsync(api, UserMulti, OrgA, UnitA1);
         var destination = target switch { "A3" => UnitA3, "B1" => UnitB1, _ => Guid.NewGuid() };
 
         using var switchRequest = new HttpRequestMessage(HttpMethod.Post, new Uri("/sessao/unidade-ativa", UriKind.Relative))
         {
             Content = JsonContent.Create(new { unidadeDestinoId = destination }),
         };
-        switchRequest.Headers.Add(TestSession.HeaderName, token);
+        WithToken(switchRequest, token);
         var response = await client.SendAsync(switchRequest);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -286,27 +313,50 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // ---- the test session is never a production door ----
+    // ---- there is no test door ----
 
     [Theory]
-    [InlineData("Production", Key)] // key configured, valid signature: still ignored
-    [InlineData("Staging", Key)]
-    [InlineData("Testing", null)] // test environment but no key configured: nothing enabled
-    [InlineData("Production", null)]
-    public async Task The_test_session_is_only_enabled_in_development_or_testing_with_a_configured_key(string environment, string? key)
+    [InlineData("Development")]
+    [InlineData("Testing")]
+    [InlineData("Staging")]
+    [InlineData("Production")]
+    public async Task The_old_test_session_header_is_ignored_in_every_environment(string environment)
     {
-        await using var api = Api(environment, key);
+        await using var api = Api(environment);
+        using var client = api.CreateClient();
+        using var request = Get("/unidades", null);
+        request.Headers.Add("X-Test-Session", "eyJzaWQiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDAifQ.AAAA");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(request)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task Outside_development_and_testing_the_host_does_not_boot_without_the_signing_key(string environment)
+    {
+        await using var api = Api(environment, key: null);
+
+        var ex = Assert.ThrowsAny<Exception>(() => api.CreateClient());
+
+        Assert.Contains("Flow4Tech:Tokens:AppKey", ex.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task In_testing_without_a_key_the_host_boots_with_an_ephemeral_key_so_a_token_of_another_process_is_refused()
+    {
+        await using var other = Api();
+        var foreign = await TokenAsync(other, UserMulti, OrgA, UnitA1);
+        await using var api = Api("Testing", key: null);
         using var client = api.CreateClient();
 
-        var response = await Send(client, "/unidades", Token(UserMulti, OrgA, UnitA1));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Send(client, "/unidades", foreign)).StatusCode);
     }
 
     [Fact]
     public async Task Public_routes_do_not_need_a_session()
     {
-        await using var api = Api("Production", null);
+        await using var api = Api("Production");
         using var client = api.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(new Uri("/version", UriKind.Relative))).StatusCode);
@@ -322,7 +372,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         await using var source = NpgsqlDataSource.Create(_appConnection);
         await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(org, unit));
         await using var command = new NpgsqlCommand(
-            "SELECT acao, resultado, usuario_id, sessao_id, unidade_id, objeto_id, antes->>'unidadeId', depois->>'unidadeId', correlation_id, sequencia FROM auditoria_registros ORDER BY sequencia",
+            "SELECT acao, resultado, usuario_id, sessao_id, unidade_id, objeto_id, antes->>'unidadeId', depois->>'unidadeId', correlation_id, sequencia FROM auditoria_registros WHERE acao <> 'sessao:iniciar' ORDER BY sequencia",
             tx.Connection,
             tx.Transaction);
         var rows = new List<AuditRowDto>();
@@ -345,7 +395,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         {
             Content = JsonContent.Create(new { unidadeDestinoId = destination }),
         };
-        request.Headers.Add(TestSession.HeaderName, token);
+        WithToken(request, token);
         if (traceparent is not null)
         {
             request.Headers.Add("traceparent", traceparent);
@@ -360,9 +410,9 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         using var logs = new CapturedLogs();
         await using var api = Api(logs: logs);
         using var client = api.CreateClient();
-        var session = Guid.NewGuid();
+        var (token, session) = await IssueAsync(api, UserMulti, OrgA, UnitA1);
         const string TraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
-        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1, session), $"00-{TraceId}-00f067aa0ba902b7-01");
+        using var request = SwitchRequest(UnitA2, token, $"00-{TraceId}-00f067aa0ba902b7-01");
 
         var response = await client.SendAsync(request);
 
@@ -385,7 +435,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         using var logs = new CapturedLogs();
         await using var api = Api(logs: logs);
         using var client = api.CreateClient();
-        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1));
+        using var request = SwitchRequest(UnitA2, await TokenAsync(api, UserMulti, OrgA, UnitA1));
 
         var response = await client.SendAsync(request);
 
@@ -400,7 +450,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        var token = Token(UserMulti, OrgA, UnitA1, Guid.NewGuid());
+        var token = await TokenAsync(api, UserMulti, OrgA, UnitA1);
         using var request = SwitchRequest(UnitA3, token);
 
         var response = await client.SendAsync(request);
@@ -431,7 +481,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
     {
         await using var api = Api();
         using var client = api.CreateClient();
-        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1));
+        using var request = SwitchRequest(UnitA2, await TokenAsync(api, UserMulti, OrgA, UnitA1));
         await client.SendAsync(request);
 
         Assert.Single(await AuditRows(OrgA, UnitA1));
@@ -445,8 +495,8 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         await using var api = Api(logs: logs);
         using var client = api.CreateClient();
         const string Jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
-        using var request = Get($"/unidades?token={Jwt}&senha=S3nh%40Secreta", Token(UserMulti, OrgA, UnitA1));
-        request.Headers.Add("Authorization", "Bearer abcdef0123456789abcdef");
+        using var request = Get($"/unidades?token={Jwt}&senha=S3nh%40Secreta", await TokenAsync(api, UserMulti, OrgA, UnitA1));
+        request.Headers.Add("X-Outro", "Bearer abcdef0123456789abcdef");
         request.Headers.Add("Cookie", "refresh=cookie-secreto-123456");
 
         await client.SendAsync(request);
@@ -524,10 +574,10 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
 
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                var values = new Dictionary<string, string?> { ["ConnectionStrings:Default"] = connectionString };
+                var values = new Dictionary<string, string?> { ["ConnectionStrings:Default"] = connectionString, ["Flow4Tech:Identidade:TempoMinimoDeLoginMs"] = "0" };
                 if (key is not null)
                 {
-                    values["Flow4Tech:TestSession:Key"] = key;
+                    values["Flow4Tech:Tokens:AppKey"] = key;
                 }
 
                 config.AddInMemoryCollection(values);

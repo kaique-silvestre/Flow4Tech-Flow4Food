@@ -58,12 +58,26 @@ public sealed class RoutePermissionTests
     /// Own, deliberately tiny allowlist. <c>/version</c> only reports the build version (no tenant data) and is used by deploy smoke checks
     /// before anyone can sign in, so it stays public. Adding a route here needs the same review as adding one to <see cref="RoutePermissions.Allowlist"/>.
     /// </summary>
-    private static readonly HashSet<string> PublicWithoutSession = new(StringComparer.Ordinal) { "/version" };
+    private static readonly HashSet<string> PublicWithoutSession = new(StringComparer.Ordinal)
+    {
+        "GET /version",
+
+        // Ticket 04. These three are the ONLY routes that exist before a session or that authenticate by the refresh cookie instead of the access token:
+        // /login (it creates the session; the credential in the body is the authentication), /refresh and /logout (the HttpOnly refresh cookie is the credential, guarded
+        // against CSRF by a custom header + Origin/Sec-Fetch-Site check). Each declares a catalog permission (sessao:entrar/renovar/sair) and a small body limit.
+        // Adding a route here needs the same review as adding one to RoutePermissions.Allowlist.
+        "POST /login",
+        "POST /refresh",
+        "POST /logout",
+    };
+
+    private static string KeyOf(RouteEndpoint endpoint) =>
+        $"{(endpoint.Metadata.GetMetadata<HttpMethodMetadata>() is { HttpMethods: [var method, ..] } ? method : "ANY")} {endpoint.RoutePattern.RawText}";
 
     private static List<string> RoutesWithoutSession(IEnumerable<Endpoint> endpoints) =>
         [.. endpoints.OfType<RouteEndpoint>()
             .Select(e => (Route: e.RoutePattern.RawText ?? e.DisplayName ?? "<unnamed endpoint>", Endpoint: e))
-            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !PublicWithoutSession.Contains(x.Route))
+            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !PublicWithoutSession.Contains(KeyOf(x.Endpoint)))
             .Where(x => x.Endpoint.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
             .Select(x => x.Route)
             .Order(StringComparer.Ordinal)];
@@ -83,6 +97,15 @@ public sealed class RoutePermissionTests
         Assert.Contains("/sessao/unidade-ativa", withSession);
         var all = endpoints.OfType<RouteEndpoint>().Select(e => e.RoutePattern.RawText).ToList();
         Assert.Contains("/version", all);
+        foreach (var route in new[] { "/login", "/refresh", "/logout", "/sessoes", "/sessoes/todas", "/sessoes/{id:guid}/revogar", "/sessao/trocar-senha" })
+        {
+            Assert.Contains(route, all);
+        }
+
+        // The public routes are exactly the three declared above and they are all POST.
+        var publicOnes = endpoints.OfType<RouteEndpoint>().Where(e => e.Metadata.GetMetadata<SessionRequiredMetadata>() is null && !RoutePermissions.Allowlist.Contains(e.RoutePattern.RawText ?? ""))
+            .Select(KeyOf).Order(StringComparer.Ordinal).ToList();
+        Assert.Equal(["GET /version", "POST /login", "POST /logout", "POST /refresh"], publicOnes);
     }
 
     [Fact]
@@ -94,10 +117,12 @@ public sealed class RoutePermissionTests
             app.MapGet("/negocio-com-sessao", () => "x").RequireSession();
             app.MapGet("/version", () => "x");
             app.MapGet("/health/live", () => "x");
+            app.MapPost("/login", () => "x");
+            app.MapGet("/login", () => "x"); // same pattern, another verb: not the public one
         });
 
-        var violation = Assert.Single(RoutesWithoutSession(endpoints));
-        Assert.Equal("/negocio-sem-sessao", violation);
+        Assert.Equal(["/login", "/negocio-sem-sessao"], RoutesWithoutSession(endpoints));
+        Assert.Contains("/negocio-sem-sessao", RoutesWithoutSession(endpoints));
     }
 
     // ---- route enumeration ----

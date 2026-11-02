@@ -1,10 +1,12 @@
 using Flow4Tech.Api;
+using Flow4Tech.Identidade.Application;
 using Flow4Tech.Identidade.Infrastructure;
 using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Infrastructure;
 using Flow4Tech.Permissoes.Application;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 
 using System.Reflection;
@@ -35,10 +37,11 @@ builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfigur
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao();
-// Identidade (ticket 03): accounts, passwords, pre-authentication. No route uses it yet (login arrives with the sessions, ticket 04).
+// Identidade (tickets 03 and 04): accounts, passwords, pre-authentication, sessions and tokens.
 // Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check
 // and Flow4Tech:Identidade:Hibp:IndisponivelRecusa (default false) makes an unreachable breach service refuse the password instead of accepting it;
 // Flow4Tech:Identidade:CredencialTemporariaHoras (default 72) is how long a temporary credential works (ticket 10 moves it to layered settings).
+// Token keys and session clocks are read lazily (SessionConfiguration), after all configuration is loaded.
 builder.Services.AddIdentidade(options =>
 {
     options.TempoMinimoDeLogin = TimeSpan.FromMilliseconds(builder.Configuration.GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400));
@@ -46,17 +49,29 @@ builder.Services.AddIdentidade(options =>
     options.HibpIndisponivelRecusa = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:IndisponivelRecusa", false);
     options.CredencialTemporariaHoras = builder.Configuration.GetValue("Flow4Tech:Identidade:CredencialTemporariaHoras", 72);
 });
+builder.Services.Replace(ServiceDescriptor.Singleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(
+    provider.GetRequiredService<IClock>(),
+    SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()))));
+builder.Services.Replace(ServiceDescriptor.Singleton(provider => SessionConfiguration.Relogios(provider.GetRequiredService<IConfiguration>())));
+builder.Services.Replace(ServiceDescriptor.Singleton<IResponseTimeFloor>(provider => new ResponseTimeFloor(
+    TimeSpan.FromMilliseconds(provider.GetRequiredService<IConfiguration>().GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400)))));
+builder.Services.AddSingleton(provider => SessionConfiguration.Origins(provider.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<IUnidadesDaConta, UnidadesDaContaAdapter>();
 builder.Services.AddScoped<RequestContextAccessor>();
 builder.Services.AddScoped<IRequestContext>(provider => provider.GetRequiredService<RequestContextAccessor>());
-// Session source (resolved lazily, after all configuration is loaded): the test session only in Development/Testing with a configured key
-// (ticket 01 decision, see TestSession); otherwise none until ticket 04.
-builder.Services.AddSingleton<ISessionSource>(provider =>
-    TestSession.IsEnabled(provider.GetRequiredService<IHostEnvironment>(), provider.GetRequiredService<IConfiguration>())
-        ? new SignedHeaderSessionSource(provider.GetRequiredService<IConfiguration>()[TestSession.KeyConfiguration]!)
-        : new NoSessionSource());
+// The one session source: the access token of the Authorization header, checked against the session row on every request (ticket 04). There is no test door.
+builder.Services.AddScoped<ISessionSource, BearerSessionSource>();
 
 var app = builder.Build();
+// Fail fast: outside Development/Testing the host does not start without the token signing key (Flow4Tech:Tokens:AppKey). The build-time OpenAPI generator
+// (`-p:GenerateContract=true`) loads the host only to read its routes, serves nothing and has no secrets, so the check is skipped for it.
+if (Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
+{
+    _ = app.Services.GetRequiredService<IEmissorDeTokens>();
+}
+
 app.UseMiddleware<CorrelationMiddleware>();
+app.UseMiddleware<RouteGuardsMiddleware>();
 app.UseMiddleware<RequestContextMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -100,6 +115,7 @@ app.MapGet("/health/ready", async (IConfiguration configuration, CancellationTok
 .Produces(StatusCodes.Status503ServiceUnavailable);
 
 app.MapOrganizacao();
+app.MapSessao();
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(
