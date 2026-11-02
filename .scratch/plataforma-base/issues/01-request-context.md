@@ -6,10 +6,10 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Contract (OpenAPI), Architecture test, RLS
-**Status:** pending
+**Status:** done-local
 
-- [ ] Rota autenticada sem contexto resolvido responde 401; sem vínculo com a unidade pedida responde 403
-- [ ] Contexto alimenta `TenantDatabase`/`IUnitOfWork` sem o código de negócio montá-lo
-- [ ] Teste de arquitetura falha se DTO de entrada tiver campo `organizacaoId` ou `unidadeId` vindo do cliente
-- [ ] Troca de unidade é operação explícita, autorizada; usuário só vê unidades com vínculo
-- [ ] Dois tenants: A não enxerga unidade nem vínculo de B (credencial da aplicação)
+- [x] Rota autenticada sem contexto resolvido responde 401; sem vínculo com a unidade pedida responde 403 (`RequestContextEndpointsTests`)
+- [x] Contexto alimenta `TenantDatabase`/`IUnitOfWork` sem o código de negócio montá-lo
+- [x] Teste de arquitetura falha (`ClientContextInputTests`; o campo de destino da troca se chama `unidadeDestinoId`, que não é contexto) se DTO de entrada tiver campo `organizacaoId` ou `unidadeId` vindo do cliente
+- [x] Troca de unidade é operação explícita, autorizada; usuário só vê unidades com vínculo (autorização = vínculo; chamada ao `DecidirAsync` e auditoria ficam para os tickets 06 e 08)
+- [x] Dois tenants (`UsuarioUnidadeIsolationIntegrationTests`, `OrganizacaoVinculosIntegrationTests`): A não enxerga unidade nem vínculo de B (credencial da aplicação)

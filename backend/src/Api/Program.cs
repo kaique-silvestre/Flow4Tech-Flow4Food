@@ -1,5 +1,7 @@
 using Flow4Tech.Api;
 using Flow4Tech.Infrastructure.Data;
+using Flow4Tech.Kernel;
+using Flow4Tech.Organizacao.Infrastructure;
 using Flow4Tech.Permissoes.Application;
 using Npgsql;
 
@@ -23,7 +25,19 @@ if (databaseConnection is not null)
 }
 
 builder.Services.AddOpenApi();
+builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"));
+builder.Services.AddOrganizacao();
+builder.Services.AddScoped<RequestContextAccessor>();
+builder.Services.AddScoped<IRequestContext>(provider => provider.GetRequiredService<RequestContextAccessor>());
+// Session source (resolved lazily, after all configuration is loaded): the test session only in Development/Testing with a configured key
+// (ticket 01 decision, see TestSession); otherwise none until ticket 04.
+builder.Services.AddSingleton<ISessionSource>(provider =>
+    TestSession.IsEnabled(provider.GetRequiredService<IHostEnvironment>(), provider.GetRequiredService<IConfiguration>())
+        ? new SignedHeaderSessionSource(provider.GetRequiredService<IConfiguration>()[TestSession.KeyConfiguration]!)
+        : new NoSessionSource());
+
 var app = builder.Build();
+app.UseMiddleware<RequestContextMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -64,6 +78,8 @@ app.MapGet("/health/ready", async (IConfiguration configuration, CancellationTok
 .WithName("getHealthReady")
 .Produces<HealthStatus>()
 .Produces(StatusCodes.Status503ServiceUnavailable);
+
+app.MapOrganizacao();
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(

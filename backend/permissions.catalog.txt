@@ -1,1 +1,3 @@
+organizacao:trocar-unidade
+organizacao:ver-unidades
 sistema:ver-versao

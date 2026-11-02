@@ -8,6 +8,7 @@
     <ProjectReference Include="../../src/Kernel/Flow4Tech.Kernel.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Migrator/Flow4Tech.Infrastructure.Migrator.csproj" />
+    <ProjectReference Include="../../src/Organizacao/Infrastructure/Flow4Tech.Organizacao.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
