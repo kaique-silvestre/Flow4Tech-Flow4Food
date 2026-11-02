@@ -138,13 +138,14 @@ public sealed class AuditChainVerificationIntegrationTests(PostgresFixture postg
     public async Task Removing_the_tail_is_detected_when_a_known_head_is_given_and_otherwise_is_the_documented_limit()
     {
         await using var env = await SeededAsync();
-        var head = (await env.Verifier.VerifyAsync(A)).Head!;
+        var last = (await env.ChainAsync(A)).Last(); // read straight from the table: no verification yet, so no stored anchor exists
+        var head = new AuditHead(last.Sequence, last.Hash);
         await env.OwnerExecAsync(A, "DELETE FROM auditoria_registros WHERE sequencia IN (4, 5)");
 
         var withoutAnchor = await env.Verifier.VerifyAsync(A);
         var withAnchor = await env.Verifier.VerifyAsync(A, head);
 
-        Assert.True(withoutAnchor.IsValid); // limit: a chain alone cannot prove its own tail; the off-database copy is the spec's declared debt (5.6.5)
+        Assert.True(withoutAnchor.IsValid); // limit: with no anchor at all (never verified, none given) a chain cannot prove its own tail
         Assert.False(withAnchor.IsValid);
         Assert.Contains(withAnchor.Violations, v => v.Kind == AuditViolationKind.Truncated);
     }

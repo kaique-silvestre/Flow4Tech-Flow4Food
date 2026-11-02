@@ -1,4 +1,5 @@
 using Flow4Tech.Infrastructure.Audit;
+using Flow4Tech.Kernel.Audit;
 
 namespace Flow4Tech.Audit.Tests;
 
@@ -88,5 +89,17 @@ public sealed class AuditHashTests
 
         Assert.Equal(value.AddTicks(-7), truncated);
         Assert.Equal(TimeSpan.Zero, truncated.Offset);
+    }
+
+    [Theory]
+    [InlineData("""{"n":1e400}""", "$.n")]
+    [InlineData("""{"a":[1,{"grande":123456789012345678901234567890123456789}]}""", "$.a[1].grande")]
+    public void A_number_outside_the_decimal_range_is_a_typed_validation_error_that_names_the_path_and_not_the_value(string json, string path)
+    {
+        var error = Assert.Throws<AuditValueException>(() => AuditHash.CanonicalJson(json));
+
+        Assert.Contains(path, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("400", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("12345678901234567890", error.Message, StringComparison.Ordinal);
     }
 }

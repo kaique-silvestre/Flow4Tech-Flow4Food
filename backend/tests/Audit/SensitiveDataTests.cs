@@ -28,6 +28,26 @@ public sealed class SensitiveDataTests
     [InlineData("credential")]
     [InlineData("hash")]
     [InlineData("privateKey")]
+    [InlineData("pass")]
+    [InlineData("userPass")]
+    [InlineData("pass_confirmacao")]
+    [InlineData("passcode")]
+    [InlineData("pin")]
+    [InlineData("PIN")]
+    [InlineData("userPin")]
+    [InlineData("pin_code")]
+    [InlineData("otp")]
+    [InlineData("OTP")]
+    [InlineData("otpCode")]
+    [InlineData("sms-otp")]
+    [InlineData("accessKey")]
+    [InlineData("access_key_id")]
+    [InlineData("jwt")]
+    [InlineData("idJwt")]
+    [InlineData("JWT")]
+    [InlineData("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghijk")]
+    [InlineData("Bearer abcdef0123456789abcdef")]
+    [InlineData("$2a$11$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy")]
     public void Keys_that_name_a_secret_are_sensitive(string key) => Assert.True(SensitiveData.IsSensitiveKey(key), key);
 
     [Theory]
@@ -37,6 +57,12 @@ public sealed class SensitiveDataTests
     [InlineData("perfil")]
     [InlineData("email")]
     [InlineData("ativo")]
+    [InlineData("passageiro")]
+    [InlineData("bypass")]
+    [InlineData("shipping")]
+    [InlineData("mapping")]
+    [InlineData("opinion")]
+    [InlineData("hotpink")]
     [InlineData("")]
     [InlineData(null)]
     public void Ordinary_keys_are_not_sensitive(string? key) => Assert.False(SensitiveData.IsSensitiveKey(key), key);
@@ -57,6 +83,17 @@ public sealed class SensitiveDataTests
     [InlineData("")]
     [InlineData(null)]
     public void Ordinary_values_are_not_secrets(string? value) => Assert.False(SensitiveData.LooksLikeSecret(value), value);
+
+    [Fact]
+    public void Scan_flags_a_key_that_is_itself_a_secret_without_echoing_it()
+    {
+        var node = JsonNode.Parse("""{ "ok": 1, "Bearer abcdef0123456789abcdef": "x" }""");
+
+        var findings = SensitiveData.Scan(node);
+
+        Assert.Single(findings);
+        Assert.DoesNotContain("abcdef0123456789abcdef", findings[0], StringComparison.Ordinal);
+    }
 
     [Fact]
     public void Scan_reports_the_json_path_of_every_finding_and_never_the_value()

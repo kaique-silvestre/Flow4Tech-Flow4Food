@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Flow4Tech.Kernel.Events;
 
@@ -67,6 +69,48 @@ public static class AuditEntryRules
         if (findings.Count > 0)
         {
             throw new AuditSecretException("Audit data refused, secret at: " + string.Join(", ", findings));
+        }
+
+        var numbers = new List<string>();
+        FindUnrepresentableNumbers(entry.Before, "before", numbers);
+        FindUnrepresentableNumbers(entry.After, "after", numbers);
+        if (numbers.Count > 0)
+        {
+            throw new AuditValueException("Audit data refused, number outside the supported range at: " + string.Join(", ", numbers));
+        }
+    }
+
+    /// <summary>Numbers must fit a <c>decimal</c> (the canonical form of the hash, see <c>AuditHash</c>). Paths only, never values.</summary>
+    private static void FindUnrepresentableNumbers(JsonNode? node, string path, List<string> findings)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var (key, child) in obj)
+                {
+                    FindUnrepresentableNumbers(child, path + "." + (SensitiveData.LooksLikeSecret(key) ? "[key]" : key), findings);
+                }
+
+                break;
+            case JsonArray array:
+                for (var i = 0; i < array.Count; i++)
+                {
+                    FindUnrepresentableNumbers(array[i], $"{path}[{i}]", findings);
+                }
+
+                break;
+            case JsonValue value when value.GetValueKind() == JsonValueKind.Number:
+                using (var document = JsonDocument.Parse(value.ToJsonString()))
+                {
+                    if (!document.RootElement.TryGetDecimal(out _))
+                    {
+                        findings.Add(path);
+                    }
+                }
+
+                break;
+            default:
+                break;
         }
     }
 }

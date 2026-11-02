@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Infrastructure.Outbox;
 using Flow4Tech.Kernel;
@@ -33,9 +35,12 @@ public sealed record AuditVerification(bool IsValid, long Records, IReadOnlyList
 /// Per record: the sequence must be the next one (gap = <see cref="AuditViolationKind.Removed"/>), the content must hash to the stored hash
 /// (<see cref="AuditViolationKind.Altered"/>), and <c>hash_anterior</c> must equal the stored hash of the record before it
 /// (<see cref="AuditViolationKind.Reordered"/>). A violation raises the outbox event <see cref="AuditIntegrityViolated"/> (no consumer yet).
+/// ALERT: one outbox event per DISTINCT violation (not per run), and the head of every valid run is stored as the anchor of the next one (table
+/// <c>auditoria_verificacao</c>, migration 0006); an explicit <paramref name="anchor"/> overrides the stored one.
 /// LIMITS, stated because they are the spec's declared debt (5.6.5, open question 3): the chain alone cannot prove its own TAIL, so removing the newest
-/// records is detected only when the caller passes the <paramref name="anchor"/> it saw earlier (a previous <see cref="AuditVerification.Head"/>), and an
-/// attacker who can rewrite the whole table and recompute every hash is detected only against a copy kept outside this database.
+/// records is detected only against an anchor (given, or stored by an earlier valid run; the first run of an organization has none), the stored anchor lives in the
+/// same database so whoever can also rewrite that row defeats it, and an attacker who can rewrite the table and recompute every hash is detected only against a
+/// copy kept outside this database.
 /// </summary>
 public sealed class AuditChainVerifier(TenantDatabase tenant, OutboxWriter outbox, IClock clock)
 {
@@ -46,25 +51,76 @@ public sealed class AuditChainVerifier(TenantDatabase tenant, OutboxWriter outbo
     {
         ArgumentNullException.ThrowIfNull(organization);
         var result = await ScanAsync(organization, anchor, cancellationToken);
-        if (!result.IsValid)
+        await RecordOutcomeAsync(organization, result, cancellationToken);
+        return result;
+    }
+
+    /// <summary>
+    /// Persists what this run learned, in ONE transaction with the outbox event: the state row is locked first (<c>FOR UPDATE</c>), so concurrent runs serialize and only
+    /// the first one to see a violation raises the event. Valid: the anchor moves forward to the head and the alerted violation is forgotten (a later break alerts again).
+    /// Invalid: the anchor does not move; the event is raised only when the set of violations differs from the one already alerted.
+    /// </summary>
+    private async Task RecordOutcomeAsync(OrganizationContext organization, AuditVerification result, CancellationToken cancellationToken)
+    {
+        await using var transaction = await tenant.BeginAsync(organization, cancellationToken);
+        await using var context = new AuditContext(transaction);
+        var now = clock.UtcNow;
+        await context.Database.ExecuteSqlAsync(
+            $"INSERT INTO auditoria_verificacao (organizacao_id, verificado_em) VALUES ({organization.OrganizationId}, {now}) ON CONFLICT (organizacao_id) DO NOTHING",
+            cancellationToken);
+        var state = await context.Verificacoes.FromSql($"SELECT * FROM auditoria_verificacao FOR UPDATE").SingleAsync(cancellationToken);
+
+        state.VerificadoEm = now;
+        if (result.IsValid)
         {
-            var first = result.Violations.OrderBy(v => v.Sequence).First();
-            await using var transaction = await tenant.BeginAsync(organization, cancellationToken);
-            await outbox.AddAsync(
-                transaction,
-                organization,
-                new AuditIntegrityViolated(EntityId.New().Value, organization.OrganizationId, first.Sequence, first.Kind.ToString(), clock.UtcNow),
-                cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (result.Head is not null && (state.AncoraSequencia is null || result.Head.Sequence > state.AncoraSequencia))
+            {
+                state.AncoraSequencia = result.Head.Sequence;
+                state.AncoraHash = Convert.FromHexString(result.Head.HashHex);
+            }
+
+            state.ViolacaoSequencia = null;
+            state.ViolacaoTipo = null;
+            state.ViolacaoAssinatura = null;
+        }
+        else
+        {
+            var first = result.Violations.OrderBy(v => v.Sequence).ThenBy(v => v.Kind).First();
+            var signature = Fingerprint(result.Violations);
+            if (!string.Equals(signature, state.ViolacaoAssinatura, StringComparison.Ordinal))
+            {
+                await outbox.AddAsync(
+                    transaction,
+                    organization,
+                    new AuditIntegrityViolated(EntityId.New().Value, organization.OrganizationId, first.Sequence, first.Kind.ToString(), now),
+                    cancellationToken);
+            }
+
+            state.ViolacaoSequencia = first.Sequence;
+            state.ViolacaoTipo = first.Kind.ToString();
+            state.ViolacaoAssinatura = signature;
         }
 
-        return result;
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>Identity of a violation set: the (sequence, kind) pairs, sorted. Distinct violations differ, the same one repeated does not.</summary>
+    private static string Fingerprint(IReadOnlyList<AuditViolation> violations)
+    {
+        var text = string.Join(';', violations.OrderBy(v => v.Sequence).ThenBy(v => v.Kind).Select(v => $"{v.Sequence}:{v.Kind}"));
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 
     private async Task<AuditVerification> ScanAsync(OrganizationContext organization, AuditHead? anchor, CancellationToken cancellationToken)
     {
         await using var transaction = await tenant.BeginAsync(organization, cancellationToken);
         await using var context = new AuditContext(transaction);
+
+        if (anchor is null)
+        {
+            anchor = await StoredAnchorAsync(context, cancellationToken);
+        }
 
         var violations = new List<AuditViolation>();
         void Report(long sequence, AuditViolationKind kind)
@@ -136,6 +192,14 @@ public sealed class AuditChainVerifier(TenantDatabase tenant, OutboxWriter outbo
         }
 
         return new AuditVerification(violations.Count == 0, count, violations, head);
+    }
+
+    private static async Task<AuditHead?> StoredAnchorAsync(AuditContext context, CancellationToken cancellationToken)
+    {
+        var stored = await context.Verificacoes.AsNoTracking()
+            .Select(v => new { v.AncoraSequencia, v.AncoraHash })
+            .FirstOrDefaultAsync(cancellationToken);
+        return stored is { AncoraSequencia: { } sequence, AncoraHash: { } hash } ? new AuditHead(sequence, Convert.ToHexStringLower(hash)) : null;
     }
 
     private static bool LinkMatches(byte[]? recorded, byte[]? actual) =>

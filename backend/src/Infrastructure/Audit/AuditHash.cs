@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Flow4Tech.Kernel.Audit;
 
 namespace Flow4Tech.Infrastructure.Audit;
 
@@ -84,7 +85,7 @@ internal static class AuditHash
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
         {
-            WriteCanonical(writer, document.RootElement);
+            WriteCanonical(writer, document.RootElement, "$");
         }
 
         return Encoding.UTF8.GetString(stream.ToArray());
@@ -134,7 +135,7 @@ internal static class AuditHash
         }
     }
 
-    private static void WriteCanonical(Utf8JsonWriter writer, JsonElement element)
+    private static void WriteCanonical(Utf8JsonWriter writer, JsonElement element, string path)
     {
         switch (element.ValueKind)
         {
@@ -143,16 +144,17 @@ internal static class AuditHash
                 foreach (var property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
                 {
                     writer.WritePropertyName(property.Name);
-                    WriteCanonical(writer, property.Value);
+                    WriteCanonical(writer, property.Value, path + "." + (SensitiveData.LooksLikeSecret(property.Name) ? "[key]" : property.Name));
                 }
 
                 writer.WriteEndObject();
                 break;
             case JsonValueKind.Array:
                 writer.WriteStartArray();
+                var index = 0;
                 foreach (var item in element.EnumerateArray())
                 {
-                    WriteCanonical(writer, item);
+                    WriteCanonical(writer, item, $"{path}[{index++}]");
                 }
 
                 writer.WriteEndArray();
@@ -160,7 +162,7 @@ internal static class AuditHash
             case JsonValueKind.Number:
                 if (!element.TryGetDecimal(out var number))
                 {
-                    throw new ArgumentException("Audit JSON numbers must fit a decimal.", nameof(element));
+                    throw new AuditValueException("Audit data refused, number outside the supported range at: " + path);
                 }
 
                 writer.WriteRawValue(number.ToString("0.############################", CultureInfo.InvariantCulture), skipInputValidation: true);

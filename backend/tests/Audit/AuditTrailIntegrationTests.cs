@@ -293,6 +293,20 @@ public sealed class AuditTrailIntegrationTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task A_number_outside_the_decimal_range_is_refused_as_a_validation_error_and_nothing_is_stored()
+    {
+        await using var env = await AuditEnv.CreateAsync(postgres);
+        var entry = AuditEnv.Entry() with { After = new JsonObject { ["itens"] = new JsonArray(new JsonObject { ["enorme"] = 1e300 }) } };
+
+        var error = await Assert.ThrowsAsync<AuditValueException>(() => env.RecordInUnitOfWorkAsync(A, entry));
+        await Assert.ThrowsAsync<AuditValueException>(() => env.Log.RecordDetachedAsync(A, entry));
+
+        Assert.Contains("after.itens[0].enorme", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("300", error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, await env.CountAsync(A));
+    }
+
+    [Fact]
     public async Task A_secret_in_the_object_reference_is_refused_too()
     {
         await using var env = await AuditEnv.CreateAsync(postgres);

@@ -38,14 +38,46 @@ internal sealed class AuditRow
     public byte[] Hash { get; set; } = [];
 }
 
-/// <summary>EF mapping of the audit table (schema owned by <c>0005_auditoria.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
+internal sealed class VerificationStateRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public long? AncoraSequencia { get; set; }
+
+    public byte[]? AncoraHash { get; set; }
+
+    public long? ViolacaoSequencia { get; set; }
+
+    public string? ViolacaoTipo { get; set; }
+
+    public string? ViolacaoAssinatura { get; set; }
+
+    public DateTimeOffset VerificadoEm { get; set; }
+}
+
+/// <summary>EF mapping of the audit table (schema owned by <c>0005_auditoria.sql</c> and <c>0006_auditoria_verificacao.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class AuditContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
     public DbSet<AuditRow> Registros => Set<AuditRow>();
 
+    public DbSet<VerificationStateRow> Verificacoes => Set<VerificationStateRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
+        modelBuilder.Entity<VerificationStateRow>(e =>
+        {
+            e.ToTable("auditoria_verificacao");
+            e.HasKey(x => x.OrganizacaoId);
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.AncoraSequencia).HasColumnName("ancora_sequencia");
+            e.Property(x => x.AncoraHash).HasColumnName("ancora_hash");
+            e.Property(x => x.ViolacaoSequencia).HasColumnName("violacao_sequencia");
+            e.Property(x => x.ViolacaoTipo).HasColumnName("violacao_tipo");
+            e.Property(x => x.ViolacaoAssinatura).HasColumnName("violacao_assinatura");
+            e.Property(x => x.VerificadoEm).HasColumnName("verificado_em");
+        });
+
         modelBuilder.Entity<AuditRow>(e =>
         {
             e.ToTable("auditoria_registros");
