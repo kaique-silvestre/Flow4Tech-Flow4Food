@@ -127,6 +127,60 @@ jobs:
       - name: pnpm audit
         run: pnpm audit --audit-level=high
 
+  openapi-contract:
+    name: OpenAPI contract + generated client
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # base revision of the contract is read from history
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate OpenAPI document and TypeScript client
+        run: |
+          dotnet build backend/src/Api/Flow4Tech.Api.csproj -c Release -p:GenerateContract=true
+          pnpm --filter @flow4tech/api-client generate
+      - name: Fail if committed contract or client is stale
+        run: |
+          git add --intent-to-add backend/src/Api/openapi.json frontend/packages/api-client/src/schema.ts
+          git diff --exit-code -- backend/src/Api/openapi.json frontend/packages/api-client/src/schema.ts \
+            || { echo "::error::contract/client out of date; run the generation commands in CLAUDE.md and commit"; exit 1; }
+      - name: Client tests
+        run: pnpm -r --if-present test
+      - name: Fail on breaking contract change (oasdiff vs base revision)
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE_SHA" ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::error::base SHA is empty on a pull_request; cannot check for breaking changes"; exit 1
+            fi
+            echo "no base SHA (push without previous revision); skipping"; exit 0
+          fi
+          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "new branch push, no previous revision; skipping"; exit 0
+          fi
+          git cat-file -e "$BASE_SHA^{commit}" || { echo "::error::base commit $BASE_SHA not found in clone"; exit 1; }
+          if ! git cat-file -e "$BASE_SHA:backend/src/Api/openapi.json" 2>/dev/null; then
+            echo "contract absent at base revision (first introduction); skipping"; exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/contract"
+          git show "$BASE_SHA:backend/src/Api/openapi.json" > "$RUNNER_TEMP/contract/base.json"
+          cp backend/src/Api/openapi.json "$RUNNER_TEMP/contract/head.json"
+          docker run --rm -v "$RUNNER_TEMP/contract:/contract:ro" \
+            tufin/oasdiff@sha256:143f8444bceb39fb4e90370ac37f1166e3c12aad1ab41260e48aebd630a5e028 \
+            breaking /contract/base.json /contract/head.json --fail-on ERR
+
   gates:
     name: gates
     if: always()
@@ -138,6 +192,7 @@ jobs:
       - architecture-tests
       - secret-scan
       - dependency-audit
+      - openapi-contract
     runs-on: ubuntu-latest
     steps:
       - name: All mandatory gates must succeed

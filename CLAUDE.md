@@ -8,7 +8,7 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
   - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`). Project names `Flow4Tech.<Module>.<Layer>`.
   - `src/Api`: host (`Flow4Tech.Api`, Web SDK); health endpoints.
   - `tests/Flow4Tech.Tests`: xUnit.
-- `frontend/{app,control,design-system}`: pnpm workspaces (listed in root `pnpm-workspace.yaml`); `frontend/tsconfig.base.json` is strict.
+- `frontend/{app,control,design-system}` and `frontend/packages/api-client` (generated TypeScript client, imported by `app` and `control`): pnpm workspaces (listed in root `pnpm-workspace.yaml`); `frontend/tsconfig.base.json` is strict.
 - `docs/adr/`: decisions; copy `0000-template.md`.
 
 ## Commands (run from repo root)
@@ -18,6 +18,8 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - lint/format: `dotnet format backend/Flow4Tech.sln` (add `--verify-no-changes` to check only)
 - dev: `docker compose up --build` (PostgreSQL + API; `docker compose down` to stop)
 - port: API `http://localhost:8080` (`GET /health/live`, `GET /health/ready`), PostgreSQL `localhost:5432` (user/password/db `flow4tech`)
+- contract: after changing any API route/DTO, regenerate and commit both outputs: `dotnet build backend/src/Api/Flow4Tech.Api.csproj -p:GenerateContract=true` (writes `backend/src/Api/openapi.json`) then `pnpm --filter @flow4tech/api-client generate` (writes `frontend/packages/api-client/src/schema.ts`, never edit by hand). Give every route a stable `.WithName("...")` (becomes the operationId) and typed responses (`TypedResults`/`.Produces<T>()`).
+- client tests: `pnpm -r --if-present test`
 - config: environment variables only, e.g. `ConnectionStrings__Default`.
 
 ## CI gates (`.github/workflows/ci.yml`, GitHub Actions)
@@ -29,7 +31,8 @@ One pipeline on every pull request and on push to `main`. Merge requires the agg
 - `architecture-tests`: `backend/tests/Architecture`
 - `secret-scan`: gitleaks over full git history (`fetch-depth: 0`)
 - `dependency-audit`: `dotnet list package --vulnerable --include-transitive` and `pnpm audit --audit-level=high`
-- Later tickets add: OpenAPI contract (05), RLS and permission gates (06, 10).
+- `openapi-contract`: regenerates `openapi.json` + client and fails if the committed output differs (`git diff --exit-code`); runs client tests; runs `oasdiff breaking --fail-on ERR` (pinned `tufin/oasdiff` image) between the base revision (PR base / push `before`) and the head contract, so removing or narrowing anything clients rely on fails the PR.
+- Later tickets add: RLS and permission gates (06, 10).
 - No secrets in the repo: config via environment variables; gitleaks fails the pipeline on any finding in history.
 
 Duration budget (TARGET, not yet measured; replace with the first real run): whole pipeline <= 10 min wall clock, each job <= 5 min (integration <= 8 min). Local reference: build ~10 s, integration tests ~20 s with warm Docker.

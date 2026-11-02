@@ -10,6 +10,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
+    "@flow4tech/api-client": "workspace:*",
     "@flow4tech/design-system": "workspace:*"
   }
 }
