@@ -45,6 +45,7 @@ public sealed class TenantTransaction : IAsyncDisposable
 {
     internal TenantTransaction(NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
+        TenantCommandGuard.Register(transaction, this);
         Connection = connection;
         Transaction = transaction;
     }
@@ -53,10 +54,18 @@ public sealed class TenantTransaction : IAsyncDisposable
 
     public NpgsqlTransaction Transaction { get; }
 
-    public Task CommitAsync(CancellationToken cancellationToken = default) => Transaction.CommitAsync(cancellationToken);
+    /// <summary>True once committed or disposed: the context is gone, so commands must be refused.</summary>
+    internal bool Ended { get; private set; }
+
+    public Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        Ended = true;
+        return Transaction.CommitAsync(cancellationToken);
+    }
 
     public async ValueTask DisposeAsync()
     {
+        Ended = true;
         await Transaction.DisposeAsync();
         await Connection.DisposeAsync();
     }

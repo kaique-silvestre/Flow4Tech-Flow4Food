@@ -4,7 +4,7 @@ namespace Flow4Tech.Infrastructure.Data;
 
 /// <summary>
 /// Applies the versioned <c>*.sql</c> files of <c>backend/migrations</c> in file-name order, each in its own transaction,
-/// recording versions in <c>schema_migrations</c>. Always run with the OWNER/migration credential, never the application one.
+/// recording version and SHA-256 checksum in <c>schema_migrations</c> (editing an applied file is refused). Always run with the OWNER/migration credential, never the application one.
 /// </summary>
 public static class MigrationRunner
 {
@@ -25,29 +25,48 @@ public static class MigrationRunner
         try
         {
             await using (var create = new NpgsqlCommand(
-                "CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())",
+                "CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now(), checksum text)",
                 connection))
             {
                 await create.ExecuteNonQueryAsync(cancellationToken);
             }
 
+            // Journals written before checksums existed: add the column; null checksums are filled on first sight below.
+            await using (var upgrade = new NpgsqlCommand("ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text", connection))
+            {
+                await upgrade.ExecuteNonQueryAsync(cancellationToken);
+            }
+
             foreach (var file in Directory.EnumerateFiles(directory, "*.sql").Order(StringComparer.Ordinal))
             {
                 var version = Path.GetFileNameWithoutExtension(file);
-                if (await IsApplied(connection, version, cancellationToken))
+                var text = await File.ReadAllTextAsync(file, cancellationToken);
+                var checksum = Checksum(text);
+                var (isApplied, recorded) = await Recorded(connection, version, cancellationToken);
+                if (isApplied)
                 {
+                    if (recorded is null)
+                    {
+                        await SetChecksum(connection, version, checksum, cancellationToken);
+                    }
+                    else if (recorded != checksum)
+                    {
+                        throw new InvalidOperationException($"Migration {version} was edited after being applied (checksum mismatch). Never edit applied files; add a new one.");
+                    }
+
                     continue;
                 }
 
                 await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-                await using (var script = new NpgsqlCommand(await File.ReadAllTextAsync(file, cancellationToken), connection, transaction))
+                await using (var script = new NpgsqlCommand(text, connection, transaction))
                 {
                     await script.ExecuteNonQueryAsync(cancellationToken);
                 }
 
-                await using (var record = new NpgsqlCommand("INSERT INTO schema_migrations (version) VALUES (@version)", connection, transaction))
+                await using (var record = new NpgsqlCommand("INSERT INTO schema_migrations (version, checksum) VALUES (@version, @checksum)", connection, transaction))
                 {
                     record.Parameters.AddWithValue("version", version);
+                    record.Parameters.AddWithValue("checksum", checksum);
                     await record.ExecuteNonQueryAsync(cancellationToken);
                 }
 
@@ -63,11 +82,24 @@ public static class MigrationRunner
         return applied;
     }
 
-    private static async Task<bool> IsApplied(NpgsqlConnection connection, string version, CancellationToken cancellationToken)
+    /// <summary>SHA-256 of the file with line endings normalized (git autocrlf must not look like an edit).</summary>
+    private static string Checksum(string text) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text.Replace("\r\n", "\n", StringComparison.Ordinal))));
+
+    private static async Task<(bool IsApplied, string? Checksum)> Recorded(NpgsqlConnection connection, string version, CancellationToken cancellationToken)
     {
-        await using var command = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = @version)", connection);
+        await using var command = new NpgsqlCommand("SELECT checksum FROM schema_migrations WHERE version = @version", connection);
         command.Parameters.AddWithValue("version", version);
-        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? (true, await reader.IsDBNullAsync(0, cancellationToken) ? null : reader.GetString(0)) : (false, null);
+    }
+
+    private static async Task SetChecksum(NpgsqlConnection connection, string version, string checksum, CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand("UPDATE schema_migrations SET checksum = @checksum WHERE version = @version", connection);
+        command.Parameters.AddWithValue("checksum", checksum);
+        command.Parameters.AddWithValue("version", version);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task AdvisoryLock(NpgsqlConnection connection, bool acquire, CancellationToken cancellationToken)

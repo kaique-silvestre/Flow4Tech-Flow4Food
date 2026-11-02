@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Integration (real PostgreSQL, app credential)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Both options implement the same small use case (insert and query the sample business table) under RLS with per-transaction context
 - [ ] Comparison table covers SQL clarity, typing, context-per-transaction enforcement, performance and testability, with measured numbers where relevant
