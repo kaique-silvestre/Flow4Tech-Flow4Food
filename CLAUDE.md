@@ -24,6 +24,8 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - Layers: Domain -> Kernel only; Application -> Domain; Infrastructure and Interface -> Application. Never the reverse.
 - A module may use another module only through its public API (Application contracts) or its events. Never reference another module's Domain, Infrastructure or Interface.
 - Kernel stays small; do not put business rules in it.
+- Enforced by `backend/tests/Architecture` (runs in `dotnet test`): forbidden edges, cycles, another module's internals (csproj refs and `using`), and Domain referencing packages, frameworks, or outer layers all fail the build.
+- Declare a new allowed edge: add the target to the source module's list in `backend/modules.dependencies.json` (`"Permissoes": ["Organizacao"]` = Permissoes may reference `Organizacao.Application`; this file is the only source of truth). Then add the `ProjectReference` to `Flow4Tech.Organizacao.Application` from Permissoes' Application/Infrastructure/Interface project (never Domain). Cycles stay forbidden; a new module must be added to the file too.
 
 ## Conventions
 - Money: integer cents plus currency (`Money`). Never float/decimal for stored amounts.

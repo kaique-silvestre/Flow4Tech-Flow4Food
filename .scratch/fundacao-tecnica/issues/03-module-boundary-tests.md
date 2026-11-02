@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Architecture test (runs in CI)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Allowed-dependencies file exists and is the only source of truth for module edges
 - [ ] Test fails when a module references another module's internal type (proven by a deliberately violating fixture or temporary change)
