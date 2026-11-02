@@ -37,5 +37,8 @@ frontend/.env.local
 frontend/tsconfig.tsbuildinfo
 graphify-out/
 
-# Claude Code local state
-.claude/
+# Claude Code local state (skills/ and agents/ are versioned)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/RESUME.md
+.claude/launch.json
