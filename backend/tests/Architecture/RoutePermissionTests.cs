@@ -52,6 +52,54 @@ public sealed class RoutePermissionTests
         return [.. ((IEndpointRouteBuilder)app).DataSources.SelectMany(d => d.Endpoints)];
     }
 
+    // ---- session requirement (ticket 01 follow-up): every route outside the allowlists needs .RequireSession() ----
+
+    /// <summary>
+    /// Own, deliberately tiny allowlist. <c>/version</c> only reports the build version (no tenant data) and is used by deploy smoke checks
+    /// before anyone can sign in, so it stays public. Adding a route here needs the same review as adding one to <see cref="RoutePermissions.Allowlist"/>.
+    /// </summary>
+    private static readonly HashSet<string> PublicWithoutSession = new(StringComparer.Ordinal) { "/version" };
+
+    private static List<string> RoutesWithoutSession(IEnumerable<Endpoint> endpoints) =>
+        [.. endpoints.OfType<RouteEndpoint>()
+            .Select(e => (Route: e.RoutePattern.RawText ?? e.DisplayName ?? "<unnamed endpoint>", Endpoint: e))
+            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !PublicWithoutSession.Contains(x.Route))
+            .Where(x => x.Endpoint.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
+            .Select(x => x.Route)
+            .Order(StringComparer.Ordinal)];
+
+    [Fact]
+    public void Every_route_of_the_real_api_outside_the_allowlists_requires_a_session()
+    {
+        using var api = new WebApplicationFactory<Program>();
+        var endpoints = api.Services.GetRequiredService<EndpointDataSource>().Endpoints;
+
+        Assert.Empty(RoutesWithoutSession(endpoints));
+
+        // Not vacuous: the session routes exist and carry the marker; the public allowlist entries are real routes.
+        var withSession = endpoints.OfType<RouteEndpoint>().Where(e => e.Metadata.GetMetadata<SessionRequiredMetadata>() is not null)
+            .Select(e => e.RoutePattern.RawText).ToList();
+        Assert.Contains("/unidades", withSession);
+        Assert.Contains("/sessao/unidade-ativa", withSession);
+        var all = endpoints.OfType<RouteEndpoint>().Select(e => e.RoutePattern.RawText).ToList();
+        Assert.Contains("/version", all);
+    }
+
+    [Fact]
+    public void A_business_route_without_require_session_is_reported()
+    {
+        var endpoints = EndpointsOf(app =>
+        {
+            app.MapGet("/negocio-sem-sessao", () => "x");
+            app.MapGet("/negocio-com-sessao", () => "x").RequireSession();
+            app.MapGet("/version", () => "x");
+            app.MapGet("/health/live", () => "x");
+        });
+
+        var violation = Assert.Single(RoutesWithoutSession(endpoints));
+        Assert.Equal("/negocio-sem-sessao", violation);
+    }
+
     // ---- route enumeration ----
 
     [Fact]

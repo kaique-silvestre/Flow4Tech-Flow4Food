@@ -15,7 +15,7 @@ internal static class ClientContextInput
 {
     private static readonly HashSet<string> Forbidden = new(StringComparer.Ordinal)
     {
-        "ORGANIZACAOID", "ORGANIZATIONID", "ORGID", "UNIDADEID", "UNITID", "TENANTID",
+        "ORGANIZACAOID", "ORGANIZATIONID", "ORGID", "UNIDADEID", "UNITID", "TENANTID", "ORG", "TENANT", "UNIDADE",
     };
 
     public static IReadOnlyList<string> Check(IEnumerable<Endpoint> endpoints)
@@ -61,9 +61,14 @@ internal static class ClientContextInput
             return;
         }
 
-        var explicitName = parameter.GetCustomAttributes().OfType<IFromHeaderMetadata>().Select(a => a.Name)
-            .Concat(parameter.GetCustomAttributes().OfType<IFromQueryMetadata>().Select(a => a.Name))
-            .FirstOrDefault(name => name is not null);
+        // Every binding source with an explicit wire name (header, query, route, form) counts, not only the parameter's own name.
+        var attributes = parameter.GetCustomAttributes().ToList();
+        var explicitNames = attributes.OfType<IFromHeaderMetadata>().Select(a => a.Name)
+            .Concat(attributes.OfType<IFromQueryMetadata>().Select(a => a.Name))
+            .Concat(attributes.OfType<IFromRouteMetadata>().Select(a => a.Name))
+            .Concat(attributes.OfType<IFromFormMetadata>().Select(a => a.Name))
+            .Where(name => name is not null)
+            .ToList();
 
         if (IsSimple(type))
         {
@@ -73,16 +78,16 @@ internal static class ClientContextInput
                 report(parameter.Name!, "route/query parameter");
             }
 
-            if (IsForbidden(explicitName))
+            foreach (var name in explicitNames.Where(IsForbidden))
             {
-                report(explicitName!, "query/header");
+                report(name!, "explicit binding name");
             }
 
             return;
         }
 
         if (parameter.GetCustomAttribute<AsParametersAttribute>() is not null
-            || parameter.GetCustomAttributes().Any(a => a is IFromQueryMetadata or IFromHeaderMetadata or IFromFormMetadata))
+            || attributes.Any(a => a is IFromQueryMetadata or IFromHeaderMetadata or IFromFormMetadata or IFromRouteMetadata))
         {
             Walk(type, parameter.Name ?? "parameter", report, []);
         }
@@ -102,6 +107,8 @@ internal static class ClientContextInput
             return;
         }
 
+        // A generic type (Envelope<T>, Page<T>) has its own members as well as its type arguments: walk both. Framework collections
+        // (System.*) contribute only their arguments. `seen` is per type, so a self-referencing graph terminates.
         if (type.IsGenericType)
         {
             foreach (var argument in type.GetGenericArguments())
@@ -109,10 +116,29 @@ internal static class ClientContextInput
                 Walk(argument, where, report, seen);
             }
 
-            return;
+            if (type.Namespace?.StartsWith("System", StringComparison.Ordinal) == true)
+            {
+                return;
+            }
         }
 
-        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var fieldWire = field.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name;
+            if (IsForbidden(field.Name))
+            {
+                report(field.Name, where);
+            }
+
+            if (IsForbidden(fieldWire))
+            {
+                report(fieldWire!, where);
+            }
+
+            Walk(field.FieldType, where + "." + field.Name, report, seen);
+        }
+
+        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetIndexParameters().Length == 0))
         {
             var wire = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name;
             if (IsForbidden(property.Name))

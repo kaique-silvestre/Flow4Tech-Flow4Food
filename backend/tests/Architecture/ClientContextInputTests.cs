@@ -39,6 +39,90 @@ public sealed partial class ClientContextInputTests
         public Guid? TenantId { get; init; }
     }
 
+    internal sealed record Envelope<T>(T Data, Guid OrganizacaoId);
+
+    internal sealed record Page<T>(List<T> Items, int Total);
+
+    internal sealed class Node
+    {
+        public Node? Next { get; init; }
+
+        public List<Node> Children { get; init; } = [];
+
+        public string Nome { get; init; } = "";
+    }
+
+    internal sealed class BodyWithField
+    {
+#pragma warning disable CA1051, CS0649
+        public Guid OrganizacaoId;
+#pragma warning restore CA1051, CS0649
+    }
+
+    internal sealed record BodyWithSynonyms(Guid Org, Guid Tenant, Guid Unidade);
+
+    [Fact]
+    public void A_generic_body_is_inspected_for_its_own_properties_not_only_its_type_arguments()
+    {
+        var endpoints = EndpointsOf(app =>
+        {
+            app.MapPost("/env", (Envelope<BodyOk> body) => body.OrganizacaoId);
+            app.MapPost("/page", (Page<BodyWithUnit> body) => body.Total);
+        });
+
+        var violations = ClientContextInput.Check(endpoints);
+
+        Assert.Contains(violations, v => v.Contains("/env", StringComparison.Ordinal) && v.Contains("OrganizacaoId", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("/page", StringComparison.Ordinal) && v.Contains("UnidadeId", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_self_referencing_body_terminates_and_a_clean_generic_passes()
+    {
+        var endpoints = EndpointsOf(app =>
+        {
+            app.MapPost("/node", (Node body) => body.Nome);
+            app.MapPost("/page-ok", (Page<BodyOk> body) => body.Total);
+        });
+
+        Assert.Empty(ClientContextInput.Check(endpoints));
+    }
+
+    [Fact]
+    public void A_public_field_is_inspected_like_a_property()
+    {
+        var endpoints = EndpointsOf(app => app.MapPost("/field", (BodyWithField body) => body.GetHashCode()));
+
+        Assert.Contains(ClientContextInput.Check(endpoints), v => v.Contains("OrganizacaoId", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_explicit_binding_name_on_a_simple_parameter_is_flagged_for_every_source()
+    {
+        var endpoints = EndpointsOf(app =>
+        {
+            app.MapPost("/form", ([FromForm(Name = "organizacaoId")] Guid a) => a);
+            app.MapGet("/route/{unidadeId}", ([FromRoute(Name = "unidadeId")] Guid a) => a);
+            app.MapGet("/query", ([FromQuery(Name = "tenant_id")] Guid a) => a);
+        });
+
+        var violations = ClientContextInput.Check(endpoints);
+
+        Assert.Contains(violations, v => v.Contains("'/form'", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("'/route/{unidadeId}'", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("'/query'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_synonyms_org_tenant_and_unidade_are_flagged_but_unidadeDestinoId_still_passes()
+    {
+        var bad = EndpointsOf(app => app.MapPost("/syn", (BodyWithSynonyms body) => body.Org));
+        var ok = EndpointsOf(app => app.MapPost("/dest", (BodyOk body) => body.UnidadeDestinoId));
+
+        Assert.Equal(3, ClientContextInput.Check(bad).Count);
+        Assert.Empty(ClientContextInput.Check(ok));
+    }
+
     [Fact]
     public void A_body_with_an_organizacaoId_or_unidadeId_field_is_flagged()
     {
@@ -110,8 +194,54 @@ public sealed partial class ClientContextInputTests
         Assert.Contains("/sessao/unidade-ativa", patterns);
     }
 
-    [GeneratedRegex(@"new\s+OrganizationContext\s*\(")]
+    [GeneratedRegex(@"new\s+(?:[\w:.]+\.)?OrganizationContext\s*\(")]
     private static partial Regex BuildsContext();
+
+    private static string Sep(string name) => Path.DirectorySeparatorChar + name + Path.DirectorySeparatorChar;
+
+    /// <summary>Source files of every module's Application/Domain/Interface layer under <paramref name="srcRoot"/> that build the context by hand.</summary>
+    private static List<string> FilesBuildingTheContext(string srcRoot, out int scanned)
+    {
+        var files = Directory.EnumerateDirectories(srcRoot)
+            .Where(d => Path.GetFileName(d) is not ("Kernel" or "Infrastructure" or "Api"))
+            .SelectMany(module => Directory.EnumerateDirectories(module).Where(l => Path.GetFileName(l) is "Application" or "Domain" or "Interface"))
+            .SelectMany(layer => Directory.EnumerateFiles(layer, "*.cs", SearchOption.AllDirectories))
+            .Where(f => !f.Contains(Sep("obj"), StringComparison.Ordinal) && !f.Contains(Sep("bin"), StringComparison.Ordinal))
+            .ToList();
+        scanned = files.Count;
+        return [.. files.Where(f => BuildsContext().IsMatch(File.ReadAllText(f)))];
+    }
+
+    [Fact]
+    public void The_detector_also_flags_the_namespace_qualified_spelling()
+    {
+        Assert.Matches(BuildsContext(), "return new Flow4Tech.Kernel.OrganizationContext(a, b);");
+        Assert.Matches(BuildsContext(), "return new global::Flow4Tech.Kernel.OrganizationContext (a, b);");
+    }
+
+    [Fact]
+    public void The_source_scan_finds_a_violating_fixture_layer_and_ignores_infrastructure()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "f4t-scan-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            foreach (var layer in new[] { "Application", "Domain", "Interface", "Infrastructure" })
+            {
+                Directory.CreateDirectory(Path.Combine(root, "Fixture", layer));
+                File.WriteAllText(Path.Combine(root, "Fixture", layer, "X.cs"), "class X { object o = new OrganizationContext(a, b); }");
+            }
+
+            var offenders = FilesBuildingTheContext(root, out var scanned);
+
+            Assert.Equal(3, scanned);
+            Assert.Equal(3, offenders.Count);
+            Assert.DoesNotContain(offenders, f => f.Contains("Infrastructure", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 
     [Fact]
     public void The_detector_flags_code_that_builds_the_organization_context_by_hand()
@@ -123,16 +253,9 @@ public sealed partial class ClientContextInputTests
     [Fact]
     public void Module_application_code_never_builds_the_organization_context_it_gets_it_from_the_request()
     {
-        var src = Path.Combine(ModuleGraph.BackendRoot(), "src");
-        var offenders = Directory.EnumerateDirectories(src)
-            .Where(d => Path.GetFileName(d) is not ("Kernel" or "Infrastructure" or "Api"))
-            .SelectMany(module => Directory.EnumerateDirectories(module).Where(l => Path.GetFileName(l) is "Application" or "Domain" or "Interface"))
-            .SelectMany(layer => Directory.EnumerateFiles(layer, "*.cs", SearchOption.AllDirectories))
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(f => BuildsContext().IsMatch(File.ReadAllText(f)))
-            .ToList();
+        var offenders = FilesBuildingTheContext(Path.Combine(ModuleGraph.BackendRoot(), "src"), out var scanned);
 
+        Assert.True(scanned > 0, "the scan found no Application/Domain/Interface source files: it would pass vacuously");
         Assert.Empty(offenders);
     }
 }
