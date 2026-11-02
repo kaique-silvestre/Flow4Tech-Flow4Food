@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Flow4Tech.Organizacao.Domain.csproj" />
+  </ItemGroup>
+</Project>

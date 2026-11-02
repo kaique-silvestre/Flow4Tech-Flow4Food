@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** not-applicable
 **Seams:** None (scaffolding; a smoke build/test only)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Solution builds and an empty test project runs green with nullable reference types enabled and analyzers set to strict
 - [ ] `pnpm install` and a typecheck succeed for `app`, `control` and the design-system package with TypeScript strict mode

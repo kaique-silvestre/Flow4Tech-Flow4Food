@@ -1,0 +1,19 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,json,yml,yaml}]
+indent_size = 2
+
+[*.cs]
+# Strict analyzers are on via Directory.Build.props (AnalysisMode=All); opt out only of noise.
+dotnet_diagnostic.CA1707.severity = none   # underscores in test names
+dotnet_diagnostic.CA1812.severity = none   # internal classes never instantiated (DI)
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA2007.severity = none   # ConfigureAwait not needed in ASP.NET Core
+dotnet_diagnostic.IDE0058.severity = none

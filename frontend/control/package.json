@@ -1,0 +1,15 @@
+{
+  "name": "@flow4tech/control",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@flow4tech/design-system": "workspace:*"
+  }
+}
