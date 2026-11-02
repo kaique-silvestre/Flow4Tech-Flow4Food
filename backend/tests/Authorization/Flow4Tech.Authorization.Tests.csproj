@@ -10,6 +10,7 @@
     <ProjectReference Include="../../src/Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />
     <ProjectReference Include="../../src/Permissoes/Infrastructure/Flow4Tech.Permissoes.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/Outbox/Flow4Tech.Infrastructure.Outbox.csproj" />
     <!-- Same real-PostgreSQL fixture as the isolation tests (roles, migrations, app credential), compiled in rather than copied. -->
     <Compile Include="../Isolation/PostgresFixture.cs" Link="Shared/PostgresFixture.cs" />
   </ItemGroup>

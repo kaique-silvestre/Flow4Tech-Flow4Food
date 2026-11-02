@@ -1,3 +1,5 @@
+using Flow4Tech.Api;
+using Flow4Tech.Permissoes.Application;
 using Npgsql;
 
 using System.Reflection;
@@ -13,7 +15,8 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/version", () => TypedResults.Ok(new VersionInfo(
         typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0")))
-    .WithName("getVersion");
+    .WithName("getVersion")
+    .RequirePermission(SistemaPermissions.VerVersao);
 
 app.MapGet("/health/live", () => TypedResults.Ok(new HealthStatus("live")))
     .WithName("getHealthLive");
@@ -44,6 +47,11 @@ app.MapGet("/health/ready", async (IConfiguration configuration, CancellationTok
 .WithName("getHealthReady")
 .Produces<HealthStatus>()
 .Produces(StatusCodes.Status503ServiceUnavailable);
+
+// Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
+RoutePermissions.EnsureValid(
+    ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints),
+    ModuleCatalog.Load(AppContext.BaseDirectory).ToHashSet(StringComparer.Ordinal));
 
 app.Run();
 

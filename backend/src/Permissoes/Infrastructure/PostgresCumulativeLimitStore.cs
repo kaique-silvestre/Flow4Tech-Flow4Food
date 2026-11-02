@@ -39,12 +39,12 @@ internal sealed class PermissoesDbContext(TenantTransaction transaction) : Tenan
 }
 
 /// <summary>
-/// Cumulative limits on PostgreSQL. Check and update are ONE statement inside one tenant transaction: an upsert whose conflict branch
+/// Cumulative limits on PostgreSQL. Check and update are ONE statement, run on the tenant transaction of the caller's unit of work (<see cref="TenantUnitOfWork"/>), so a failed business operation rolls the reservation back: an upsert whose conflict branch
 /// only applies when the new total stays within the cap. INSERT ... ON CONFLICT DO UPDATE takes the row lock of the counter, so concurrent
 /// consumers of the same (organization, user, permission, day) queue on that row and each re-evaluates the cap against the committed total
 /// (READ COMMITTED is enough). Zero rows affected means the cap would be exceeded. No application-side read, no advisory lock, no retry loop.
 /// </summary>
-public sealed class PostgresCumulativeLimitStore(TenantDatabase tenant) : ICumulativeLimitStore
+public sealed class PostgresCumulativeLimitStore() : ICumulativeLimitStore
 {
     public async Task<bool> TryConsumeAsync(Guid organizationId, Guid? unitId, Guid userId, string permission, DateOnly day, long cents, long capCents, CancellationToken cancellationToken)
     {
@@ -54,7 +54,8 @@ public sealed class PostgresCumulativeLimitStore(TenantDatabase tenant) : ICumul
             return false;
         }
 
-        await using var tx = await tenant.BeginAsync(new Flow4Tech.Kernel.OrganizationContext(organizationId, unitId ?? Guid.Empty), cancellationToken);
+        // Joins the business transaction (ADR-006 decision C): no transaction of its own, no commit here. Outside a unit of work this throws.
+        var tx = TenantUnitOfWork.Require(organizationId);
         await using var context = new PermissoesDbContext(tx);
         var affected = await context.Database.ExecuteSqlAsync(
             $"""
@@ -65,7 +66,6 @@ public sealed class PostgresCumulativeLimitStore(TenantDatabase tenant) : ICumul
             WHERE l.consumido_centavos + EXCLUDED.consumido_centavos <= {capCents}
             """,
             cancellationToken);
-        await tx.CommitAsync(cancellationToken);
         return affected == 1;
     }
 }

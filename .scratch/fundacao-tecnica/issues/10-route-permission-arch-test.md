@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Architecture test (runs in CI), Contract (OpenAPI)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A route/endpoint attribute or metadata declares `resource:action` for each route
 - [ ] Architecture test enumerates all routes and fails if any lacks the declaration (proven with a violating fixture route)

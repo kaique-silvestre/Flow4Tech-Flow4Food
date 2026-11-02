@@ -38,17 +38,21 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
     public static IAuthorizationEngine EngineOver(ICumulativeLimitStore store, DateTimeOffset? now = null) =>
         new RulesAuthorizationEngine(Policy(), store, new ConfiguredOperatingDayResolver(new FixedClock(now ?? Today)));
 
-    private static async Task<Decision[]> Fire(IAuthorizationEngine engine, Guid org, Guid user, params long[] amounts)
+    private static async Task<Decision[]> Fire(TenantDatabase tenant, IAuthorizationEngine engine, Guid org, Guid user, params long[] amounts)
     {
         var start = new TaskCompletionSource();
         var tasks = amounts.Select(cents => Task.Run(async () =>
         {
             await start.Task;
-            return await engine.DecidirAsync(
-                new Subject(user, [Garcom]),
-                Cortesia,
-                new Scope(org, TestDatabase.UnitA),
-                new DecisionContext(new Money(cents, "BRL")));
+            // Each request is its own business operation: one unit of work, reservation inside it (ADR-006 decision C).
+            return await new TenantUnitOfWork(tenant).ExecuteAsync(
+                TestDatabase.Ctx(org),
+                ct => engine.DecidirAsync(
+                    new Subject(user, [Garcom]),
+                    Cortesia,
+                    new Scope(org, TestDatabase.UnitA),
+                    new DecisionContext(new Money(cents, "BRL")),
+                    ct));
         })).ToArray();
         start.SetResult();
         return await Task.WhenAll(tasks);
@@ -75,8 +79,8 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
         {
             var user = Guid.NewGuid();
             var at = Today.AddDays(round);
-            var engine = EngineOver(new PostgresCumulativeLimitStore(tenant), at);
-            var decisions = await Fire(engine, TestDatabase.OrgA, user, Enumerable.Repeat(100L, 40).ToArray());
+            var engine = EngineOver(new PostgresCumulativeLimitStore(), at);
+            var decisions = await Fire(tenant, engine, TestDatabase.OrgA, user, Enumerable.Repeat(100L, 40).ToArray());
 
             Assert.Equal(10, decisions.Count(d => d.IsAllowed));
             Assert.All(decisions.Where(d => !d.IsAllowed), d => Assert.Equal("daily-cap-exceeded", d.Reason));
@@ -89,11 +93,11 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
     {
         var (source, tenant) = await ArrangeAsync();
         await using var _ = source;
-        var engine = EngineOver(new PostgresCumulativeLimitStore(tenant));
+        var engine = EngineOver(new PostgresCumulativeLimitStore());
         var user = Guid.NewGuid();
         long[] amounts = [.. Enumerable.Range(1, 40).Select(i => (long)(i * 17 % 350 + 1))];
 
-        var decisions = await Fire(engine, TestDatabase.OrgA, user, amounts);
+        var decisions = await Fire(tenant, engine, TestDatabase.OrgA, user, amounts);
 
         var allowedSum = amounts.Zip(decisions).Where(p => p.Second.IsAllowed).Sum(p => p.First);
         var total = await TotalAsync(tenant, TestDatabase.OrgA, user, Day);
@@ -106,12 +110,12 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
     {
         var (source, tenant) = await ArrangeAsync();
         await using var _ = source;
-        var engine = EngineOver(new PostgresCumulativeLimitStore(tenant));
+        var engine = EngineOver(new PostgresCumulativeLimitStore());
         var sameUser = Guid.NewGuid();
 
-        var inA = await Fire(engine, TestDatabase.OrgA, sameUser, Enumerable.Repeat(100L, 12).ToArray());
-        var inB = await Fire(engine, TestDatabase.OrgB, sameUser, Enumerable.Repeat(100L, 12).ToArray());
-        var otherUser = await Fire(engine, TestDatabase.OrgA, Guid.NewGuid(), 1_000);
+        var inA = await Fire(tenant, engine, TestDatabase.OrgA, sameUser, Enumerable.Repeat(100L, 12).ToArray());
+        var inB = await Fire(tenant, engine, TestDatabase.OrgB, sameUser, Enumerable.Repeat(100L, 12).ToArray());
+        var otherUser = await Fire(tenant, engine, TestDatabase.OrgA, Guid.NewGuid(), 1_000);
 
         Assert.Equal(10, inA.Count(d => d.IsAllowed));
         Assert.Equal(10, inB.Count(d => d.IsAllowed)); // org B starts from zero for the same user id
@@ -126,8 +130,8 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
     {
         var (source, tenant) = await ArrangeAsync();
         await using var _ = source;
-        var engine = EngineOver(new PostgresCumulativeLimitStore(tenant));
-        await Fire(engine, TestDatabase.OrgA, Guid.NewGuid(), 100);
+        var engine = EngineOver(new PostgresCumulativeLimitStore());
+        await Fire(tenant, engine, TestDatabase.OrgA, Guid.NewGuid(), 100);
 
         await using var connection = await source.OpenConnectionAsync();
         await using var command = new NpgsqlCommand("SELECT count(*) FROM limites_consumo", connection);
@@ -154,20 +158,20 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
     {
         var (source, tenant) = await ArrangeAsync();
         await using var _ = source;
-        var engine = EngineOver(new ReadThenWriteLimitStore(tenant));
+        var engine = EngineOver(new ReadThenWriteLimitStore());
         var user = Guid.NewGuid();
 
-        var decisions = await Fire(engine, TestDatabase.OrgA, user, Enumerable.Repeat(100L, 40).ToArray());
+        var decisions = await Fire(tenant, engine, TestDatabase.OrgA, user, Enumerable.Repeat(100L, 40).ToArray());
 
         Assert.True(decisions.Count(d => d.IsAllowed) > 10, "the unlocked counter should have let more than the cap through");
     }
 
     /// <summary>Check-then-update across separate statements, no lock: the classic lost-update race. Test double only.</summary>
-    private sealed class ReadThenWriteLimitStore(TenantDatabase tenant) : ICumulativeLimitStore
+    private sealed class ReadThenWriteLimitStore : ICumulativeLimitStore
     {
         public async Task<bool> TryConsumeAsync(Guid organizationId, Guid? unitId, Guid userId, string permission, DateOnly day, long cents, long capCents, CancellationToken cancellationToken)
         {
-            await using var tx = await tenant.BeginAsync(new OrganizationContext(organizationId, unitId ?? Guid.NewGuid()), cancellationToken);
+            var tx = TenantUnitOfWork.Require(organizationId); // joins the caller's unit of work, like the real store
             await using var select = new NpgsqlCommand(
                 "SELECT consumido_centavos FROM limites_consumo WHERE usuario_id = @u AND permissao = @p AND dia = @d", tx.Connection, tx.Transaction);
             select.Parameters.AddWithValue("u", userId);
@@ -189,7 +193,6 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
             write.Parameters.AddWithValue("d", day);
             write.Parameters.AddWithValue("v", current + cents);
             await write.ExecuteNonQueryAsync(cancellationToken);
-            await tx.CommitAsync(cancellationToken);
             return true;
         }
     }

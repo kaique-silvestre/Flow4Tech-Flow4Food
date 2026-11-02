@@ -77,7 +77,7 @@ jobs:
           --filter "FullyQualifiedName~Endpoints|FullyQualifiedName~Integration"
 
   architecture-tests:
-    name: architecture tests
+    name: architecture + route permission gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
