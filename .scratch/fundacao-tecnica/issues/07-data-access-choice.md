@@ -1,4 +1,4 @@
-# 07: Data access choice: Dapper vs EF Core
+# 07: Data access choice: EF Core with visible SQL (decided, ADR-002; compared against Dapper)
 
 **What to build:** Compare Dapper and EF Core on top of the RLS spike and pick one, recorded in an ADR, so Phase 1 starts with one data-access style.
 **Blocked by:** 06

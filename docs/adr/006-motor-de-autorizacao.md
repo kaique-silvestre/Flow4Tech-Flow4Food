@@ -1,13 +1,13 @@
 # 006. Authorization: own rules-as-data engine behind a single decision interface (Cedar and Casbin measured, swappable)
 
-- Status: accepted (spike ticket 09); open items for the owner listed at the end
+- Status: accepted (spike ticket 09; owner decisions of 2026-11-02 recorded below)
 - Date: 2026-11-02
 
 ## Context
 Every route must ask one place whether `who` may do `resource:action` `where` given a `context` (03-seguranca S8: explicit deny > allow > default deny; limits judged on the REAL operation value, not what the client says). 04-arquitetura A14 left open whether to adopt Cedar, build, or mix. Three real cases decide it: (1) a waiter may give a discount up to X% by profile, above it is denied; (2) courtesies with a CUMULATIVE daily cap, where two concurrent requests must not jointly exceed it; (3) the same permission, a manager allowed only on unit 2 and denied on unit 1. Plus: explicit deny beats allow, default deny, unknown permission denies.
 
 ## Decision
-1. **One interface, `IAuthorizationEngine.DecidirAsync(Subject who, string permission, Scope where, DecisionContext context)`** in `Flow4Tech.Kernel.Authorization`. Callers and tests depend only on it. A behavioural contract (`tests/Authorization/AuthorizationEngineContract.cs`: 46 tests including the profile x permission matrix) runs unchanged against every implementation.
+1. **One interface, `IAuthorizationEngine.DecidirAsync(Subject who, string permission, Scope where, DecisionContext context)`** in `Flow4Tech.Kernel.Authorization`. Callers and tests depend only on it. A behavioural contract (`tests/Authorization/AuthorizationEngineContract.cs`: 56 tests including the profile x permission matrix) runs unchanged against every implementation.
 2. **Build, do not adopt: the production engine is our own rules-as-data engine** (`Permissoes.Domain` pure `PolicyEvaluator` + `Permissoes.Application` `RulesAuthorizationEngine`). Rules are data (`Rule(effect, profile, permission, unit?, maxPercent?, maxValueCents?, dailyCapCents?)` over a catalog of known permissions). Cedar and Casbin.NET were adapted behind the same interface and pass the same contract, so choosing later is a swap, not a rewrite.
 3. **Cumulative limits are owned by us in every option** (none of the three engines is stateful): the counter is a PostgreSQL tenant table (`limites_consumo`, migration 0003, RLS) updated by ONE atomic statement (`INSERT .. ON CONFLICT DO UPDATE .. WHERE total + amount <= cap`) in a `TenantDatabase` transaction. This is the "hybrid" part and it is the same whichever engine decides the rest.
 4. ASP.NET integration is resource-based authorization (`AuthorizationHandler<PermissionRequirement, OperationFacts>` that calls the interface). Name-only `[Authorize(Policy=..)]` cannot see operation values and is not used for permissions with limits.
@@ -17,7 +17,7 @@ Hardware/method: Intel i7-9750H, 12 logical cores, 16 GB, macOS 26.7.1 x64, .NET
 
 | | Own rules-as-data | Casbin.NET 2.21.3 | Cedar via MonoCloud.Cedar 0.1.0 (native Rust) |
 |---|---|---|---|
-| passes the 46-test contract (cases 1-3, deny/default/unknown, matrix) | yes | yes | yes |
+| passes the 56-test contract (cases 1-3, deny/default/unknown, matrix) | yes | yes | yes |
 | case 1/3 limit and unit rules | plain fields | matcher expression (`Convert.ToInt64(p.maxpct)`, string-typed policy columns) | `when { context.percentBp <= 1000 }`, unit as the resource entity, profile as parent entity |
 | explicit deny across several profiles; a unit-scoped deny also matches a request with no unit (fail closed) | native in the evaluator | no multi-subject request: one enforce per profile, deny detected from the matched rows | native (`forbid` overrides `permit`) |
 | cumulative daily cap | not in the engine; our store | not in the engine; our store | not in the engine (Cedar is stateless by design); our store |
@@ -35,6 +35,11 @@ Cumulative cap on PostgreSQL under RLS, app credential, through the interface (`
 - The own engine is about 150 lines, pure (no I/O), trivial to test exhaustively, and the rules stay data we can persist per organization later.
 - Because the interface and contract are fixed, the cost of being wrong is one adapter plus a data migration of the rules.
 
+## Owner decisions (2026-11-02)
+- **A. Cap day is the unit's OPERATING day, not the UTC date.** The counter key `dia` is the operating date: the local calendar date in the unit's time zone, shifted back by a per-unit rollover time (a moment before the rollover still belongs to the previous date). Defaults: zone `America/Sao_Paulo`, rollover `05:00` (after late closing, before the morning opening; a unit that closes later or opens earlier overrides it). The cap stays per user: the counter key is organization + user + permission + operating date, WITHOUT the unit (the unit only selects the zone/rollover), so a user working in two units with different rules shares one counter per operating date. Implementation: `OperatingDayRule` (Domain, pure; compares local wall-clock so DST never splits or merges a day) and the port `IOperatingDayResolver` (Permissoes.Application); `ConfiguredOperatingDayResolver` is the default, reading `IClock` plus an in-memory per-unit rule map (a capped request with no `Scope.UnitId` is DENIED with reason `unit-required`, nothing consumed: there is no honest day to count in). Per-unit settings are NOT persisted and have no UI yet: the future opening-hours feature (roadmap 2.10b) implements the port and feeds it the real hours. The runtime image needs tzdata (the aspnet Debian image has it); an unknown zone id fails when the rule is built.
+- **B. Currency: BRL only.** Limits are integer cents of BRL. A value in any other currency (or an empty or lowercase code) is denied with reason `currency-not-supported` (distinct from `limit-exceeded`; covers cumulative caps and per-operation value limits, including `default(Money)`; consumes nothing). Permissions without value limits are unaffected.
+- **C. Reserve-then-fail is decided, not built.** The reservation will join the SAME database transaction as the business operation, through a unit-of-work seam delivered in ticket 10; then a failed operation rolls its reservation back and a retry cannot double count. Until that seam exists, the "Ticket 10 must not build on this seam as if transactional" warning below stands.
+
 ## Revisit triggers (move to Cedar, or Casbin, behind the same interface)
 Customers or support need to AUTHOR policies in a language (not pick profiles and limits); relationships/hierarchies (group inside group) that the flat profile model cannot express; a requirement for formal policy analysis; a Cedar .NET binding with a maintained, cached policy set and CI-proven macOS/Linux/Windows natives and a measured per-decision cost near 50 us.
 
@@ -50,7 +55,6 @@ Customers or support need to AUTHOR policies in a language (not pick profiles an
 - Advisory locks or `SELECT .. FOR UPDATE` before an application-side compare: workable, but two statements and a lock protocol to keep right; the single conditional upsert is simpler and proved.
 - OPA/Rego, Amazon Verified Permissions: not attempted; a separate process or a network hop per decision contradicts the single-process, no-new-infrastructure foundation.
 
-## Open items for the owner
-1. Scope of the daily cap: per user (implemented), and the day boundary is the UTC date of the server clock (`IClock`, never caller data; `DecisionContext` carries no time); a unit-local business day (timezone, "day" ending at closing time) is not decided.
-2. Reserve-then-fail behaviour above (separate transaction, no release, retries double count) versus a release path or joining the business transaction. Must be decided before ticket 10 relies on capped permissions.
-3. Currency: limits compare integer cents; currency equality is not checked yet.
+## Open items
+1. The unit-of-work seam that lets the counter write join the business `TenantTransaction` (decision C): to be built in ticket 10.
+2. Persisting per-unit operating-day rules and feeding them from opening hours (roadmap 2.10b).

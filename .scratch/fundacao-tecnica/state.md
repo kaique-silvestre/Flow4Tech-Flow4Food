@@ -13,3 +13,4 @@ tickets:
 - 09 · authorization-spike · done · rounds: 2 · PASS (2 independent reviews) · ADR-006: build own engine · STOPPED for owner review; owner items: day boundary, reserve-then-fail, currency
 - 10..12 · pending
 lessons: 0
+- 09b · owner decisions on 09 (operating day, BRL-only, unit-required, ADR-006 accepted, wording housekeeping) · done · review PASS

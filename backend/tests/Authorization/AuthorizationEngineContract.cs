@@ -18,9 +18,11 @@ public abstract class AuthorizationEngineContract
 
     protected FixedClock Clock { get; } = new(Now);
 
-    protected abstract IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IClock clock);
+    protected abstract IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days);
 
-    protected IAuthorizationEngine Engine() => Create(Standard(), Limits, Clock);
+    protected IAuthorizationEngine Engine() => Create(Standard(), Limits, Days());
+
+    protected IOperatingDayResolver Days() => new ConfiguredOperatingDayResolver(Clock);
 
     protected Task<Decision> Ask(Subject who, string permission, Scope where, DecisionContext context) =>
         Engine().DecidirAsync(who, permission, where, context, CancellationToken.None);
@@ -105,6 +107,82 @@ public abstract class AuthorizationEngineContract
         Assert.Equal(0, Limits.Consumptions);
     }
 
+    [Fact]
+    public async Task Case2_the_cap_day_is_the_units_operating_day_not_the_utc_date()
+    {
+        // Sao Paulo is UTC-3 and the default rollover is 05:00 local (08:00 UTC).
+        Clock.UtcNow = new DateTimeOffset(2026, 11, 3, 2, 30, 0, TimeSpan.Zero); // 23:30 on 2 Nov, local
+        Assert.True((await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 3_000))).IsAllowed);
+
+        Clock.UtcNow = new DateTimeOffset(2026, 11, 3, 4, 0, 0, TimeSpan.Zero); // 01:00 on 3 Nov, local: still the 2 Nov operating day
+        Assert.False((await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 2_001))).IsAllowed); // 30 + 20.01 > 50
+        Assert.True((await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 2_000))).IsAllowed); // shares the cap: exactly 50
+        Assert.False((await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 1))).IsAllowed);
+        Assert.Equal(5_000, Limits.Total(OrgId, User, Cortesia, new DateOnly(2026, 11, 2)));
+
+        Clock.UtcNow = new DateTimeOffset(2026, 11, 3, 8, 0, 0, TimeSpan.Zero); // 05:00 local: new operating day, new cap
+        Assert.True((await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 5_000))).IsAllowed);
+        Assert.Equal(5_000, Limits.Total(OrgId, User, Cortesia, new DateOnly(2026, 11, 3)));
+    }
+
+    // Limits are BRL cents only (ADR-006): any other currency fails closed rather than comparing cents of different currencies.
+    [Theory]
+    [InlineData("USD")]
+    [InlineData("brl")]
+    [InlineData("")]
+    public async Task Case2_a_value_in_another_currency_is_denied_and_consumes_nothing(string currency)
+    {
+        var decision = await Ask(Who(Garcom), Cortesia, At(Unit1), Ctx(cents: 100, currency: currency));
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("currency-not-supported", decision.Reason);
+        Assert.Equal(0, Limits.Consumptions);
+    }
+
+    [Fact]
+    public async Task Case2_a_default_money_value_is_denied_as_an_unsupported_currency()
+    {
+        var decision = await Ask(Who(Garcom), Cortesia, At(Unit1), new DecisionContext(default(Money)));
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("currency-not-supported", decision.Reason);
+        Assert.Equal(0, Limits.Consumptions);
+    }
+
+    [Theory]
+    [InlineData("BRL", 500, true)]
+    [InlineData("BRL", 501, false)]
+    [InlineData("USD", 100, false)]
+    public async Task A_per_operation_value_limit_is_in_BRL_cents_only(string currency, long cents, bool allowed)
+    {
+        var policies = new PolicySet(Catalog, [new Rule(RuleEffect.Allow, Garcom, Relatorio, MaxValueCents: 500)]);
+        var engine = Create(policies, Limits, Days());
+
+        var decision = await engine.DecidirAsync(Who(Garcom), Relatorio, At(Unit1), Ctx(cents: cents, currency: currency));
+
+        Assert.Equal(allowed, decision.IsAllowed);
+        if (currency != "BRL")
+        {
+            Assert.Equal("currency-not-supported", decision.Reason);
+        }
+    }
+
+    [Fact]
+    public async Task Case2_a_capped_permission_without_a_unit_is_denied_and_consumes_nothing()
+    {
+        var decision = await Ask(Who(Garcom), Cortesia, At(), Ctx(cents: 100));
+
+        Assert.False(decision.IsAllowed);
+        Assert.Equal("unit-required", decision.Reason);
+        Assert.Equal(0, Limits.Consumptions);
+    }
+
+    [Fact]
+    public async Task A_value_in_another_currency_does_not_affect_a_permission_without_value_limits()
+    {
+        Assert.True((await Ask(Who(Gerente), Cortesia, At(Unit1), Ctx(cents: 100, currency: "USD"))).IsAllowed); // manager: uncapped
+    }
+
     // ---- Case 3: same permission, allowed only on unit 2 ----
 
     [Fact]
@@ -124,7 +202,7 @@ public abstract class AuthorizationEngineContract
             new Rule(RuleEffect.Allow, Garcom, Relatorio),
             new Rule(RuleEffect.Deny, Garcom, Relatorio, UnitId: Unit1),
         ]);
-        var engine = Create(policies, Limits, Clock);
+        var engine = Create(policies, Limits, Days());
 
         Assert.False((await engine.DecidirAsync(Who(Garcom), Relatorio, At(), Ctx())).IsAllowed); // unit unknown: fail closed
         Assert.False((await engine.DecidirAsync(Who(Garcom), Relatorio, At(Unit1), Ctx())).IsAllowed);
@@ -250,6 +328,6 @@ public abstract class AuthorizationEngineContract
 /// <summary>The rules-as-data engine (the one in production code) must satisfy the contract.</summary>
 public sealed class RulesAuthorizationEngineTests : AuthorizationEngineContract
 {
-    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IClock clock) =>
-        new RulesAuthorizationEngine(policies, limits, clock);
+    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days) =>
+        new RulesAuthorizationEngine(policies, limits, days);
 }

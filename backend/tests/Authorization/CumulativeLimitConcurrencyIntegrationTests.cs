@@ -36,7 +36,7 @@ public sealed class CumulativeLimitConcurrencyIntegrationTests(PostgresFixture p
 
     // Callers only know the interface; the concrete engine is chosen in this one place.
     public static IAuthorizationEngine EngineOver(ICumulativeLimitStore store, DateTimeOffset? now = null) =>
-        new RulesAuthorizationEngine(Policy(), store, new FixedClock(now ?? Today));
+        new RulesAuthorizationEngine(Policy(), store, new ConfiguredOperatingDayResolver(new FixedClock(now ?? Today)));
 
     private static async Task<Decision[]> Fire(IAuthorizationEngine engine, Guid org, Guid user, params long[] amounts)
     {

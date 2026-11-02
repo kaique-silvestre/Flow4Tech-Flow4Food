@@ -25,15 +25,15 @@ public sealed class CedarAuthorizationEngine : IAuthorizationEngine
 {
     private readonly KPolicySet _policies;
     private readonly ICumulativeLimitStore _limits;
-    private readonly Flow4Tech.Kernel.IClock _clock;
+    private readonly IOperatingDayResolver _days;
     private readonly MonoCloud.Cedar.Model.Policy.PolicySet _cedar;
     private readonly BasicAuthorizationEngine _engine = new();
 
-    public CedarAuthorizationEngine(KPolicySet policies, ICumulativeLimitStore limits, Flow4Tech.Kernel.IClock clock)
+    public CedarAuthorizationEngine(KPolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days)
     {
         _policies = policies;
         _limits = limits;
-        _clock = clock;
+        _days = days;
         _cedar = MonoCloud.Cedar.Model.Policy.PolicySet.ParsePolicies(Translate(policies));
     }
 
@@ -89,13 +89,19 @@ public sealed class CedarAuthorizationEngine : IAuthorizationEngine
         var user = new EntityUID(EntityTypeName.Parse("User"), who.UserId.ToString());
         var parents = who.Profiles.Select(p => new EntityUID(EntityTypeName.Parse("Profile"), p)).ToHashSet();
         var entities = new Entities(new HashSet<Entity> { new(user, parents) });
+        if (context.Value is { Currency: not PolicyEvaluator.LimitCurrency }
+            && _policies.Rules.Any(r => r.Effect == RuleEffect.Allow && r.Permission == permission && who.Profiles.Contains(r.Profile) && (r.MaxValueCents is not null || r.DailyCapCents is not null)))
+        {
+            return KDecision.Deny("currency-not-supported");
+        }
+
         var ctx = new Dictionary<string, MonoCloud.Cedar.Value.Value>();
         if (context.Percent is { } percent)
         {
             ctx["percentBp"] = new PrimLong((long)(percent * 100));
         }
 
-        if (context.Value is { } value)
+        if (context.Value is { Currency: PolicyEvaluator.LimitCurrency } value) // other currency = no usable value (fails closed)
         {
             ctx["valueCents"] = new PrimLong(value.Cents);
         }
@@ -120,7 +126,12 @@ public sealed class CedarAuthorizationEngine : IAuthorizationEngine
         }
 
         var capped = matched[0];
-        var day = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
+        if (where.UnitId is null)
+        {
+            return KDecision.Deny("unit-required");
+        }
+
+        var day = await _days.CurrentAsync(where.OrganizationId, where.UnitId, cancellationToken);
         var reserved = await _limits.TryConsumeAsync(where.OrganizationId, where.UnitId, who.UserId, permission!, day, context.Value!.Value.Cents, capped.DailyCapCents!.Value, cancellationToken);
         return reserved ? KDecision.Allow("allow") : KDecision.Deny("daily-cap-exceeded");
     }

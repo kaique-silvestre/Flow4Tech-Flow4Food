@@ -44,7 +44,7 @@ A **Fase 6 pode correr em paralelo** com as 7 e 8. As fases 9 e 10 podem ser ant
 | 0.3 | ~~Spike de latência~~ | **Validado pelo dono (2026-10-31):** latência do salão até o Railway (Virgínia) atestada. Só reconfirmar com a carga real da Fase 2 (`07` T7) |
 | 0.4 | Spike do worker | Worker dentro da API; segundo serviço no Railway sem domínio público |
 | 0.5 | Spike do motor de autorização | Cedar contra três casos reais; decidir usar ou construir |
-| 0.6 | Spike de dados e fila | Dapper/EF Core e Wolverine/Hangfire/Quartz; RLS com contexto por transação |
+| 0.6 | Spike de dados e fila | EF Core com SQL visível (decidido, ADR-002) e Wolverine/Hangfire/Quartz; RLS com contexto por transação |
 | 0.7 | Backup | Backup lógico diário fora do Railway e teste de restauração |
 | 0.8 | Plano da Vercel | Confirmar plano compatível com uso comercial |
 | 0.9 | Direção visual (`05-ux-design`) | Linguagem visual, componentes base, navegação |

@@ -47,13 +47,20 @@ The outbox write adds about 1.6 ms median (EF context + `SaveChanges` + one extr
 Easier: events can never be lost or announced for a rolled-back change; consumers and tests need no broker; the organization context in background work is explicit and enforced by RLS; swapping the worker library or moving to a broker touches one adapter.
 Harder: delivery is at least once with no global ordering, so every consumer is idempotent and order-tolerant; every event type needs a stable name and JSON shape (never rename once published); the outbox and inbox tables need pruning (not built yet); one extra insert per unit of work that publishes.
 
+## Decided, to build before the first production worker
+Owner decisions (2026-11-02); none is built yet. They close F1, F2 and the pruning item below.
+- **Parked events (closes F1): alert plus manual reprocess.** An event with `falhou_em` set raises an alert/metric; an operator requeues it by hand (clear `falhou_em`, reset `tentativas`). The list of parked events will be visible in the Control Tower later. No automatic requeue.
+- **Organization discovery (closes F2): a registry table of organization ids, not a BYPASSRLS role.** A small non-tenant table holding only organization ids (no sensitive data), readable through a narrow read role, tells the dispatcher which organizations to scan. A role that bypasses RLS is rejected: it would be a standing hole in tenant isolation.
+- **Retention job:** a background job prunes delivered outbox rows and inbox rows older than 30 days (per organization, inside its tenant context). Parked events are never pruned automatically.
+- **Quartz** confirmed as the queue/worker library behind `IBackgroundJobs`.
+
 ## Open items
 Follow-ups required before any production worker (not built in ticket 08):
-- **F1. Parked events are silent.** An event that reaches `MaxAttempts` gets `falhou_em` and is never selected again: nothing redelivers it, requeues it, or alerts anyone. Needs an alert/metric on `falhou_em IS NOT NULL`, and an operator action to requeue (clear `falhou_em`, reset `tentativas`).
-- **F2. Organization discovery** (next item): the dispatcher cannot find organizations with pending events; required before a worker runs in production.
+- **F1. Parked events are silent** (decided above, to build: alert plus manual reprocess). An event that reaches `MaxAttempts` gets `falhou_em` and is never selected again: nothing redelivers it, requeues it, or alerts anyone. Needs an alert/metric on `falhou_em IS NOT NULL`, and an operator action to requeue (clear `falhou_em`, reset `tentativas`).
+- **F2. Organization discovery** (decided above, to build: registry table): the dispatcher cannot find organizations with pending events; required before a worker runs in production.
 
-- **Finding which organizations have pending events.** RLS hides `outbox_eventos` from any connection without a context, including the dispatcher, so the dispatcher can only be told which organization to scan (a wake-up job enqueued after commit carries it; startup recovery and the periodic sweep do not have it). Needs a decision before production: a provisioned maintenance role with BYPASSRLS used only for `SELECT DISTINCT organizacao_id ... WHERE pending` (same open item as backfills in ADR-002), or a registry of organizations that is not tenant-scoped. Not built; the spike code takes the organization as input.
-- Outbox/inbox pruning and a dead-letter view for parked events.
+- **Finding which organizations have pending events** (decided above: registry table). RLS hides `outbox_eventos` from any connection without a context, including the dispatcher, so the dispatcher can only be told which organization to scan (a wake-up job enqueued after commit carries it; startup recovery and the periodic sweep do not have it). Needs a decision before production: a provisioned maintenance role with BYPASSRLS used only for `SELECT DISTINCT organizacao_id ... WHERE pending` (same open item as backfills in ADR-002), or a registry of organizations that is not tenant-scoped. Not built; the spike code takes the organization as input.
+- Outbox/inbox pruning (decided above, to build: 30-day retention job) and a dead-letter view for parked events (Control Tower, later).
 - Quartz adapter in `src`, worker hosting in `src/Api`, and DI registration (`TenantDatabase`, `OutboxDispatcher`, consumers); with them the Api Npgsql exemption (ADR-002) can go.
 - Warm the `OutboxContext` EF model at host start with the other contexts (first query about 1 s, ADR-002).
 - `ModuleGraph` change made for this ADR: `src/Infrastructure/Outbox` may use EF Core packages/namespaces (like a module Infrastructure layer) because it maps its own tables through `TenantDbContext`; Npgsql, `DbContext` setup and the tenant setting stay Data-only; module Infrastructure layers may reference Outbox like Data. Tests in `ModuleBoundaryTests`.

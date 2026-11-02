@@ -80,7 +80,7 @@ Convenções:
 - **Particionamento por mês** em tabelas de alto volume (itens, movimentos, eventos, auditoria); **arquivamento** e **agregados** conforme o ciclo de vida dos dados (RNF).
 - **Camada de leitura:** relatórios longos leem agregados e réplica de leitura; nunca competem com lançamento de itens.
 - **Migrações** versionadas, reversíveis e compatíveis com deploy sem parada (expandir → migrar → contrair).
-- **Acesso a dados SQL-first:** consultas explícitas e tipadas (ver A8), sem ORM que esconda SQL, para que RLS, transações e desempenho fiquem visíveis e testáveis.
+- **Acesso a dados com SQL visível:** EF Core com SQL mantido visível e testável (ver A8; decidido no ADR-002), para que RLS, transações e desempenho fiquem visíveis e testáveis.
 
 ## A5. Eventos, filas e tempo real
 
@@ -127,7 +127,7 @@ Por quê C#:
 | API | **ASP.NET Core** (Minimal APIs ou controllers por módulo) | Autorização por políticas, rate limiting e OpenAPI nativos |
 | Contrato | **OpenAPI** gerado do código; cliente TS gerado (ex.: openapi-typescript) | Fonte única de verdade, teste de contrato |
 | Validação | FluentValidation (ou validação nativa) em toda fronteira | Entrada estrita |
-| Acesso a dados | **Dapper** (consultas explícitas) e/ou **EF Core** com SQL visível; migrações SQL versionadas (ex.: DbUp, Flyway ou EF migrations revisadas) | RLS, transações e desempenho visíveis |
+| Acesso a dados | **EF Core** com SQL visível e testável (decidido, ADR-002; Dapper descartado); migrações SQL versionadas (ex.: DbUp ou Flyway) | RLS, transações e desempenho visíveis |
 | Driver | **Npgsql**, contexto de organização definido por transação | RLS |
 | Fila/worker | Fila sobre PostgreSQL (ex.: Wolverine, Hangfire ou Quartz) com outbox transacional, atrás de interface própria | Sem infra extra, trocável |
 | Autenticação | Implementação própria sobre ASP.NET Core Identity/primitivas auditadas, Argon2id, OIDC para Google | Contas sem e-mail, duas realms, impersonação |
@@ -277,7 +277,7 @@ Migração prevista: adicionar o domínio novo ao mesmo projeto, exibir a Contro
 1. ~~**Latência no salão**~~ **Fechada** (atestada em 2026-10-31); reconfirmar sob carga na Fase 2.
 2. **Backup além do padrão do Railway:** definir a solução (backup lógico diário + WAL contínuo) e o momento de adoção (A10).
 3. **Motor de autorização (ADR-006):** spike com Cedar antes de decidir entre usar ou construir.
-4. **Biblioteca de fila e de acesso a dados:** escolher após spike curto (Wolverine/Hangfire/Quartz; Dapper/EF Core).
+4. **Biblioteca de fila e de acesso a dados:** decidido: Quartz atrás de `IBackgroundJobs` (ADR-003) e EF Core com SQL visível (ADR-002).
 5. **Plano da Vercel** compatível com uso comercial e validação de IP na API repassado pelo Railway (A10.1). Cloudflare só se surgir necessidade.
 6. **Spike do worker no Railway:** confirmar serviço sem domínio público, comando próprio e cron.
 7. **Armazenamento S3:** escolher provedor (ex.: R2/B2).

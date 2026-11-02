@@ -14,7 +14,7 @@ public interface ICumulativeLimitStore
 }
 
 /// <summary>The rules-as-data engine: pure evaluation (Domain) plus atomic consumption of cumulative limits through <see cref="ICumulativeLimitStore"/>.</summary>
-public sealed class RulesAuthorizationEngine(PolicySet policies, ICumulativeLimitStore limits, IClock clock) : IAuthorizationEngine
+public sealed class RulesAuthorizationEngine(PolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days) : IAuthorizationEngine
 {
     public async Task<Decision> DecidirAsync(Subject who, string permission, Scope where, DecisionContext context, CancellationToken cancellationToken = default)
     {
@@ -32,8 +32,14 @@ public sealed class RulesAuthorizationEngine(PolicySet policies, ICumulativeLimi
             return Decision.Allow(evaluation.Reason);
         }
 
-        // The evaluator guarantees Value is present and within the cap; the day is the UTC date of the injected server clock, never of caller data.
-        var day = DateOnly.FromDateTime(clock.UtcNow.UtcDateTime);
+        // The operating day depends on the unit's rule: without a unit there is no honest day to count in, so fail closed (nothing consumed).
+        if (where.UnitId is null)
+        {
+            return Decision.Deny("unit-required");
+        }
+
+        // The evaluator guarantees Value is present and within the cap; the day is the unit's operating day from the server clock, never caller data.
+        var day = await days.CurrentAsync(where.OrganizationId, where.UnitId, cancellationToken);
         var reserved = await limits.TryConsumeAsync(where.OrganizationId, where.UnitId, who.UserId, permission, day, context.Value!.Value.Cents, cap, cancellationToken);
         return reserved ? Decision.Allow("allow") : Decision.Deny("daily-cap-exceeded");
     }

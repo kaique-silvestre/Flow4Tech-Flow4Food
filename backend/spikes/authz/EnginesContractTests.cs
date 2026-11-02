@@ -8,10 +8,10 @@ namespace Authz.Spike;
 /// <summary>The exact contract the production engine passes (tests/Authorization), run against Cedar and Casbin.</summary>
 public sealed class CedarEngineContractTests : AuthorizationEngineContract
 {
-    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, Flow4Tech.Kernel.IClock clock) => new CedarAuthorizationEngine(policies, limits, clock);
+    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days) => new CedarAuthorizationEngine(policies, limits, days);
 }
 
 public sealed class CasbinEngineContractTests : AuthorizationEngineContract
 {
-    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, Flow4Tech.Kernel.IClock clock) => new CasbinAuthorizationEngine(policies, limits, clock);
+    protected override IAuthorizationEngine Create(PolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days) => new CasbinAuthorizationEngine(policies, limits, days);
 }

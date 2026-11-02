@@ -51,7 +51,7 @@ public sealed class AspNetIntegrationTests
     [Fact]
     public async Task Resource_based_authorization_carries_the_real_operation_facts_to_the_engine()
     {
-        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new FixedClock(Now));
+        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new Flow4Tech.Permissoes.Application.ConfiguredOperatingDayResolver(new FixedClock(Now)));
         using var services = Services(engine);
         var authz = services.GetRequiredService<IAuthorizationService>();
 
@@ -62,7 +62,7 @@ public sealed class AspNetIntegrationTests
     [Fact]
     public async Task A_name_only_policy_cannot_see_the_values_so_a_limited_permission_fails_closed()
     {
-        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new FixedClock(Now));
+        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new Flow4Tech.Permissoes.Application.ConfiguredOperatingDayResolver(new FixedClock(Now)));
         using var services = Services(engine);
         var authz = services.GetRequiredService<IAuthorizationService>();
 
@@ -73,7 +73,7 @@ public sealed class AspNetIntegrationTests
     [Fact]
     public async Task An_unauthenticated_user_is_denied()
     {
-        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new FixedClock(Now));
+        var engine = new CedarAuthorizationEngine(Standard(), new InMemoryCumulativeLimitStore(), new Flow4Tech.Permissoes.Application.ConfiguredOperatingDayResolver(new FixedClock(Now)));
         using var services = Services(engine);
         var authz = services.GetRequiredService<IAuthorizationService>();
 

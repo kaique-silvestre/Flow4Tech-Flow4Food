@@ -11,6 +11,9 @@ public sealed record Evaluation(Effect Effect, string Reason, Rule? Limited = nu
 /// </summary>
 public static class PolicyEvaluator
 {
+    /// <summary>Limits are expressed in cents of this currency only; a value in any other currency fails closed (ADR-006).</summary>
+    public const string LimitCurrency = "BRL";
+
     public static Evaluation Evaluate(PolicySet policies, Subject who, string permission, Scope where, DecisionContext context)
     {
         ArgumentNullException.ThrowIfNull(policies);
@@ -46,7 +49,8 @@ public static class PolicyEvaluator
         var withinLimits = allowing.Where(r => WithinPerOperationLimits(r, context)).ToList();
         if (withinLimits.Count == 0)
         {
-            return new Evaluation(Effect.Deny, "limit-exceeded");
+            var unsupportedCurrency = context.Value is { Currency: not LimitCurrency } && allowing.Exists(NeedsValue);
+            return new Evaluation(Effect.Deny, unsupportedCurrency ? "currency-not-supported" : "limit-exceeded");
         }
 
         // An uncapped allow wins over a capped one (nothing to consume); otherwise the first capped rule.
@@ -60,6 +64,8 @@ public static class PolicyEvaluator
     private static bool InUnit(Rule rule, Scope where) =>
         rule.UnitId is null || rule.UnitId == where.UnitId || (rule.Effect == RuleEffect.Deny && where.UnitId is null);
 
+    private static bool NeedsValue(Rule rule) => rule.MaxValueCents is not null || rule.DailyCapCents is not null;
+
     private static bool WithinPerOperationLimits(Rule rule, DecisionContext context)
     {
         if (rule.MaxPercent is { } maxPercent && !(context.Percent is { } percent && percent >= 0 && percent <= maxPercent))
@@ -67,9 +73,8 @@ public static class PolicyEvaluator
             return false;
         }
 
-        // Value must be present and non-negative for any value-based limit (per-operation or cumulative).
-        var needsValue = rule.MaxValueCents is not null || rule.DailyCapCents is not null;
-        if (needsValue && context.Value is not { Cents: >= 0 })
+        // Value must be present, non-negative and in BRL for any value-based limit (per-operation or cumulative).
+        if (NeedsValue(rule) && context.Value is not { Cents: >= 0, Currency: LimitCurrency })
         {
             return false;
         }

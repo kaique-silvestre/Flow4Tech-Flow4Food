@@ -11,9 +11,14 @@ indent_size = 4
 indent_size = 2
 
 [*.cs]
-# Strict analyzers are on via Directory.Build.props (AnalysisMode=All); opt out only of noise.
-dotnet_diagnostic.CA1707.severity = none   # underscores in test names
-dotnet_diagnostic.CA1812.severity = none   # internal classes never instantiated (DI)
+# Strict analyzers are on via Directory.Build.props (AnalysisMode=All); opt out only of the noise below, each with its reason.
+# CA1707: test names use underscores on purpose (Given_when_then) so a failing name reads as a sentence.
+dotnet_diagnostic.CA1707.severity = none
+# CA1812: internal types built only by DI or reflection (EF rows, handlers) look "never instantiated" to the analyzer.
+dotnet_diagnostic.CA1812.severity = none
+# CA1848: LoggerMessage delegates are a performance micro-optimization; kept as a suggestion until a hot path needs it.
 dotnet_diagnostic.CA1848.severity = suggestion
-dotnet_diagnostic.CA2007.severity = none   # ConfigureAwait not needed in ASP.NET Core
+# CA2007: ASP.NET Core and test hosts have no SynchronizationContext, so ConfigureAwait(false) on every await is pure noise.
+dotnet_diagnostic.CA2007.severity = none
+# IDE0058: discarding a return value is routine (builder chains, fluent APIs); the rule would force `_ =` everywhere.
 dotnet_diagnostic.IDE0058.severity = none

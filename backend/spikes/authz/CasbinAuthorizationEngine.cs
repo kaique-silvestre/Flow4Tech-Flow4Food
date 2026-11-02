@@ -31,14 +31,14 @@ public sealed class CasbinAuthorizationEngine : IAuthorizationEngine
 
     private readonly KPolicySet _policies;
     private readonly ICumulativeLimitStore _limits;
-    private readonly Flow4Tech.Kernel.IClock _clock;
+    private readonly IOperatingDayResolver _days;
     private readonly Enforcer _enforcer;
 
-    public CasbinAuthorizationEngine(KPolicySet policies, ICumulativeLimitStore limits, Flow4Tech.Kernel.IClock clock)
+    public CasbinAuthorizationEngine(KPolicySet policies, ICumulativeLimitStore limits, IOperatingDayResolver days)
     {
         _policies = policies;
         _limits = limits;
-        _clock = clock;
+        _days = days;
         _enforcer = new Enforcer(DefaultModel.CreateFromText(ModelText));
         foreach (var r in policies.Rules)
         {
@@ -63,8 +63,14 @@ public sealed class CasbinAuthorizationEngine : IAuthorizationEngine
             return KDecision.Deny("invalid-scope");
         }
 
+        if (context.Value is { Currency: not PolicyEvaluator.LimitCurrency }
+            && _policies.Rules.Any(r => r.Effect == RuleEffect.Allow && r.Permission == permission && who.Profiles.Contains(r.Profile) && (r.MaxValueCents is not null || r.DailyCapCents is not null)))
+        {
+            return KDecision.Deny("currency-not-supported");
+        }
+
         var pct = context.Percent is { } percent ? (long)(percent * 100) : -1L;
-        var val = context.Value?.Cents ?? -1L;
+        var val = context.Value is { Currency: PolicyEvaluator.LimitCurrency } brl ? brl.Cents : -1L; // other currency = no usable value (fails closed)
         var unit = where.UnitId?.ToString() ?? "none";
         var allowedRows = new List<IEnumerable<string>>();
         foreach (var profile in who.Profiles)
@@ -94,7 +100,12 @@ public sealed class CasbinAuthorizationEngine : IAuthorizationEngine
         }
 
         var cap = long.Parse(allowedRows[0].ElementAt(5), System.Globalization.CultureInfo.InvariantCulture);
-        var day = DateOnly.FromDateTime(_clock.UtcNow.UtcDateTime);
+        if (where.UnitId is null)
+        {
+            return KDecision.Deny("unit-required");
+        }
+
+        var day = await _days.CurrentAsync(where.OrganizationId, where.UnitId, cancellationToken);
         var reserved = await _limits.TryConsumeAsync(where.OrganizationId, where.UnitId, who.UserId, permission!, day, context.Value!.Value.Cents, cap, cancellationToken);
         return reserved ? KDecision.Allow("allow") : KDecision.Deny("daily-cap-exceeded");
     }

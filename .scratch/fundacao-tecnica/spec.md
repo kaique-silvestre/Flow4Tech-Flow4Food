@@ -16,7 +16,7 @@ Ao final, um desenvolvedor (ou agente) consegue clonar o repositório, rodar tud
 | 0.1 | Repositório e estrutura: solução .NET modular, front React/TS, convenções, instruções para agentes | `06` 0.1 |
 | 0.2 | CI/CD e ambientes: portões obrigatórios, `staging` e `production` no Railway, front na Vercel | `06` 0.2 |
 | 0.5 | Spike do motor de autorização (Cedar contra três casos reais) | `06` 0.5 |
-| 0.6 | Spike de dados e fila (Dapper/EF Core; Wolverine/Hangfire/Quartz; RLS com contexto por transação) | `06` 0.6 |
+| 0.6 | Spike de dados e fila (EF Core com SQL visível, decidido; Wolverine/Hangfire/Quartz; RLS com contexto por transação) | `06` 0.6 |
 | 0.11 (parcial) | ADRs 002, 003, 006 e o registro das escolhas de 0.1/0.2 | `04` A14 |
 
 ## 3. Fora de escopo
@@ -33,7 +33,7 @@ Ao final, um desenvolvedor (ou agente) consegue clonar o repositório, rodar tud
 - Back-end C# / .NET LTS; front React + TypeScript + Vite; contrato OpenAPI como fonte única (ADR-008, decidido).
 - PostgreSQL com RLS; um banco compartilhado (ADR-002 proposto, ADR-010 decidido).
 - Railway em `production` e `staging`, front na Vercel (ADR-009, decidido).
-- Dinheiro em inteiros (centavos), UUID v7, tempo em UTC, SQL explícito sem ORM que esconda SQL.
+- Dinheiro em inteiros (centavos), UUID v7, tempo em UTC, EF Core com SQL visível e testável (esquema e RLS em migrations SQL; ADR-002).
 - Aplicação portável: Postgres puro sem extensões exclusivas, fila e arquivos atrás de interface, configuração por variáveis de ambiente, contêiner padrão.
 
 ## 5. Requisitos
@@ -67,7 +67,7 @@ Prova de conceito, descartável no código mas **permanente nos testes e no ADR*
 1. Esquema mínimo: `organizacoes`, `unidades` e uma tabela de negócio de exemplo com `organizacao_id`, RLS ativo e política `organizacao_id = contexto atual`.
 2. Duas credenciais de banco: dona/migração e aplicação. A aplicação **não** é dona das tabelas e **não** ignora RLS.
 3. Contexto da organização definido **por transação** (Npgsql) e restabelecido em trabalhos em segundo plano.
-4. Comparar **Dapper** e **EF Core** em: clareza do SQL, tipagem, aplicação do contexto por transação, desempenho e facilidade de teste. Escolher um.
+4. (Decidido: **EF Core com SQL visível**, ADR-002.) Compara-se **Dapper** e **EF Core** em: clareza do SQL, tipagem, aplicação do contexto por transação, desempenho e facilidade de teste. Escolher um.
 5. Comparar **Wolverine**, **Hangfire** e **Quartz** para fila/worker com **outbox transacional** (evento gravado na mesma transação da mudança de estado) atrás de interface própria. Escolher um.
 6. Provar o outbox: mudança de estado e evento atômicos; despachante entrega pelo menos uma vez; consumidor idempotente.
 7. **Primeiro teste de isolamento entre organizações** (modelo de `07` T2): dois tenants; leitura e escrita cruzadas falham; consulta sem contexto retorna zero linhas ou erro; passa com a conexão real da aplicação, não com a dona.
@@ -97,7 +97,7 @@ Prova de conceito, descartável no código mas **permanente nos testes e no ADR*
 - [ ] Os três casos de permissão têm teste automatizado passando no motor escolhido.
 - [ ] `staging` no ar com deploy automático do ramo principal; `production` provisionado.
 - [ ] Cliente TypeScript gerado e verificado no CI.
-- [ ] ADR-002, 003 e 006 escritos e aprovados; escolha de acesso a dados (Dapper/EF) e de fila registrada.
+- [ ] ADR-002, 003 e 006 escritos e aprovados; escolha de acesso a dados (EF Core com SQL visível) e de fila registrada.
 - [ ] Reversão de deploy exercitada uma vez em `staging`.
 
 ## 7. Ordem sugerida

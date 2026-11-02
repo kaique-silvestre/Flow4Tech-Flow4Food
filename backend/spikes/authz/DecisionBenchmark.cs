@@ -56,9 +56,9 @@ public sealed class DecisionBenchmark(PostgresFixture postgres)
         var store = new InMemoryCumulativeLimitStore();
         var engines = new (string, IAuthorizationEngine)[]
         {
-            ("rules-as-data (custom)", new RulesAuthorizationEngine(Standard(), store, new FixedClock(Now))),
-            ("casbin.net 2.21.3", new CasbinAuthorizationEngine(Standard(), store, new FixedClock(Now))),
-            ("cedar (MonoCloud.Cedar 0.1.0, native)", new CedarAuthorizationEngine(Standard(), store, new FixedClock(Now))),
+            ("rules-as-data (custom)", new RulesAuthorizationEngine(Standard(), store, new ConfiguredOperatingDayResolver(new FixedClock(Now)))),
+            ("casbin.net 2.21.3", new CasbinAuthorizationEngine(Standard(), store, new ConfiguredOperatingDayResolver(new FixedClock(Now)))),
+            ("cedar (MonoCloud.Cedar 0.1.0, native)", new CedarAuthorizationEngine(Standard(), store, new ConfiguredOperatingDayResolver(new FixedClock(Now)))),
         };
         foreach (var (name, engine) in Environment.GetEnvironmentVariable("SPIKE_BENCH_PG_ONLY") == "1" ? [] : engines)
         {
@@ -109,7 +109,7 @@ public sealed class DecisionBenchmark(PostgresFixture postgres)
         var tenant = new TenantDatabase(source);
         var engine = new RulesAuthorizationEngine(
             new Flow4Tech.Permissoes.Domain.PolicySet(Catalog, [new Flow4Tech.Permissoes.Domain.Rule(Flow4Tech.Permissoes.Domain.RuleEffect.Allow, Garcom, Cortesia, DailyCapCents: long.MaxValue / 2)]),
-            new PostgresCumulativeLimitStore(tenant), new FixedClock(Now));
+            new PostgresCumulativeLimitStore(tenant), new ConfiguredOperatingDayResolver(new FixedClock(Now)));
         var user = Guid.NewGuid();
         Task<Decision> Ask() => engine.DecidirAsync(new Subject(user, [Garcom]), Cortesia, new Scope(TestDatabase.OrgA, TestDatabase.UnitA), new DecisionContext(new Money(1, "BRL")));
 

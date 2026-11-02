@@ -55,8 +55,8 @@ public static class Fixtures
 
     public static Scope At(Guid? unit = null) => new(OrgId, unit);
 
-    public static DecisionContext Ctx(decimal? percent = null, long? cents = null) =>
-        new(cents is null ? null : new Money(cents.Value, "BRL"), percent);
+    public static DecisionContext Ctx(decimal? percent = null, long? cents = null, string currency = "BRL") =>
+        new(cents is null ? null : new Money(cents.Value, currency), percent);
 }
 
 /// <summary>Settable server clock for the tests.</summary>
