@@ -243,11 +243,19 @@ public sealed class HibpPasswordCheck(HttpClient http) : ICompromisedPasswordChe
 }
 
 /// <summary>
-/// The local list first (a known-bad password never leaves the process), then the remote range check when configured. If the remote service is unreachable the
-/// check does not block the person: it logs a warning (no password, no hash, no message of the exception) and the local list result stands.
+/// The local list first (a known-bad password never leaves the process), then the remote range check when configured. If the remote service is unreachable it logs a warning (no password, no hash, no
+/// message of the exception) and then follows <c>HibpIndisponivelRecusa</c>: off (default) the person is not blocked and the local list result stands; on, it raises
+/// <see cref="VerificacaoDeSenhaIndisponivelException"/> and the application services refuse the password with the typed result <c>VerificacaoIndisponivel</c>.
 /// </summary>
-public sealed class CompositeCompromisedPasswordCheck(ICompromisedPasswordCheck local, ICompromisedPasswordCheck? remote, ITechnicalLog log) : ICompromisedPasswordCheck
+public sealed class CompositeCompromisedPasswordCheck(ICompromisedPasswordCheck local, ICompromisedPasswordCheck? remote, ITechnicalLog log, bool recusaSeIndisponivel) : ICompromisedPasswordCheck
 {
+    public CompositeCompromisedPasswordCheck(ICompromisedPasswordCheck local, ICompromisedPasswordCheck? remote, ITechnicalLog log)
+        : this(local, remote, log, false)
+    {
+    }
+
+    public bool RecusaSeIndisponivel { get; } = recusaSeIndisponivel;
+
     public async Task<bool> IsCompromisedAsync(string password, CancellationToken cancellationToken = default)
     {
         if (await local.IsCompromisedAsync(password, cancellationToken))
@@ -267,7 +275,7 @@ public sealed class CompositeCompromisedPasswordCheck(ICompromisedPasswordCheck 
         catch (Exception ex) when (ex is HttpRequestException or TimeoutException || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
         {
             log.Write(LogSeverity.Warning, "identidade.senha-vazada.indisponivel", new Dictionary<string, object?> { ["erro"] = ex.GetType().Name });
-            return false;
+            return RecusaSeIndisponivel ? throw new VerificacaoDeSenhaIndisponivelException("Password breach check unavailable.", ex) : false;
         }
     }
 }

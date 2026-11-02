@@ -36,7 +36,7 @@ public sealed class CredencialTemporaria(string valor)
 }
 
 /// <summary>What the login needs about an account, including the password hash. Never serialized or logged: it prints as a placeholder.</summary>
-public sealed class ContaParaLogin(Guid contaId, Guid organizacaoId, TipoConta tipo, string senhaHash, bool deveTrocarSenha, bool ativa, int versaoCredencial)
+public sealed class ContaParaLogin(Guid contaId, Guid organizacaoId, TipoConta tipo, string senhaHash, bool deveTrocarSenha, bool ativa, int versaoCredencial, DateTimeOffset? temporariaExpiraEm)
 {
     public Guid ContaId { get; } = contaId;
 
@@ -51,6 +51,9 @@ public sealed class ContaParaLogin(Guid contaId, Guid organizacaoId, TipoConta t
     public bool Ativa { get; } = ativa;
 
     public int VersaoCredencial { get; } = versaoCredencial;
+
+    /// <summary>Until when the temporary credential works (null: not a temporary credential, or one created before migration 0008, which never expires).</summary>
+    public DateTimeOffset? TemporariaExpiraEm { get; } = temporariaExpiraEm;
 
     public override string ToString() => "[conta para login]";
 }
@@ -72,7 +75,7 @@ public sealed record NovaConta(Guid Id, TipoConta Tipo, string Nome, string? Ema
 public interface IContaStore
 {
     /// <summary>Inserts the account and its credential. False when the user name (or e-mail) is already taken; nothing is written then.</summary>
-    Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, CancellationToken cancellationToken);
+    Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, DateTimeOffset? temporariaExpiraEm, CancellationToken cancellationToken);
 
     /// <summary>Reserves the e-mail platform-wide (one account, one organization). False when it belongs to another account.</summary>
     Task<bool> RegistrarEmailAsync(Guid organizacaoId, Guid contaId, string emailNormalizado, CancellationToken cancellationToken);
@@ -95,8 +98,40 @@ public interface IContaStore
     /// <summary>Marks the account inactive and bumps the credential version. False when it was already inactive. Keeps every record (history).</summary>
     Task<bool> DesativarAsync(Guid organizacaoId, Guid contaId, DateTimeOffset quando, CancellationToken cancellationToken);
 
-    Task DefinirDonoAsync(Guid organizacaoId, Guid contaId, bool dono, CancellationToken cancellationToken);
+    /// <summary>Sets the owner flag of an ACTIVE account and bumps the credential version. False (nothing written) when the account is not active any more.</summary>
+    Task<bool> DefinirDonoAsync(Guid organizacaoId, Guid contaId, bool dono, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Locks the organization row (FOR NO KEY UPDATE: concurrent founders serialize, ordinary inserts that only reference the organization do not wait) until the unit
+    /// of work ends and returns how many accounts it has, active or not. The founding owner may only be created when this is zero.
+    /// </summary>
+    Task<int> TravarOrganizacaoEContarContasAsync(Guid organizacaoId, CancellationToken cancellationToken);
 
     /// <summary>Locks the active owners of the organization until the unit of work ends and returns how many there are (serializes the "always one owner" rule).</summary>
     Task<int> TravarDonosAtivosAsync(Guid organizacaoId, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// The breach check is required (<c>HibpIndisponivelRecusa</c>) and the service could not answer. The application services turn it into the typed result
+/// <c>VerificacaoIndisponivel</c>; it never reaches a caller of those services.
+/// </summary>
+public sealed class VerificacaoDeSenhaIndisponivelException : Exception
+{
+    public VerificacaoDeSenhaIndisponivelException()
+        : base("Password breach check unavailable.")
+    {
+    }
+
+    public VerificacaoDeSenhaIndisponivelException(string message)
+        : base(message)
+    {
+    }
+
+    public VerificacaoDeSenhaIndisponivelException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
+
+/// <summary>How long a temporary credential works from the moment it is created (host option <c>Flow4Tech:Identidade:CredencialTemporariaHoras</c>).</summary>
+public sealed record ValidadeDaCredencialTemporaria(TimeSpan Valor);

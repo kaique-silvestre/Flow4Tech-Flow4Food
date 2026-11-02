@@ -18,13 +18,16 @@ public sealed class GestaoDeContas(
     ICompromisedPasswordCheck compromised,
     ITemporaryCredentialGenerator temporary,
     IAuditLog audit,
-    IClock clock)
+    IClock clock,
+    ValidadeDaCredencialTemporaria validade)
 {
     private const int MaximoNome = 200;
 
     /// <summary>
     /// The founding owner of an organization, who chooses their OWN password (signup; the invite flow of ticket 09 is the same shape for the other accounts with e-mail).
-    /// The caller is the onboarding flow of a new organization, never a user acting on someone else.
+    /// The caller is the onboarding flow of a new organization (a trusted flow such as the Control Tower), never a public route and never a user acting on someone else.
+    /// Allowed ONLY in an organization with no accounts at all (active or not): the check and the insert happen under a lock on the organization row, so of two
+    /// simultaneous calls exactly one wins and the other gets <see cref="StatusCriacao.OrganizacaoJaIniciada"/>.
     /// </summary>
     public async Task<ResultadoCriacaoDono> CriarDonoAsync(Guid organizationId, string email, string nome, string senha, CancellationToken cancellationToken = default)
     {
@@ -34,6 +37,11 @@ public sealed class GestaoDeContas(
             return new ResultadoCriacaoDono(StatusCriacao.IdentificadorInvalido, null, []);
         }
 
+        if (senha.Length > PoliticaDeSenha.LimiteDeEntrada)
+        {
+            return new ResultadoCriacaoDono(StatusCriacao.SenhaInvalida, null, [ProblemaDeSenha.Longa]); // before NFKC and hashing
+        }
+
         var problemas = PoliticaDeSenha.Avaliar(senha, emailNormalizado);
         if (problemas.Count > 0)
         {
@@ -41,9 +49,16 @@ public sealed class GestaoDeContas(
         }
 
         var normalizada = PoliticaDeSenha.Normalizar(senha);
-        if (await compromised.IsCompromisedAsync(normalizada, cancellationToken))
+        try
         {
-            return new ResultadoCriacaoDono(StatusCriacao.SenhaVazada, null, []);
+            if (await compromised.IsCompromisedAsync(normalizada, cancellationToken))
+            {
+                return new ResultadoCriacaoDono(StatusCriacao.SenhaVazada, null, []);
+            }
+        }
+        catch (VerificacaoDeSenhaIndisponivelException)
+        {
+            return new ResultadoCriacaoDono(StatusCriacao.VerificacaoIndisponivel, null, []);
         }
 
         var hash = await hasher.HashAsync(normalizada, cancellationToken);
@@ -55,6 +70,8 @@ public sealed class GestaoDeContas(
             new NovaConta(id, TipoConta.Email, nome.Trim(), emailNormalizado, null, true, clock.UtcNow),
             hash,
             deveTrocarSenha: false,
+            temporariaExpiraEm: null,
+            fundador: true,
             new AuditEntry
             {
                 Action = IdentidadeAuditActions.ContaCriar,
@@ -65,9 +82,12 @@ public sealed class GestaoDeContas(
             },
             cancellationToken);
 
-        return created == CriarResultado.Criada
-            ? new ResultadoCriacaoDono(StatusCriacao.Criada, id, [])
-            : new ResultadoCriacaoDono(StatusCriacao.Indisponivel, null, []);
+        return created switch
+        {
+            CriarResultado.Criada => new ResultadoCriacaoDono(StatusCriacao.Criada, id, []),
+            CriarResultado.OrganizacaoJaIniciada => new ResultadoCriacaoDono(StatusCriacao.OrganizacaoJaIniciada, null, []),
+            _ => new ResultadoCriacaoDono(StatusCriacao.Indisponivel, null, []),
+        };
     }
 
     /// <summary>
@@ -91,6 +111,8 @@ public sealed class GestaoDeContas(
             new NovaConta(id, TipoConta.Operacional, nome.Trim(), null, usuarioNormalizado, false, clock.UtcNow),
             hash,
             deveTrocarSenha: true,
+            temporariaExpiraEm: clock.UtcNow + validade.Valor,
+            fundador: false,
             new AuditEntry
             {
                 Action = IdentidadeAuditActions.ContaCriar,
@@ -180,7 +202,11 @@ public sealed class GestaoDeContas(
                     return denied;
                 }
 
-                await contas.DefinirDonoAsync(organizationId, contaId, dono, ct);
+                if (!await contas.DefinirDonoAsync(organizationId, contaId, dono, ct))
+                {
+                    return RecusaDeProtecao.ContaDesativada; // deactivated by another unit after it was read: nothing was written
+                }
+
                 await audit.RecordAsync(request, Entry(IdentidadeAuditActions.ContaDefinirDono, AuditResult.Sucesso, contaId, new JsonObject { ["dono"] = !dono }, new JsonObject { ["dono"] = dono }), ct);
                 return null;
             },
@@ -217,7 +243,7 @@ public sealed class GestaoDeContas(
     private async Task<bool> MustChangePasswordAsync(Guid organizationId, Guid actorId, CancellationToken cancellationToken) =>
         (await contas.ObterComCredencialAsync(organizationId, actorId, cancellationToken)) is { DeveTrocarSenha: true };
 
-    private async Task<CriarResultado> CriarAsync(OrganizationContext context, Guid? actorId, NovaConta conta, string hash, bool deveTrocarSenha, AuditEntry entry, CancellationToken cancellationToken)
+    private async Task<CriarResultado> CriarAsync(OrganizationContext context, Guid? actorId, NovaConta conta, string hash, bool deveTrocarSenha, DateTimeOffset? temporariaExpiraEm, bool fundador, AuditEntry entry, CancellationToken cancellationToken)
     {
         var organizationId = context.OrganizationId;
         try
@@ -226,12 +252,17 @@ public sealed class GestaoDeContas(
                 context,
                 async ct =>
                 {
+                    if (fundador && await contas.TravarOrganizacaoEContarContasAsync(organizationId, ct) > 0)
+                    {
+                        return CriarResultado.OrganizacaoJaIniciada;
+                    }
+
                     if (actorId is { } actor && (await contas.ObterComCredencialAsync(organizationId, actor, ct)) is not { Ativa: true, DeveTrocarSenha: false })
                     {
                         return CriarResultado.Negada;
                     }
 
-                    if (!await contas.InserirAsync(organizationId, conta, hash, deveTrocarSenha, ct))
+                    if (!await contas.InserirAsync(organizationId, conta, hash, deveTrocarSenha, temporariaExpiraEm, ct))
                     {
                         return CriarResultado.Indisponivel;
                     }
@@ -257,6 +288,7 @@ public sealed class GestaoDeContas(
         Criada,
         Indisponivel,
         Negada,
+        OrganizacaoJaIniciada,
     }
 }
 

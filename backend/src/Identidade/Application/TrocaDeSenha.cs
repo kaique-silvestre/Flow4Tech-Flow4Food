@@ -10,12 +10,24 @@ namespace Flow4Tech.Identidade.Application;
 /// credential itself), so a stolen "must change" session cannot be used without it. The caller (ticket 04, the session) supplies the account of the session, never
 /// a value from the request body.
 /// </summary>
-public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPasswordHasher hasher, ICompromisedPasswordCheck compromised, IAuditLog audit)
+public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPasswordHasher hasher, ICompromisedPasswordCheck compromised, IAuditLog audit, IClock clock)
 {
     public async Task<ResultadoTrocaDeSenha> TrocarAsync(Guid organizationId, Guid contaId, string senhaAtual, string novaSenha, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(senhaAtual);
         ArgumentNullException.ThrowIfNull(novaSenha);
+
+        // Absurd input is refused before any lookup, normalization or hashing (NFKC + Argon2 on a huge string is a cheap denial of service). Same bound as the login.
+        if (senhaAtual.Length > PoliticaDeSenha.LimiteDeEntrada)
+        {
+            return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaAtualInvalida, []);
+        }
+
+        if (novaSenha.Length > PoliticaDeSenha.LimiteDeEntrada)
+        {
+            return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaInvalida, [ProblemaDeSenha.Longa]);
+        }
+
         var context = OrganizationContext.WithoutUnit(organizationId);
         var (conta, credencial) = await unitOfWork.ExecuteAsync(
             context,
@@ -40,6 +52,13 @@ public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPa
             return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaAtualInvalida, []);
         }
 
+        // A temporary credential past its deadline no longer proves anything (same answer as a wrong current password, after the same hashing work).
+        if (credencial.DeveTrocarSenha && credencial.TemporariaExpiraEm is { } deadline && deadline <= clock.UtcNow)
+        {
+            await audit.RecordDetachedAsync(context, Entry(contaId, AuditResult.Negado, "credencial-temporaria-vencida"), cancellationToken);
+            return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaAtualInvalida, []);
+        }
+
         var problemas = PoliticaDeSenha.Avaliar(novaSenha, conta.Email, conta.Usuario).ToList();
         var nova = PoliticaDeSenha.Normalizar(novaSenha);
         if (string.Equals(nova, atual, StringComparison.Ordinal))
@@ -52,9 +71,16 @@ public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPa
             return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaInvalida, problemas);
         }
 
-        if (await compromised.IsCompromisedAsync(nova, cancellationToken))
+        try
         {
-            return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaVazada, []);
+            if (await compromised.IsCompromisedAsync(nova, cancellationToken))
+            {
+                return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.SenhaVazada, []);
+            }
+        }
+        catch (VerificacaoDeSenhaIndisponivelException)
+        {
+            return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.VerificacaoIndisponivel, []);
         }
 
         var novoHash = await hasher.HashAsync(nova, cancellationToken);

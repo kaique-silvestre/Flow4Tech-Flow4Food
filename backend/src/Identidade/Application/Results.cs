@@ -10,6 +10,12 @@ public enum StatusCriacao
     SenhaInvalida,
     SenhaVazada,
     Negada,
+
+    /// <summary>The founding owner can only be created in an organization with NO accounts.</summary>
+    OrganizacaoJaIniciada,
+
+    /// <summary>The breach check is required (<c>HibpIndisponivelRecusa</c>) and could not be answered: the password is refused for now, not judged.</summary>
+    VerificacaoIndisponivel,
 }
 
 public sealed record ResultadoCriacaoDono(StatusCriacao Status, Guid? ContaId, IReadOnlyList<ProblemaDeSenha> Problemas);
@@ -25,6 +31,9 @@ public enum StatusTrocaDeSenha
     SenhaInvalida,
     SenhaVazada,
     ContaInativa,
+
+    /// <summary>See <see cref="StatusCriacao.VerificacaoIndisponivel"/>.</summary>
+    VerificacaoIndisponivel,
 }
 
 public sealed record ResultadoTrocaDeSenha(StatusTrocaDeSenha Status, IReadOnlyList<ProblemaDeSenha> Problemas);

@@ -19,7 +19,7 @@ internal static class TipoContaText
 /// </summary>
 public sealed class PostgresContaStore(IClock clock) : IContaStore
 {
-    public async Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, CancellationToken cancellationToken)
+    public async Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, DateTimeOffset? temporariaExpiraEm, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(conta);
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
@@ -40,8 +40,8 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
 
         await context.Database.ExecuteSqlAsync(
             $"""
-            INSERT INTO credenciais (organizacao_id, conta_id, senha_hash, deve_trocar_senha, atualizada_em)
-            VALUES ({organizacaoId}, {conta.Id}, {senhaHash}, {deveTrocarSenha}, {conta.CriadaEm})
+            INSERT INTO credenciais (organizacao_id, conta_id, senha_hash, deve_trocar_senha, temporaria_expira_em, atualizada_em)
+            VALUES ({organizacaoId}, {conta.Id}, {senhaHash}, {deveTrocarSenha}, {temporariaExpiraEm}, {conta.CriadaEm})
             """,
             cancellationToken);
         return true;
@@ -66,9 +66,9 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
         var row = await context.Contas.AsNoTracking()
             .Where(c => c.Id == contaId)
-            .Join(context.Credenciais.AsNoTracking(), c => c.Id, k => k.ContaId, (c, k) => new { c.Id, c.OrganizacaoId, c.Tipo, c.Ativa, c.VersaoCredencial, k.SenhaHash, k.DeveTrocarSenha })
+            .Join(context.Credenciais.AsNoTracking(), c => c.Id, k => k.ContaId, (c, k) => new { c.Id, c.OrganizacaoId, c.Tipo, c.Ativa, c.VersaoCredencial, k.SenhaHash, k.DeveTrocarSenha, k.TemporariaExpiraEm })
             .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : new ContaParaLogin(row.Id, row.OrganizacaoId, TipoContaText.Parse(row.Tipo), row.SenhaHash, row.DeveTrocarSenha, row.Ativa, row.VersaoCredencial);
+        return row is null ? null : new ContaParaLogin(row.Id, row.OrganizacaoId, TipoContaText.Parse(row.Tipo), row.SenhaHash, row.DeveTrocarSenha, row.Ativa, row.VersaoCredencial, row.TemporariaExpiraEm);
     }
 
     public async Task TrocarSenhaAsync(Guid organizacaoId, Guid contaId, string novoHash, CancellationToken cancellationToken)
@@ -76,7 +76,7 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
         var now = clock.UtcNow;
         await context.Database.ExecuteSqlAsync(
-            $"UPDATE credenciais SET senha_hash = {novoHash}, deve_trocar_senha = false, atualizada_em = {now} WHERE conta_id = {contaId}",
+            $"UPDATE credenciais SET senha_hash = {novoHash}, deve_trocar_senha = false, temporaria_expira_em = NULL, atualizada_em = {now} WHERE conta_id = {contaId}",
             cancellationToken);
         await context.Database.ExecuteSqlAsync($"UPDATE contas SET versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
     }
@@ -100,10 +100,26 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
         return rows == 1;
     }
 
-    public async Task DefinirDonoAsync(Guid organizacaoId, Guid contaId, bool dono, CancellationToken cancellationToken)
+    public async Task<bool> DefinirDonoAsync(Guid organizacaoId, Guid contaId, bool dono, CancellationToken cancellationToken)
     {
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
-        await context.Database.ExecuteSqlAsync($"UPDATE contas SET dono = {dono}, versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
+        // AND ativa: the caller read the account as active, but another unit may have deactivated it since; never leave an inactive owner.
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE contas SET dono = {dono}, versao_credencial = versao_credencial + 1 WHERE id = {contaId} AND ativa", cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<int> TravarOrganizacaoEContarContasAsync(Guid organizacaoId, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        // The lock is on the row of the organization (RLS shows only the caller's own). NO KEY UPDATE conflicts with itself, not with the FOR KEY SHARE of a foreign key check.
+        var locked = await context.Database.SqlQuery<Guid>($"SELECT id AS \"Value\" FROM organizacoes WHERE id = {organizacaoId} FOR NO KEY UPDATE").ToListAsync(cancellationToken);
+        if (locked.Count == 0)
+        {
+            return int.MaxValue; // unknown organization: nothing to found
+        }
+
+        var accounts = await context.Database.SqlQuery<long>($"SELECT count(*) AS \"Value\" FROM contas").ToListAsync(cancellationToken);
+        return (int)accounts.Single();
     }
 
     public async Task<int> TravarDonosAtivosAsync(Guid organizacaoId, CancellationToken cancellationToken)
@@ -127,5 +143,5 @@ public sealed class PostgresPreAuthLookup(PreAuthDatabase database) : IPreAuthLo
     private static ContaParaLogin? Map(PreAuthAccount? account) =>
         account is null
             ? null
-            : new ContaParaLogin(account.AccountId, account.OrganizationId, TipoContaText.Parse(account.Type), account.PasswordHash, account.MustChangePassword, account.Active, account.CredentialVersion);
+            : new ContaParaLogin(account.AccountId, account.OrganizationId, TipoContaText.Parse(account.Type), account.PasswordHash, account.MustChangePassword, account.Active, account.CredentialVersion, account.TemporaryExpiresAt);
 }

@@ -22,6 +22,12 @@ public static class PoliticaDeSenha
 
     public const int MaximoCaracteres = 256;
 
+    /// <summary>
+    /// Bound on the RAW input, checked BEFORE normalization and hashing (NFKC and Argon2 on a huge string are a cheap way to burn CPU and memory). A policy
+    /// failure above <see cref="MaximoCaracteres"/> is still reported by <see cref="Avaliar"/>; this only refuses what is absurd. Same value for login, change and signup.
+    /// </summary>
+    public const int LimiteDeEntrada = MaximoCaracteres * 4;
+
     public static string Normalizar(string senha)
     {
         ArgumentNullException.ThrowIfNull(senha);

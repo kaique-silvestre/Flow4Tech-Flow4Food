@@ -39,6 +39,8 @@ internal sealed class CredencialRow
     public bool DeveTrocarSenha { get; set; }
 
     public DateTimeOffset AtualizadaEm { get; set; }
+
+    public DateTimeOffset? TemporariaExpiraEm { get; set; }
 }
 
 /// <summary>EF mapping of accounts and credentials (schema owned by <c>0007_identidade.sql</c>). One instance per unit of work, from a tenant transaction. The global e-mail table is NOT mapped: only the SECURITY DEFINER functions touch it.</summary>
@@ -76,6 +78,7 @@ internal sealed class IdentidadeDbContext(TenantTransaction transaction) : Tenan
             e.Property(x => x.SenhaHash).HasColumnName("senha_hash");
             e.Property(x => x.DeveTrocarSenha).HasColumnName("deve_trocar_senha");
             e.Property(x => x.AtualizadaEm).HasColumnName("atualizada_em");
+            e.Property(x => x.TemporariaExpiraEm).HasColumnName("temporaria_expira_em");
         });
     }
 }

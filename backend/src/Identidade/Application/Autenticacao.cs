@@ -12,7 +12,7 @@ namespace Flow4Tech.Identidade.Application;
 /// <item>One failure for everything: unknown organization, user or e-mail, wrong password, deactivated account.</item>
 /// <item>The same hashing work on every path: with no account, the password is verified against a fake hash (<see cref="IPasswordHasher.VerifyDummyAsync"/>).</item>
 /// <item>Every outcome waits for the same response-time floor (<see cref="IResponseTimeFloor"/>), which also hides the cost of the audit write of a known account.</item>
-/// <item>A right TEMPORARY credential yields <see cref="DeveTrocarSenha"/>: nothing but <see cref="TrocaDeSenha"/> is allowed.</item>
+/// <item>A right TEMPORARY credential yields <see cref="DeveTrocarSenha"/>: nothing but <see cref="TrocaDeSenha"/> is allowed. Past its deadline (<c>temporaria_expira_em</c>) it is the generic failure; the reset that brings the account back is ticket 09.</item>
 /// <item>Failures of KNOWN accounts are audited (<c>autenticacao:falhar</c>, <c>negado</c>, no secret); an unknown organization has no audit chain to write to.</item>
 /// </list>
 /// Throttling and lockout after repeated failures are ticket 08. An exception from the audit store of a known account would surface as an error; accepted, it is an outage.
@@ -23,7 +23,8 @@ public sealed class Autenticacao(
     IUnitOfWork unitOfWork,
     IContaStore contas,
     IAuditLog audit,
-    IResponseTimeFloor floor)
+    IResponseTimeFloor floor,
+    IClock clock)
 {
     public Task<ResultadoAutenticacao> AutenticarOperacionalAsync(Guid organizationId, string usuario, string senha, CancellationToken cancellationToken = default) =>
         AutenticarAsync(
@@ -47,7 +48,7 @@ public sealed class Autenticacao(
 
     private async Task<ResultadoAutenticacao> DecideAsync(string? senha, Func<CancellationToken, Task<ContaParaLogin?>> find, CancellationToken cancellationToken)
     {
-        if (senha is null || senha.Length > PoliticaDeSenha.MaximoCaracteres * 4)
+        if (senha is null || senha.Length > PoliticaDeSenha.LimiteDeEntrada)
         {
             return new FalhaDeAutenticacao(); // absurd input: refused before any lookup or hashing, the same for known and unknown accounts
         }
@@ -61,7 +62,10 @@ public sealed class Autenticacao(
         }
 
         var correct = await hasher.VerifyAsync(password, conta.SenhaHash, cancellationToken);
-        if (!correct || !conta.Ativa)
+        // A temporary credential past its deadline is refused like a wrong password (after the same hashing work). It never works again by itself: only a new
+        // reset (ticket 09) sets a new deadline. Rows without a deadline (accounts from before migration 0008) do not expire.
+        var expired = conta.DeveTrocarSenha && conta.TemporariaExpiraEm is { } deadline && deadline <= clock.UtcNow;
+        if (!correct || !conta.Ativa || expired)
         {
             await audit.RecordDetachedAsync(
                 OrganizationContext.WithoutUnit(conta.OrganizacaoId),
@@ -71,7 +75,7 @@ public sealed class Autenticacao(
                     Result = AuditResult.Negado,
                     ObjectType = "conta",
                     ObjectId = conta.ContaId.ToString("D"),
-                    After = new JsonObject { ["motivo"] = correct ? "conta-desativada" : "senha-invalida" },
+                    After = new JsonObject { ["motivo"] = !correct ? "senha-invalida" : !conta.Ativa ? "conta-desativada" : "credencial-temporaria-vencida" },
                 },
                 cancellationToken);
             return new FalhaDeAutenticacao();

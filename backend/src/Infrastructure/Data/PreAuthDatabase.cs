@@ -6,7 +6,7 @@ namespace Flow4Tech.Infrastructure.Data;
 /// What the login needs about an account, as the pre-authentication functions return it (migration 0007). Carries the password hash, so it never prints:
 /// <see cref="ToString"/> is a placeholder and there is no serializer for it.
 /// </summary>
-public sealed class PreAuthAccount(Guid accountId, Guid organizationId, string type, string passwordHash, bool mustChangePassword, bool active, int credentialVersion)
+public sealed class PreAuthAccount(Guid accountId, Guid organizationId, string type, string passwordHash, bool mustChangePassword, bool active, int credentialVersion, DateTimeOffset? temporaryExpiresAt)
 {
     public Guid AccountId { get; } = accountId;
 
@@ -23,6 +23,9 @@ public sealed class PreAuthAccount(Guid accountId, Guid organizationId, string t
 
     public int CredentialVersion { get; } = credentialVersion;
 
+    /// <summary>Deadline of a temporary credential (null: none).</summary>
+    public DateTimeOffset? TemporaryExpiresAt { get; } = temporaryExpiresAt;
+
     public override string ToString() => "[pre-auth account]";
 }
 
@@ -34,9 +37,9 @@ public sealed class PreAuthAccount(Guid accountId, Guid organizationId, string t
 /// </summary>
 public sealed class PreAuthDatabase(NpgsqlDataSource dataSource)
 {
-    private const string ByUser = "SELECT o_conta_id, o_organizacao_id, o_tipo, o_senha_hash, o_deve_trocar_senha, o_ativa, o_versao_credencial FROM identidade_localizar_por_usuario(@organizacao, @usuario)";
+    private const string ByUser = "SELECT o_conta_id, o_organizacao_id, o_tipo, o_senha_hash, o_deve_trocar_senha, o_ativa, o_versao_credencial, o_temporaria_expira_em FROM identidade_localizar_por_usuario(@organizacao, @usuario)";
 
-    private const string ByEmail = "SELECT o_conta_id, o_organizacao_id, o_tipo, o_senha_hash, o_deve_trocar_senha, o_ativa, o_versao_credencial FROM identidade_localizar_por_email(@email)";
+    private const string ByEmail = "SELECT o_conta_id, o_organizacao_id, o_tipo, o_senha_hash, o_deve_trocar_senha, o_ativa, o_versao_credencial, o_temporaria_expira_em FROM identidade_localizar_por_email(@email)";
 
     public async Task<PreAuthAccount?> FindOperationalAsync(Guid organizationId, string normalizedUser, CancellationToken cancellationToken = default)
     {
@@ -66,6 +69,7 @@ public sealed class PreAuthDatabase(NpgsqlDataSource dataSource)
         {
             if (await reader.ReadAsync(cancellationToken))
             {
+                DateTimeOffset? expires = await reader.IsDBNullAsync(7, cancellationToken) ? null : await reader.GetFieldValueAsync<DateTimeOffset>(7, cancellationToken);
                 account = new PreAuthAccount(
                     reader.GetGuid(0),
                     reader.GetGuid(1),
@@ -73,7 +77,8 @@ public sealed class PreAuthDatabase(NpgsqlDataSource dataSource)
                     reader.GetString(3),
                     reader.GetBoolean(4),
                     reader.GetBoolean(5),
-                    reader.GetInt32(6));
+                    reader.GetInt32(6),
+                    expires);
             }
         }
 

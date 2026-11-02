@@ -244,7 +244,7 @@ public sealed partial class PasswordInfrastructureTests
     [Fact]
     public void The_login_view_of_an_account_never_prints_the_hash()
     {
-        var conta = new ContaParaLogin(Guid.NewGuid(), Guid.NewGuid(), TipoConta.Email, "$argon2id$v=19$m=1,t=1,p=1$c2FsdA$aGFzaA", false, true, 1);
+        var conta = new ContaParaLogin(Guid.NewGuid(), Guid.NewGuid(), TipoConta.Email, "$argon2id$v=19$m=1,t=1,p=1$c2FsdA$aGFzaA", false, true, 1, null);
         Assert.DoesNotContain("argon2", conta.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("argon2", $"{conta}", StringComparison.Ordinal);
     }

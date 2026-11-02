@@ -36,11 +36,15 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao();
 // Identidade (ticket 03): accounts, passwords, pre-authentication. No route uses it yet (login arrives with the sessions, ticket 04).
-// Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check.
+// Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check
+// and Flow4Tech:Identidade:Hibp:IndisponivelRecusa (default false) makes an unreachable breach service refuse the password instead of accepting it;
+// Flow4Tech:Identidade:CredencialTemporariaHoras (default 72) is how long a temporary credential works (ticket 10 moves it to layered settings).
 builder.Services.AddIdentidade(options =>
 {
     options.TempoMinimoDeLogin = TimeSpan.FromMilliseconds(builder.Configuration.GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400));
     options.UsarHibp = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:Enabled", false);
+    options.HibpIndisponivelRecusa = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:IndisponivelRecusa", false);
+    options.CredencialTemporariaHoras = builder.Configuration.GetValue("Flow4Tech:Identidade:CredencialTemporariaHoras", 72);
 });
 builder.Services.AddScoped<RequestContextAccessor>();
 builder.Services.AddScoped<IRequestContext>(provider => provider.GetRequiredService<RequestContextAccessor>());

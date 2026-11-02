@@ -137,7 +137,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
     public T Get<T>()
         where T : notnull => _services.GetRequiredService<T>();
 
-    public static async Task<IdentidadeEnv> CreateAsync(PostgresFixture postgres, Action<IdentidadeOptions>? tweak = null, Func<IAuditLog, IAuditLog>? decorateAudit = null, TestDatabase? existing = null)
+    public static async Task<IdentidadeEnv> CreateAsync(PostgresFixture postgres, Action<IdentidadeOptions>? tweak = null, Func<IAuditLog, IAuditLog>? decorateAudit = null, TestDatabase? existing = null, ICompromisedPasswordCheck? compromised = null)
     {
         var db = existing;
         if (db is null)
@@ -162,9 +162,16 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
             o.Argon2 = options.Argon2;
             o.TempoMinimoDeLogin = options.TempoMinimoDeLogin;
             o.UsarHibp = false;
+            o.CredencialTemporariaHoras = options.CredencialTemporariaHoras;
+            o.HibpIndisponivelRecusa = options.HibpIndisponivelRecusa;
         });
         services.Replace(ServiceDescriptor.Singleton<IPasswordHasher>(_ => new CountingHasher(new Argon2PasswordHasher(options.Argon2))));
         services.Replace(ServiceDescriptor.Singleton<IResponseTimeFloor>(new CountingFloor()));
+        if (compromised is not null)
+        {
+            services.Replace(ServiceDescriptor.Singleton(compromised));
+        }
+
         if (decorateAudit is not null)
         {
             var real = services.First(d => d.ServiceType == typeof(IAuditLog));
@@ -191,6 +198,14 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
         return result.ContaId!.Value;
     }
 
+    /// <summary>A second owner: the founder only exists once per organization, so the second one is a manager named owner by the first (the real path).</summary>
+    public async Task<Guid> CriarSegundoDonoAsync(Guid org, Guid primeiroDono, string email)
+    {
+        var id = await SeedGerenteAsync(org, email);
+        Assert.True((await Contas.DefinirDonoAsync(As(primeiroDono, org), id, true)).Permitido);
+        return id;
+    }
+
     public static FakeRequest As(Guid user, Guid org) => new(user, Ctx(org));
 
     /// <summary>An operational account created by <paramref name="owner"/>; returns the id and the one-time credential.</summary>
@@ -208,7 +223,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
         var hash = await Hasher.HashAsync(Senha);
         await Uow.ExecuteAsync(Pre(org), async ct =>
         {
-            Assert.True(await Store.InserirAsync(org, new NovaConta(id, TipoConta.Email, "Gerente " + email, email, null, false, Clock.UtcNow), hash, false, ct));
+            Assert.True(await Store.InserirAsync(org, new NovaConta(id, TipoConta.Email, "Gerente " + email, email, null, false, Clock.UtcNow), hash, false, null, ct));
             Assert.True(await Store.RegistrarEmailAsync(org, id, email, ct));
         });
         return id;

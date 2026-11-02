@@ -16,7 +16,13 @@ public sealed class IdentidadeOptions
 
     public Uri HibpBaseAddress { get; set; } = new("https://api.pwnedpasswords.com/");
 
-    /// <summary>When HIBP is unreachable: false = accept the password (availability), true = refuse it.</summary>
+    /// <summary>How long a temporary credential works, in hours (default 72). Ticket 10 moves this to layered settings.</summary>
+    public int CredencialTemporariaHoras { get; set; } = 72;
+
+    /// <summary>
+    /// Only meaningful with <see cref="UsarHibp"/>. When HIBP is unreachable: false = accept the password (availability, the local list still applies), true = refuse it with the
+    /// typed result <c>VerificacaoIndisponivel</c> (the person tries again later). With HIBP off the option does nothing: there is no check to be unavailable.
+    /// </summary>
     public bool HibpIndisponivelRecusa { get; set; }
 }
 
@@ -36,13 +42,20 @@ public static class IdentidadeServices
             throw new InvalidOperationException("The breach service must be reached over https.");
         }
 
+        if (options.CredencialTemporariaHoras < 1)
+        {
+            throw new InvalidOperationException("A temporary credential must be valid for at least one hour.");
+        }
+
+        services.AddSingleton(new ValidadeDaCredencialTemporaria(TimeSpan.FromHours(options.CredencialTemporariaHoras)));
         services.AddSingleton<IPasswordHasher>(_ => new Argon2PasswordHasher(options.Argon2));
         services.AddSingleton<ITemporaryCredentialGenerator, TemporaryCredentialGenerator>();
         services.AddSingleton<ICompromisedPasswordCheck>(provider =>
             new CompositeCompromisedPasswordCheck(
                 new LocalCompromisedPasswords(),
                 options.UsarHibp ? new HibpPasswordCheck(HibpClient(options)) : null,
-                provider.GetRequiredService<ITechnicalLog>()));
+                provider.GetRequiredService<ITechnicalLog>(),
+                options.HibpIndisponivelRecusa));
         services.AddSingleton<IResponseTimeFloor>(_ => new ResponseTimeFloor(options.TempoMinimoDeLogin));
         services.AddSingleton<IContaStore, PostgresContaStore>();
         services.AddSingleton<IPreAuthLookup, PostgresPreAuthLookup>();

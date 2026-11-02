@@ -47,10 +47,10 @@ public sealed class GestaoDeContasIntegrationTests(PostgresFixture postgres)
         await using var env = await IdentidadeEnv.CreateAsync(postgres);
         await env.CriarDonoAsync(OrgA, "dono@a.com");
 
-        var sameOrg = await env.Contas.CriarDonoAsync(OrgA, "DONO@a.com", "Outro", IdentidadeEnv.Senha);
+        var sameOrg = await env.Contas.CriarDonoAsync(OrgA, "DONO@a.com", "Outro", IdentidadeEnv.Senha); // the organization already has its founder: refused before the e-mail matters
         var otherOrg = await env.Contas.CriarDonoAsync(OrgB, "dono@a.com", "Outro", IdentidadeEnv.Senha);
 
-        Assert.Equal(StatusCriacao.Indisponivel, sameOrg.Status);
+        Assert.Equal(StatusCriacao.OrganizacaoJaIniciada, sameOrg.Status);
         Assert.Equal(StatusCriacao.Indisponivel, otherOrg.Status);
         Assert.Equal(0L, await env.CountAsync(OrgB, "SELECT count(*) FROM contas")); // the refused attempt rolled back completely
         Assert.Equal(1L, await env.CountAsync(OrgA, "SELECT count(*) FROM contas"));
@@ -159,12 +159,12 @@ public sealed class GestaoDeContasIntegrationTests(PostgresFixture postgres)
     {
         await using var env = await IdentidadeEnv.CreateAsync(postgres);
         var dono1 = await env.CriarDonoAsync(OrgA, "dono1@a.com");
-        var dono2 = await env.CriarDonoAsync(OrgA, "dono2@a.com");
+        var dono2 = await env.CriarSegundoDonoAsync(OrgA, dono1, "dono2@a.com");
 
         var result = await env.Contas.DesativarAsync(IdentidadeEnv.As(dono1, OrgA), dono2);
 
         Assert.Equal(new ResultadoProtecao(false, RecusaDeProtecao.DonoNaoPodeSerDesativadoPorOutro), result);
-        Assert.Equal(1L, await env.CountAsync(OrgA, "SELECT count(*) FROM contas WHERE id = @i AND ativa AND versao_credencial = 1", ("i", dono2)));
+        Assert.Equal(1L, await env.CountAsync(OrgA, "SELECT count(*) FROM contas WHERE id = @i AND ativa AND versao_credencial = 2", ("i", dono2)));
         Assert.Equal(1L, await env.AuditCountAsync(OrgA, "conta:desativar", "negado"));
         Assert.Equal(0L, await env.AuditCountAsync(OrgA, "conta:desativar", "sucesso"));
     }
@@ -174,7 +174,7 @@ public sealed class GestaoDeContasIntegrationTests(PostgresFixture postgres)
     {
         await using var env = await IdentidadeEnv.CreateAsync(postgres);
         var dono1 = await env.CriarDonoAsync(OrgA, "dono1@a.com");
-        var dono2 = await env.CriarDonoAsync(OrgA, "dono2@a.com");
+        var dono2 = await env.CriarSegundoDonoAsync(OrgA, dono1, "dono2@a.com");
 
         var first = await env.Contas.DesativarAsync(IdentidadeEnv.As(dono1, OrgA), dono1); // one of two may leave
         var second = await env.Contas.DesativarAsync(IdentidadeEnv.As(dono2, OrgA), dono2); // the last one may not
@@ -189,7 +189,7 @@ public sealed class GestaoDeContasIntegrationTests(PostgresFixture postgres)
     {
         await using var env = await IdentidadeEnv.CreateAsync(postgres);
         var dono1 = await env.CriarDonoAsync(OrgA, "dono1@a.com");
-        var dono2 = await env.CriarDonoAsync(OrgA, "dono2@a.com");
+        var dono2 = await env.CriarSegundoDonoAsync(OrgA, dono1, "dono2@a.com");
 
         var results = await Task.WhenAll(
             Enumerable.Range(0, 6).Select(i => i % 2 == 0
@@ -271,7 +271,7 @@ public sealed class GestaoDeContasIntegrationTests(PostgresFixture postgres)
     {
         await using var env = await IdentidadeEnv.CreateAsync(postgres);
         var dono = await env.CriarDonoAsync(OrgA, "dono@a.com");
-        var dono2 = await env.CriarDonoAsync(OrgA, "dono2@a.com");
+        var dono2 = await env.CriarSegundoDonoAsync(OrgA, dono, "dono2@a.com");
         var (maria, _) = await env.CriarOperacionalAsync(dono, OrgA, "maria");
         await env.Contas.DesativarAsync(IdentidadeEnv.As(dono2, OrgA), dono2); // dono2 leaves (two owners)
 
