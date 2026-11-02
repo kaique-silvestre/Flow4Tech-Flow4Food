@@ -6,16 +6,19 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - `backend/Flow4Tech.sln`
   - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; later decision engine contract, event bus, audit).
   - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`). Project names `Flow4Tech.<Module>.<Layer>`.
+  - `src/Api`: host (`Flow4Tech.Api`, Web SDK); health endpoints.
   - `tests/Flow4Tech.Tests`: xUnit.
 - `frontend/{app,control,design-system}`: pnpm workspaces (listed in root `pnpm-workspace.yaml`); `frontend/tsconfig.base.json` is strict.
 - `docs/adr/`: decisions; copy `0000-template.md`.
 
 ## Commands (run from repo root)
 - build: `dotnet build backend/Flow4Tech.sln`
-- test: `dotnet test backend/Flow4Tech.sln` (frontend has no tests yet)
+- test: `dotnet test backend/Flow4Tech.sln` (needs Docker running: integration tests start PostgreSQL via Testcontainers; frontend has no tests yet)
 - typecheck: `dotnet build backend/Flow4Tech.sln` (nullable + strict analyzers, warnings are errors) and `pnpm install && pnpm -r typecheck`
 - lint/format: `dotnet format backend/Flow4Tech.sln` (add `--verify-no-changes` to check only)
-- dev / port: not defined yet (no runnable app until the API host exists).
+- dev: `docker compose up --build` (PostgreSQL + API; `docker compose down` to stop)
+- port: API `http://localhost:8080` (`GET /health/live`, `GET /health/ready`), PostgreSQL `localhost:5432` (user/password/db `flow4tech`)
+- config: environment variables only, e.g. `ConnectionStrings__Default`.
 
 ## Module-boundary rules
 - Layers: Domain -> Kernel only; Application -> Domain; Infrastructure and Interface -> Application. Never the reverse.

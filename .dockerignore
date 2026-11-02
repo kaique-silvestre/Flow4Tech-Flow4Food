@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/TestResults/
+node_modules/
+frontend/
+.git/
+.scratch/
+.claude/

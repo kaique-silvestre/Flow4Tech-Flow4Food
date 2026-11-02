@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Integration (real PostgreSQL via containers)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Single documented command starts PostgreSQL and the API locally
 - [ ] Single documented command runs all tests

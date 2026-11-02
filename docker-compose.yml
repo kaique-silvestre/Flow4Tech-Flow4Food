@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: flow4tech
+      POSTGRES_PASSWORD: flow4tech
+      POSTGRES_DB: flow4tech
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flow4tech -d flow4tech"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: .
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Username=flow4tech;Password=flow4tech;Database=flow4tech
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy

@@ -49,6 +49,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastru
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flow4Tech.Permissoes.Infrastructure", "src\Permissoes\Infrastructure\Flow4Tech.Permissoes.Infrastructure.csproj", "{9A33FF44-2EEF-4D1B-B855-B7B6B8C120EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flow4Tech.Api", "src\Api\Flow4Tech.Api.csproj", "{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -179,6 +181,18 @@ Global
 		{9A33FF44-2EEF-4D1B-B855-B7B6B8C120EA}.Release|x64.Build.0 = Release|Any CPU
 		{9A33FF44-2EEF-4D1B-B855-B7B6B8C120EA}.Release|x86.ActiveCfg = Release|Any CPU
 		{9A33FF44-2EEF-4D1B-B855-B7B6B8C120EA}.Release|x86.Build.0 = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|x64.Build.0 = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Debug|x86.Build.0 = Debug|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|x64.ActiveCfg = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|x64.Build.0 = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|x86.ActiveCfg = Release|Any CPU
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -205,5 +219,6 @@ Global
 		{85B13B28-C8CB-4EEC-8C27-20BCC6F78F3B} = {170C5CD0-AB0A-49A4-D83E-921845E2C091}
 		{9DFA6D1D-7D90-6760-F722-A126700395BD} = {A3BB1512-5932-AEB9-B0B4-69EF7619DA33}
 		{9A33FF44-2EEF-4D1B-B855-B7B6B8C120EA} = {9DFA6D1D-7D90-6760-F722-A126700395BD}
+		{22AAE24A-8C58-4C8F-BE4C-C24752AD565B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

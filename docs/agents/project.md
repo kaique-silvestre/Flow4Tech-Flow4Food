@@ -2,8 +2,8 @@
 
 Run from repo root. Details in `CLAUDE.md`.
 
-- dev: not defined yet (no runnable host until a later ticket)
-- port: not defined yet
+- dev: `docker compose up --build` (PostgreSQL + API)
+- port: API 8080 (`/health/live`, `/health/ready`), PostgreSQL 5432
 - lint: `dotnet format backend/Flow4Tech.sln` (check only: add `--verify-no-changes`)
 - typecheck: `dotnet build backend/Flow4Tech.sln && pnpm -r typecheck`
-- test: `dotnet test backend/Flow4Tech.sln`
+- test: `dotnet test backend/Flow4Tech.sln` (Docker must be running: Testcontainers)
