@@ -5,3 +5,5 @@
 - RLS: after a transaction that used `set_config('app.organizacao_id', .., true)`, `current_setting(.., true)` returns '' (not NULL) -> `::uuid` cast errors for the next user of the connection -> always `NULLIF(current_setting(..), '')` (done in `app_organizacao_id()`).
 - macOS `sed -i ''` has no `\b` and silently does nothing -> use `perl -pi -e 's/\bX\b/Y/g'` for word-boundary renames.
 - Test project with a static member named `Org` fails CS0118 ('Org' is a namespace, from BouncyCastle via Testcontainers) -> name it `OrgId`; and private test helpers returning an interface trip CA1859 -> make the helper `public static`.
+- Two Exe/Web projects with top-level statements both define `Program` -> a test project referencing both gets CS0433 on `WebApplicationFactory<Program>` -> give the second project an explicit `Main` in a named class (see `Migrator/Entry.cs`).
+- CA1054 fires on any `string` parameter whose name contains `url`/`uri` -> name it `value`/`fallback`.

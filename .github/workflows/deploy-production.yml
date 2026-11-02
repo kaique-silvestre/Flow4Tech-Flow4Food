@@ -1,0 +1,50 @@
+# Production deploy: manual only. The GitHub environment `production` must have required reviewers,
+# so the job waits for an approval after this workflow is dispatched.
+name: deploy-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA on main to deploy (it must have a successful ci run, e.g. the one running in staging)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify the commit is green main
+    if: github.ref == 'refs/heads/main' # dispatch the workflow from main only
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_REF: ${{ inputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commit is on main and its ci run succeeded
+        id: resolve
+        run: |
+          sha=$(git rev-parse --verify "$REQUESTED_REF^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main"; exit 1; }
+          ok=$(gh run list --workflow ci.yml --commit "$sha" --event push --status success --json databaseId --jq 'length')
+          [ "$ok" -ge 1 ] || { echo "::error::no successful ci run for $sha"; exit 1; }
+          echo "deploying $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: production
+    needs: [verify]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      ref: ${{ needs.verify.outputs.sha }} # the resolved, verified SHA, never the raw input

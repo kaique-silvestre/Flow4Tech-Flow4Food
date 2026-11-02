@@ -79,6 +79,12 @@
         "properties": {
           "status": {
             "type": "string"
+          },
+          "commit": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

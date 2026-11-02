@@ -14,7 +14,7 @@ public sealed class HealthEndpointsTests : IAsyncLifetime
 
     Task IAsyncLifetime.DisposeAsync() => _postgres.DisposeAsync().AsTask();
 
-    private static ApiFactory CreateApi(string? connectionString) => new(connectionString);
+    private static ApiFactory CreateApi(string? connectionString, string? commit = null) => new(connectionString, commit);
 
     [Fact]
     public async Task Liveness_returns_ok_without_a_database()
@@ -72,13 +72,35 @@ public sealed class HealthEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
-    private sealed class ApiFactory(string? connectionString) : WebApplicationFactory<Program>
+    [Fact]
+    public async Task Readiness_reports_the_deployed_commit_when_configured()
+    {
+        await using var api = CreateApi(_postgres.GetConnectionString(), commit: "3f2a9c1d0e");
+        using var client = api.CreateClient();
+
+        var body = await client.GetStringAsync(new Uri("/health/ready", UriKind.Relative));
+
+        Assert.Contains("\"commit\":\"3f2a9c1d0e\"", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Readiness_omits_the_commit_when_not_configured_and_liveness_never_has_it()
+    {
+        await using var api = CreateApi(_postgres.GetConnectionString());
+        using var client = api.CreateClient();
+
+        Assert.DoesNotContain("commit", await client.GetStringAsync(new Uri("/health/ready", UriKind.Relative)), StringComparison.Ordinal);
+        Assert.DoesNotContain("commit", await client.GetStringAsync(new Uri("/health/live", UriKind.Relative)), StringComparison.Ordinal);
+    }
+
+    private sealed class ApiFactory(string? connectionString, string? commit = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder) =>
             builder.ConfigureAppConfiguration((_, config) =>
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:Default"] = connectionString,
+                    ["GIT_SHA"] = commit,
                 }));
     }
 }

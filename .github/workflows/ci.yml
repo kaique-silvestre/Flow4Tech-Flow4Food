@@ -1,5 +1,5 @@
 # Single pipeline. Every job is a mandatory gate; branch protection requires the
-# "gates" job (aggregates all others). Deploy runs only on main after all gates.
+# "gates" job (aggregates all others). Staging deploys only on main after all gates (production: deploy-production.yml).
 name: ci
 
 on:
@@ -32,6 +32,9 @@ jobs:
         run: dotnet build backend/Flow4Tech.sln -c Release
       - name: Format check
         run: dotnet format backend/Flow4Tech.sln --verify-no-changes
+      # The deploy builds this same Dockerfile on Railway; a broken image must fail the PR, not the deploy.
+      - name: Container image builds (API + migrator + migrations)
+        run: docker build -t flow4tech-api:${{ github.sha }} .
 
   typecheck-frontend:
     name: typecheck (pnpm)
@@ -238,16 +241,13 @@ jobs:
           echo "results: $RESULTS"
           for r in $RESULTS; do [ "$r" = "success" ] || exit 1; done
 
-  deploy:
-    name: deploy (main only)
+  # Staging deploys on its own from green main (the `staging` GitHub environment, no reviewers).
+  # Production is a separate manual workflow with required reviewers: deploy-production.yml.
+  deploy-staging:
+    name: deploy staging (main only)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [gates]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      # No deploy target exists yet (foundation phase): build the standard container
-      # that the real deploy step will publish. Replace with registry push + rollout.
-      - name: Build container image
-        run: docker build -t flow4tech-api:${{ github.sha }} .
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      ref: ${{ github.sha }}

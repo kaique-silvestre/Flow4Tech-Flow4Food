@@ -24,6 +24,8 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+    public const string AppPasswordValue = AppPassword;
+
     public static string RealMigrationsDirectory => Path.Combine(FindBackendRoot(), "migrations");
 
     public async Task InitializeAsync()
@@ -33,6 +35,14 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     Task IAsyncLifetime.DisposeAsync() => _container.DisposeAsync().AsTask();
+
+    /// <summary>Fresh, EMPTY database owned by the owner role: nothing migrated, nothing provisioned (what a new Railway environment looks like).</summary>
+    public async Task<TestDatabase> CreateEmptyDatabaseAsync()
+    {
+        var name = "t_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsSuperuser($"CREATE DATABASE {name} OWNER {OwnerRole}");
+        return new TestDatabase(Connection(OwnerRole, OwnerPassword, name), Connection(AppRole, AppPassword, name));
+    }
 
     /// <summary>Fresh database owned by the owner role, migrated from <paramref name="migrationsDirectory"/> (default: the real ones).</summary>
     public async Task<TestDatabase> CreateDatabaseAsync(string? migrationsDirectory = null)
@@ -56,6 +66,11 @@ public sealed class PostgresFixture : IAsyncLifetime
         };
         return b.ConnectionString;
     }
+
+    /// <summary>Cluster-level setup for tests (extra roles). Use unique role names: roles are shared by every database of the run.</summary>
+    public Task ExecuteAsSuperuserAsync(string sql) => ExecuteAsSuperuser(sql);
+
+    public string ConnectionFor(string user, string password, string database) => Connection(user, password, database);
 
     private async Task ExecuteAsSuperuser(string sql)
     {

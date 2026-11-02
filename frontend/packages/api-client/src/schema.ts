@@ -58,6 +58,7 @@ export interface components {
     schemas: {
         HealthStatus: {
             status: string;
+            commit?: null | string;
         };
         VersionInfo: {
             version: string;

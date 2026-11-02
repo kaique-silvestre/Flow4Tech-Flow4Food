@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Deploy-time entrypoint (`dotnet Flow4Tech.Migrator.dll`): migrations with the OWNER credential, never run by the web app. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Flow4Tech.Migrator</AssemblyName>
+    <RootNamespace>Flow4Tech.Infrastructure.Migrator</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Flow4Tech.Isolation.Tests" />
+    <InternalsVisibleTo Include="Flow4Tech.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Data/Flow4Tech.Infrastructure.Data.csproj" />
+  </ItemGroup>
+
+</Project>

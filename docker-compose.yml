@@ -1,3 +1,7 @@
+# Local dev with the SAME two-credential model as staging/production:
+#   - migrate runs as the owner (flow4tech), applies backend/migrations and gives the app role its login;
+#   - api runs as the restricted flow4tech_app role (no superuser, no BYPASSRLS, no DDL), so RLS is enforced locally too.
+# The passwords below are throwaway local-dev values for this compose file only.
 services:
   db:
     image: postgres:17-alpine
@@ -13,12 +17,24 @@ services:
       timeout: 3s
       retries: 15
 
-  api:
+  migrate:
     build: .
+    entrypoint: ["dotnet", "Flow4Tech.Migrator.dll"]
     environment:
-      ConnectionStrings__Default: Host=db;Port=5432;Username=flow4tech;Password=flow4tech;Database=flow4tech
-    ports:
-      - "8080:8080"
+      MIGRATION_DATABASE_URL: postgres://flow4tech:flow4tech@db:5432/flow4tech
+      APP_DB_PASSWORD: flow4tech_app_dev
+      DATABASE_URL: postgres://flow4tech_app:flow4tech_app_dev@db:5432/flow4tech
     depends_on:
       db:
         condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://flow4tech_app:flow4tech_app_dev@db:5432/flow4tech
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
