@@ -1,0 +1,162 @@
+# Single pipeline. Every job is a mandatory gate; branch protection requires the
+# "gates" job (aggregates all others). Deploy runs only on main after all gates.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build:
+    name: build + format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build (nullable + analyzers, warnings are errors)
+        run: dotnet build backend/Flow4Tech.sln -c Release
+      - name: Format check
+        run: dotnet format backend/Flow4Tech.sln --verify-no-changes
+
+  typecheck-frontend:
+    name: typecheck (pnpm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+
+  unit-tests:
+    name: unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      # Integration classes are named *Endpoints* / *Integration*; everything else is unit.
+      - run: >
+          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
+          --filter "FullyQualifiedName!~Endpoints&FullyQualifiedName!~Integration"
+
+  integration-tests:
+    name: integration tests (real PostgreSQL)
+    runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: >
+          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
+          --filter "FullyQualifiedName~Endpoints|FullyQualifiedName~Integration"
+
+  architecture-tests:
+    name: architecture tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend/tests/Architecture/Flow4Tech.Architecture.Tests.csproj -c Release
+
+  secret-scan:
+    name: secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, not just the PR tip
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.28.0
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+      - name: Scan all commits
+        run: gitleaks git --redact --verbose --exit-code 1 .
+
+  dependency-audit:
+    name: vulnerable dependencies (dotnet + pnpm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: dotnet vulnerable packages (direct + transitive)
+        run: |
+          # Fail on command error (e.g. restore failing on NU1903) and on any reported vulnerability.
+          dotnet list backend/Flow4Tech.sln package --vulnerable --include-transitive > vuln.txt 2>&1 || { cat vuln.txt; exit 1; }
+          cat vuln.txt
+          if grep -q "has the following vulnerable packages" vuln.txt; then
+            echo "::error::vulnerable NuGet packages found"; exit 1
+          fi
+      - name: pnpm audit
+        run: pnpm audit --audit-level=high
+
+  gates:
+    name: gates
+    if: always()
+    needs:
+      - build
+      - typecheck-frontend
+      - unit-tests
+      - integration-tests
+      - architecture-tests
+      - secret-scan
+      - dependency-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: All mandatory gates must succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do [ "$r" = "success" ] || exit 1; done
+
+  deploy:
+    name: deploy (main only)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      # No deploy target exists yet (foundation phase): build the standard container
+      # that the real deploy step will publish. Replace with registry push + rollout.
+      - name: Build container image
+        run: docker build -t flow4tech-api:${{ github.sha }} .

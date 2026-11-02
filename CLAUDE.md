@@ -20,6 +20,20 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - port: API `http://localhost:8080` (`GET /health/live`, `GET /health/ready`), PostgreSQL `localhost:5432` (user/password/db `flow4tech`)
 - config: environment variables only, e.g. `ConnectionStrings__Default`.
 
+## CI gates (`.github/workflows/ci.yml`, GitHub Actions)
+One pipeline on every pull request and on push to `main`. Merge requires the aggregate job `gates` to be green (branch protection); `deploy` runs only on push to `main` after `gates`.
+- `build`: `dotnet build -c Release` + `dotnet format --verify-no-changes`
+- `typecheck-frontend`: `pnpm install --frozen-lockfile && pnpm -r typecheck`
+- `unit-tests`: `Flow4Tech.Tests` excluding classes whose name contains `Endpoints` or `Integration`
+- `integration-tests`: those classes, with real PostgreSQL (Testcontainers `postgres:17-alpine`). Name new integration test classes `*Endpoints*` or `*Integration*` or they run as unit tests.
+- `architecture-tests`: `backend/tests/Architecture`
+- `secret-scan`: gitleaks over full git history (`fetch-depth: 0`)
+- `dependency-audit`: `dotnet list package --vulnerable --include-transitive` and `pnpm audit --audit-level=high`
+- Later tickets add: OpenAPI contract (05), RLS and permission gates (06, 10).
+- No secrets in the repo: config via environment variables; gitleaks fails the pipeline on any finding in history.
+
+Duration budget (TARGET, not yet measured; replace with the first real run): whole pipeline <= 10 min wall clock, each job <= 5 min (integration <= 8 min). Local reference: build ~10 s, integration tests ~20 s with warm Docker.
+
 ## Module-boundary rules
 - Layers: Domain -> Kernel only; Application -> Domain; Infrastructure and Interface -> Application. Never the reverse.
 - A module may use another module only through its public API (Application contracts) or its events. Never reference another module's Domain, Infrastructure or Interface.

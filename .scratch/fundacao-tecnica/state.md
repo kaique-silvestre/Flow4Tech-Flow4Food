@@ -5,5 +5,6 @@ tickets:
 - 01 · repo-skeleton · done · rounds: 1 · PASS (notes: editorconfig rule opt-outs, pnpm-lock outside touches)
 - 02 · local-env-and-health · done · rounds: 1 · PASS WITH RISKS (Dockerfile ignores Railway PORT: handle in 11)
 - 03 · module-boundary-tests · done · rounds: 1 · PASS WITH RISKS (source-text regex bypass; NetArchTest later)
-- 04..12 · pending
+- 04 · ci-pipeline · done-local · rounds: 1 (+fix) · PASS WITH RISKS · PENDING-OWNER: first run, red-gate PR evidence, branch protection, measured duration
+- 05..12 · pending
 lessons: 0
