@@ -7,5 +7,6 @@ tickets:
 - 03 · module-boundary-tests · done · rounds: 1 · PASS WITH RISKS (source-text regex bypass; NetArchTest later)
 - 04 · ci-pipeline · done-local · rounds: 1 (+fix) · PASS WITH RISKS · PENDING-OWNER: first run, red-gate PR evidence, branch protection, measured duration
 - 05 · openapi-ts-client · done-local · rounds: 2 · PASS WITH RISKS · PENDING-OWNER: first GitHub run of openapi-contract, throwaway PR with deliberate break
-- 06..12 · pending
+- 06 · rls-isolation-spike · done · rounds: 3 · PASS (note: no-context write asserted on one table). STOPPED for owner review
+- 07..12 · pending
 lessons: 0

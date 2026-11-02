@@ -261,11 +261,11 @@ internal static partial class ModuleGraph
         return cycles;
     }
 
-    /// <summary>src/&lt;Module&gt;/&lt;Layer&gt;/x.csproj -> module+layer; src/Kernel, src/Api -> no module.</summary>
+    /// <summary>src/&lt;Module&gt;/&lt;Layer&gt;/x.csproj -> module+layer; src/Kernel, src/Api, src/Infrastructure (shared technical code, not a module) -> no module.</summary>
     private static (string? Module, string Layer, string Name) Parse(string path)
     {
         var parts = path.Split('/');
-        return parts is ["src", var module, var layer, _] ? (module, layer, module) : (null, "", parts.Length > 1 ? parts[1] : path);
+        return parts is ["src", var module, var layer, _] && module != "Infrastructure" ? (module, layer, module) : (null, "", parts.Length > 1 ? parts[1] : path);
     }
 
     [GeneratedRegex(@"^\s*(?:global\s+)?using\s+(?:static\s+)?([\w.]+)\s*;", RegexOptions.Multiline)]

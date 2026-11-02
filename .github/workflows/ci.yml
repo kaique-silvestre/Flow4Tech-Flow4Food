@@ -87,6 +87,17 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet test backend/tests/Architecture/Flow4Tech.Architecture.Tests.csproj -c Release
 
+  isolation-tests:
+    name: tenant isolation + RLS (real PostgreSQL)
+    runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend/tests/Isolation/Flow4Tech.Isolation.Tests.csproj -c Release
+
   secret-scan:
     name: secret scan (gitleaks, full history)
     runs-on: ubuntu-latest
@@ -190,6 +201,7 @@ jobs:
       - unit-tests
       - integration-tests
       - architecture-tests
+      - isolation-tests
       - secret-scan
       - dependency-audit
       - openapi-contract

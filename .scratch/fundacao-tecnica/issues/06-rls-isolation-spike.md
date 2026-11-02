@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Integration (real PostgreSQL, app credential), Architecture test
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Tables `organizacoes`, `unidades` and one sample business table exist, each business table with `organizacao_id` and an RLS policy `organizacao_id = current context`
 - [ ] Application connects with a role that does not own the tables and cannot bypass RLS; migrations use a different credential (both proven by tests)
