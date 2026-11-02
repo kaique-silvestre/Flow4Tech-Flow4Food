@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Contract (OpenAPI), RLS
-**Status:** done-local
+**Status:** in-progress (rascunho WIP em cf358cf, suíte e revisão NÃO feitas; o agente foi interrompido antes de marcar critérios)
 
 - [x] Reuso de refresh derruba a cadeia da sessão (`SessoesIntegrationTests.Presenting_a_used_refresh_again_revokes_the_whole_family...`, `...Two_simultaneous_refreshes...`, HTTP `Replaying_a_used_refresh_cookie_kills_the_session...`)
 - [ ] Desativar usuário, trocar senha e mudar permissão invalidam sessões na próxima requisição (PARCIAL: provados desativar, trocar senha, mudar flag de dono, remover vínculo da unidade ativa e revogar, um teste por gatilho; **mudar permissão/perfil não existe ainda** (tickets 05/06) e deve chamar a mesma mecânica; fica aberto até lá)
