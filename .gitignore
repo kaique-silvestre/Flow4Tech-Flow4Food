@@ -36,3 +36,6 @@ frontend/.env
 frontend/.env.local
 frontend/tsconfig.tsbuildinfo
 graphify-out/
+
+# Claude Code local state
+.claude/
