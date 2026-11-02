@@ -82,6 +82,18 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
             await command.ExecuteNonQueryAsync();
         }
 
+        // usuario_unidades.usuario_id points at a real account since ticket 03: one minimal account per distinct user.
+        foreach (var user in links.Select(l => l.User).Distinct())
+        {
+            await using var command = new NpgsqlCommand(
+                "INSERT INTO contas (id, organizacao_id, tipo, nome, usuario, criada_em) VALUES (@i, @o, 'operacional', 'Teste', 'u' || replace(@i::text, '-', ''), now())",
+                tx.Connection,
+                tx.Transaction);
+            command.Parameters.AddWithValue("i", user);
+            command.Parameters.AddWithValue("o", org);
+            await command.ExecuteNonQueryAsync();
+        }
+
         foreach (var (user, unit) in links)
         {
             await using var command = new NpgsqlCommand("INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @u, @n)", tx.Connection, tx.Transaction);

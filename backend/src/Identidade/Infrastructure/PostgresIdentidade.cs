@@ -1,0 +1,131 @@
+using Flow4Tech.Identidade.Application;
+using Flow4Tech.Identidade.Domain;
+using Flow4Tech.Infrastructure.Data;
+using Flow4Tech.Kernel;
+using Microsoft.EntityFrameworkCore;
+
+namespace Flow4Tech.Identidade.Infrastructure;
+
+internal static class TipoContaText
+{
+    public static string Text(TipoConta tipo) => tipo == TipoConta.Email ? "email" : "operacional";
+
+    public static TipoConta Parse(string text) => text == "email" ? TipoConta.Email : TipoConta.Operacional;
+}
+
+/// <summary>
+/// Accounts on PostgreSQL. Joins the caller's unit of work (<see cref="TenantUnitOfWork.Require"/>): the organization context is the one the unit was opened with and RLS does
+/// the filtering; nothing here filters on <c>organizacao_id</c>. Writes are explicit interpolated SQL so the statement is visible; reads are EF with <c>AsNoTracking</c>.
+/// </summary>
+public sealed class PostgresContaStore(IClock clock) : IContaStore
+{
+    public async Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(conta);
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var tipo = TipoContaText.Text(conta.Tipo);
+
+        // ON CONFLICT DO NOTHING without a target: a taken user name or e-mail in this organization is "not inserted", not an aborted transaction.
+        var inserted = await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO contas (id, organizacao_id, tipo, nome, email, usuario, dono, criada_em)
+            VALUES ({conta.Id}, {organizacaoId}, {tipo}, {conta.Nome}, {conta.Email}, {conta.Usuario}, {conta.Dono}, {conta.CriadaEm})
+            ON CONFLICT DO NOTHING
+            """,
+            cancellationToken);
+        if (inserted == 0)
+        {
+            return false;
+        }
+
+        await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO credenciais (organizacao_id, conta_id, senha_hash, deve_trocar_senha, atualizada_em)
+            VALUES ({organizacaoId}, {conta.Id}, {senhaHash}, {deveTrocarSenha}, {conta.CriadaEm})
+            """,
+            cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RegistrarEmailAsync(Guid organizacaoId, Guid contaId, string emailNormalizado, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var result = await context.Database.SqlQuery<bool>($"SELECT identidade_registrar_email({contaId}, {emailNormalizado}) AS \"Value\"").ToListAsync(cancellationToken);
+        return result.Single();
+    }
+
+    public async Task<Conta?> ObterAsync(Guid organizacaoId, Guid contaId, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var row = await context.Contas.AsNoTracking().Where(c => c.Id == contaId).FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : new Conta(row.Id, row.OrganizacaoId, TipoContaText.Parse(row.Tipo), row.Nome, row.Email, row.Usuario, row.Dono, row.Ativa, row.VersaoCredencial);
+    }
+
+    public async Task<ContaParaLogin?> ObterComCredencialAsync(Guid organizacaoId, Guid contaId, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var row = await context.Contas.AsNoTracking()
+            .Where(c => c.Id == contaId)
+            .Join(context.Credenciais.AsNoTracking(), c => c.Id, k => k.ContaId, (c, k) => new { c.Id, c.OrganizacaoId, c.Tipo, c.Ativa, c.VersaoCredencial, k.SenhaHash, k.DeveTrocarSenha })
+            .FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : new ContaParaLogin(row.Id, row.OrganizacaoId, TipoContaText.Parse(row.Tipo), row.SenhaHash, row.DeveTrocarSenha, row.Ativa, row.VersaoCredencial);
+    }
+
+    public async Task TrocarSenhaAsync(Guid organizacaoId, Guid contaId, string novoHash, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var now = clock.UtcNow;
+        await context.Database.ExecuteSqlAsync(
+            $"UPDATE credenciais SET senha_hash = {novoHash}, deve_trocar_senha = false, atualizada_em = {now} WHERE conta_id = {contaId}",
+            cancellationToken);
+        await context.Database.ExecuteSqlAsync($"UPDATE contas SET versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
+    }
+
+    public async Task<bool> RehashAsync(Guid organizacaoId, Guid contaId, string hashAnterior, string novoHash, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var now = clock.UtcNow;
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE credenciais SET senha_hash = {novoHash}, atualizada_em = {now} WHERE conta_id = {contaId} AND senha_hash = {hashAnterior}",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> DesativarAsync(Guid organizacaoId, Guid contaId, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE contas SET ativa = false, desativada_em = {quando}, versao_credencial = versao_credencial + 1 WHERE id = {contaId} AND ativa",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task DefinirDonoAsync(Guid organizacaoId, Guid contaId, bool dono, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        await context.Database.ExecuteSqlAsync($"UPDATE contas SET dono = {dono}, versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
+    }
+
+    public async Task<int> TravarDonosAtivosAsync(Guid organizacaoId, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        // FOR UPDATE: a concurrent unit that wants the same owners waits here until this one commits, then re-reads the committed state.
+        var owners = await context.Database.SqlQuery<Guid>($"SELECT id AS \"Value\" FROM contas WHERE dono AND ativa FOR UPDATE").ToListAsync(cancellationToken);
+        return owners.Count;
+    }
+}
+
+/// <summary>Pre-authentication lookup (spec 5.2.4) over <see cref="PreAuthDatabase"/> and the SECURITY DEFINER functions of migration 0007.</summary>
+public sealed class PostgresPreAuthLookup(PreAuthDatabase database) : IPreAuthLookup
+{
+    public async Task<ContaParaLogin?> LocalizarOperacionalAsync(Guid organizacaoId, string usuarioNormalizado, CancellationToken cancellationToken) =>
+        Map(await database.FindOperationalAsync(organizacaoId, usuarioNormalizado, cancellationToken));
+
+    public async Task<ContaParaLogin?> LocalizarPorEmailAsync(string emailNormalizado, CancellationToken cancellationToken) =>
+        Map(await database.FindByEmailAsync(emailNormalizado, cancellationToken));
+
+    private static ContaParaLogin? Map(PreAuthAccount? account) =>
+        account is null
+            ? null
+            : new ContaParaLogin(account.AccountId, account.OrganizationId, TipoContaText.Parse(account.Type), account.PasswordHash, account.MustChangePassword, account.Active, account.CredentialVersion);
+}

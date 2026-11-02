@@ -35,6 +35,8 @@
     <ProjectReference Include="../Infrastructure/Audit/Flow4Tech.Infrastructure.Audit.csproj" />
     <ProjectReference Include="../Organizacao/Application/Flow4Tech.Organizacao.Application.csproj" />
     <ProjectReference Include="../Organizacao/Infrastructure/Flow4Tech.Organizacao.Infrastructure.csproj" />
+    <ProjectReference Include="../Identidade/Application/Flow4Tech.Identidade.Application.csproj" />
+    <ProjectReference Include="../Identidade/Infrastructure/Flow4Tech.Identidade.Infrastructure.csproj" />
     <ProjectReference Include="../Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />
   </ItemGroup>
 

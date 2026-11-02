@@ -20,6 +20,10 @@ public sealed class RlsArchitectureIntegrationTests(PostgresFixture postgres)
     private static readonly Dictionary<string, string> Exempt = new(StringComparer.Ordinal)
     {
         ["schema_migrations"] = "migration bookkeeping, owner credential only",
+        // Ticket 03 (spec 5.2.4): the ONLY table without organizacao_id. It maps an e-mail to its one account/organization so the login can find the account
+        // before any organization context exists. It has no RLS because no tenant owns it; the application role has NO privilege on it
+        // (Exempt_tables_are_not_reachable_by_the_application_role) and only SECURITY DEFINER functions read or write it (IdentidadeSchemaIntegrationTests).
+        ["identidade_emails"] = "global e-mail -> account lookup for pre-authentication; no privilege for the application role, reached only through SECURITY DEFINER functions",
     };
 
     [Fact]
@@ -28,6 +32,25 @@ public sealed class RlsArchitectureIntegrationTests(PostgresFixture postgres)
         var db = await postgres.CreateDatabaseAsync();
         var violations = await FindViolationsAsync(db.OwnerConnectionString);
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
+    }
+
+    [Fact]
+    public async Task Exempt_tables_are_not_reachable_by_the_application_role()
+    {
+        var db = await postgres.CreateDatabaseAsync();
+        await using var owner = new NpgsqlConnection(db.OwnerConnectionString);
+        await owner.OpenAsync();
+
+        foreach (var table in Exempt.Keys)
+        {
+            foreach (var privilege in new[] { "SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER" })
+            {
+                await using var command = new NpgsqlCommand("SELECT has_table_privilege('flow4tech_app', @t, @p)", owner);
+                command.Parameters.AddWithValue("t", "public." + table);
+                command.Parameters.AddWithValue("p", privilege);
+                Assert.False((bool)(await command.ExecuteScalarAsync())!, $"{table}: the application role has {privilege}");
+            }
+        }
     }
 
     [Fact]

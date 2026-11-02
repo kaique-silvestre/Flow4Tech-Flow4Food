@@ -17,6 +17,7 @@ public static class TenantDataServices
         services.AddSingleton(provider =>
             NpgsqlDataSource.Create(connectionString(provider) ?? throw new InvalidOperationException("No database connection configured (ConnectionStrings__Default or DATABASE_URL).")));
         services.AddSingleton<TenantDatabase>();
+        services.AddSingleton<PreAuthDatabase>();
         services.AddSingleton<IUnitOfWork, TenantUnitOfWork>();
         return services;
     }

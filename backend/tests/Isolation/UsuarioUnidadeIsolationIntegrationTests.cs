@@ -20,6 +20,7 @@ public sealed class UsuarioUnidadeIsolationIntegrationTests(PostgresFixture post
         foreach (var (org, unit, user) in new[] { (OrgA, UnitA, UserA), (OrgB, UnitB, UserB) })
         {
             await using var tx = await tenant.BeginAsync(Ctx(org));
+            await InsertContaAsync(tx, org, user);
             await Exec(tx, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @u, @n)", ("o", org), ("u", user), ("n", unit));
             await tx.CommitAsync();
         }

@@ -1,4 +1,5 @@
 using Flow4Tech.Api;
+using Flow4Tech.Identidade.Infrastructure;
 using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
@@ -34,6 +35,13 @@ builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfigur
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao();
+// Identidade (ticket 03): accounts, passwords, pre-authentication. No route uses it yet (login arrives with the sessions, ticket 04).
+// Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check.
+builder.Services.AddIdentidade(options =>
+{
+    options.TempoMinimoDeLogin = TimeSpan.FromMilliseconds(builder.Configuration.GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400));
+    options.UsarHibp = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:Enabled", false);
+});
 builder.Services.AddScoped<RequestContextAccessor>();
 builder.Services.AddScoped<IRequestContext>(provider => provider.GetRequiredService<RequestContextAccessor>());
 // Session source (resolved lazily, after all configuration is loaded): the test session only in Development/Testing with a configured key

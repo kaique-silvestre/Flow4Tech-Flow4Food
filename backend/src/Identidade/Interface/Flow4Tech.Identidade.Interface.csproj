@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Application/Flow4Tech.Identidade.Application.csproj" />
+  </ItemGroup>
+</Project>

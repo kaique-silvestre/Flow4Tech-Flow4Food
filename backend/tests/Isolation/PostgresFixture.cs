@@ -126,6 +126,13 @@ public sealed record TestDatabase(string OwnerConnectionString, string AppConnec
         }
     }
 
+    /// <summary>A minimal account for tests that only need <c>usuario_unidades.usuario_id</c> to point at a real one (ticket 03 added that foreign key). Run inside a tenant transaction of <paramref name="org"/>.</summary>
+    public static Task<int> InsertContaAsync(TenantTransaction tx, Guid org, Guid contaId) =>
+        Exec(
+            tx,
+            "INSERT INTO contas (id, organizacao_id, tipo, nome, usuario, criada_em) VALUES (@i, @o, 'operacional', 'Teste', 'u' || replace(@i::text, '-', ''), now())",
+            ("i", contaId), ("o", org));
+
     public static async Task<int> Exec(TenantTransaction tx, string sql, params (string Name, object Value)[] args)
     {
         ArgumentNullException.ThrowIfNull(tx);

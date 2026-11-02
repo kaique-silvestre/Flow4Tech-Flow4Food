@@ -123,6 +123,17 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet test backend/tests/Audit/Flow4Tech.Audit.Tests.csproj -c Release
 
+  identidade-tests:
+    name: identity accounts, passwords, pre-authentication under RLS (real PostgreSQL)
+    runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend/tests/Identidade/Flow4Tech.Identidade.Tests.csproj -c Release
+
   authorization-tests:
     name: authorization engine + cumulative limits (real PostgreSQL)
     runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
@@ -240,6 +251,7 @@ jobs:
       - isolation-tests
       - outbox-tests
       - audit-tests
+      - identidade-tests
       - authorization-tests
       - secret-scan
       - dependency-audit

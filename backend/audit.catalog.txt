@@ -1,1 +1,6 @@
+autenticacao:falhar
+conta:criar
+conta:definir-dono
+conta:desativar
+conta:trocar-senha
 sessao:trocar-unidade
