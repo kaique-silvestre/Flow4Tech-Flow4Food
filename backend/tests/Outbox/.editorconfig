@@ -1,0 +1,6 @@
+# Scoped to this test project only (see backend/.editorconfig for the repo-wide policy).
+[*.cs]
+# xunit v2 requires public test classes and fixtures.
+dotnet_diagnostic.CA1515.severity = none
+# Test SQL is literals and fixed table names; there is no user input here.
+dotnet_diagnostic.CA2100.severity = none

@@ -9,5 +9,6 @@ tickets:
 - 05 · openapi-ts-client · done-local · rounds: 2 · PASS WITH RISKS · PENDING-OWNER: first GitHub run of openapi-contract, throwaway PR with deliberate break
 - 06 · rls-isolation-spike · done · rounds: 3 · PASS (note: no-context write asserted on one table). STOPPED for owner review
 - 07 · data-access-choice · done · rounds: 3 · EF Core (owner decision); review PASS WITH RISKS, fixes 1-2 applied without a third review; own MigrationRunner kept w/ checksums
-- 08..12 · pending
+- 08 · outbox-queue-spike · done-local · rounds: 2 · PASS WITH RISKS · Quartz chosen; PENDING-OWNER: staging latency (ticket 12), first GitHub run of outbox-tests, confirm Quartz; follow-ups F1 parked events, F2 org discovery
+- 09..12 · pending
 lessons: 0

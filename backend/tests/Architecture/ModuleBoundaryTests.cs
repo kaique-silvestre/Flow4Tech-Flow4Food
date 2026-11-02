@@ -158,6 +158,34 @@ public class ModuleBoundaryTests
         Assert.Empty(ModuleGraph.Check(projects, OneModule));
     }
 
+    private const string Outbox = "src/Infrastructure/Outbox/o.csproj";
+
+    [Fact]
+    public void Outbox_may_use_EF_Core_on_top_of_Data_but_not_Npgsql_or_DbContext_setup()
+    {
+        var ok = Proj(Outbox, [Data], pkgs: ["Microsoft.EntityFrameworkCore"], usings: ["Microsoft.EntityFrameworkCore", "Flow4Tech.Infrastructure.Data"], mentions: []);
+        Assert.Empty(ModuleGraph.Check([ok, Proj(Data)], OneModule));
+        Assert.Contains(ModuleGraph.Check([Proj(Outbox, pkgs: ["Npgsql"])], OneModule), v => v.Contains("only Infrastructure/Data may use Npgsql", StringComparison.Ordinal));
+        Assert.Contains(ModuleGraph.Check([Proj(Outbox, mentions: ["DbContextSetup"])], OneModule), v => v.Contains("AddDbContext/UseNpgsql/DbContextOptions outside", StringComparison.Ordinal));
+        Assert.Contains(ModuleGraph.Check([Proj(Outbox, mentions: ["TenantSetting"])], OneModule), v => v.Contains("app.organizacao_id", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Module_Infrastructure_may_reference_Outbox()
+    {
+        Assert.Empty(ModuleGraph.Check([Proj("src/A/Infrastructure/i.csproj", [Outbox]), Proj(Outbox)], OneModule));
+    }
+
+    [Theory]
+    [InlineData("src/A/Domain/a.csproj")]
+    [InlineData("src/A/Application/a.csproj")]
+    [InlineData("src/A/Interface/a.csproj")]
+    public void Module_layers_other_than_Infrastructure_may_not_reference_Outbox(string path)
+    {
+        var violations = ModuleGraph.Check([Proj(path, [Outbox]), Proj(Outbox)], OneModule);
+        Assert.Contains(violations, v => v.Contains("src/Infrastructure/Outbox", StringComparison.Ordinal) && v.StartsWith(path, StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("src/A/Domain/a.csproj")]
     [InlineData("src/A/Application/a.csproj")]

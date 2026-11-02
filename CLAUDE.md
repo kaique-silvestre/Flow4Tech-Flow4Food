@@ -4,11 +4,12 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 
 ## Structure
 - `backend/Flow4Tech.sln`
-  - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; later decision engine contract, event bus, audit).
+  - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; `Events/IDomainEvent`; later decision engine contract, audit).
   - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`). Project names `Flow4Tech.<Module>.<Layer>`.
   - `src/Infrastructure/Data`: shared technical data access (`Flow4Tech.Infrastructure.Data`: `TenantDatabase`, `MigrationRunner`); not a module; only a module's Infrastructure layer (and Api) may reference it.
+  - `src/Infrastructure/Outbox`: transactional outbox and background-job seam (`Flow4Tech.Infrastructure.Outbox`: `OutboxWriter`, `OutboxDispatcher`, `IOutboxConsumer`, `IdempotentConsumer`, `IBackgroundJobs`); not a module, built on `TenantDatabase`; module Infrastructure layers may reference it.
   - `src/Api`: host (`Flow4Tech.Api`, Web SDK); health endpoints.
-  - `tests/Flow4Tech.Tests`: xUnit. `tests/Isolation`: tenant isolation + RLS architecture tests against real PostgreSQL (classes named `*Integration*`).
+  - `tests/Flow4Tech.Tests`: xUnit. `tests/Isolation`: tenant isolation + RLS architecture tests against real PostgreSQL (classes named `*Integration*`). `tests/Outbox`: outbox, dispatcher, idempotent consumer and job-context tests against real PostgreSQL.
   - `backend/migrations`: versioned plain SQL (`NNNN_name.sql`), see Data and tenant isolation.
 - `frontend/{app,control,design-system}` and `frontend/packages/api-client` (generated TypeScript client, imported by `app` and `control`): pnpm workspaces (listed in root `pnpm-workspace.yaml`); `frontend/tsconfig.base.json` is strict.
 - `docs/adr/`: decisions; copy `0000-template.md`.
@@ -35,6 +36,7 @@ One pipeline on every pull request and on push to `main`. Merge requires the agg
 - `dependency-audit`: `dotnet list package --vulnerable --include-transitive` and `pnpm audit --audit-level=high`
 - `openapi-contract`: regenerates `openapi.json` + client and fails if the committed output differs (`git diff --exit-code`); runs client tests; runs `oasdiff breaking --fail-on ERR` (pinned `tufin/oasdiff` image) between the base revision (PR base / push `before`) and the head contract, so removing or narrowing anything clients rely on fails the PR.
 - `isolation-tests`: `backend/tests/Isolation` (tenant isolation + RLS architecture rule, real PostgreSQL via Testcontainers, app credential). Own project, so the `unit-tests`/`integration-tests` name filters (which target `Flow4Tech.Tests` only) neither run nor miss it.
+- `outbox-tests`: `backend/tests/Outbox` (outbox atomicity, at-least-once dispatcher, idempotent consumer, organization context restored in background jobs under RLS; real PostgreSQL via Testcontainers). Own project, same reason as isolation.
 - Later tickets add: permission gates (10).
 - No secrets in the repo: config via environment variables; gitleaks fails the pipeline on any finding in history.
 
@@ -65,8 +67,9 @@ Duration budget (TARGET, not yet measured; replace with the first real run): who
 - Schema is owned by SQL migrations, not EF: no EF migrations (Design/Tools packages banned), no `EnsureCreated`. RLS policies, `FORCE`, roles, composite FKs are in `backend/migrations`. Every module context needs an integration test with `Assert.Empty(await SchemaDrift.FindAsync(context))` (model vs migrated database).
 - SQL stays visible: reads use `AsNoTracking()`; critical queries get a test asserting `ToQueryString()` text (see `TenantDbContextIntegrationTests`) and never filter on `organizacao_id` in the application (RLS does it). Raw SQL for hot or complex queries only as interpolated `FromSql($"...")`, `Database.ExecuteSqlAsync($"...")`, `Database.SqlQuery<T>($"...")` on the tenant context; `FromSqlRaw`/`ExecuteSqlRaw`/`SqlQueryRaw` are banned; never concatenate. Warm the EF model at host start (first query costs about 1 s).
 - Enforced by `tests/Architecture` (`ModuleGraph.CheckTenantDataAccess`): `Npgsql` only in `src/Infrastructure/Data` (exemption: the readiness probe in `src/Api`); EF Core only in Data and module Infrastructure layers; Dapper and EF Design/Tools banned; only a module Infrastructure layer may reference the Data project. Get connections only from `TenantDatabase`.
-- `backend/spikes/**` is disposable (Dapper vs EF evidence), outside `Flow4Tech.sln` (no CI gate builds it); never reference it from `src`.
-- Open item (ADR-002): ticket 08 defines context restore in jobs/handlers (`BeginAsync` per job) and its isolation test.
+- `backend/spikes/**` is disposable (Dapper vs EF evidence, Wolverine/Hangfire/Quartz comparison), outside `Flow4Tech.sln` (no CI gate builds it); never reference it from `src`.
+- Background work and events (ADR-003): there is no ambient organization. A job carries `Job.Organization`; the handler restores it with `TenantDatabase.BeginAsync(job.Organization)` before touching data. Publish a domain event with `OutboxWriter.AddAsync(tx, organization, event)` on the SAME `TenantTransaction` as the state change (never its own transaction). `OutboxDispatcher.DispatchAsync(organization)` delivers at least once, running consumers inside a `BeginAsync` for the event's organization; consumers must be idempotent on `OutboxMessage.Id` (`IdempotentConsumer` + inbox table does it for database effects), and must not assume ordering. Queue/worker libraries only ever sit behind `IBackgroundJobs` (Quartz chosen; Wolverine and Hangfire compared in ADR-003). Name event types stably (`amostra.item-criado`); never rename one once published.
+- Open item (ADR-003): how the dispatcher finds which organizations have pending events (RLS hides them without a context).
 
 ## Writing a route the secure way
 1. Resolve the organization/unit from `OrganizationContext` (authenticated session), never from client input.

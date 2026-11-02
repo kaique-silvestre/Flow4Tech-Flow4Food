@@ -1,6 +1,6 @@
 # 002. PostgreSQL with row-level security (RLS) for tenant isolation
 
-- Status: accepted (spike 06 proved the mechanism; ticket 07 chose the data-access style and confirmed the migration runner)
+- Status: accepted (spike 06 proved the mechanism; ticket 07 chose the data-access style and confirmed the migration runner; ticket 08 closed the background-job context item)
 - Date: 2026-11-01
 
 ## Context
@@ -28,7 +28,7 @@ Minimum version: PostgreSQL 16 (spike ran on 17). Relied on: `CREATE ROLE` by a 
 5. Foreign-key checks bypass RLS. A plain FK could point to another tenant's row, so child tables use composite FKs `(organizacao_id, parent_id) -> parent (organizacao_id, id)`; proven by test.
 6. Reusing one physical connection (pool size 1, same `pg_backend_pid`) for tenant A, then B, then no tenant shows no leak, including with the Npgsql reset-on-close disabled.
 7. Limit of the model: RLS trusts whoever sets `app.organizacao_id`. Any SQL running as the app role can set it (SQL injection with stacked statements, or code bypassing `TenantDatabase`). Mitigations: parameterized SQL only, `TenantDatabase` as the sole connection source (enforced by architecture test since ticket 07), organization id taken from the authenticated token only. A stronger option (context via a signed token verified in the database) is deferred.
-8. Background jobs and event handlers must open `TenantDatabase.BeginAsync` with the organization of the job/event (outbox, ticket 08); there is no ambient context.
+8. Background jobs and event handlers must open `TenantDatabase.BeginAsync` with the organization of the job/event; there is no ambient context. Implemented and tested under RLS in ticket 08 (`OutboxDispatcher`, `Job.Organization`; see ADR-003).
 
 ## Data-access choice (ticket 07)
 Spike `backend/spikes/data-access` (disposable, kept as evidence) implemented the same use case (insert and list `amostra_itens` under RLS, per-transaction context) with raw Npgsql, Dapper and EF Core 10 on top of `TenantDatabase`, against real PostgreSQL 17. Full numbers and method: `.scratch/fundacao-tecnica/findings/data-access.md`. Measured on an Intel i7-9750H, 12 threads, Docker Desktop PostgreSQL 17 (loopback port-forward), 1500 iterations after 200 warm-up, 3 runs each:
@@ -59,10 +59,10 @@ Real migration `0001` applied by each candidate with the owner credential: own `
 **Decision: keep our SQL runner, even with EF Core as the data-access style; no EF migrations.** Reasons: the security-critical objects (roles, `FORCE ROW LEVEL SECURITY`, the single `FOR ALL TO PUBLIC` policy per table, composite tenant FKs, default privileges, `set_config` function) are SQL that EF migrations cannot express except as `migrationBuilder.Sql` blobs, which would hide them inside generated C# and a model snapshot that can diverge from them; the architecture test inspects the real catalog regardless of tool; the runner is about 100 lines and now refuses edits to applied files via SHA-256 checksums (tests in `tests/Isolation/MigrationRunnerIntegrationTests.cs`). EF Design/Tools are banned in `src` to keep it that way. Guard against model drift: `SchemaDrift` test per context (above). Revisit Flyway only if migrations need repeatable scripts, undo, or are run by ops outside the application image. DbUp offers nothing over the current runner (no lock, no checksum).
 
 ## Open items
-- Ticket 08 (outbox/jobs): define how a job/handler restores the organization context (`BeginAsync` per job) and add an isolation test for it. Still open.
+- Closed in ticket 08 (ADR-003): jobs carry the `OrganizationContext` and the handler/dispatcher opens `BeginAsync` with it; tests in `tests/Outbox` prove a handler that restores it sees only its organization and one that does not sees zero rows with writes refused (42501). New open item from it: how a dispatcher discovers which organizations have pending events (RLS hides them without a context), see ADR-003 open items; likely the same BYPASSRLS maintenance role as backfills.
 - The architecture rule is static, but the runtime pieces close most of the gap: a `TenantDbContext` cannot be built without a `TenantTransaction`, and commands outside a live one throw. A module can still hold a context past its unit of work only to have every command refused. The `src/Api` Npgsql exemption (readiness `SELECT 1`) should disappear when the probe moves into the Data project.
 - Known limit: `TenantTransaction.Connection` is public (callers need it for raw commands), so code holding a transaction could run its own `set_config('app.organizacao_id', ...)` and switch tenant inside the unit of work. Mitigations: an architecture test bans the literal `app.organizacao_id` in `src` outside the Data project (migrations are SQL, not scanned), parameterized SQL only, review. A stronger design (context bound to a signed token verified in the database, or not exposing the raw connection) is deferred with finding 7.
-- Test project `tests/Isolation` seeds through `TenantDatabase` with the owner credential; a BYPASSRLS maintenance role for backfills is still to be decided when the first backfill needs it.
+- Test project `tests/Isolation` seeds through `TenantDatabase` with the owner credential; a BYPASSRLS maintenance role for backfills is still to be decided when the first backfill needs it (the outbox organization discovery in ADR-003 may need it first).
 
 ## Consequences
 Easier: isolation holds even if a query forgets its `WHERE organizacao_id`; the rule is checkable in CI. Harder: every new table needs the boilerplate (policy, FORCE, composite FKs); owner-side data fixes need a context; the per-transaction `set_config` costs one extra statement per unit of work (measured in ticket 07: about 0.5 ms median with Docker Desktop loopback latency, 1.5 ms against 1.0 ms for `BEGIN; SELECT 1; COMMIT`; it is one extra round trip, so it scales with network latency to the database, not with data).

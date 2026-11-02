@@ -105,9 +105,9 @@ internal static partial class ModuleGraph
                 var target = Parse(refPath);
                 if (target.Module is null)
                 {
-                    if (IsData(refPath) && self.Layer == "Infrastructure")
+                    if ((IsData(refPath) || IsOutbox(refPath)) && self.Layer == "Infrastructure")
                     {
-                        continue; // the only door to tenant data (TenantDatabase); see CheckTenantDataAccess
+                        continue; // the only door to tenant data (TenantDatabase) and the outbox built on it; see CheckTenantDataAccess
                     }
 
                     if (target.Name != "Kernel")
@@ -173,6 +173,8 @@ internal static partial class ModuleGraph
 
     private static bool IsData(string path) => path.StartsWith("src/Infrastructure/Data/", StringComparison.Ordinal);
 
+    private static bool IsOutbox(string path) => path.StartsWith("src/Infrastructure/Outbox/", StringComparison.Ordinal);
+
     private static bool IsNpgsqlName(string name) => name == "Npgsql" || name.StartsWith("Npgsql.", StringComparison.Ordinal);
 
     private static bool IsEfName(string name) => name == "Microsoft.EntityFrameworkCore" || name.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal);
@@ -204,16 +206,18 @@ internal static partial class ModuleGraph
     /// <summary>
     /// ADR-002: tenant data is reached only through TenantDatabase (transaction + organization context), with EF Core as the data-access style.
     /// - Npgsql only in the Data project (a connection cannot be built elsewhere; exemption: the Api readiness probe).
-    /// - EF Core packages and namespaces only in Data and module Infrastructure layers; EF Design/Tools banned (the schema is SQL migrations, not EF migrations).
+    /// - EF Core packages and namespaces only in Data, Outbox and module Infrastructure layers; EF Design/Tools banned (the schema is SQL migrations, not EF migrations).
     /// - DbContexts derive from TenantDbContext (constructible only from a TenantTransaction): direct `: DbContext`, AddDbContext*, UseNpgsql and
     ///   DbContextOptions are Data-only; FromSqlRaw/ExecuteSqlRaw/SqlQueryRaw are banned everywhere (use interpolated FromSql/ExecuteSql/SqlQuery).
     /// - Dapper is not used.
-    /// - Only a module Infrastructure layer may reference the Data project; other layers hit the "only Kernel is allowed outside modules" rule.
+    /// - Only a module Infrastructure layer may reference the Data or Outbox project; other layers hit the "only Kernel is allowed outside modules" rule.
     /// </summary>
     private static void CheckTenantDataAccess(ProjectInfo p, (string? Module, string Layer, string Name) self, List<string> violations)
     {
         var isData = IsData(p.Path);
-        var mayUseEf = isData || (self.Module is not null && self.Layer == "Infrastructure");
+        // Outbox is shared technical code built on TenantDbContext (ticket 08, ADR-003): its own EF mapping of the outbox tables, still only through
+        // TenantDatabase. It gets EF like a module Infrastructure layer; Npgsql, DbContext setup and the tenant setting stay Data-only.
+        var mayUseEf = isData || IsOutbox(p.Path) || (self.Module is not null && self.Layer == "Infrastructure");
         const string Door = "tenant data goes through TenantDatabase, ADR-002";
 
         // src/Api is exempt only because Program.cs runs the readiness probe (SELECT 1, no tenant table) on a raw connection.
@@ -240,12 +244,12 @@ internal static partial class ModuleGraph
         {
             foreach (var pkg in p.PackageReferences.Where(IsEfName))
             {
-                violations.Add($"{p.Path}: references package {pkg}; EF Core is only allowed in Infrastructure/Data and module Infrastructure layers");
+                violations.Add($"{p.Path}: references package {pkg}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox and module Infrastructure layers");
             }
 
             foreach (var u in p.Usings.Where(IsEfName))
             {
-                violations.Add($"{p.Path}: uses {u}; EF Core is only allowed in Infrastructure/Data and module Infrastructure layers");
+                violations.Add($"{p.Path}: uses {u}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox and module Infrastructure layers");
             }
         }
 
