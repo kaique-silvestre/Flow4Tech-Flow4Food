@@ -1,4 +1,5 @@
 using Flow4Tech.Api;
+using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Infrastructure;
@@ -24,8 +25,14 @@ if (databaseConnection is not null)
     builder.Configuration["ConnectionStrings:Default"] = databaseConnection;
 }
 
+// Structured technical log with scopes (CorrelationId rides in the scope). The framework's own request lines print the full URL, query string included
+// (a ?token= would land in the log), so they are muted below Warning: CorrelationMiddleware writes the request line instead (method, route pattern, status).
+builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Services.AddOpenApi();
 builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"));
+builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao();
 builder.Services.AddScoped<RequestContextAccessor>();
 builder.Services.AddScoped<IRequestContext>(provider => provider.GetRequiredService<RequestContextAccessor>());
@@ -37,6 +44,7 @@ builder.Services.AddSingleton<ISessionSource>(provider =>
         : new NoSessionSource());
 
 var app = builder.Build();
+app.UseMiddleware<CorrelationMiddleware>();
 app.UseMiddleware<RequestContextMiddleware>();
 
 if (app.Environment.IsDevelopment())

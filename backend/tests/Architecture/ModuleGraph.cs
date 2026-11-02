@@ -175,6 +175,8 @@ internal static partial class ModuleGraph
 
     private static bool IsOutbox(string path) => path.StartsWith("src/Infrastructure/Outbox/", StringComparison.Ordinal);
 
+    private static bool IsAudit(string path) => path.StartsWith("src/Infrastructure/Audit/", StringComparison.Ordinal);
+
     private static bool IsNpgsqlName(string name) => name == "Npgsql" || name.StartsWith("Npgsql.", StringComparison.Ordinal);
 
     private static bool IsEfName(string name) => name == "Microsoft.EntityFrameworkCore" || name.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal);
@@ -217,7 +219,8 @@ internal static partial class ModuleGraph
         var isData = IsData(p.Path);
         // Outbox is shared technical code built on TenantDbContext (ticket 08, ADR-003): its own EF mapping of the outbox tables, still only through
         // TenantDatabase. It gets EF like a module Infrastructure layer; Npgsql, DbContext setup and the tenant setting stay Data-only.
-        var mayUseEf = isData || IsOutbox(p.Path) || (self.Module is not null && self.Layer == "Infrastructure");
+        // Audit (ticket 02) is the same kind of shared technical code: EF mapping of the audit table on top of TenantDbContext, nothing else.
+        var mayUseEf = isData || IsOutbox(p.Path) || IsAudit(p.Path) || (self.Module is not null && self.Layer == "Infrastructure");
         const string Door = "tenant data goes through TenantDatabase, ADR-002";
 
         // src/Api is exempt only because Program.cs runs the readiness probe (SELECT 1, no tenant table) on a raw connection.
@@ -244,12 +247,12 @@ internal static partial class ModuleGraph
         {
             foreach (var pkg in p.PackageReferences.Where(IsEfName))
             {
-                violations.Add($"{p.Path}: references package {pkg}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox and module Infrastructure layers");
+                violations.Add($"{p.Path}: references package {pkg}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox, Infrastructure/Audit and module Infrastructure layers");
             }
 
             foreach (var u in p.Usings.Where(IsEfName))
             {
-                violations.Add($"{p.Path}: uses {u}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox and module Infrastructure layers");
+                violations.Add($"{p.Path}: uses {u}; EF Core is only allowed in Infrastructure/Data, Infrastructure/Outbox, Infrastructure/Audit and module Infrastructure layers");
             }
         }
 

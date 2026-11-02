@@ -26,6 +26,8 @@ internal sealed class RequestContextAccessor : IRequestContext
 
     public Guid UserId => (_session ?? throw NotResolved()).UserId;
 
+    public Guid SessionId => (_session ?? throw NotResolved()).SessionId;
+
     public OrganizationContext Organization => _organization ?? throw NotResolved();
 
     public AuthenticatedSession Session => _session ?? throw NotResolved();

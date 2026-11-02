@@ -4,9 +4,13 @@ using Flow4Tech.Api;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Infrastructure.Migrator;
 using Flow4Tech.Kernel;
+using Flow4Tech.Kernel.Audit;
+using Flow4Tech.Organizacao.Application;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -101,7 +105,7 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         return Path.Combine(dir?.FullName ?? throw new InvalidOperationException("backend root not found"), "migrations");
     }
 
-    private ApiFactory Api(string environment = "Testing", string? key = Key) => new(_appConnection, environment, key);
+    private ApiFactory Api(string environment = "Testing", string? key = Key, CapturedLogs? logs = null) => new(_appConnection, environment, key, logs);
 
     private static HttpRequestMessage Get(string path, string? token)
     {
@@ -297,11 +301,215 @@ public sealed class RequestContextEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(new Uri("/health/live", UriKind.Relative))).StatusCode);
     }
 
-    private sealed class ApiFactory(string connectionString, string environment, string? key) : WebApplicationFactory<Program>
+    // ---- audit of the unit switch (ticket 02, spec 5.1.4 and 5.6) ----
+
+    private sealed record AuditRowDto(string Acao, string Resultado, Guid? Usuario, Guid? Sessao, Guid? Unidade, string? ObjetoId, string? Antes, string? Depois, string Correlacao, long Sequencia);
+
+    private async Task<List<AuditRowDto>> AuditRows(Guid org, Guid unit)
+    {
+        await using var source = NpgsqlDataSource.Create(_appConnection);
+        await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(org, unit));
+        await using var command = new NpgsqlCommand(
+            "SELECT acao, resultado, usuario_id, sessao_id, unidade_id, objeto_id, antes->>'unidadeId', depois->>'unidadeId', correlation_id, sequencia FROM auditoria_registros ORDER BY sequencia",
+            tx.Connection,
+            tx.Transaction);
+        var rows = new List<AuditRowDto>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            rows.Add(new AuditRowDto(
+                reader.GetString(0), reader.GetString(1),
+                await reader.IsDBNullAsync(2) ? null : reader.GetGuid(2), await reader.IsDBNullAsync(3) ? null : reader.GetGuid(3), await reader.IsDBNullAsync(4) ? null : reader.GetGuid(4),
+                await reader.IsDBNullAsync(5) ? null : reader.GetString(5), await reader.IsDBNullAsync(6) ? null : reader.GetString(6), await reader.IsDBNullAsync(7) ? null : reader.GetString(7),
+                reader.GetString(8), reader.GetInt64(9)));
+        }
+
+        return rows;
+    }
+
+    private static HttpRequestMessage SwitchRequest(Guid destination, string token, string? traceparent = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/sessao/unidade-ativa", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { unidadeDestinoId = destination }),
+        };
+        request.Headers.Add(TestSession.HeaderName, token);
+        if (traceparent is not null)
+        {
+            request.Headers.Add("traceparent", traceparent);
+        }
+
+        return request;
+    }
+
+    [Fact]
+    public async Task Switching_unit_writes_an_audit_record_with_actor_before_after_and_the_correlation_id_of_the_request_and_the_technical_log()
+    {
+        using var logs = new CapturedLogs();
+        await using var api = Api(logs: logs);
+        using var client = api.CreateClient();
+        var session = Guid.NewGuid();
+        const string TraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1, session), $"00-{TraceId}-00f067aa0ba902b7-01");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // (1) the request: the correlation id is the trace id the client sent, and it comes back in the response.
+        Assert.Equal(TraceId, Assert.Single(response.Headers.GetValues("X-Correlation-Id")));
+        // (3) the audit record.
+        var row = Assert.Single(await AuditRows(OrgA, UnitA1));
+        Assert.Equal(("sessao:trocar-unidade", "sucesso", UserMulti, session, UnitA1), (row.Acao, row.Resultado, row.Usuario, row.Sessao, row.Unidade));
+        Assert.Equal((UnitA2.ToString(), UnitA1.ToString(), UnitA2.ToString(), TraceId), (row.ObjetoId, row.Antes, row.Depois, row.Correlacao));
+        // (2) the technical log line of the same request carries the same id.
+        var line = Assert.Single(logs.Lines, l => l.Contains("http.requisicao", StringComparison.Ordinal) && l.Contains("/sessao/unidade-ativa", StringComparison.Ordinal));
+        Assert.Contains($"CorrelationId={TraceId}", line, StringComparison.Ordinal);
+        Assert.Contains("status=200", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_a_traceparent_the_request_still_gets_one_id_shared_by_the_response_log_and_audit()
+    {
+        using var logs = new CapturedLogs();
+        await using var api = Api(logs: logs);
+        using var client = api.CreateClient();
+        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1));
+
+        var response = await client.SendAsync(request);
+
+        var id = Assert.Single(response.Headers.GetValues("X-Correlation-Id"));
+        Assert.Matches("^[0-9a-f]{32}$", id);
+        Assert.Equal(id, Assert.Single(await AuditRows(OrgA, UnitA1)).Correlacao);
+        Assert.Contains(logs.Lines, l => l.Contains($"CorrelationId={id}", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_refused_switch_is_recorded_as_negado_on_its_own_transaction_and_the_unit_stays()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var token = Token(UserMulti, OrgA, UnitA1, Guid.NewGuid());
+        using var request = SwitchRequest(UnitA3, token);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var row = Assert.Single(await AuditRows(OrgA, UnitA1));
+        Assert.Equal(("sessao:trocar-unidade", "negado", UnitA3.ToString()), (row.Acao, row.Resultado, row.ObjetoId));
+    }
+
+    [Fact]
+    public async Task A_switch_that_fails_after_being_audited_leaves_no_audit_record()
+    {
+        await using var api = Api();
+        using var scope = api.Services.CreateScope();
+        var unidades = scope.ServiceProvider.GetRequiredService<UnidadesDoUsuario>();
+        var request = new FakeRequest(UserMulti, Guid.NewGuid(), new OrganizationContext(OrgA, UnitA1));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => unidades.TrocarAsync(request, UnitA2, _ => throw new InvalidOperationException("a sessão não pôde ser alterada")));
+
+        Assert.Empty(await AuditRows(OrgA, UnitA1)); // the action failed, so there is no record of it
+        var ok = await unidades.TrocarAsync(request, UnitA2, _ => Task.CompletedTask);
+        Assert.True(ok);
+        Assert.Single(await AuditRows(OrgA, UnitA1));
+    }
+
+    [Fact]
+    public async Task The_audit_of_one_organization_is_invisible_to_another()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        using var request = SwitchRequest(UnitA2, Token(UserMulti, OrgA, UnitA1));
+        await client.SendAsync(request);
+
+        Assert.Single(await AuditRows(OrgA, UnitA1));
+        Assert.Empty(await AuditRows(OrgB, UnitB1));
+    }
+
+    [Fact]
+    public async Task The_technical_log_of_a_request_never_carries_the_query_headers_or_cookies_with_secrets()
+    {
+        using var logs = new CapturedLogs();
+        await using var api = Api(logs: logs);
+        using var client = api.CreateClient();
+        const string Jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+        using var request = Get($"/unidades?token={Jwt}&senha=S3nh%40Secreta", Token(UserMulti, OrgA, UnitA1));
+        request.Headers.Add("Authorization", "Bearer abcdef0123456789abcdef");
+        request.Headers.Add("Cookie", "refresh=cookie-secreto-123456");
+
+        await client.SendAsync(request);
+
+        var all = string.Join('\n', logs.Lines);
+        Assert.Contains("http.requisicao", all, StringComparison.Ordinal);
+        foreach (var secret in new[] { Jwt, "S3nh", "abcdef0123456789abcdef", "cookie-secreto-123456" })
+        {
+            Assert.DoesNotContain(secret, all, StringComparison.Ordinal);
+        }
+    }
+
+    private sealed class FakeRequest(Guid user, Guid session, OrganizationContext organization) : IRequestContext
+    {
+        public Guid UserId => user;
+
+        public Guid SessionId => session;
+
+        public OrganizationContext Organization => organization;
+    }
+
+    /// <summary>Every technical log line (message, state and scopes) as flat text: what any log sink could write.</summary>
+    private sealed class CapturedLogs : ILoggerProvider, ISupportExternalScope
+    {
+        private IExternalScopeProvider _scopes = new LoggerExternalScopeProvider();
+
+        public List<string> Lines { get; } = [];
+
+        public ILogger CreateLogger(string categoryName) => new Logger(this);
+
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider) => _scopes = scopeProvider;
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(CapturedLogs owner) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => owner._scopes.Push(state);
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                ArgumentNullException.ThrowIfNull(formatter);
+                var parts = new List<string> { formatter(state, exception) };
+                void Add(object? item)
+                {
+                    if (item is IEnumerable<KeyValuePair<string, object?>> pairs)
+                    {
+                        parts.AddRange(pairs.Select(kv => $"{kv.Key}={kv.Value}"));
+                    }
+                }
+
+                Add(state);
+                owner._scopes.ForEachScope((scope, _) => Add(scope), 0);
+                lock (owner.Lines)
+                {
+                    owner.Lines.Add(string.Join(' ', parts));
+                }
+            }
+        }
+    }
+
+    private sealed class ApiFactory(string connectionString, string environment, string? key, CapturedLogs? logs = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment(environment);
+            if (logs is not null)
+            {
+                builder.ConfigureLogging(logging => logging.AddProvider(logs));
+            }
+
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 var values = new Dictionary<string, string?> { ["ConnectionStrings:Default"] = connectionString };

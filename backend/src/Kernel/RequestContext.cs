@@ -9,6 +9,9 @@ public interface IRequestContext
 {
     Guid UserId { get; }
 
+    /// <summary>The session the request runs in (audit records carry it).</summary>
+    Guid SessionId { get; }
+
     OrganizationContext Organization { get; }
 }
 

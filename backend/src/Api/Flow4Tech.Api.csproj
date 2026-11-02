@@ -32,6 +32,7 @@
     <!-- Public API of each module (Application): their permission catalogs are collected from these assemblies. -->
     <ProjectReference Include="../Kernel/Flow4Tech.Kernel.csproj" />
     <ProjectReference Include="../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <ProjectReference Include="../Infrastructure/Audit/Flow4Tech.Infrastructure.Audit.csproj" />
     <ProjectReference Include="../Organizacao/Application/Flow4Tech.Organizacao.Application.csproj" />
     <ProjectReference Include="../Organizacao/Infrastructure/Flow4Tech.Organizacao.Infrastructure.csproj" />
     <ProjectReference Include="../Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />

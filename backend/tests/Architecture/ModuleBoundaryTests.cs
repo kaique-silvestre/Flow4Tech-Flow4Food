@@ -170,6 +170,29 @@ public class ModuleBoundaryTests
         Assert.Contains(ModuleGraph.Check([Proj(Outbox, mentions: ["TenantSetting"])], OneModule), v => v.Contains("app.organizacao_id", StringComparison.Ordinal));
     }
 
+    private const string Audit = "src/Infrastructure/Audit/a.csproj";
+
+    [Fact]
+    public void Audit_may_use_EF_Core_on_top_of_Data_and_Outbox_but_not_Npgsql_or_DbContext_setup()
+    {
+        var ok = Proj(Audit, [Data, Outbox], pkgs: ["Microsoft.EntityFrameworkCore"], usings: ["Microsoft.EntityFrameworkCore", "Flow4Tech.Infrastructure.Data"], mentions: []);
+        Assert.Empty(ModuleGraph.Check([ok, Proj(Data), Proj(Outbox)], OneModule));
+        Assert.Contains(ModuleGraph.Check([Proj(Audit, pkgs: ["Npgsql"])], OneModule), v => v.Contains("only Infrastructure/Data may use Npgsql", StringComparison.Ordinal));
+        Assert.Contains(ModuleGraph.Check([Proj(Audit, mentions: ["DbContextSetup"])], OneModule), v => v.Contains("AddDbContext/UseNpgsql/DbContextOptions outside", StringComparison.Ordinal));
+        Assert.Contains(ModuleGraph.Check([Proj(Audit, mentions: ["TenantSetting"])], OneModule), v => v.Contains("app.organizacao_id", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("src/A/Domain/a.csproj")]
+    [InlineData("src/A/Application/a.csproj")]
+    [InlineData("src/A/Interface/a.csproj")]
+    [InlineData("src/A/Infrastructure/a.csproj")]
+    public void Module_layers_may_not_reference_the_Audit_implementation_only_the_Kernel_contract(string path)
+    {
+        var violations = ModuleGraph.Check([Proj(path, [Audit]), Proj(Audit)], OneModule);
+        Assert.Contains(violations, v => v.Contains("src/Infrastructure/Audit", StringComparison.Ordinal) && v.StartsWith(path, StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Module_Infrastructure_may_reference_Outbox()
     {

@@ -37,12 +37,17 @@ internal static class OrganizacaoEndpoints
 
         app.MapPost("/sessao/unidade-ativa", async (TrocarUnidadeRequest body, RequestContextAccessor request, UnidadesDoUsuario unidades, ISessionSource sessions, CancellationToken cancellationToken) =>
             {
-                if (!await unidades.PodeAtivarAsync(request, body.UnidadeDestinoId, cancellationToken))
+                // Check, audit record and the session change share one unit of work; a refusal is recorded on its own transaction (spec 5.1.4, 5.6.4).
+                var trocou = await unidades.TrocarAsync(
+                    request,
+                    body.UnidadeDestinoId,
+                    ct => sessions.SetActiveUnitAsync(request.Session, body.UnidadeDestinoId, ct),
+                    cancellationToken);
+                if (!trocou)
                 {
                     return Results.StatusCode(StatusCodes.Status403Forbidden);
                 }
 
-                await sessions.SetActiveUnitAsync(request.Session, body.UnidadeDestinoId, cancellationToken);
                 return Results.Ok(new UnidadeAtivaResponse(body.UnidadeDestinoId));
             })
             .WithName("trocarUnidadeAtiva")

@@ -62,6 +62,9 @@ public sealed class TenantUnitOfWork(TenantDatabase tenant) : IUnitOfWork
         }
     }
 
+    /// <summary>True while a unit of work for this organization is open in the current flow (used to refuse work that needs a transaction of its own).</summary>
+    public static bool InProgress(Guid organizationId) => Ambient.Value is { Closed: false } open && open.OrganizationId == organizationId;
+
     /// <summary>The transaction of the unit of work in progress for this organization. Throws outside one: capped decisions and business writes never get a transaction of their own.</summary>
     public static TenantTransaction Require(Guid organizationId)
     {

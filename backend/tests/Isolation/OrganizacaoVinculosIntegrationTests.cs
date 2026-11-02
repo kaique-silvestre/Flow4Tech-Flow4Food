@@ -1,5 +1,6 @@
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
+using Flow4Tech.Kernel.Audit;
 using Flow4Tech.Organizacao.Application;
 using Flow4Tech.Organizacao.Infrastructure;
 using Npgsql;
@@ -47,7 +48,7 @@ public sealed class OrganizacaoVinculosIntegrationTests(PostgresFixture postgres
         var (app, tenant) = await ArrangeAsync();
         await using var appSource = app;
         var uow = new TenantUnitOfWork(tenant);
-        var service = new UnidadesDoUsuario(uow, new PostgresUnidadeVinculos());
+        var service = new UnidadesDoUsuario(uow, new PostgresUnidadeVinculos(), new NoAuditLog());
 
         var asA = await service.ListarAsync(new FakeRequest(UserA, Ctx(OrgA)));
         Assert.Equal([UnitA], asA.Select(u => u.Id));
@@ -66,6 +67,16 @@ public sealed class OrganizacaoVinculosIntegrationTests(PostgresFixture postgres
     {
         public Guid UserId => user;
 
+        public Guid SessionId => Guid.Empty;
+
         public OrganizationContext Organization => organization;
+    }
+
+    /// <summary>These tests are about link isolation; the audit trail has its own suite (tests/Audit).</summary>
+    private sealed class NoAuditLog : IAuditLog
+    {
+        public Task RecordAsync(OrganizationContext organization, AuditEntry entry, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task RecordDetachedAsync(OrganizationContext organization, AuditEntry entry, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }
