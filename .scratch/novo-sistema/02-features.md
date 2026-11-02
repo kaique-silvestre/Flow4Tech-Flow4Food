@@ -86,6 +86,7 @@ Do sistema atual e de pedidos de operação, também entram:
 - **Identificação por nome ou por mesa**, e **número da comanda**: sequencial, mostrado como **#12** em toda tela onde a comanda aparece (cartão, tabela, detalhe, cozinha e bar, mesas), para dizer a ordem de abertura sem ambiguidade. É um número de **exibição**, diferente do ID interno único. Opção da unidade (Configurações › Operação, "Numeração das comandas"): **reinicia a cada dia operacional** (padrão) ou **contínua**. Dá para buscar pelo número e ordenar a tabela por ele. Comanda nova ganha o próximo número da unidade.
 - **Motivos padronizados de cancelamento** (cliente desistiu, erro de lançamento, item indisponível, outro), configuráveis.
 - **Tempo de comanda aberta em tempo real** (cronômetro e alerta por limite).
+- **Reserva pelo caminho da comanda** (decisão 2026-10-28): ao criar a comanda, a opção **É uma reserva** com **horário**. A comanda fica no estado **Reservada** (não conta como aberta, não gera alerta de parada, o tempo não corre), **aceita itens antes** da chegada, aparece na tela Mesas como "Reservada" no horário e tem o filtro "Reservas". O botão **Chegou** muda para Aberta e inicia a contagem de tempo. Cliente vinculado (um ou mais) identifica a reserva. Sem fila de espera, sem sinal e sem aviso por WhatsApp/SMS nesta versão. Cadastro por tela própria de reservas fica para depois (`02e` G10).
 - **Atalho do garçom ao abrir comanda** (o garçom logado já vem preenchido; troca com permissão).
 - **Número de pessoas** e **pessoa associada ao item** (base da divisão por assento).
 - **Promoção aplicada ao item** registrada (qual promoção, valor do desconto).
@@ -500,18 +501,13 @@ auditoria:ver                auditoria:exportar [A]
 - **2FA: fora do escopo por enquanto.** O modelo de autenticação já reserva o encaixe (fator adicional por usuário, política "exigir 2FA" por organização) para entrar depois por app autenticador (TOTP, sem SMS) sem refazer login nem sessões. Ver riscos aceitos em `01-visao`.
 - **Sessões**: token curto + refresh rotativo, lista de sessões ativas e revogação, encerramento ao trocar senha ou perder permissão, alerta de login em dispositivo novo.
 
-### Login rápido no salão (PIN) — recomendado
-Garçom digitando e-mail e senha toda hora é inviável. Recomendação:
-- O **dispositivo do salão é registrado** por um gerente/dono (autenticado com senha + 2FA) e vinculado a uma unidade.
-- Nesse dispositivo, o colaborador entra com **PIN pessoal** (4 a 6 dígitos), que só vale ali, naquela unidade.
-- PIN dá acesso **somente às permissões operacionais** do perfil, nunca a administração, dados financeiros ou exportações.
-- Limite de tentativas com bloqueio; o PIN é guardado com hash; o dono ou gerente pode redefinir.
-- Dispositivo pode ser revogado remotamente; sessão de PIN expira por inatividade.
+### Entrada no salão (sem PIN)
+Decisão do dono: **não há PIN**. Todo mundo entra com **usuário e senha** (conta operacional) ou **e-mail e senha** (conta com e-mail). Para o garçom não digitar a senha toda hora, a **sessão do salão dura até o fim do turno** (relógio da sessão configurável por perfil e organização, ver `03-seguranca` §Sessões), com o token de acesso renovado em silêncio. Aparelho perdido ou pessoa que saiu: desativar o usuário ou encerrar as sessões derruba tudo na hora.
 
 ### Usuários e convites
 Dois tipos de conta, conforme o papel:
 - **Conta com e-mail** (dono, gerentes, administrativo): convite por link de uso único; a pessoa **define a própria senha**. Pode entrar com Google.
-- **Conta operacional sem e-mail** (garçom, caixa e demais): **usuário + senha ou PIN**, sem precisar de e-mail. O **nome de usuário é único dentro da organização** (login informa organização + usuário). O dono/gerente cria a conta e o sistema gera uma **credencial temporária mostrada uma única vez**, com **troca obrigatória no primeiro acesso**. Ninguém define a senha de outra pessoa.
+- **Conta operacional sem e-mail** (garçom, caixa e demais): **usuário + senha**, sem precisar de e-mail. O **nome de usuário é único dentro da organização** (login informa organização + usuário). O dono/gerente cria a conta e o sistema gera uma **credencial temporária mostrada uma única vez**, com **troca obrigatória no primeiro acesso**. Ninguém define a senha de outra pessoa.
 - Contas operacionais têm permissões limitadas por padrão: sem administração, sem dados financeiros, sem exportação (configurável por perfil).
 - Redefinição: quem tem `usuario:redefinir_acesso` gera nova credencial temporária; contas com e-mail podem usar "esqueci a senha".
 - Desativar usuário (sem apagar histórico), reativar, forçar logout.
@@ -532,7 +528,6 @@ A plataforma oferece **modelos prontos** (ex.: gerente, caixa, garçom, estoquis
 ```
 usuario:ver   usuario:convidar [A]   usuario:desativar [A]   usuario:redefinir_acesso [A]
 perfil:ver    perfil:gerenciar [A]   permissao:atribuir [A]
-dispositivo:registrar [A]   dispositivo:revogar [A]
 sessao:ver_todas   sessao:revogar [A]
 organizacao:configurar [A]  unidade:gerenciar [A]
 seguranca:exigir_2fa [A]
@@ -747,7 +742,7 @@ Tudo abaixo é candidato; nem tudo entra na primeira entrega. Marcado: **F** = f
 - Margem de produto abaixo do mínimo (R) · CMV do período acima da meta (R)
 
 **Equipe**
-- Colaborador sem acesso há N dias (R) · convite/credencial temporária expirando (F) · novo dispositivo registrado (F)
+- Colaborador sem acesso há N dias (R) · convite/credencial temporária expirando (F)
 
 **Segurança e conta** (obrigatórias)
 - Login em dispositivo novo · falhas repetidas de login · senha alterada · permissões alteradas · perfil ou usuário desativado
@@ -772,7 +767,7 @@ Tudo abaixo é candidato; nem tudo entra na primeira entrega. Marcado: **F** = f
 ### Organização
 - **Dados cadastrais:** razão social, nome fantasia, documento, contato, logotipo.
 - **Unidades:** criar, editar, desativar; vincular usuários e perfis a unidades.
-- **Segurança:** política de senha, duração de sessão, bloqueio, regras de dispositivo/PIN, "exigir 2FA" (reservado), login com Google liberado ou não.
+- **Segurança:** política de senha, duração de sessão, bloqueio, regras de sessão do salão, "exigir 2FA" (reservado), login com Google liberado ou não.
 - **Padrões herdados pelas unidades:** estoque negativo, regras de comissão, taxa de serviço, métodos de pagamento, limites e condições de permissão, regras de notificação, política de retenção dentro do plano.
 - **Catálogos compartilhados:** cardápio, insumos e fornecedores podem ser **da organização** (compartilhados entre unidades) ou **da unidade**; preço e disponibilidade podem ser sobrescritos por unidade.
 - **Plano e cobrança:** plano atual, limites e consumo, faturas (somente leitura; mudança de plano via plataforma ou autoatendimento futuro).
@@ -788,7 +783,6 @@ Tudo abaixo é candidato; nem tudo entra na primeira entrega. Marcado: **F** = f
 - **Cozinha e impressão:** praças, impressoras, modelos de comprovante, tempo-alvo de preparo, destinos por produto.
 - **Estoque:** locais, limites de alerta padrão, política de baixa.
 - **Fiscal (preparado):** CNPJ e regime, certificado, séries, CSC (dados sensíveis criptografados).
-- **Dispositivos:** terminais registrados, PIN, revogação (F11).
 - **Notificações:** regras e destinatários da unidade (F13).
 - **Aparência:** nome exibido, modelo e logotipo no comprovante.
 
@@ -990,7 +984,68 @@ compra:ver_historico_preco   orcamento:ver   orcamento:gerenciar [A]
 pedido_compra:criar   pedido_compra:enviar [A]
 ```
 
+## F19. Assistente de IA com chave própria (BYOK)
+
+Chat dentro do sistema, **web e celular**, que usa a **chave de API do próprio cliente** (decisão do dono do produto: não provemos IA nem pagamos o consumo). Pode **tirar dúvidas sobre o sistema, ler os dados da organização para responder perguntas, navegar entre telas e executar ações**, sempre como a pessoa que está logada. Decisão de lançamento em etapas (ver F19.8); o desenho é de "pode fazer tudo".
+
+### F19.1 Chave e provedor
+- **Provedor e modelo à escolha** (Anthropic, OpenAI, Google; novos por adaptador). Campo de chave com **Testar**, **Trocar**, **Remover**; depois de salva aparece mascarada e **nunca volta ao navegador nem ao celular**.
+- **Uma chave por organização, com chave diferente por unidade** como configuração (a unidade sem chave própria herda a da organização, ou fica sem IA se a organização assim definir).
+- **Armazenamento:** criptografia por campo com chave por organização (`03-seguranca`), inacessível até para o super admin (S13). Valor nunca em log, auditoria ou mensagem de erro.
+- Toda chamada ao provedor sai **do servidor**; o aparelho só fala com a nossa API.
+- **Sem chave configurada o chat não aparece** (ou mostra o convite para configurar a quem tem permissão).
+
+### F19.2 O que o assistente faz
+| Capacidade | Detalhe |
+|---|---|
+| **Dúvidas sobre o sistema** | Responde como usar telas e recursos, a partir da documentação e do registro de telas (U3). Não depende de dado da organização. |
+| **Ler dados** | Faturamento, comandas, cozinha, estoque, caixa, contas, relatórios: consulta por ferramentas da nossa API, **com a permissão e o escopo de unidade de quem pergunta**. |
+| **Navegar** | "Me leve ao DRE", "abre as configurações de mesas": usa o registro central de telas e a busca global (U3c). |
+| **Executar ações** | Cancelar item, dar desconto, abrir comanda, lançar item, criar evento etc., por **ferramentas que são as mesmas ações do sistema**, passando pelo motor de permissões, limites de valor e auditoria. |
+
+### F19.3 Segurança das ações (regras duras)
+1. **A IA nunca tem permissão própria:** age com a permissão, o escopo e os **limites de valor** da pessoa logada, decididos no servidor. O que a pessoa não pode fazer, a IA não faz.
+2. **Confirmação explícita** antes de qualquer ação que grava: cartão "Vou fazer isto: …" com o resumo e botões Confirmar/Cancelar, mostrando valores. Configurável por organização quais ações dispensam confirmação (padrão: nenhuma; ações marcadas **[A]** e **[L]** sempre exigem).
+3. **Auditoria com dupla atribuição:** a linha registra a pessoa e que foi **via assistente**, com o pedido original e o modelo usado.
+4. **Dado é dado, não instrução (prompt injection):** nomes, observações e textos de comanda, cardápio e clientes chegam à IA marcados como conteúdo; pedido para ignorar regras ou agir fora do escopo é tratado como dado. Ações encadeadas a partir de texto lido de um registro exigem confirmação.
+5. **Ferramentas com lista fixa** e esquema validado no servidor; sem acesso livre a banco, arquivo ou rede.
+6. Ações em lote ou de alto valor têm **teto por pedido** configurável.
+
+### F19.4 O que a IA pode ver (configurável pelo cliente)
+- **Categorias de dado** ligadas ou desligadas pela organização: vendas e comandas, cozinha, estoque, caixa, financeiro, equipe e comissões, cardápio e custos, **dados pessoais de clientes** (nome, telefone, documento).
+- **Padrão: dados pessoais de clientes desligados** (mesma regra do `02f`, sem dado pessoal em canal externo). Ligar exige permissão e **consentimento registrado** (F16).
+- O que a IA pode ver é **a interseção** entre a categoria liberada para a IA e a permissão de quem pergunta.
+- **Aviso e consentimento ao ativar:** o texto diz que dados da organização serão enviados ao provedor escolhido pelo cliente, sob os termos dele; aceite registrado na auditoria, por quem ativa.
+
+### F19.5 Quem pode usar e limites
+- Permissão de **uso** por perfil (garçom pode não ter), separada da permissão de **configurar**.
+- **Limite configurável** de uso por pessoa e por dia (mensagens e/ou custo estimado) e **teto da organização**, para o consumo não estourar o crédito do dono. Aviso ao se aproximar do teto.
+- Painel de **consumo** (mensagens, tokens estimados, por pessoa e unidade) para quem tem permissão.
+
+### F19.6 Experiência
+- **Web:** painel lateral aberto por botão e atalho; também acessível pela paleta (U3c). **Celular:** aba ou botão no app, entrada por texto (voz depois).
+- Respostas com **atalhos para a tela de origem** do dado e cartões de confirmação. Histórico das conversas por pessoa, com opção de apagar; retenção configurável.
+- Erros do provedor (chave inválida, limite, indisponível) mostrados em linguagem simples, sem expor a chave.
+
+### F19.7 Privacidade e riscos
+- Conversas contêm dado do negócio: ficam na organização, **não são usadas por nós** e são removidas na exclusão da organização.
+- O cliente responde pelo contrato com o provedor; o sistema só repassa o que a configuração permite.
+- Risco residual: o modelo pode errar. Por isso as ações exigem confirmação e mostram o que vão fazer antes de executar.
+
+### F19.8 Entrega em etapas
+1. **Leitura e navegação** (dúvidas, dados, ir para tela): menor risco, já útil.
+2. **Ações com confirmação**, começando pelas reversíveis e de baixo valor.
+3. **Ações amplas**, configuração de dispensa de confirmação, lote.
+O modelo de ferramentas e permissões é o mesmo nas três; muda só o que está liberado.
+
+### Permissões
+```
+ia:usar                    ia:configurar_chave [A]      ia:configurar_dados [A]
+ia:configurar_limites [A]  ia:ver_consumo               ia:ver_conversas_de_outros [A]
+ia:acao_sem_confirmacao [A][L]
+```
+
 ---
 
 ## Catálogo de features: status
-Concluído em rascunho: F1 a F18 e requisitos não funcionais (`02b`). Cobertura do sistema atual conferida em `02c`. Próximo: `03-seguranca`, depois `04-arquitetura`, `05-ux-design`, `06-roadmap`.
+Concluído em rascunho: F1 a F19 e requisitos não funcionais (`02b`). Cobertura do sistema atual conferida em `02c`. Próximo: `03-seguranca`, depois `04-arquitetura`, `05-ux-design`, `06-roadmap`.

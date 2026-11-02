@@ -26,7 +26,7 @@ Status: rascunho 1, **proposta para decisão**. Nada aqui entrou ainda em `02-fe
 |---|---|---|---|---|
 | G8 | **Cadastro de clientes (CRM básico)** | Cliente com contato, aniversário, histórico de consumo, **consentimento LGPD**; base do fiado, fidelidade, reservas | Mercado: banco de dados de clientes, frequência e preferências | **P1** (cadastro) |
 | G9 | **Fidelidade e cashback** | Pontos, cashback, cupons, níveis | Mercado: programa de fidelidade e promoções | P2 |
-| G10 | **Reservas e fila de espera** | Reservas com controle de sobreposição, fila, aviso ao cliente (SMS/WhatsApp), sinal/depósito | Mercado: fila por tablet e lembretes | P2 |
+| G10 | **Reservas e fila de espera** | Reservas com controle de sobreposição, fila, aviso ao cliente (SMS/WhatsApp), sinal/depósito | Mercado: fila por tablet e lembretes | P2. **Decisão (2026-10-28): sem WhatsApp nem SMS nesta versão**; aviso só por e-mail ou na tela |
 | G11 | **Pesquisa de satisfação / NPS e avaliações** | Pergunta ao cliente após o consumo; painel de nota | (setor) | P3 |
 | G12 | **Cashless / crédito pré-pago** | Recarga em cartão ou pulseira e consumo debitado (bar, balada) | (setor; ligado a "voucher") | P3 |
 
@@ -82,7 +82,7 @@ Status: rascunho 1, **proposta para decisão**. Nada aqui entrou ainda em `02-fe
 | N1 | **Acessibilidade e modo de alto contraste/escuro** para operação em ambiente com pouca luz | Bar à noite; entra no `05-ux-design` |
 | N2 | **Impressão resiliente** (fila local de impressão, reimpressão, falha de impressora) | Parte de F6/F7 |
 | N3 | **Atualização do app sem interromper o salão** | Parte do deploy sem parada (A10) |
-| N4 | **Dispositivos de salão em quiosque** (tela travada no app, auto-login por PIN) | Parte de F11 dispositivos |
+| N4 | ~~Dispositivos de salão em quiosque (tela travada, auto-login por PIN)~~ | **Descartado** (dono removeu o PIN: só usuário/e-mail + senha, sessão do salão até o fim do turno) |
 
 ## 3. Recomendação
 1. **Entram no catálogo agora (P1):** G1 mapa de mesas com status, G2 tipos de venda (mesa, balcão, retirada) no modelo, G8 cadastro de clientes com consentimento, G22 CMV teórico vs real no desenho do inventário, G31 engenharia de cardápio, G34 importação em massa.

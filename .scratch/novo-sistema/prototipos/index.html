@@ -31,7 +31,7 @@
   Teclas (web): N nova comanda (mesa ou nome + Enter) / na janela: digitar "3 chope" + Enter adiciona, Enter com a busca vazia envia, Esc fecha / [ recolhe o menu / Ctrl+K busca.
     Comanda (web): clicar no card ou N abre uma janela grande. Aba Lancar: itens para enviar + cardapio com busca; aba Conta: pagamento.
   Persistencia (localStorage): flow.settings (tema, cores, forma, taxa).
-  Usuarios e perfis (web): #m=web&screen=usuarios (&user=u3 abre a ficha, &tab=acesso|sim|sess|avisos|hist; &tab=aparelhos na lista)  #m=web&screen=perfis (&perfil=garcom, &view=matriz)
+  Usuarios e perfis (web): #m=web&screen=usuarios (&user=u3 abre a ficha, &tab=acesso|sim|sess|avisos|hist)  #m=web&screen=perfis (&perfil=garcom, &view=matriz)
   Configuracoes (web): #m=web&screen=configuracoes&unit=centro|praia|all&ctab=cad|op|venda|caixa|cozinha|estoque|hist   Organizacao: #m=web&screen=organizacao&otab=dados|unidades|padroes|seg|plano
   Cozinha e bar (web): #m=web&screen=cozinha&praca=cozinha|bar   Mesas (web): #m=web&screen=mesas&mesa=12
   Promocoes (web): #m=web&screen=promocoes   Cardapio (web): #m=web&screen=cardapio&ctab=prod|cat&produto=12&ptab=dados|preco|opcoes|ficha|hist
@@ -1115,6 +1115,21 @@ body.cal-moving,body.cal-moving *{cursor:grabbing!important;user-select:none}
 .qp__go svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .qp__row:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 40%,transparent),0 10px 30px rgb(15 23 42/.3)}
 @keyframes qpup{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+/* Nova comanda: janela central com o campo já em foco (N) */
+.qp{top:13vh;bottom:auto;width:min(540px,calc(100vw - 32px));display:flex;flex-direction:column;padding:20px 20px 18px;background:var(--card);color:var(--ink);border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-card);box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.qp__t{order:0;margin:0 0 12px;font:600 calc(20px*var(--text-scale)) var(--serif);letter-spacing:-.01em}
+.qp__row{order:1;min-height:52px;padding:0 6px 0 16px;border-radius:var(--radius);background:var(--bg);color:var(--ink);border:var(--border-w) solid var(--line-strong);box-shadow:none}
+.qp__row:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+.qp__row>svg{stroke:var(--muted);opacity:1}.qp__row input{font-size:calc(17px*var(--text-scale))}.qp__row input::placeholder{color:var(--muted);opacity:1}
+.qp__go{width:40px;height:40px;border-radius:var(--radius-sm)}
+.qp__h{order:2;margin:8px 2px 0;color:var(--muted);text-shadow:none}
+.qp__rv{order:3;display:flex;align-items:center;gap:16px;margin-top:12px}.qp__rt{display:flex;align-items:center;gap:8px;font-size:calc(13px*var(--text-scale));color:var(--muted)}.qp__rt input{height:34px;border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--ink);padding:0 8px;font:inherit}
+.qp__m{order:4;margin:12px 0 0;gap:8px}.qp__m>span{color:var(--muted);text-shadow:none}
+.qp__chip{box-shadow:none}
+.qp__cl{order:5;margin-top:14px;padding-top:12px;border-top:var(--border-w) solid var(--line)}.qp__cl:empty{display:none}
+.qp__cl .lbl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:calc(12.5px*var(--text-scale));color:var(--muted)}
+.qp__cl .cx-q{margin-top:8px}.qp__cl .cx-f .row{margin-top:10px}
+#qp-scrim{position:fixed;inset:0;z-index:64;background:var(--scrim)}
 @media (prefers-reduced-motion:reduce){.qp{animation:none}}
 @media (max-width:640px){.qp{width:calc(100vw - 24px)}}
 /* cartao */
@@ -1985,6 +2000,114 @@ dialog.kdlg::backdrop{background:var(--scrim,rgba(15,23,42,.45))}
 .cp-spark-w.cp-up{color:var(--alert)}
 .cp-spark{display:block}
 @media(max-width:760px){.cp-ln{grid-template-columns:1fr 1fr}.cp-rc{grid-template-columns:1fr 1fr}}
+
+/* comanda: renomear, cliente, histórico */
+.ren-b{margin-left:8px;width:28px;height:28px;border:0;border-radius:var(--radius-sm);background:none;color:var(--muted);cursor:pointer;vertical-align:middle;display:inline-grid;place-items:center}
+.ren-b:hover{background:var(--hover);color:var(--ink)}.ren-b svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ren-in{height:36px;min-width:180px;border:var(--border-w) solid var(--line-strong);border-radius:var(--radius);background:var(--bg);color:var(--ink);font:600 calc(18px*var(--text-scale)) var(--sans);padding:0 10px;margin:0 8px}
+.ren-in:focus{outline:var(--fl-focus-w,2px) solid var(--brand);outline-offset:1px}
+.cx-add,.cx-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;font:500 calc(12.5px*var(--text-scale)) var(--sans);border:var(--border-w) solid var(--line-strong);background:var(--card);color:var(--ink)}
+.cx-add{cursor:pointer;color:var(--brand)}.cx-add:hover,.cx-add[aria-pressed=true]{background:var(--brand-soft)}
+.cx-chip svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6}.cx-chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0}
+.cx-pk{border:var(--border-w) solid var(--line-strong);border-radius:var(--radius);padding:12px;margin-bottom:14px;background:var(--card)}
+.cx-pk__h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cx-q,.cx-f input{width:100%;height:38px;border:var(--border-w) solid var(--line-strong);border-radius:var(--radius);background:var(--bg);color:var(--ink);padding:0 12px;font:inherit}
+.cx-q:focus,.cx-f input:focus{outline:var(--fl-focus-w,2px) solid var(--brand);outline-offset:1px}
+.cx-r{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:7px 10px;margin-top:4px;border:0;border-radius:var(--radius-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.cx-r:hover{background:var(--hover)}.cx-r span{font-size:calc(12.5px*var(--text-scale));color:var(--muted)}.cx-r--new{color:var(--brand);font-weight:500}
+.cx-f label{display:block;font-size:calc(12.5px*var(--text-scale));color:var(--muted);margin-top:8px}.cx-f input{margin-top:3px}.cx-f .row{display:flex;gap:8px;margin-top:10px}
+.cx-n{margin:8px 0 0;font-size:calc(12.5px*var(--text-scale));color:var(--muted)}
+.cx-tl{margin-top:18px;border-top:var(--border-w) solid var(--line);padding-top:12px}
+.cx-tl h3{margin:0 0 8px;font-size:calc(13px*var(--text-scale));color:var(--muted);font-weight:600}
+.cx-tl ol{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.cx-tl li{position:relative;padding:0 0 10px 12px}.cx-tl li::before{content:"";position:absolute;left:-20px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--brand)}
+.cx-tl li b{display:block;font-weight:500;font-size:calc(13.5px*var(--text-scale))}.cx-tl li span{font-size:calc(12px*var(--text-scale));color:var(--muted)}
+/* ===== ASSISTENTE DE IA (F19, protótipo): bolinha + chat ===== */
+.ai-orb{position:fixed;right:16px;bottom:132px;z-index:61;width:48px;height:48px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:radial-gradient(circle at 34% 28%,#d8ecff 0,#8fc2ff 28%,#4b8df0 62%,#2457c9 100%);box-shadow:0 6px 18px rgba(36,87,201,.45),inset 0 -4px 8px rgba(10,30,90,.35),inset 0 3px 5px rgba(255,255,255,.55);animation:aiFloat 4.5s ease-in-out infinite}
+.ai-orb:hover{filter:brightness(1.06);transform:scale(1.06)}
+.ai-orb:focus-visible{outline:var(--fl-focus-w,2px) solid var(--brand);outline-offset:3px}
+.ai-orb[aria-expanded=true]{display:none}
+.ai-orb i,.ai-av i{position:absolute;top:44%;width:7%;height:15%;min-width:3px;border-radius:50%;background:#0d2a66;animation:aiBlink 5s infinite}
+.ai-orb i:nth-child(1),.ai-av i:nth-child(1){left:36%}.ai-orb i:nth-child(2),.ai-av i:nth-child(2){left:57%}
+.ai-orb i{width:5px;height:9px}
+.ai-orb::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(75,141,240,.45);animation:aiPulse 3s ease-out infinite;pointer-events:none}
+@keyframes aiFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes aiBlink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes aiPulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+@media(prefers-reduced-motion:reduce){.ai-orb,.ai-orb i,.ai-av i,.ai-orb::after{animation:none}}
+.ai-p{position:fixed;right:16px;bottom:76px;z-index:66;width:min(390px,calc(100vw - 32px));height:min(560px,calc(100vh - 96px));display:none;flex-direction:column;background:var(--card);color:var(--ink);border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-card);box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden}
+.ai-p[data-open]{display:flex;animation:aiIn .18s var(--ease,ease-out)}
+@keyframes aiIn{from{opacity:0;transform:translateY(10px) scale(.98)}}
+.ai-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:var(--border-w) solid var(--line);flex:none}
+.ai-av{position:relative;flex:none;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#d8ecff 0,#8fc2ff 28%,#4b8df0 62%,#2457c9 100%);box-shadow:inset 0 -2px 4px rgba(10,30,90,.35)}
+.ai-av.sm{width:22px;height:22px}
+.ai-ht{flex:1;min-width:0;display:flex;flex-direction:column}
+.ai-ht b{font-weight:600;font-size:calc(14.5px*var(--text-scale))}
+.ai-ht span{font-size:calc(12px*var(--text-scale));color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-x{flex:none;width:30px;height:30px;border:0;border-radius:var(--radius-sm);background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.ai-x:hover{background:var(--hover);color:var(--ink)}
+.ai-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round}
+.ai-m{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
+.ai-w{display:flex;gap:8px;align-items:flex-start;max-width:100%}
+.ai-w.me{justify-content:flex-end}
+.ai-b{max-width:86%;padding:9px 12px;border-radius:14px;font-size:calc(14px*var(--text-scale));line-height:1.45;background:var(--hover)}
+.ai-b p{margin:0}.ai-b p+p{margin-top:6px}
+.ai-b ul{margin:6px 0 0;padding-left:18px}
+.ai-b .num{font-variant-numeric:tabular-nums}
+.ai-w.me .ai-b{background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:4px}
+.ai-w:not(.me) .ai-b{border-top-left-radius:4px}
+.ai-b a,.ai-link{color:var(--brand);font-weight:500;text-decoration:none;cursor:pointer;background:none;border:0;padding:0;font:inherit;font-weight:500}
+.ai-b a:hover,.ai-link:hover{text-decoration:underline}
+.ai-card{margin-top:8px;border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-sm);background:var(--card);padding:10px 12px;font-size:calc(13.5px*var(--text-scale))}
+.ai-card h4{margin:0 0 4px;font-size:calc(12px*var(--text-scale));font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ai-card p{margin:0}
+.ai-card .kv{display:flex;justify-content:space-between;gap:12px;margin-top:4px;color:var(--muted)}.ai-card .kv b{color:var(--ink);font-weight:500}
+.ai-card .row{display:flex;gap:8px;margin-top:10px}
+.ai-card .done{margin-top:8px;color:var(--open);font-weight:500}
+.ai-card .no{margin-top:8px;color:var(--muted)}
+.ai-card .sim{margin-top:6px;font-size:calc(11.5px*var(--text-scale));color:var(--muted)}
+.ai-dots{display:inline-flex;gap:4px;padding:4px 2px}.ai-dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:aiDot 1s infinite}
+.ai-dots i:nth-child(2){animation-delay:.15s}.ai-dots i:nth-child(3){animation-delay:.3s}
+@keyframes aiDot{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.ai-sug{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;flex:none}
+.ai-chip{border:var(--border-w) solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 11px;font:inherit;font-size:calc(12.5px*var(--text-scale));cursor:pointer}
+.ai-chip:hover{background:var(--hover)}
+.ai-f{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:var(--border-w) solid var(--line);flex:none}
+.ai-f input{flex:1;min-width:0;height:38px;border:var(--border-w) solid var(--line-strong);border-radius:var(--radius);background:var(--bg);color:var(--ink);padding:0 12px;font:inherit;font-size:calc(14px*var(--text-scale))}
+.ai-f input:focus{outline:var(--fl-focus-w,2px) solid var(--brand);outline-offset:1px}
+.ai-f button{flex:none;width:38px;height:38px;border:0;border-radius:var(--radius);background:var(--brand);color:var(--brand-ink);cursor:pointer;display:grid;place-items:center}
+.ai-f button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ai-note{flex:none;padding:0 14px 10px;font-size:calc(11.5px*var(--text-scale));color:var(--muted);text-align:center}
+@media(max-width:760px){.ai-p{right:0;bottom:0;width:100vw;height:86vh;border-radius:var(--radius-card) var(--radius-card) 0 0}}
+/* ===== BUSCA GLOBAL (paleta Ctrl/Cmd+K, U3c) ===== */
+#pal{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:9vh 16px 0;background:var(--scrim)}
+#pal[data-open]{display:flex}
+.pal{--pg-tela:var(--brand);--pg-aba:#7C5CD6;--pg-rel:var(--open);--pg-cfg:var(--wait);--pg-dado:var(--faint);--pg-acao:var(--brand);
+  width:min(420px,100%);max-height:min(320px,60vh);display:flex;flex-direction:column;background:var(--card);color:var(--ink);border:var(--border-w) solid var(--line-strong);border-radius:var(--radius-card);box-shadow:0 24px 64px rgba(0,0,0,.32);overflow:hidden}
+:root[data-theme=dark] .pal{--pg-aba:#B39BFF}
+.pal__in{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;border-bottom:var(--border-w) solid var(--line);flex:none}
+.pal__in svg{width:17px;height:17px;flex:none;stroke:var(--muted);fill:none;stroke-width:1.6}
+.pal__in input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font:inherit;font-size:calc(16px*var(--text-scale));color:var(--ink)}
+.pal__in input::placeholder{color:var(--muted)}
+.pal__body{overflow:auto;padding:6px 8px 8px;overscroll-behavior:contain}
+.pal__g{padding:8px 8px 4px;font-size:calc(12px*var(--text-scale));font-weight:500;color:var(--muted);display:flex;align-items:center;gap:8px}
+.pal__g i{width:7px;height:7px;border-radius:50%;background:var(--g)}
+.pal__g+.pal__r,.pal__r+.pal__r{margin-top:1px}
+.pal__r{display:flex;align-items:center;gap:10px;width:100%;padding:5px 8px;border:0;border-radius:var(--radius-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.pal__r[aria-selected=true]{background:var(--hover)}
+.pal__ic{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--g) 14%,transparent);color:var(--g)}
+.pal__ic svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pal__t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pal__t b{font-weight:500;font-size:calc(14.5px*var(--text-scale));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pal__t span{font-size:calc(12.5px*var(--text-scale));color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pal__t mark{background:none;color:var(--g);font-weight:600}
+.pal__k{flex:none;font-size:calc(11.5px*var(--text-scale));font-weight:500;color:var(--g);border:var(--border-w) solid color-mix(in srgb,var(--g) 40%,transparent);border-radius:6px;padding:2px 7px}
+.pal__r[aria-selected=true] .pal__k{background:color-mix(in srgb,var(--g) 12%,transparent)}
+.pal__none{padding:36px 16px;text-align:center;color:var(--muted);font-size:calc(14px*var(--text-scale))}
+.pal__foot{flex:none;display:flex;gap:12px;align-items:center;padding:6px 14px;border-top:var(--border-w) solid var(--line);font-size:calc(12px*var(--text-scale));color:var(--muted)}
+.pal__foot kbd{margin-right:4px}
+@media(max-width:760px){#pal{padding-top:6vh}.pal__foot{display:none}}
 </style>
 <style type="text/plain" id="css-mobile">
 /* app: celular */
@@ -2205,6 +2328,24 @@ button{background:none;border:0;cursor:pointer;touch-action:manipulation}
 .unit svg.i{width:16px;height:16px}
 .top .back{width:44px;height:44px;margin-left:-10px;border-radius:50%;display:grid;place-items:center;flex:none}
 .top .back svg{width:24px;height:24px}
+/* Agora (painel do dono no celular) */
+.nw-when{margin:0 0 10px;font-size:.8125rem;color:var(--muted)}
+.nw-h{padding:16px;margin-bottom:10px}.nw-h>small{color:var(--muted);font-size:.8125rem}
+.nw-h>b{display:block;font:600 2rem/1.1 var(--sans);letter-spacing:-.02em;margin:2px 0 4px}
+.nw-h p{margin:0 0 12px;font-size:.8125rem}.nw-up{color:var(--open);font-weight:600}.nw-m{color:var(--muted)}
+.nw-bars{display:flex;align-items:flex-end;gap:6px;height:84px;margin-bottom:12px}
+.nw-b{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+.nw-b i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:color-mix(in srgb,var(--brand) 30%,var(--card))}
+.nw-b--p i{background:var(--brand)}.nw-b small{font-size:.6875rem;color:var(--muted)}
+.nw-r{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.nw-r span{display:flex;flex-direction:column;font-size:.6875rem;color:var(--muted);gap:2px}.nw-r b{font-size:.9375rem;color:var(--ink);font-weight:600}
+.nw-a,.nw-g{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:8px}
+.nw-a button{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:inherit;font:inherit;text-align:left}
+.nw-a button span{flex:1;font-size:.875rem;line-height:1.3}.nw-a button em{font-style:normal;font-size:.75rem;color:var(--muted);white-space:nowrap}
+.nw-d{flex:none;width:10px;height:10px;border-radius:50%}.nw-d--alert{background:var(--alert)}.nw-d--wait{background:var(--wait)}
+.nw-g li{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.nw-g .avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);font-weight:600;flex:none}
+.nw-g b{flex:1;font-weight:500}.nw-g small{color:var(--muted)}.nw-g em{font-style:normal;font-weight:600}
 .mm-sg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mm-s{display:flex;flex-direction:column;gap:2px;padding:14px;text-align:left;min-height:104px;width:100%;color:inherit}
 .mm-s small{color:var(--muted);font-size:.8125rem}
@@ -2387,16 +2528,8 @@ body[data-frame=off] #app-mobile .phone{width:100%;height:100%;border:0}
 .en__f .en__go+.en__or+.en__go{margin-top:12px}
 .en__links{margin-top:14px;text-align:center}
 .en__hint{margin:16px 0 0;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--muted);font-size:12px}
-.en__dev{display:inline-block;padding:3px 12px;border-radius:999px;background:var(--open-soft);color:var(--open);font-size:12px;font-weight:700}
 .en__users{display:flex;flex-wrap:wrap;gap:8px}
 .en__user1{padding:10px 14px;border:2px solid var(--line-strong);border-radius:12px;font-weight:600}
-.en__dots{display:flex;justify-content:center;gap:12px;margin:8px 0 6px}
-.en__dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-strong)}
-.en__dots i[data-on=true]{background:var(--ink);border-color:var(--ink)}
-.en__pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.en__pad button{height:56px;border:2px solid var(--line-strong);border-radius:14px;background:var(--bg);color:var(--ink);font:700 22px var(--font-ui);cursor:pointer}
-.en__pad button:hover{border-color:var(--ink)}
-.en__pad button.sm{font-size:14px;color:var(--muted)}
 .cfg-prof{display:flex;flex-direction:column;gap:6px}
 .cfg-prof__h{display:flex;align-items:center;gap:10px}
 .cfg-prof__h b{display:block}
@@ -2480,8 +2613,11 @@ body[data-frame=off] #app-mobile .phone{width:100%;height:100%;border:0}
 <dialog id="dlg" aria-label="Comanda"></dialog>
 <dialog id="cdlg" aria-labelledby="cdlg-t"></dialog>
 <button class="qpb" id="qpb" type="button" aria-label="Nova comanda rápida (N)" aria-expanded="false" aria-controls="qp" title="Nova comanda (N)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button>
-<form class="qp" id="qp" aria-label="Nova comanda rápida" hidden>
+<form class="qp" id="qp" aria-label="Nova comanda" hidden>
+  <h2 class="qp__t">Nova comanda</h2>
   <p class="qp__h" id="qp-h" aria-live="polite"></p>
+  <div class="qp__rv" id="qp-rv"><label class="check"><input type="checkbox" id="qp-res"><span>É uma reserva</span></label><label class="qp__rt" id="qp-rtl" hidden>Horário <input type="time" id="qp-rt" aria-label="Horário da reserva"></label></div>
+  <div class="qp__cl" id="qp-cl"></div>
   <div class="qp__m" id="qp-m" hidden></div>
   <div class="qp__row"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><label class="sr" for="qp-in">Mesa ou nome da comanda</label><input id="qp-in" autocomplete="off" spellcheck="false" placeholder="Mesa ou nome: 7 ou Dona Maria" aria-describedby="qp-h"><button class="qp__go" type="submit" aria-label="Criar ou abrir comanda"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div>
 </form>
@@ -2704,7 +2840,7 @@ const ntAgo = m => m<1?'agora':m<60?'há '+m+' min':m<1440?'há '+Math.round(m/6
    O catalogo ACC_CAT e a tabela de 02d (gerada do markdown): [chave, descricao, marcadores A/L, letras dos perfis padrao].
    Letra maiuscula = concedida; minuscula = concedida com restricao por padrao.
    Hash: #screen=usuarios&user=<id>&tab=acesso|sim|sess|avisos|hist   #screen=perfis&perfil=<id>&view=matriz */
-const ACC_CAT = [{"g":"Comandas","p":[["comanda:ver","Ver comandas das unidades do escopo (as próprias, se faltar ver_comandas_de_outros)","","DGCWR"],["comanda:ver_comandas_de_outros","Ver comandas de outros garçons","","DGCR"],["comanda:criar","Abrir comanda","","DGCW"],["comanda:lancar_item","Lançar item","","DGCW"],["comanda:alterar_item","Alterar quantidade/observação","","DGCW"],["comanda:cancelar_item","Cancelar item, com motivo","A","DGCw"],["comanda:cancelar","Cancelar a comanda inteira, com motivo","A","DG"],["comanda:cortesia","Marcar item como cortesia, com motivo","AL","DG"],["comanda:brinde","Marcar item como brinde (ação comercial)","AL","DG"],["comanda:desconto","Aplicar desconto em item ou comanda; limite % por perfil","AL","DGc"],["comanda:remover_taxa_servico","Remover taxa de serviço","A","DG"],["comanda:transferir_item","Mover item entre comandas","","DGCW"],["comanda:transferir_mesa","Mudar a comanda de mesa","","DGCW"],["comanda:juntar","Juntar ou separar comandas","","DGC"],["comanda:dividir","Dividir a conta","","DGCW"],["comanda:receber_pagamento","Receber pagamento na comanda","","DGC"],["comanda:estornar_pagamento","Estornar pagamento da comanda","A","DG"],["comanda:fechar","Fechar comanda","","DGC"],["comanda:reabrir","Reabrir comanda fechada","A","DG"],["comanda:fechar_forcado","Fechar comanda esquecida à força","A","DG"],["comanda:renomear","Renomear/identificar comanda","","DGCW"],["comanda:trocar_garcom","Trocar o garçom responsável","","DG"],["comanda:editar_observacao","Observação geral da comanda","","DGCW"],["comanda:ver_historico","Ver linha do tempo da comanda","","DGCR"],["comanda:reimprimir","Reimprimir pré-conta/comprovante","","DGCW"]]},{"g":"Cardápio","p":[["cardapio:ver","Ver cardápio e disponibilidade","","DGCWEFKR"],["cardapio:produto_criar","Criar produto","","DG"],["cardapio:produto_editar","Editar produto","","DG"],["cardapio:produto_desativar","Desativar/reativar produto","","DG"],["cardapio:preco_alterar","Alterar preço (limite de variação %)","AL","DG"],["cardapio:promocao_gerenciar","Criar e editar promoções","","DG"],["cardapio:combo_gerenciar","Criar e editar combos","","DG"],["cardapio:ficha_ver","Ver ficha técnica","","DGER"],["cardapio:ficha_editar","Editar ficha técnica","A","DG"],["cardapio:custo_ver","Ver custo e margem (dado sensível)","","DGFR"],["cardapio:marcar_indisponivel","Marcar item como acabou","","DGCWEK"]]},{"g":"Estoque e compras","p":[["estoque:ver","Ver saldos e extrato","","DGEFKR"],["estoque:ver_custo","Ver custo médio e valor em estoque","","DGEFR"],["insumo:criar","Cadastrar insumo","","DGE"],["insumo:editar","Editar insumo","","DGE"],["insumo:desativar","Desativar insumo","","DGE"],["estoque:entrada_manual","Entrada manual de estoque","A","DGE"],["estoque:ajustar","Ajuste de estoque (limite de valor)","AL","DGe"],["estoque:registrar_perda","Registrar perda/quebra/cortesia","A","DGEK"],["estoque:consumo_interno","Registrar consumo interno (limite diário opcional)","AL","DGEk"],["estoque:consumo_interno_estornar","Estornar consumo interno","A","DG"],["estoque:inventario_contar","Contar inventário","","DGEK"],["estoque:inventario_aprovar","Aprovar divergências de inventário","A","DG"],["estoque:transferir","Transferir entre unidades/locais","","DGE"],["estoque:alerta_configurar","Configurar limites de alerta por insumo","","DGE"],["estoque:alerta_receber","Receber alertas de estoque","","DGEK"],["estoque:politica_negativo_configurar","Permitir/bloquear estoque negativo","A","D"],["fornecedor:ver","Ver fornecedores","","DGEFR"],["fornecedor:gerenciar","Criar/editar fornecedores","","DGE"],["compra:criar","Criar compra","","DGE"],["compra:receber","Receber compra","","DGE"],["compra:cancelar","Cancelar compra","A","DG"],["compra:importar_nfe","Importar NF-e XML","","DGEF"],["compra:ver_precos","Ver preços de compra","","DGEFR"]]},{"g":"Pagamentos","p":[["pagamento:ver","Ver pagamentos","","DGCFR"],["pagamento:registrar","Registrar pagamento","","DGC"],["pagamento:dividir","Dividir pagamento","","DGCW"],["pagamento:registrar_gorjeta","Registrar gorjeta","","DGC"],["pagamento:estornar","Estornar pagamento (limite de valor)","AL","DGc"],["pagamento:aceitar_fiado","Aceitar fiado/conta de cliente (limite)","AL","DGc"],["metodo_pagamento:gerenciar","Criar/editar métodos de pagamento","A","DG"],["metodo_pagamento:ver_taxas","Ver taxas das operadoras","","DGFR"],["voucher:emitir","Emitir voucher (limite)","AL","DG"],["voucher:usar","Usar voucher","","DGCW"],["conciliacao:ver","Ver conciliação","","DGFR"],["conciliacao:ajustar","Ajustar conciliação","A","DGF"]]},{"g":"Caixa","p":[["caixa:ver","Ver caixa (o próprio turno, sem ver_todos)","","DGCFR"],["caixa:abrir","Abrir caixa","","DGC"],["caixa:suprimento","Suprimento (limite)","AL","DGc"],["caixa:sangria","Sangria (limite)","AL","DGc"],["caixa:fechar","Fechar o próprio caixa","","DGC"],["caixa:fechar_cego","Fechamento com conferência cega","","C"],["caixa:aprovar_diferenca","Aprovar diferença de caixa (limite)","AL","DG"],["caixa:reabrir","Reabrir caixa","A","DG"],["caixa:ver_todos","Ver todos os turnos","","DGFR"],["caixa:configurar_janela","Configurar janela operacional","A","DG"],["caixa:registrar_fora_do_horario","Registrar fora da janela permitida","A","D"]]},{"g":"Cozinha e bar","p":[["cozinha:ver_fila","Ver fila de preparo da praça","","DGWK"],["cozinha:marcar_preparo","Marcar em preparo","","DGK"],["cozinha:marcar_pronto","Marcar pronto","","DGK"],["cozinha:reenviar_pedido","Reenviar pedido à praça","","DGCWK"],["cozinha:configurar_pracas","Configurar praças e destinos","A","DG"],["impressora:gerenciar","Cadastrar/gerenciar impressoras","A","DG"]]},{"g":"Comprovantes e fiscal","p":[["comprovante:reimprimir","Reimprimir comprovante","","DGCW"],["fiscal:ver","Ver documentos fiscais","","DGFR"],["fiscal:emitir","Emitir nota fiscal","","DGC"],["fiscal:cancelar_nota","Cancelar nota fiscal","A","DG"],["fiscal:configurar","Configurar dados fiscais e certificado","A","D"]]},{"g":"Financeiro","p":[["financeiro:ver","Ver o módulo financeiro","","DGFR"],["financeiro:ver_dre","Ver DRE e resultado","","DFR"],["conta_pagar:criar","Criar conta a pagar","","DGF"],["conta_pagar:editar","Editar conta a pagar","","DGF"],["conta_pagar:pagar","Pagar conta (limite de valor)","AL","DGf"],["conta_pagar:cancelar","Cancelar conta","A","DF"],["conta_receber:ver","Ver contas a receber","","DGFR"],["conta_receber:baixar","Dar baixa em recebimento","A","DGF"],["conta_financeira:gerenciar","Gerenciar contas financeiras","A","DF"],["conta_financeira:transferir","Transferir entre contas (limite)","AL","DF"],["financeiro:categorias_gerenciar","Plano de contas e centros de custo","","DF"],["financeiro:exportar","Exportar dados financeiros","A","DF"]]},{"g":"Equipe e comissões","p":[["equipe:ver","Ver colaboradores","","DGFR"],["equipe:colaborador_gerenciar","Criar/editar colaboradores","","DG"],["comissao:ver_proprias","Ver a própria comissão","","DGCWEFK"],["comissao:ver_todas","Ver comissões de todos","","DGFR"],["comissao:configurar","Configurar regra de comissão","A","DG"],["comissao:pagar","Pagar comissão","A","DGF"],["comissao:ajustar","Ajustar valor de comissão (limite)","AL","DG"]]},{"g":"Relatórios, dashboard e auditoria","p":[["relatorio:ver_vendas","Relatórios de vendas","","DGFR"],["relatorio:ver_estoque","Relatórios de estoque","","DGER"],["relatorio:ver_financeiro","Relatórios financeiros","","DFR"],["relatorio:ver_custos","Relatórios de custo/CMV","","DGFR"],["relatorio:exportar","Exportar relatórios","A","DGF"],["relatorio:ver_todas_unidades","Ver todas as unidades","","DFR"],["dashboard:ver","Ver dashboard","","DGCFR"],["dashboard:configurar","Configurar widgets","","DG"],["auditoria:ver","Ver log de auditoria","","DG"],["auditoria:exportar","Exportar auditoria","A","D"]]},{"g":"Identidade e acesso","p":[["usuario:ver","Ver usuários","","DG"],["usuario:convidar","Convidar/criar usuário","A","DG"],["usuario:desativar","Desativar/reativar usuário","A","DG"],["usuario:redefinir_acesso","Redefinir acesso","A","DG"],["perfil:ver","Ver perfis","","DG"],["perfil:gerenciar","Criar/editar perfis","A","D"],["permissao:atribuir","Atribuir perfil/permissões a usuários (só o que a pessoa já tem)","A","D"],["dispositivo:registrar","Registrar dispositivo do salão","A","DG"],["dispositivo:revogar","Revogar dispositivo","A","DG"],["sessao:ver_todas","Ver sessões ativas","","DG"],["sessao:revogar","Encerrar sessões","A","DG"],["seguranca:politica_editar","Política de senha, sessão e PIN","A","D"],["seguranca:exigir_2fa","Exigir 2FA (reservado)","A","D"]]},{"g":"Notificações","p":[["notificacao:ver_proprias","Ver as próprias notificações","","DGCWEFKR"],["notificacao:preferencias_editar","Editar preferências pessoais","","DGCWEFK"],["notificacao:regras_configurar","Configurar regras","A","DG"],["notificacao:modelos_editar","Editar modelos de mensagem","A","D"],["notificacao:destinatarios_definir","Definir destinatários","A","DG"],["notificacao:ver_entregas","Ver histórico de entregas","","DG"],["notificacao:canal_pago_configurar","Canais pagos (limite)","AL","D"]]},{"g":"Configurações","p":[["configuracao:ver","Ver configurações","","DG"],["configuracao:organizacao_editar","Editar configurações da organização","A","D"],["configuracao:unidade_editar","Editar configurações da unidade","A","DG"],["configuracao:travar_opcao","Travar/liberar opção para unidades","A","D"],["configuracao:ver_historico","Ver histórico de configurações","","DG"],["configuracao:restaurar","Restaurar versão de configuração","A","D"],["organizacao:configurar","Dados cadastrais da organização","A","D"],["unidade:criar","Criar unidade (limite do plano)","AL","D"],["unidade:gerenciar","Gerenciar unidades","A","DG"],["unidade:desativar","Desativar unidade","A","D"]]},{"g":"Calendário","p":[["calendario:ver","Ver calendário","","DGCWEFKR"],["calendario:ver_de_outros","Ver eventos de outros","","DGR"],["calendario:evento_criar","Criar evento","","DG"],["calendario:evento_editar","Editar evento","","DG"],["calendario:evento_excluir","Excluir evento","A","DG"],["calendario:evento_recorrente_editar_serie","Editar série recorrente","","DG"],["calendario:tarefa_criar","Criar tarefa","","DG"],["calendario:tarefa_editar","Editar e excluir tarefa","","DG"],["calendario:tarefa_concluir","Marcar tarefa como concluída (quem não edita só marca as próprias)","","DGCWEFK"],["calendario:ver_pagamentos","Ver camada de pagamentos (exige financeiro:ver)","","DGFR"],["calendario:ver_entregas","Ver camada de entregas","","DGER"],["calendario:ver_promocoes","Ver camada de promoções","","DGCWR"],["calendario:configurar_camadas","Configurar camadas","A","DG"],["calendario:configurar_notificacoes","Configurar notificações no calendário","A","DG"],["calendario:compartilhar","Compartilhar calendário","","DG"],["calendario:exportar_ical","Exportar/assinar iCal","A","D"]]},{"g":"Mesas, clientes e importação","p":[["mesa:ver","Ver mapa de mesas","","DGCWKR"],["mesa:gerenciar","Criar, mover e desativar mesas e áreas","A","DG"],["cliente:ver","Ver clientes","","DGCwFR"],["cliente:gerenciar","Criar e editar clientes","","DGCw"],["cliente:ver_dados_pessoais","Ver documento e nascimento (mascarados sem isso)","A","DGF"],["cliente:ver_historico","Ver histórico de consumo","","DGCFR"],["cliente:mesclar","Mesclar duplicados","A","DG"],["cliente:exportar","Exportar dados de clientes","A","D"],["cliente:anonimizar","Anonimizar cliente (LGPD)","A","D"],["importacao:executar","Importar planilhas","A","DGE"],["importacao:ver_historico","Ver histórico de importações","","DGE"],["importacao:desfazer","Desfazer importação","A","DG"],["importacao:modelos_baixar","Baixar modelos de planilha","","DGEF"],["exportacao:executar","Exportar listas","A","DGEF"]]},{"g":"Gestão avançada","p":[["resumo_dia:receber","Receber o resumo do dia","","DGFR"],["resumo_dia:configurar","Configurar conteúdo e destinatários","A","DG"],["painel:ver_ao_vivo","Painel ao vivo da unidade","","DGFR"],["painel:ver_consolidado","Painel ao vivo consolidado","","DFR"],["margem:ver","Ver margem e alertas de margem","","DGFR"],["margem:configurar_alvo","Definir margem-alvo","A","DG"],["margem:simular","Usar o simulador de preço","","DGF"],["preco:aplicar_sugestao","Aplicar preço sugerido (limite de variação)","AL","Dg"],["bebida:ver_rendimento","Ver rendimento de barril, doses e desvios","","DGEKR"],["barril:trocar","Registrar troca de barril","A","DGEK"],["barril:encerrar","Encerrar barril e registrar perda","A","DGEK"],["garrafa:abrir","Registrar abertura de garrafa","","DGEK"],["bebida:configurar_perdas","Perda de espuma e rendimento","A","DG"],["excecao:ver_painel","Ver painel de exceções","","DGR"],["excecao:marcar_revisado","Marcar exceção como revisada","A","DG"],["excecao:regras_configurar","Regras de alerta de ações sensíveis","A","Dg"],["documento:ver","Ver documentos e vencimentos","","DGR"],["documento:gerenciar","Criar/editar documentos","A","DG"],["documento:baixar_arquivo","Baixar o arquivo anexo","","DGR"],["equipamento:ver","Ver equipamentos e manutenções","","DGEKR"],["equipamento:gerenciar","Criar/editar equipamentos e planos","A","DG"],["evento:ver_resultado","Ver rentabilidade do evento","","DGFR"],["evento:editar_financeiro","Editar cachê, custos e couvert","A","DG"],["compra:ver_historico_preco","Ver histórico e ranking de preços","","DGEFR"],["orcamento:ver","Ver orçamento por categoria","","DGFR"],["orcamento:gerenciar","Definir orçamento","A","DF"],["pedido_compra:criar","Criar pedido de compra","","DGE"],["pedido_compra:enviar","Enviar pedido ao fornecedor","A","DGE"]]}];
+const ACC_CAT = [{"g":"Comandas","p":[["comanda:ver","Ver comandas das unidades do escopo (as próprias, se faltar ver_comandas_de_outros)","","DGCWR"],["comanda:ver_comandas_de_outros","Ver comandas de outros garçons","","DGCR"],["comanda:criar","Abrir comanda","","DGCW"],["comanda:lancar_item","Lançar item","","DGCW"],["comanda:alterar_item","Alterar quantidade/observação","","DGCW"],["comanda:cancelar_item","Cancelar item, com motivo","A","DGCw"],["comanda:cancelar","Cancelar a comanda inteira, com motivo","A","DG"],["comanda:cortesia","Marcar item como cortesia, com motivo","AL","DG"],["comanda:brinde","Marcar item como brinde (ação comercial)","AL","DG"],["comanda:desconto","Aplicar desconto em item ou comanda; limite % por perfil","AL","DGc"],["comanda:remover_taxa_servico","Remover taxa de serviço","A","DG"],["comanda:transferir_item","Mover item entre comandas","","DGCW"],["comanda:transferir_mesa","Mudar a comanda de mesa","","DGCW"],["comanda:juntar","Juntar ou separar comandas","","DGC"],["comanda:dividir","Dividir a conta","","DGCW"],["comanda:receber_pagamento","Receber pagamento na comanda","","DGC"],["comanda:estornar_pagamento","Estornar pagamento da comanda","A","DG"],["comanda:fechar","Fechar comanda","","DGC"],["comanda:reabrir","Reabrir comanda fechada","A","DG"],["comanda:fechar_forcado","Fechar comanda esquecida à força","A","DG"],["comanda:renomear","Renomear/identificar comanda","","DGCW"],["comanda:trocar_garcom","Trocar o garçom responsável","","DG"],["comanda:editar_observacao","Observação geral da comanda","","DGCW"],["comanda:ver_historico","Ver linha do tempo da comanda","","DGCR"],["comanda:reimprimir","Reimprimir pré-conta/comprovante","","DGCW"]]},{"g":"Cardápio","p":[["cardapio:ver","Ver cardápio e disponibilidade","","DGCWEFKR"],["cardapio:produto_criar","Criar produto","","DG"],["cardapio:produto_editar","Editar produto","","DG"],["cardapio:produto_desativar","Desativar/reativar produto","","DG"],["cardapio:preco_alterar","Alterar preço (limite de variação %)","AL","DG"],["cardapio:promocao_gerenciar","Criar e editar promoções","","DG"],["cardapio:combo_gerenciar","Criar e editar combos","","DG"],["cardapio:ficha_ver","Ver ficha técnica","","DGER"],["cardapio:ficha_editar","Editar ficha técnica","A","DG"],["cardapio:custo_ver","Ver custo e margem (dado sensível)","","DGFR"],["cardapio:marcar_indisponivel","Marcar item como acabou","","DGCWEK"]]},{"g":"Estoque e compras","p":[["estoque:ver","Ver saldos e extrato","","DGEFKR"],["estoque:ver_custo","Ver custo médio e valor em estoque","","DGEFR"],["insumo:criar","Cadastrar insumo","","DGE"],["insumo:editar","Editar insumo","","DGE"],["insumo:desativar","Desativar insumo","","DGE"],["estoque:entrada_manual","Entrada manual de estoque","A","DGE"],["estoque:ajustar","Ajuste de estoque (limite de valor)","AL","DGe"],["estoque:registrar_perda","Registrar perda/quebra/cortesia","A","DGEK"],["estoque:consumo_interno","Registrar consumo interno (limite diário opcional)","AL","DGEk"],["estoque:consumo_interno_estornar","Estornar consumo interno","A","DG"],["estoque:inventario_contar","Contar inventário","","DGEK"],["estoque:inventario_aprovar","Aprovar divergências de inventário","A","DG"],["estoque:transferir","Transferir entre unidades/locais","","DGE"],["estoque:alerta_configurar","Configurar limites de alerta por insumo","","DGE"],["estoque:alerta_receber","Receber alertas de estoque","","DGEK"],["estoque:politica_negativo_configurar","Permitir/bloquear estoque negativo","A","D"],["fornecedor:ver","Ver fornecedores","","DGEFR"],["fornecedor:gerenciar","Criar/editar fornecedores","","DGE"],["compra:criar","Criar compra","","DGE"],["compra:receber","Receber compra","","DGE"],["compra:cancelar","Cancelar compra","A","DG"],["compra:importar_nfe","Importar NF-e XML","","DGEF"],["compra:ver_precos","Ver preços de compra","","DGEFR"]]},{"g":"Pagamentos","p":[["pagamento:ver","Ver pagamentos","","DGCFR"],["pagamento:registrar","Registrar pagamento","","DGC"],["pagamento:dividir","Dividir pagamento","","DGCW"],["pagamento:registrar_gorjeta","Registrar gorjeta","","DGC"],["pagamento:estornar","Estornar pagamento (limite de valor)","AL","DGc"],["pagamento:aceitar_fiado","Aceitar fiado/conta de cliente (limite)","AL","DGc"],["metodo_pagamento:gerenciar","Criar/editar métodos de pagamento","A","DG"],["metodo_pagamento:ver_taxas","Ver taxas das operadoras","","DGFR"],["voucher:emitir","Emitir voucher (limite)","AL","DG"],["voucher:usar","Usar voucher","","DGCW"],["conciliacao:ver","Ver conciliação","","DGFR"],["conciliacao:ajustar","Ajustar conciliação","A","DGF"]]},{"g":"Caixa","p":[["caixa:ver","Ver caixa (o próprio turno, sem ver_todos)","","DGCFR"],["caixa:abrir","Abrir caixa","","DGC"],["caixa:suprimento","Suprimento (limite)","AL","DGc"],["caixa:sangria","Sangria (limite)","AL","DGc"],["caixa:fechar","Fechar o próprio caixa","","DGC"],["caixa:fechar_cego","Fechamento com conferência cega","","C"],["caixa:aprovar_diferenca","Aprovar diferença de caixa (limite)","AL","DG"],["caixa:reabrir","Reabrir caixa","A","DG"],["caixa:ver_todos","Ver todos os turnos","","DGFR"],["caixa:configurar_janela","Configurar janela operacional","A","DG"],["caixa:registrar_fora_do_horario","Registrar fora da janela permitida","A","D"]]},{"g":"Cozinha e bar","p":[["cozinha:ver_fila","Ver fila de preparo da praça","","DGWK"],["cozinha:marcar_preparo","Marcar em preparo","","DGK"],["cozinha:marcar_pronto","Marcar pronto","","DGK"],["cozinha:reenviar_pedido","Reenviar pedido à praça","","DGCWK"],["cozinha:configurar_pracas","Configurar praças e destinos","A","DG"],["impressora:gerenciar","Cadastrar/gerenciar impressoras","A","DG"]]},{"g":"Comprovantes e fiscal","p":[["comprovante:reimprimir","Reimprimir comprovante","","DGCW"],["fiscal:ver","Ver documentos fiscais","","DGFR"],["fiscal:emitir","Emitir nota fiscal","","DGC"],["fiscal:cancelar_nota","Cancelar nota fiscal","A","DG"],["fiscal:configurar","Configurar dados fiscais e certificado","A","D"]]},{"g":"Financeiro","p":[["financeiro:ver","Ver o módulo financeiro","","DGFR"],["financeiro:ver_dre","Ver DRE e resultado","","DFR"],["conta_pagar:criar","Criar conta a pagar","","DGF"],["conta_pagar:editar","Editar conta a pagar","","DGF"],["conta_pagar:pagar","Pagar conta (limite de valor)","AL","DGf"],["conta_pagar:cancelar","Cancelar conta","A","DF"],["conta_receber:ver","Ver contas a receber","","DGFR"],["conta_receber:baixar","Dar baixa em recebimento","A","DGF"],["conta_financeira:gerenciar","Gerenciar contas financeiras","A","DF"],["conta_financeira:transferir","Transferir entre contas (limite)","AL","DF"],["financeiro:categorias_gerenciar","Plano de contas e centros de custo","","DF"],["financeiro:exportar","Exportar dados financeiros","A","DF"]]},{"g":"Equipe e comissões","p":[["equipe:ver","Ver colaboradores","","DGFR"],["equipe:colaborador_gerenciar","Criar/editar colaboradores","","DG"],["comissao:ver_proprias","Ver a própria comissão","","DGCWEFK"],["comissao:ver_todas","Ver comissões de todos","","DGFR"],["comissao:configurar","Configurar regra de comissão","A","DG"],["comissao:pagar","Pagar comissão","A","DGF"],["comissao:ajustar","Ajustar valor de comissão (limite)","AL","DG"]]},{"g":"Relatórios, dashboard e auditoria","p":[["relatorio:ver_vendas","Relatórios de vendas","","DGFR"],["relatorio:ver_estoque","Relatórios de estoque","","DGER"],["relatorio:ver_financeiro","Relatórios financeiros","","DFR"],["relatorio:ver_custos","Relatórios de custo/CMV","","DGFR"],["relatorio:exportar","Exportar relatórios","A","DGF"],["relatorio:ver_todas_unidades","Ver todas as unidades","","DFR"],["dashboard:ver","Ver dashboard","","DGCFR"],["dashboard:configurar","Configurar widgets","","DG"],["auditoria:ver","Ver log de auditoria","","DG"],["auditoria:exportar","Exportar auditoria","A","D"]]},{"g":"Identidade e acesso","p":[["usuario:ver","Ver usuários","","DG"],["usuario:convidar","Convidar/criar usuário","A","DG"],["usuario:desativar","Desativar/reativar usuário","A","DG"],["usuario:redefinir_acesso","Redefinir acesso","A","DG"],["perfil:ver","Ver perfis","","DG"],["perfil:gerenciar","Criar/editar perfis","A","D"],["permissao:atribuir","Atribuir perfil/permissões a usuários (só o que a pessoa já tem)","A","D"],["sessao:ver_todas","Ver sessões ativas","","DG"],["sessao:revogar","Encerrar sessões","A","DG"],["seguranca:politica_editar","Política de senha e sessão","A","D"],["seguranca:exigir_2fa","Exigir 2FA (reservado)","A","D"]]},{"g":"Notificações","p":[["notificacao:ver_proprias","Ver as próprias notificações","","DGCWEFKR"],["notificacao:preferencias_editar","Editar preferências pessoais","","DGCWEFK"],["notificacao:regras_configurar","Configurar regras","A","DG"],["notificacao:modelos_editar","Editar modelos de mensagem","A","D"],["notificacao:destinatarios_definir","Definir destinatários","A","DG"],["notificacao:ver_entregas","Ver histórico de entregas","","DG"],["notificacao:canal_pago_configurar","Canais pagos (limite)","AL","D"]]},{"g":"Configurações","p":[["configuracao:ver","Ver configurações","","DG"],["configuracao:organizacao_editar","Editar configurações da organização","A","D"],["configuracao:unidade_editar","Editar configurações da unidade","A","DG"],["configuracao:travar_opcao","Travar/liberar opção para unidades","A","D"],["configuracao:ver_historico","Ver histórico de configurações","","DG"],["configuracao:restaurar","Restaurar versão de configuração","A","D"],["organizacao:configurar","Dados cadastrais da organização","A","D"],["unidade:criar","Criar unidade (limite do plano)","AL","D"],["unidade:gerenciar","Gerenciar unidades","A","DG"],["unidade:desativar","Desativar unidade","A","D"]]},{"g":"Calendário","p":[["calendario:ver","Ver calendário","","DGCWEFKR"],["calendario:ver_de_outros","Ver eventos de outros","","DGR"],["calendario:evento_criar","Criar evento","","DG"],["calendario:evento_editar","Editar evento","","DG"],["calendario:evento_excluir","Excluir evento","A","DG"],["calendario:evento_recorrente_editar_serie","Editar série recorrente","","DG"],["calendario:tarefa_criar","Criar tarefa","","DG"],["calendario:tarefa_editar","Editar e excluir tarefa","","DG"],["calendario:tarefa_concluir","Marcar tarefa como concluída (quem não edita só marca as próprias)","","DGCWEFK"],["calendario:ver_pagamentos","Ver camada de pagamentos (exige financeiro:ver)","","DGFR"],["calendario:ver_entregas","Ver camada de entregas","","DGER"],["calendario:ver_promocoes","Ver camada de promoções","","DGCWR"],["calendario:configurar_camadas","Configurar camadas","A","DG"],["calendario:configurar_notificacoes","Configurar notificações no calendário","A","DG"],["calendario:compartilhar","Compartilhar calendário","","DG"],["calendario:exportar_ical","Exportar/assinar iCal","A","D"]]},{"g":"Mesas, clientes e importação","p":[["mesa:ver","Ver mapa de mesas","","DGCWKR"],["mesa:gerenciar","Criar, mover e desativar mesas e áreas","A","DG"],["cliente:ver","Ver clientes","","DGCwFR"],["cliente:gerenciar","Criar e editar clientes","","DGCw"],["cliente:ver_dados_pessoais","Ver documento e nascimento (mascarados sem isso)","A","DGF"],["cliente:ver_historico","Ver histórico de consumo","","DGCFR"],["cliente:mesclar","Mesclar duplicados","A","DG"],["cliente:exportar","Exportar dados de clientes","A","D"],["cliente:anonimizar","Anonimizar cliente (LGPD)","A","D"],["importacao:executar","Importar planilhas","A","DGE"],["importacao:ver_historico","Ver histórico de importações","","DGE"],["importacao:desfazer","Desfazer importação","A","DG"],["importacao:modelos_baixar","Baixar modelos de planilha","","DGEF"],["exportacao:executar","Exportar listas","A","DGEF"]]},{"g":"Gestão avançada","p":[["resumo_dia:receber","Receber o resumo do dia","","DGFR"],["resumo_dia:configurar","Configurar conteúdo e destinatários","A","DG"],["painel:ver_ao_vivo","Painel ao vivo da unidade","","DGFR"],["painel:ver_consolidado","Painel ao vivo consolidado","","DFR"],["margem:ver","Ver margem e alertas de margem","","DGFR"],["margem:configurar_alvo","Definir margem-alvo","A","DG"],["margem:simular","Usar o simulador de preço","","DGF"],["preco:aplicar_sugestao","Aplicar preço sugerido (limite de variação)","AL","Dg"],["bebida:ver_rendimento","Ver rendimento de barril, doses e desvios","","DGEKR"],["barril:trocar","Registrar troca de barril","A","DGEK"],["barril:encerrar","Encerrar barril e registrar perda","A","DGEK"],["garrafa:abrir","Registrar abertura de garrafa","","DGEK"],["bebida:configurar_perdas","Perda de espuma e rendimento","A","DG"],["excecao:ver_painel","Ver painel de exceções","","DGR"],["excecao:marcar_revisado","Marcar exceção como revisada","A","DG"],["excecao:regras_configurar","Regras de alerta de ações sensíveis","A","Dg"],["documento:ver","Ver documentos e vencimentos","","DGR"],["documento:gerenciar","Criar/editar documentos","A","DG"],["documento:baixar_arquivo","Baixar o arquivo anexo","","DGR"],["equipamento:ver","Ver equipamentos e manutenções","","DGEKR"],["equipamento:gerenciar","Criar/editar equipamentos e planos","A","DG"],["evento:ver_resultado","Ver rentabilidade do evento","","DGFR"],["evento:editar_financeiro","Editar cachê, custos e couvert","A","DG"],["compra:ver_historico_preco","Ver histórico e ranking de preços","","DGEFR"],["orcamento:ver","Ver orçamento por categoria","","DGFR"],["orcamento:gerenciar","Definir orçamento","A","DF"],["pedido_compra:criar","Criar pedido de compra","","DGE"],["pedido_compra:enviar","Enviar pedido ao fornecedor","A","DGE"]]}];
 const ACC_FAC = [
   {id:'dono',n:'Dono',l:'D',f:1,d:'Tudo da organização. Não pode ser rebaixado nem desativado por outros.'},
   {id:'gerente',n:'Gerente',l:'G',f:1,d:'Opera a unidade e aprova exceções. Não mexe em perfis nem na configuração da organização.'},
@@ -2718,7 +2854,7 @@ const ACC_FAC = [
 const ACC_LIM = {'comanda:desconto':{D:50,G:20,C:5,W:0}};      /* limite padrão por perfil (02d §5.3 ainda em aberto para os demais) */
 const ACC_UNITS = [{id:'centro',n:'Unidade Centro'},{id:'praia',n:'Unidade Praia'}];
 const ACC_PLAN = {n:'Plano Essencial',max:15};
-const ACC_KEYS = new Set(['usuario:ver','usuario:convidar','usuario:desativar','usuario:redefinir_acesso','perfil:ver','perfil:gerenciar','permissao:atribuir','dispositivo:registrar','dispositivo:revogar','sessao:ver_todas','sessao:revogar','seguranca:politica_editar']);
+const ACC_KEYS = new Set(['usuario:ver','usuario:convidar','usuario:desativar','usuario:redefinir_acesso','perfil:ver','perfil:gerenciar','permissao:atribuir','sessao:ver_todas','sessao:revogar','seguranca:politica_editar']);
 const ACC_NOTIF = [
   {id:'estoque',n:'Insumo abaixo do mínimo',a:'Estoque',perm:'estoque:ver'},
   {id:'compra',n:'Pedido de compra atrasou',a:'Compras',perm:'fornecedor:ver'},
@@ -2738,12 +2874,6 @@ function accSeed(){
     profs:[
       {id:'c1',n:'Bar',d:'Praça do bar: fila de preparo e baixa de perdas.',f:0,link:'cozinha',log:[{t:'12 set, 10:14',by:'Zé Almeida',x:'Perfil criado a partir de Cozinha e bar, acompanhando o modelo'}]},
       {id:'c2',n:'Caixa sênior',d:'Caixa com estorno e limite de desconto maior.',f:0,link:null,base:'caixa',perms:accPermsOf('caixa',{'comanda:estornar_pagamento':1,'comanda:cancelar':0}),lim:{'comanda:desconto':10},log:[{t:'3 out, 16:40',by:'Zé Almeida',x:'Perfil criado como cópia de Caixa'}]}
-    ],
-    devs:[
-      {id:'d1',n:'Salão 1 (celular)',u:'centro',reg:'12 set',by:'Zé Almeida',last:'hoje, 18:30',on:1},
-      {id:'d2',n:'Salão 2 (celular)',u:'centro',reg:'12 set',by:'Zé Almeida',last:'ontem, 23:10',on:1},
-      {id:'d3',n:'Caixa balcão (computador)',u:'centro',reg:'20 set',by:'Marina Rocha',last:'hoje, 17:55',on:1},
-      {id:'d4',n:'Tablet do bar',u:'centro',reg:'2 ago',by:'Zé Almeida',last:'30 ago',on:0}
     ],
     users:[
       mk('u1','Zé Almeida','email','dono',{m:'ze@bardoze.com.br',owner:1,la:3,ses:[{d:'Chrome · macOS',s:'hoje, 08:12'},{d:'Safari · iPhone',s:'ontem, 21:40'}],log:[{t:'12 set, 09:00',by:'Sistema',x:'Conta do dono criada com a organização'}]}),
@@ -2862,32 +2992,24 @@ function accRows(){
   if(!all.length) return `<div class="empty acc-empty"><h3>Ninguém encontrado</h3><p>Mude a busca ou os filtros.</p><button class="btn" type="button" data-a="clear">Limpar filtros</button></div>`;
   const pg = accPager(all.length), rows = all.slice((AC.page-1)*AC.size, AC.page*AC.size);
   return `<div class="tw"><table class="acc-t acc-u"><thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th class="r">Último acesso</th><th aria-hidden="true"></th></tr></thead><tbody>${rows.map(u=>{ const p = accProf(u.p);
-    return `<tr data-uid="${u.id}" tabindex="0" ${u.st==='inativo'?'class="acc-off"':''}><td><div class="acc-who"><span class="avatar" aria-hidden="true">${accInit(u.n)}</span><div><b>${esc(u.n)}</b>${u.owner?' <span class="acc-tag">Dono</span>':''}${accSelf(u)?' <span class="acc-tag acc-tag--me">Você</span>':''}<small>${esc(u.t==='email'?u.m:u.u+' · usuário e PIN')}</small></div></div></td><td><b class="acc-pf">${esc(p?p.n:'?')}</b><small class="acc-sm">${esc(accUnit(u))}</small></td><td>${accBadge(u)}</td><td class="r elapsed">${esc(accAgo(u.la))}</td><td class="acc-go" aria-hidden="true">›</td></tr>`; }).join('')}</tbody></table></div>${pg}`;
+    return `<tr data-uid="${u.id}" tabindex="0" ${u.st==='inativo'?'class="acc-off"':''}><td><div class="acc-who"><span class="avatar" aria-hidden="true">${accInit(u.n)}</span><div><b>${esc(u.n)}</b>${u.owner?' <span class="acc-tag">Dono</span>':''}${accSelf(u)?' <span class="acc-tag acc-tag--me">Você</span>':''}<small>${esc(u.t==='email'?u.m:u.u+' · usuário e senha')}</small></div></div></td><td><b class="acc-pf">${esc(p?p.n:'?')}</b><small class="acc-sm">${esc(accUnit(u))}</small></td><td>${accBadge(u)}</td><td class="r elapsed">${esc(accAgo(u.la))}</td><td class="acc-go" aria-hidden="true">›</td></tr>`; }).join('')}</tbody></table></div>${pg}`;
 }
 function accUsersHtml(){
   const us = AS.users, act = us.filter(u=>u.st!=='inativo'), pend = us.filter(u=>u.st==='convite'||u.st==='temp'), sess = us.reduce((n,u)=>n+u.ses.length,0);
   const full = act.length>=ACC_PLAN.max, canInv = can('usuario:convidar');
   const cnt = k => us.filter(u=>k==='todos'||(k==='pendente'?(u.st==='convite'||u.st==='temp'):u.st===k)).length;
   const chips = [['todos','Todos'],['ativo','Ativos'],['pendente','Pendentes'],['inativo','Desativados']];
-  const tabs = can('sessao:ver_todas') ? `<div class="seg" role="group" aria-label="Seção"><button type="button" data-tab="pessoas" aria-pressed="${AC.tab==='pessoas'}">Pessoas</button><button type="button" data-tab="aparelhos" aria-pressed="${AC.tab==='aparelhos'}">Aparelhos do salão</button></div>` : '';
   return `<div class="head"><div><h1>Usuários</h1><p>Quem acessa o sistema e o que cada pessoa pode fazer.</p></div>
     <div class="actions">${canInv?`<button class="btn btn--primary" type="button" data-a="invite" ${full?'disabled title="O plano chegou ao limite de usuários"':''}>Convidar pessoa</button>`:''}</div></div>
     <section class="sum" aria-label="Resumo"><div class="card stat"><div class="l">Usuários no plano</div><div class="v">${act.length}<small> de ${ACC_PLAN.max}</small></div><div class="n">${ACC_PLAN.n}${full?' · limite atingido':''}</div></div>
       <div class="card stat"><div class="l">Convites pendentes</div><div class="v">${pend.length}</div><div class="n">${pend.length?'Aguardam o primeiro acesso':'Nenhum'}</div></div>
-      <div class="card stat"><div class="l">Contas operacionais</div><div class="v">${act.filter(u=>u.t==='op').length}</div><div class="n">Usuário e PIN, sem e-mail</div></div>
+      <div class="card stat"><div class="l">Contas operacionais</div><div class="v">${act.filter(u=>u.t==='op').length}</div><div class="n">Usuário e senha, sem e-mail</div></div>
       <div class="card stat"><div class="l">Sessões ativas</div><div class="v">${sess}</div><div class="n">${can('sessao:ver_todas')?'Veja na ficha de cada pessoa':'Sem acesso à lista'}</div></div></section>
-    ${tabs?`<div class="acc-bar">${tabs}</div>`:''}
-    <div id="acc-body">${AC.tab==='aparelhos' && tabs ? accDevices() : `<div class="acc-bar"><label class="field field--search acc-q"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><span class="sr">Buscar pessoa</span><input id="acc-q" placeholder="Buscar por nome, usuário ou e-mail" autocomplete="off" value="${esc(AC.q)}"></label>
+    <div id="acc-body"><div class="acc-bar"><label class="field field--search acc-q"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><span class="sr">Buscar pessoa</span><input id="acc-q" placeholder="Buscar por nome, usuário ou e-mail" autocomplete="off" value="${esc(AC.q)}"></label>
       <div class="chips acc-chips" role="group" aria-label="Situação">${chips.map(c=>`<button class="chip" type="button" data-st="${c[0]}" aria-pressed="${AC.st===c[0]}">${c[1]} <span class="chip__count">${cnt(c[0])}</span></button>`).join('')}</div>
       <label class="acc-sel"><span class="sr">Perfil</span>${accSelect('acc-fp',[['','Todos os perfis']].concat(accProfs().map(p=>[p.id,p.n])),AC.fp)}</label>
-      <label class="acc-sel"><span class="sr">Tipo de conta</span>${accSelect('acc-ft',[['','Qualquer conta'],['email','E-mail e senha'],['op','Usuário e PIN']],AC.ft)}</label></div>
-      <div class="card acc-card" id="acc-list">${accRows()}</div>`}</div>${accFoot()}`;
-}
-function accDevices(){
-  const canR = can('dispositivo:registrar'), canV = can('dispositivo:revogar');
-  return `${accNote('O aparelho do salão é registrado por quem tem permissão e fica vinculado a uma unidade. Nele, o colaborador entra só com o PIN pessoal, que vale ali e só ali, com as permissões operacionais do perfil.')}
-    <div class="acc-bar"><b>${AS.devs.filter(d=>d.on).length} aparelhos ativos</b><span class="acc-sp"></span>${canR?'<button class="btn btn--primary" type="button" data-a="adddev">Registrar aparelho</button>':''}</div>
-    <div class="card acc-card"><div class="tw"><table class="acc-t"><thead><tr><th>Aparelho</th><th>Unidade</th><th>Registrado</th><th>Último uso</th><th>Situação</th><th></th></tr></thead><tbody>${AS.devs.map(d=>`<tr class="${d.on?'':'acc-off'}"><td><b>${esc(d.n)}</b></td><td>${esc((ACC_UNITS.find(x=>x.id===d.u)||{}).n)}</td><td>${esc(d.reg)} por ${esc(d.by)}</td><td class="elapsed">${esc(d.last)}</td><td>${d.on?'<span class="badge badge--open"><i></i>Ativo</span>':'<span class="badge badge--closed"><i></i>Revogado</span>'}</td><td class="r">${d.on&&canV?`<button class="btn btn--sm btn--danger" type="button" data-a="revdev" data-id="${d.id}">Revogar</button>`:''}</td></tr>`).join('')}</tbody></table></div></div>`;
+      <label class="acc-sel"><span class="sr">Tipo de conta</span>${accSelect('acc-ft',[['','Qualquer conta'],['email','E-mail e senha'],['op','Usuário e senha']],AC.ft)}</label></div>
+      <div class="card acc-card" id="acc-list">${accRows()}</div></div>${accFoot()}`;
 }
 
 /* ---------- ficha do usuario (painel lateral) ---------- */
@@ -2926,7 +3048,7 @@ function accUserTab(u,g){
     <section class="acc-s"><h3>Perfil</h3><label class="sr" for="acc-up">Perfil da pessoa</label>${accSelect('acc-up',profOpts,pid,lock?'disabled':'')}
       <p class="acc-mut">${esc((accProf(pid)||{}).d||'')} <button class="lnk" type="button" data-a="goprof" data-id="${pid}">Ver permissões do perfil</button></p>
       ${profOpts.some(o=>o[2])?'<p class="field-msg">Perfis com permissões que você não tem ficam bloqueados.</p>':''}
-      ${u.t==='op' && accRestricted(accProf(pid)) ? accNote('Este perfil tem administração, financeiro ou exportação. Conta de usuário e PIN não recebe isso.','warning') : ''}</section>
+      ${u.t==='op' && accRestricted(accProf(pid)) ? accNote('Este perfil tem administração, financeiro ou exportação. Conta de usuário e senha, sem e-mail, não recebe isso.','warning') : ''}</section>
     <section class="acc-s"><h3>Onde pode atuar</h3><div class="acc-scope" role="radiogroup" aria-label="Escopo">
       <label class="radio"><input type="radio" name="acc-sc" value="all" ${sc==='all'?'checked':''} ${lock?'disabled':''}><span>Toda a organização</span></label>
       <label class="radio"><input type="radio" name="acc-sc" value="units" ${sc!=='all'?'checked':''} ${lock?'disabled':''}><span>Só nas unidades escolhidas</span></label>
@@ -2957,11 +3079,10 @@ function accSimRow(r){
 }
 const accLimUnit = k => /desconto/.test(k) ? '%' : 'R$';
 function accSess(u,g){
-  const devs = u.t==='op' ? AS.devs.filter(d=>d.on && (u.sc==='all'||u.sc.includes(d.u))) : [];
   return `
     <section class="acc-s"><h3>Logado agora ${u.ses.length?`<span class="acc-tag">${u.ses.length}</span>`:''}</h3>${u.ses.length?`<ul class="acc-ov">${u.ses.map((s,i)=>`<li><div><b>${esc(s.d)}</b>${accCur(u,i)?' <span class="acc-tag acc-tag--me">Esta sessão</span>':''}<small class="acc-mut" style="display:block">Entrou ${esc(s.s)}</small></div>${g.kill||accCur(u,i)?'':`<button class="btn btn--sm" type="button" data-a="endses" data-i="${i}">Encerrar</button>`}</li>`).join('')}</ul>`:'<p class="acc-mut">Ninguém logado agora.</p>'}
       ${g.kill?`<p class="field-msg">${esc(g.kill)}</p>`:''}</section>
-    ${u.t==='op'?`<section class="acc-s"><h3>Aparelhos onde o PIN funciona</h3>${devs.length?`<ul class="acc-ov">${devs.map(d=>`<li><div><b>${esc(d.n)}</b><small class="acc-mut" style="display:block">${esc((ACC_UNITS.find(x=>x.id===d.u)||{}).n)} · último uso ${esc(d.last)}</small></div></li>`).join('')}</ul>`:'<p class="acc-mut">Nenhum aparelho registrado para a unidade.</p>'}</section>`:''}`;
+`;
 }
 function accNotif(u){
   const edit = accOwns('notificacao:destinatarios_definir'), p = accProf(u.p), m = p ? accPerms(p) : {};
@@ -3018,7 +3139,6 @@ function accRender(){
     if(P.user && AS.users.some(u=>u.id===P.user)){ AC.uid = P.user; AC.utab = P.tab||'acesso'; }
     if(P.perfil && accProf(P.perfil)) AC.pid = P.perfil;
     if(P.view==='matriz') AC.pv = 'matriz';
-    if(scr==='usuarios' && P.tab==='aparelhos') AC.tab = 'aparelhos';
     if(P.otab && CF_OTABS.some(t=>t[0]===P.otab)) CO.tab = P.otab;
     if(P.ctab && CF_TABS.some(t=>t[0]===P.ctab)) CO.ct = P.ctab; }
   root.innerHTML = scr==='usuarios' ? accUsersHtml() : scr==='perfis' ? accProfilesHtml() : scr==='configuracoes' ? cfUnitHtml() : cfOrgHtml();
@@ -3114,15 +3234,13 @@ function accAction(a,el){
     case 'rmov': accConfirm({title:'Remover permissão extra',lead:'A pessoa volta a seguir só o perfil.',ok:'Remover'},w=>{ delete u.ov[el.dataset.k]; accLog(u,'Exceção removida: '+el.dataset.k,w); accSave(); accDrawer(); toast('Exceção removida'); }); break;
     case 'off': accConfirm({title:'Desativar '+u.n,lead:'A pessoa perde o acesso agora e as sessões abertas são encerradas. O histórico é mantido.',ok:'Desativar',danger:1,ph:'Ex.: saiu da equipe'},w=>{ u.st = 'inativo'; u.ses = []; accLog(u,'Desativado',w); accSave(); accRender(); toast(u.n+' desativado. Sessões encerradas.'); }); break;
     case 'react': if(AS.users.filter(x=>x.st!=='inativo').length>=ACC_PLAN.max){ toast('O plano chegou ao limite de usuários'); break; }
-      accConfirm({title:'Reativar '+u.n,lead:u.t==='op'?'A pessoa entra de novo com o PIN dela.':'A pessoa entra de novo com o e-mail e a senha dela.',ok:'Reativar'},w=>{ u.st = 'ativo'; accLog(u,'Reativado',w); accSave(); accRender(); toast(u.n+' reativado'); }); break;
+      accConfirm({title:'Reativar '+u.n,lead:u.t==='op'?'A pessoa entra de novo com o usuário e a senha dela.':'A pessoa entra de novo com o e-mail e a senha dela.',ok:'Reativar'},w=>{ u.st = 'ativo'; accLog(u,'Reativado',w); accSave(); accRender(); toast(u.n+' reativado'); }); break;
     case 'kill': accConfirm({title:'Deslogar '+u.n,lead:'A pessoa precisa entrar de novo em todos os aparelhos.',ok:'Deslogar',danger:1,ph:'Ex.: aparelho perdido'},w=>{ const keep = u.ses.filter((s,i)=>accCur(u,i)); const n = u.ses.length-keep.length; u.ses = keep; accLog(u,'Sessões encerradas ('+n+')',w); accSave(); accDrawer(); toast(n+' sessões encerradas'); }); break;
     case 'endses': { const i = +el.dataset.i, s = u.ses[i]; accConfirm({title:'Encerrar esta sessão?',lead:s.d+', entrou '+s.s,ok:'Encerrar',danger:1},w=>{ u.ses.splice(i,1); accLog(u,'Sessão encerrada: '+s.d,w); accSave(); accDrawer(); toast('Sessão encerrada'); }); break; }
-    case 'reset': accConfirm({title:'Redefinir acesso de '+u.n,lead:u.t==='email'?'Enviamos um link de redefinição para '+u.m+'. A senha atual continua valendo até a pessoa trocar.':'Geramos uma nova credencial temporária. O PIN atual deixa de valer e as sessões são encerradas.',ok:'Redefinir acesso',ph:'Ex.: esqueceu a senha'},w=>{ accLog(u,'Acesso redefinido',w);
+    case 'reset': accConfirm({title:'Redefinir acesso de '+u.n,lead:u.t==='email'?'Enviamos um link de redefinição para '+u.m+'. A senha atual continua valendo até a pessoa trocar.':'Geramos uma nova credencial temporária. A senha atual deixa de valer e as sessões são encerradas.',ok:'Redefinir acesso',ph:'Ex.: esqueceu a senha'},w=>{ accLog(u,'Acesso redefinido',w);
       if(u.t==='email'){ accSave(); accDrawer(); setTimeout(()=>accReveal('Link enviado','Se preferir, copie e mande por outro canal.',[['Link de redefinição','https://app.flow4tech.com.br/redefinir/'+accRand(24,ACC_AL)]],'O link vale uma vez e expira em 2 horas.'),60); }
-      else { u.st = 'temp'; u.ses = []; accSave(); accRender(); setTimeout(()=>accReveal('Nova credencial','Entregue a '+u.n.split(' ')[0]+' agora. Ela não aparece de novo.',[['Usuário',u.u],['Credencial temporária',accTemp()]],'A pessoa troca a credencial no próximo acesso e então define um novo PIN.'),60); } }); break;
+      else { u.st = 'temp'; u.ses = []; accSave(); accRender(); setTimeout(()=>accReveal('Nova credencial','Entregue a '+u.n.split(' ')[0]+' agora. Ela não aparece de novo.',[['Usuário',u.u],['Credencial temporária',accTemp()]],'A pessoa troca a credencial no próximo acesso e então define uma nova senha.'),60); } }); break;
     case 'invite': accInvite(); break;
-    case 'adddev': accAddDevice(); break;
-    case 'revdev': { const d = AS.devs.find(x=>x.id===id); accConfirm({title:'Revogar '+d.n,lead:'O aparelho deixa de aceitar PIN na hora e as sessões nele são encerradas.',ok:'Revogar',danger:1,ph:'Ex.: aparelho perdido'},w=>{ d.on = 0; accSave(); accRender(); toast(d.n+' revogado'); }); break; }
     case 'newprof': accNewProfile(null); break;
     case 'dup': accNewProfile(id); break;
     case 'editmeta': accRenameProfile(accProf(id)); break;
@@ -3153,7 +3271,7 @@ function accInvite(){
   accModal({title:'Convidar pessoa',lead:'Como esta pessoa vai entrar?',ok:'Criar acesso',wide:1,
     body:`<fieldset class="acc-fs"><legend class="field-label">Tipo de conta</legend>
       <label class="radio acc-rd"><input type="radio" name="t" value="email" checked><span>Com e-mail<small>Dono, gerente, administrativo. Recebe um link e cria a própria senha.</small></span></label>
-      <label class="radio acc-rd"><input type="radio" name="t" value="op"><span>Só usuário e PIN<small>Garçom, caixa e outros. Você recebe uma senha temporária, mostrada uma só vez.</small></span></label></fieldset>
+      <label class="radio acc-rd"><input type="radio" name="t" value="op"><span>Só usuário e senha<small>Garçom, caixa e outros. Você recebe uma senha temporária, mostrada uma só vez.</small></span></label></fieldset>
       <div class="acc-g2"><div><label class="field-label" for="i-n">Nome</label><input class="field" id="i-n" name="n" autocomplete="off" style="width:100%" autofocus></div>
         <div id="i-mail"><label class="field-label" for="i-m">E-mail</label><input class="field" id="i-m" name="m" type="email" autocomplete="off" style="width:100%"></div>
         <div id="i-user" hidden><label class="field-label" for="i-u">Nome de usuário</label><input class="field" id="i-u" name="u" autocomplete="off" style="width:100%" placeholder="ex.: joao.silva"><p class="field-msg">Único na organização.</p></div></div>
@@ -3174,15 +3292,8 @@ function accInvite(){
       if(AS.users.some(x=>x.u===us)) return 'Este nome de usuário já existe na organização.';
       if(accRestricted(p)) return 'Este perfil precisa de conta com e-mail.';
       u.u = us; accLog(u,'Conta operacional criada, perfil '+p.n); AS.users.unshift(u); accSave(); accRender();
-      setTimeout(()=>accReveal('Conta criada','Entregue a credencial a '+n.split(' ')[0]+' agora. Ela não aparece de novo.',[['Usuário',us],['Credencial temporária',accTemp()]],'A pessoa troca a credencial no primeiro acesso e então define o PIN. Se perder, é preciso redefinir o acesso.'),60); }});
+      setTimeout(()=>accReveal('Conta criada','Entregue a credencial a '+n.split(' ')[0]+' agora. Ela não aparece de novo.',[['Usuário',us],['Credencial temporária',accTemp()]],'A pessoa troca a credencial no primeiro acesso e então define a senha. Se perder, é preciso redefinir o acesso.'),60); }});
   const f = accDlg('amod').querySelector('form'); f.addEventListener('change',()=>{ const op = f.t.value==='op'; f.querySelector('#i-mail').hidden = op; f.querySelector('#i-user').hidden = !op; });
-}
-function accAddDevice(){
-  accModal({title:'Registrar aparelho do salão',lead:'No aparelho, abra a página de entrada e digite o código abaixo. Ele vale 10 minutos.',ok:'Registrar',
-    body:`<label class="field-label" for="d-n">Nome do aparelho</label><input class="field" id="d-n" name="n" style="width:100%" autocomplete="off" placeholder="Ex.: Salão 3 (celular)" autofocus>
-      <label class="field-label" for="d-u" style="margin-top:12px">Unidade</label>${accSelect('d-u',ACC_UNITS.map(x=>[x.id,x.n]),'centro','name="u"')}
-      <div class="acc-reveal" style="margin-top:14px"><div><small>Código de pareamento</small><div class="acc-copy"><code>${accRand(3,'23456789')}-${accRand(3,'23456789')}</code></div></div></div>`,
-    onOk:fd=>{ const n = (fd.get('n')||'').trim(); if(n.length<3) return 'Dê um nome ao aparelho.'; AS.devs.push({id:'d'+Date.now(),n,u:fd.get('u'),reg:'hoje',by:PF().user,last:'ainda não usado',on:1}); accSave(); accRender(); toast('Aparelho registrado'); }});
 }
 function accNewProfile(baseId){
   const base = baseId ? accProf(baseId) : null;
@@ -3241,7 +3352,7 @@ function cfSeed(){
   const L = (t,by,sc,x,why) => ({t,by,sc,x,why});
   return {ver:1,
     org:{rs:'Bar do Zé Comércio de Bebidas Ltda',fant:'Bar do Zé',doc:'12.345.678/0001-90',mail:'contato@bardoze.com.br',
-      vals:{'c.sangria':800,'k.alvo':20},locks:{'e.neg':1},sg:{senha:8,sessao:12,pin:4,google:true}},
+      vals:{'c.sangria':800,'k.alvo':20},locks:{'e.neg':1},sg:{senha:8,sessao:12,google:true}},
     units:[
       {id:'centro',n:'Unidade Centro',on:1,addr:'Rua das Flores, 120, Centro',doc:'12.345.678/0001-90',tel:'(11) 3333-4444',tz:'America/Sao_Paulo',vals:{}},
       {id:'praia',n:'Unidade Praia',on:1,addr:'Av. Beira-Mar, 800, Praia Grande',doc:'12.345.678/0002-71',tel:'(13) 3222-1000',tz:'America/Sao_Paulo',vals:{'v.taxa':12,'op.abre':'12:00','op.fecha':'23:00','k.usa':false,'op.mesas':false,'c.n':2}}
@@ -3418,7 +3529,6 @@ function cfOrgHtml0(){
   else if(tab==='seg'){ const ed = can('seguranca:politica_editar'), s = k => d.sg[k]!==undefined ? d.sg[k] : CF.org.sg[k];
     body = `<section class="card cf-card"><div class="cf-row"><div class="cf-l"><b>Tamanho mínimo da senha</b><small>Vale para contas com e-mail.</small></div><div class="cf-c"><span class="cf-num"><input class="field" type="number" min="8" max="16" data-sg="senha" value="${esc(s('senha'))}" ${ed?'':'disabled'} aria-label="Tamanho mínimo da senha"><i>caracteres</i></span></div><div class="cf-s"></div></div>
       <div class="cf-row"><div class="cf-l"><b>Sessão sem uso</b><small>Depois desse tempo parado, a pessoa entra de novo. Dono e gerente podem ter prazo próprio.</small></div><div class="cf-c"><span class="cf-num"><input class="field" type="number" min="1" max="72" data-sg="sessao" value="${esc(s('sessao'))}" ${ed?'':'disabled'} aria-label="Sessão sem uso"><i>horas</i></span></div><div class="cf-s"></div></div>
-      <div class="cf-row"><div class="cf-l"><b>Tamanho do PIN</b><small>Dígitos do PIN pessoal no aparelho do salão.</small></div><div class="cf-c"><select class="field" data-sg="pin" ${ed?'':'disabled'} aria-label="Tamanho do PIN">${[4,5,6].map(n=>`<option value="${n}" ${+s('pin')===n?'selected':''}>${n} dígitos</option>`).join('')}</select></div><div class="cf-s"></div></div>
       <div class="cf-row"><div class="cf-l"><b>Entrar com o Google</b><small>Só com e-mail verificado.</small></div><div class="cf-c"><label class="switch"><input type="checkbox" data-sg="google" ${s('google')?'checked':''} ${ed?'':'disabled'}><span class="switch__track"></span><span class="cf-sw">${s('google')?'Ligado':'Desligado'}</span></label></div><div class="cf-s"></div></div>
       <div class="cf-row"><div class="cf-l"><b>Exigir 2 etapas (2FA)</b><small>Reservado: o encaixe já existe, a ativação vem depois.</small></div><div class="cf-c"><label class="switch"><input type="checkbox" disabled><span class="switch__track"></span><span class="cf-sw">Em breve</span></label></div><div class="cf-s"></div></div>${err.sg?`<p class="field-msg field-msg--error" role="alert" style="padding:0 18px 14px">${esc(err.sg)}</p>`:''}</section>`; }
   else body = `<div class="sum"><div class="card stat"><div class="l">Plano</div><div class="v" style="font-size:22px">${CF_PLAN.n}</div><div class="n">R$ 189 por mês</div></div><div class="card stat"><div class="l">Unidades</div><div class="v">${act}<small> de ${CF_PLAN.units}</small></div><div class="n">${act>=CF_PLAN.units?'Limite atingido':'Pode criar mais '+(CF_PLAN.units-act)}</div></div><div class="card stat"><div class="l">Usuários</div><div class="v">${AS.users.filter(u=>u.st!=='inativo').length}<small> de ${ACC_PLAN.max}</small></div><div class="n">Veja em Usuários</div></div><div class="card stat"><div class="l">Próxima fatura</div><div class="v" style="font-size:22px">5 nov</div><div class="n">Pix ou boleto</div></div></div>${accNote('Plano e cobrança são só de leitura aqui. Para mudar de plano, fale com a Flow4Tech.')}`;
@@ -3508,7 +3618,7 @@ function cfApply(why,next){
     else { const old = k in u.vals ? u.vals[k] : null, cur = cfUnitVal(u,k); if(e.reset){ delete u.vals[k]; add(o,old===null?cur:old,cfOrgVal(k),' (voltou ao padrão)'); } else { u.vals[k] = e.v; add(o,old,e.v); } } });
   Object.keys(d.lk).forEach(k=>{ const o = cfOpt(k); if(d.lk[k]) CF.org.locks[k] = 1; else delete CF.org.locks[k]; CF.log.unshift({t:cfNow(),by:cfWho(),sc:'org',k:null,x:`${o.n}: ${d.lk[k]?'travada para todas as unidades':'liberada para as unidades'}`,why}); });
   Object.keys(d.meta).forEach(k=>{ const tgt = org ? CF.org : u, lab = {n:'Nome',tel:'Telefone',addr:'Endereço',doc:'CNPJ',tz:'Fuso horário',rs:'Razão social',fant:'Nome fantasia',mail:'E-mail'}[k]||k; CF.log.unshift({t:cfNow(),by:cfWho(),sc,k:null,x:`${lab} alterado`,why}); tgt[k] = d.meta[k]; if(!org && k==='n'){ cfSyncUnits(); cxBtn(); } if(org && k==='fant') cxBtn(); });
-  Object.keys(d.sg).forEach(k=>{ const lab = {senha:'Tamanho mínimo da senha',sessao:'Sessão sem uso',pin:'Tamanho do PIN',google:'Entrar com o Google'}[k]; CF.log.unshift({t:cfNow(),by:cfWho(),sc:'org',k:null,x:`${lab}: ${String(CF.org.sg[k])} → ${String(d.sg[k])}`,why}); CF.org.sg[k] = d.sg[k]; });
+  Object.keys(d.sg).forEach(k=>{ const lab = {senha:'Tamanho mínimo da senha',sessao:'Sessão sem uso',google:'Entrar com o Google'}[k]; CF.log.unshift({t:cfNow(),by:cfWho(),sc:'org',k:null,x:`${lab}: ${String(CF.org.sg[k])} → ${String(d.sg[k])}`,why}); CF.org.sg[k] = d.sg[k]; });
   CD = cfBlank(); cfSave(); accRender(); toast('Configuração salva');
 }
 function cfNewUnit(){
@@ -3691,9 +3801,10 @@ const salMesaNum = c => { const m = /^Mesa (\d+)/i.exec(c.ident); return m ? +m[
 const salCom = m => data.filter(c=>c.status!=='paid' && salMesaNum(c)===m.n);
 function salStat(m){
   const cs = salCom(m), first = cs.length ? Math.min(...cs.map(c=>c.openedAt)) : null;
-  const key = !cs.length ? (m.res ? 'res' : 'free') : cs.some(c=>c.status==='pay') ? 'pay' : 'occ';
+  const rc = cs.filter(isRes), allRes = cs.length && rc.length===cs.length, key = !cs.length ? (m.res ? 'res' : 'free') : allRes ? 'res' : cs.some(c=>c.status==='pay') ? 'pay' : 'occ';
+  const rv = allRes ? (()=>{ const c = rc.slice().sort((a,b)=>a.res.at-b.res.at)[0], cl = (c.clis||[]).map(clById).filter(Boolean)[0]; return {h:hhmm(c.res.at),n:cl?cl.n:c.ident}; })() : null;
   const ready = cs.some(c=>c.items.some(i=>!i.void&&i.at&&itemKs(i)==='ready')), stale = cs.some(isStale);
-  return {key,cs,first,ready,stale,total:cs.reduce((s,c)=>s+total(c),0)};
+  return {key,cs,first,ready,stale,rv,total:cs.reduce((s,c)=>s+total(c),0)};
 }
 const SAL_ST = {free:['Livre','closed'],occ:['Ocupada','open'],pay:['Aguardando conta','wait'],res:['Reservada','wait']};
 function salMesasHtml(){
@@ -3718,7 +3829,7 @@ function salTile(m,s){
   const mins = s.first ? Math.floor((now()-s.first)/60000) : 0;
   return `<button type="button" class="sal-m sal-m--${s.key} ${m.id===SAL.sel?'on':''} ${dim?'dim':''} ${pick?'pick':''} ${SAL.move&&!pick?'off':''}" data-mesa="${m.id}" style="grid-column:${m.x+1};grid-row:${m.y+1}" aria-pressed="${m.id===SAL.sel}" aria-label="Mesa ${m.n}, ${lab}${s.cs.length&&canC?', '+brl(s.total):''}">
     <span class="sal-m__n">${m.n}</span><span class="sal-m__c">${m.cap} lugares</span>${sdot({free:'QUEUED',occ:'READY',pay:'BUILDING',res:'ACTIVE'}[s.key],{label:lab,animate:s.key==='pay'})}
-    ${s.key==='occ'||s.key==='pay'?`<span class="sal-m__i">${dur(mins)}${canC?' · '+brl(s.total):''}</span>`:s.key==='res'?`<span class="sal-m__i">${esc(m.res.h)} · ${esc(m.res.n)}</span>`:''}
+    ${s.key==='occ'||s.key==='pay'?`<span class="sal-m__i">${dur(mins)}${canC?' · '+brl(s.total):''}</span>`:s.key==='res'?`<span class="sal-m__i">${esc((s.rv||m.res).h)} · ${esc((s.rv||m.res).n)}</span>`:''}
     ${s.ready?'<span class="sal-m__r">Pedido pronto</span>':''}${s.stale&&!s.ready?'<span class="sal-m__r sal-m__r--w">Parada</span>':''}</button>`;
 }
 function salDetail(m,s,reg){
@@ -3726,7 +3837,7 @@ function salDetail(m,s,reg){
   const comList = !s.cs.length ? '' : !canC ? `<p class="acc-mut">${s.cs.length} ${s.cs.length===1?'comanda aberta':'comandas abertas'}. Seu perfil não vê o conteúdo das comandas.</p>` : `<ul class="sal-cl">${s.cs.map(c=>{ const v = vis().includes(c); return `<li><div><b>${cnumH(c)}${esc(c.ident)}</b><small>${esc(c.garcom)} · ${dur(mins(c))}${v?' · '+brl(total(c)):''}</small>${kitHtml(c)}</div><span class="acc-btns">${v?`<button class="btn btn--sm" type="button" data-sal="open" data-c="${c.id}">Abrir</button>`:'<small class="acc-mut">De outro garçom</small>'}${v&&can('comanda:transferir_mesa')?`<button class="btn btn--sm btn--ghost" type="button" data-sal="move" data-c="${c.id}">Mudar de mesa</button>`:''}</span></li>`; }).join('')}</ul>`;
   const act = `<div class="acc-btns">${s.key==='free'||s.key==='res'?(can('comanda:criar')?`<button class="btn btn--primary" type="button" data-sal="new" data-m="${m.id}">${s.key==='res'?'Abrir comanda da reserva':'Abrir comanda'}</button>`:'<p class="acc-mut">Seu perfil não abre comandas.</p>'):(can('comanda:criar')?`<button class="btn" type="button" data-sal="new2" data-m="${m.id}">Outra comanda nesta mesa</button>`:'')}</div>`;
   return `<div class="sal-dh"><div><h2>Mesa ${m.n}</h2><p class="acc-mut">${esc(a?a.n:'')} · ${m.cap} lugares</p></div><span class="badge badge--${mod}"><i></i>${lab}</span></div>
-    ${s.key==='res'?`<div class="banner banner--warning" style="margin:0 20px 8px"><span class="l"><b>${esc(m.res.n)}</b><small>Reserva às ${esc(m.res.h)}</small></span></div>`:''}
+    ${s.key==='res'?`<div class="banner banner--warning" style="margin:0 20px 8px"><span class="l"><b>${esc((s.rv||m.res).n)}</b><small>Reserva às ${esc((s.rv||m.res).h)}</small></span></div>`:''}
     ${s.cs.length?`<p class="acc-mut" style="padding:0 20px">Ocupada há <b>${dur(Math.floor((now()-s.first)/60000))}</b>${canC?' · consumo <b>'+brl(s.total)+'</b>':''}</p>`:''}
     <div class="sal-db">${comList}${act}</div>`;
 }
@@ -5970,7 +6081,7 @@ const eqPct = v => String(v).replace('.',',')+'%';
 function eqSeed(){
   const n0 = Date.now(); let sd = 7; const rnd = () => { sd = (sd*16807)%2147483647; return sd/2147483647; };
   const C = (id,n,f,u,ac,pct,on) => ({id,n,f,u,ac,pct:pct==null?null:pct,on:on!==0,com:f==='garcom',log:[{t:n0-40*EQ_D,by:'Zé Almeida',x:'Colaborador cadastrado'}]});
-  const col = [C('c1','Rafael Souza','garcom',['centro'],'rafael.souza · usuário e PIN'),C('c2','Carlos Mendes','garcom',['centro'],'carlos.mendes · usuário e PIN',6),C('c3','Juliana Reis','garcom',['centro'],'juliana.reis · usuário e PIN'),C('c4','Marcos Dias','garcom',['centro'],'marcos.dias · usuário e PIN'),C('c5','Diego Alves','garcom',['centro'],'diego.alves · inativo',null,0),C('c6','Lívia Teles','garcom',['praia'],'Sem acesso ao sistema'),C('c7','Paula Nunes','caixa',['centro'],'paula.nunes · usuário e PIN'),C('c8','Ana Luz','caixa',['centro'],'ana.luz · usuário e PIN'),C('c9','Tiago Lima','cozinha',['centro'],'tiago.lima · usuário e PIN'),C('c10','Duda Prado','cozinha',['centro'],'duda.prado · usuário e PIN'),C('c11','Bruno Costa','estoque',['centro'],'bruno.costa · usuário e PIN')];
+  const col = [C('c1','Rafael Souza','garcom',['centro'],'rafael.souza · usuário e senha'),C('c2','Carlos Mendes','garcom',['centro'],'carlos.mendes · usuário e senha',6),C('c3','Juliana Reis','garcom',['centro'],'juliana.reis · usuário e senha'),C('c4','Marcos Dias','garcom',['centro'],'marcos.dias · usuário e senha'),C('c5','Diego Alves','garcom',['centro'],'diego.alves · inativo',null,0),C('c6','Lívia Teles','garcom',['praia'],'Sem acesso ao sistema'),C('c7','Paula Nunes','caixa',['centro'],'paula.nunes · usuário e senha'),C('c8','Ana Luz','caixa',['centro'],'ana.luz · usuário e senha'),C('c9','Tiago Lima','cozinha',['centro'],'tiago.lima · usuário e senha'),C('c10','Duda Prado','cozinha',['centro'],'duda.prado · usuário e senha'),C('c11','Bruno Costa','estoque',['centro'],'bruno.costa · usuário e senha')];
   const lan = []; let ln = 0;
   col.filter(c=>c.com&&c.on).forEach(c=>{ const k = 10+Math.floor(rnd()*5); for(let i=0;i<k;i++){ const t = n0-(1+i*2.2+rnd()*1.4)*EQ_D, base = Math.round((40+rnd()*380)*100)/100, p = c.pct==null?5:c.pct, paid = t<n0-14*EQ_D;
     lan.push({id:'l'+(++ln),c:c.id,u:c.u[0],t,x:'Mesa '+(1+Math.floor(rnd()*15)),base,p,v:Math.round(base*p)/100,st:paid?'paga':'aberta',pg:paid?{t:t+16*EQ_D,by:'Helena Prado',a:'a1'}:null,log:[]}); } });
@@ -6499,7 +6610,8 @@ const $ = s => document.querySelector(s);
 const mins = c => Math.max(0, Math.floor((now()-c.openedAt)/60000));
 const total = c => c.items.filter(i=>!i.void).reduce((s,i)=>s+i.q*i.price,0);
 const count = c => c.items.filter(i=>!i.void).reduce((s,i)=>s+i.q,0);
-const isStale = c => c.status==='open' && mins(c) >= CONFIG.STALE_MIN;
+const isRes = c => !!(c.res && !c.res.arrived);
+const isStale = c => c.status==='open' && !isRes(c) && mins(c) >= CONFIG.STALE_MIN;
 const stKey = c => c.status==='paid' ? 'paid' : isStale(c) ? 'stale' : c.status;
 const stLabel = {open:'Aberta',pay:'Aguardando pagamento',stale:'Em alerta',paid:'Paga'};
 const dur = m => m>=60 ? `${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}` : `${m} min`;
@@ -6507,7 +6619,7 @@ const hhmm = t => new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:
 const ST_MOD = {open:'open',pay:'wait',stale:'alert',paid:'closed'};
 const kitchen = c => { if(c.status==='paid') return null; const it=c.items.filter(i=>!i.void&&i.at); if(!it.length) return null;
   const m=Math.min(...it.map(i=>KS[itemKs(i)])); return m<=1 ? ['prep','Em preparo'] : m===2 ? ['ready','Pronto'] : ['done','Entregue']; };
-const stHtml = c => { const k=c.status; return `<span class="badge badge--${ST_MOD[k]}"><i></i>${stLabel[k]}</span>`; };
+const stHtml = c => { if(isRes(c)) return `<span class="badge badge--wait"><i></i>Reservada · ${hhmm(c.res.at)}</span>`; const k=c.status; return `<span class="badge badge--${ST_MOD[k]}"><i></i>${stLabel[k]}</span>`; };
 const kitHtml = c => { const kt=kitchen(c); return kt?`<span class="kt kt--${kt[0]}"><i></i>${kt[1]}</span>`:''; };
 const esc = s => String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const strip = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
@@ -6563,9 +6675,10 @@ function openNp(){
   if(!can('comanda:criar')){ toast('Seu perfil não abre comandas'); return; }
   ntClose(false);
   if(S.sel){ if(!tryClose()) return; }
-  const f = $('#qp'); f.hidden = false; $('#qpb').setAttribute('aria-expanded','true'); const i = $('#qp-in'); i.value = ''; i.placeholder = usaMesas() ? 'Mesa ou nome: 7 ou Dona Maria' : 'Nome ou número da comanda: Dona Maria'; npMesas(); npHint(); i.focus();
+  const f = $('#qp'); f.hidden = false; $('#qpb').setAttribute('aria-expanded','true'); const i = $('#qp-in'); i.value = ''; i.placeholder = usaMesas() ? 'Número da mesa ou nome: 7 ou Dona Maria' : 'Nome ou número da comanda: Dona Maria'; npScrim(true); npCli = {ids:[],open:false,nw:false,q:''}; npResReset(); npClRender(); npMesas(); npHint(); i.focus();
 }
-function closeNp(refocus){ const f = $('#qp'); if(f.hidden) return; f.hidden = true; $('#qpb').setAttribute('aria-expanded','false'); if(refocus) $('#qpb').focus(); }
+function npScrim(on){ let sc = $('#qp-scrim'); if(on && !sc){ sc = document.createElement('div'); sc.id = 'qp-scrim'; sc.addEventListener('click',()=>closeNp(true)); document.body.appendChild(sc); } else if(!on && sc) sc.remove(); }
+function closeNp(refocus){ const f = $('#qp'); if(f.hidden) return; npScrim(false); f.hidden = true; $('#qpb').setAttribute('aria-expanded','false'); if(refocus) $('#qpb').focus(); }
 /* Com "Usar mesas" ligado, a unidade vê as mesas livres para escolher com um toque; desligado, só nome ou número. */
 function npMesas(){
   const box = $('#qp-m'); if(!box) return;
@@ -6574,13 +6687,62 @@ function npMesas(){
   box.hidden = false; box.innerHTML = livres.length ? '<span>Mesas livres</span>'+livres.map(m=>`<button type="button" class="qp__chip" data-qpm="${m.n}" aria-label="Mesa ${m.n}, ${m.cap} lugares">${m.n}<small>${m.cap}</small></button>`).join('') : '<span>Nenhuma mesa livre. Digite um nome ou o número de uma mesa em uso.</span>';
 }
 document.addEventListener('click',e=>{ const b = e.target.closest && e.target.closest('[data-qpm]'); if(!b) return; $('#qp-in').value = b.dataset.qpm; npSubmit(); });
+
+/* Nova comanda: cliente opcional (vincular ou cadastrar já na abertura) */
+let npCli = {ids:[],open:false,nw:false,q:''};
+function npClRender(){
+  const box = $('#qp-cl'); if(!box) return;
+  if(!can('cliente:ver')){ box.innerHTML = ''; return; }
+  const ls = npCli.ids.map(clById).filter(Boolean);
+  const chips = ls.map(cl=>`<span class="cx-chip"><svg viewBox="0 0 16 16"><path d="M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM3 13.5c.5-2.5 2.5-3.5 5-3.5s4.5 1 5 3.5"/></svg>${esc(cl.n)}<button type="button" data-npc="clear" data-cid="${cl.id}" aria-label="Tirar ${esc(cl.n)}" title="Tirar cliente">×</button></span>`).join('');
+  if(!npCli.open){ box.innerHTML = `<div class="lbl">${ls.length?'Clientes':'Cliente (opcional)'} ${chips}<button class="cx-add" type="button" data-npc="open">${ls.length?'+ Outro cliente':'+ Vincular ou cadastrar cliente'}</button></div>`; return; }
+  if(npCli.nw){ box.innerHTML = `<div class="cx-f"><label>Nome<input id="npc-n" autocomplete="off" value="${esc(npCli.q)}"></label><label>Telefone (opcional)<input id="npc-t" autocomplete="off" placeholder="(31) 9…"></label><div class="row"><button class="btn btn--primary btn--sm" type="button" data-npc="create">Cadastrar cliente</button><button class="btn btn--sm" type="button" data-npc="back">Voltar à busca</button></div></div>`; return; }
+  box.innerHTML = `<div class="lbl">${ls.length?'Clientes':'Cliente (opcional)'} ${chips}<button class="cx-add" type="button" data-npc="close">Fechar</button></div><input id="npc-q" class="cx-q" placeholder="Buscar por nome ou telefone…" autocomplete="off" value="${esc(npCli.q)}" aria-label="Buscar cliente"><div id="npc-res">${npClResults()}</div>`;
+}
+function npClResults(){
+  const q = palNorm(npCli.q).trim(), l = CLI.cli.filter(x=>!x.anon && !npCli.ids.includes(x.id) && (!q || palNorm(x.n+' '+(x.tel||'')).includes(q))).slice(0,4);
+  return (l.length ? l.map(x=>`<button class="cx-r" type="button" data-npc="pick" data-cid="${x.id}"><b>${esc(x.n)}</b><span>${esc(x.tel||'sem telefone')}${x.fi?' · fiado':''}</span></button>`).join('') : `<p class="cx-n">Nenhum cliente${q?` com “${esc(npCli.q)}”`:''}.</p>`)
+    + (can('cliente:gerenciar') ? `<button class="cx-r cx-r--new" type="button" data-npc="new">+ Cadastrar ${npCli.q?`“${esc(npCli.q)}”`:'novo cliente'}</button>` : '');
+}
+$('#qp').addEventListener('click',e=>{
+  const b = e.target.closest('[data-npc]'); if(!b) return; const a = b.dataset.npc;
+  if(a==='open'){ npCli.open = true; npCli.nw = false; npClRender(); $('#npc-q').focus(); }
+  else if(a==='close'){ npCli.open = false; npClRender(); $('#qp-in').focus(); }
+  else if(a==='clear'){ npCli.ids = npCli.ids.filter(i=>i!==b.dataset.cid); npClRender(); $('#qp-in').focus(); }
+  else if(a==='pick'){ npCli.ids.push(b.dataset.cid); npCli.open = false; npCli.q = ''; npClRender(); $('#qp-in').focus(); }
+  else if(a==='new'){ npCli.nw = true; npClRender(); $('#npc-n').focus(); }
+  else if(a==='back'){ npCli.nw = false; npClRender(); $('#npc-q').focus(); }
+  else if(a==='create'){
+    const n = $('#npc-n').value.trim(); if(!n){ toast('Informe o nome do cliente'); $('#npc-n').focus(); return; }
+    const n0 = Date.now(), id = 'c'+(CLI.n++), by = PF().user;
+    CLI.cli.push({id,n,tel:$('#npc-t').value.trim(),mail:'',doc:'',nasc:'',tags:[],obs:'',visits:0,gasto:0,ult:null,fav:[],cons:{atend:{on:0,t:null},com:{on:0,t:null},fid:{on:0,t:null}},fi:null,hist:[],aud:[{t:n0,by,x:'Cadastro criado ao abrir comanda'}],cr:n0,anon:0});
+    clSave(); npCli.ids.push(id); npCli.open = false; npCli.nw = false; npCli.q = ''; toast('Cliente cadastrado: '+n); npClRender(); $('#qp-in').focus();
+  }
+});
+$('#qp').addEventListener('input',e=>{ if(e.target.id==='npc-q'){ npCli.q = e.target.value; $('#npc-res').innerHTML = npClResults(); } else if(e.target.id==='npc-n') npCli.q = e.target.value; });
+$('#qp').addEventListener('keydown',e=>{
+  const id = e.target.id; if(id!=='npc-q' && id!=='npc-n' && id!=='npc-t') return;
+  if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); if(id==='npc-q'){ const f = $('#npc-res [data-npc=pick]'); if(f) f.click(); } else document.querySelector('[data-npc=create]').click(); }
+  else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); npCli.open = false; npCli.nw = false; npClRender(); $('#qp-in').focus(); }
+});
+
+/* Nova comanda como reserva: fica no estado "Reservada" até marcar Chegou; aceita itens antes */
+function npResReset(){ const c = $('#qp-res'); if(!c) return; c.checked = false; $('#qp-rtl').hidden = true; const t = new Date(), m = t.getMinutes(); t.setMinutes(m<30?30:60,0,0); $('#qp-rt').value = String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); }
+function npResAt(){ const [h,m] = ($('#qp-rt').value||'20:00').split(':').map(Number), d = new Date(); d.setHours(h,m,0,0); if(d.getTime() < Date.now()-60000) d.setDate(d.getDate()+1); return d.getTime(); }
+$('#qp').addEventListener('change',e=>{ if(e.target.id==='qp-res'){ $('#qp-rtl').hidden = !e.target.checked; npHint(); if(e.target.checked) $('#qp-rt').focus(); } else if(e.target.id==='qp-rt') npHint(); });
+document.addEventListener('click',e=>{
+  const b = e.target.closest && e.target.closest('[data-res=arrive]'); if(!b) return; const c = cur(); if(!c || !isRes(c)) return;
+  const h = hhmm(c.res.at); c.res.arrived = true; c.openedAt = now(); cLog(c,`Cliente chegou (reserva das ${h})`); toast(`${c.ident}: cliente chegou`); renderAll(); live(`${c.ident}: cliente chegou`);
+});
 function npHint(){
   const v = $('#qp-in').value, id = normIdent(v), h = $('#qp-h');
-  h.textContent = !id ? (usaMesas() ? 'Toque numa mesa livre, ou digite o número ou um nome. Enter cria ou abre.' : 'Digite um nome ou número. Enter cria ou abre.') : findComanda(v) ? `${findComanda(v).ident} já está aberta. Enter abre.` : `Enter cria ${id}.`;
+  const rs = $('#qp-res') && $('#qp-res').checked; if(rs && id && !findComanda(v)){ h.textContent = `Enter cria a reserva de ${id} para ${hhmm(npResAt())}. Dá para lançar itens antes e marcar Chegou depois.`; return; }
+  h.textContent = !id ? (usaMesas() ? 'Toque numa mesa livre, ou digite o número ou o nome. Enter abre a comanda para lançar os itens.' : 'Digite um nome ou número. Enter cria ou abre.') : findComanda(v) ? `${findComanda(v).ident} já está aberta. Enter abre.` : `Enter cria ${id} e abre para lançar os itens.`;
 }
 function npSubmit(){
   const v = $('#qp-in').value; if(!normIdent(v)){ $('#qp-in').focus(); return; }
-  const r = ensureComanda(v); closeNp(false);
+  const r = ensureComanda(v); if(r.created && $('#qp-res').checked){ r.c.res = {at:npResAt(),arrived:false}; cLog(r.c,'Reserva criada para '+hhmm(r.c.res.at)); }
+  npCli.ids.map(clById).filter(Boolean).forEach(nc=>{ r.c.clis = r.c.clis||[]; if(!r.c.clis.includes(nc.id)){ r.c.clis.push(nc.id); cLog(r.c,'Cliente vinculado ao abrir: '+nc.n); } }); closeNp(false);
   renderAll(); select(r.c.id);
   live(r.created ? `${r.c.ident} criada` : `${r.c.ident} já estava aberta`);
 }
@@ -6837,7 +6999,7 @@ function tipShow(a,pin){
 function tipHide(){ const t=$('#rtip'); if(!t) return; t.hidden=true; tipPinned=null; document.querySelectorAll('#nav a[aria-describedby]').forEach(a=>a.removeAttribute('aria-describedby')); }
 function filtered(){
   const q=S.q.trim().toLowerCase();
-  let l=vis().filter(c=>S.filter==='all'||(S.filter==='stale'?isStale(c):S.filter==='open'?c.status==='open':c.status===S.filter));
+  let l=vis().filter(c=>S.filter==='all'||(S.filter==='stale'?isStale(c):S.filter==='res'?isRes(c):S.filter==='open'?c.status==='open'&&!isRes(c):c.status===S.filter));
   if(q) l=l.filter(c=>(c.ident+' '+cnum(c)+' '+c.num+' '+c.garcom+' '+c.items.map(i=>i.n).join(' ')).toLowerCase().includes(q));
   const pin=c=>PINS.has(c.id)?0:1;
   if(S.view==='cards'){
@@ -6852,7 +7014,7 @@ function filtered(){
 function flash(el){ if(!el) return; el.classList.add('hl'); setTimeout(()=>el.classList.remove('hl'),1400); }
 
 function renderSummary(){
-  const act=vis().filter(c=>c.status!=='paid');
+  const act=vis().filter(c=>c.status!=='paid' && !isRes(c));
   const open=act.filter(c=>c.status==='open').length;
   const cons=act.reduce((s,c)=>s+total(c),0);
   const pay=act.filter(c=>c.status==='pay');
@@ -6872,7 +7034,7 @@ function renderSummary(){
 }
 
 function renderChips(){
-  const opts=[['all','Todas'],['open','Abertas'],['pay','Aguardando'],['stale','Em alerta']];
+  const opts=[['all','Todas'],['open','Abertas'],['pay','Aguardando'],['stale','Em alerta'],['res','Reservas']];
   $('#chips').innerHTML=opts.map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${S.filter===k}">${l}</button>`).join('');
 }
 
@@ -6931,7 +7093,7 @@ function cancelHtml(c){
      <select id="reason" class="field"><option value="">Selecione um motivo</option>${REASONS.map(r=>`<option>${r}</option>`).join('')}</select>
      <div class="row"><button class="btn btn--sm btn--danger" id="confcancel">Confirmar cancelamento</button><button class="btn btn--sm" id="abortcancel">Voltar</button></div></div>`:'';
 }
-const subHtml = c => `${stHtml(c)}<span>Aberta às ${hhmm(c.openedAt)} · ${dur(mins(c))}</span><span>Garçom ${esc(c.garcom)}</span>`;
+const subHtml = c => `${stHtml(c)}<span>${isRes(c)?'Reserva para '+hhmm(c.res.at):'Aberta às '+hhmm(c.openedAt)+' · '+dur(mins(c))}</span><span>Garçom ${esc(c.garcom)}</span>`;
 /* ===== COMANDA: uma janela so. Lancar (itens + cardapio com busca) ou Conta ===== */
 /* "3 chope", "3x chope", "12" (codigo), "3 12" */
 function parseLine(s){
@@ -6987,15 +7149,16 @@ function dlgRender(c){
     if(tab==='launch'){ S.pickQ = ''; S.hi = 0; }
   }
   const pn = pendCount(c);
-  $('#dlg-head').innerHTML = `<div class="dlg__t"><h2 id="dlg-t">${cnumH(c)}${esc(c.ident)}</h2><div class="sub num">${subHtml(c)}${pn?`<span class="dlg__pc">${pn} para enviar</span>`:''}</div></div>
+  $('#dlg-head').innerHTML = `<div class="dlg__t"><h2 id="dlg-t">${cxTitle(c)}</h2><div class="sub num">${subHtml(c)}${cxSub(c)}${pn?`<span class="dlg__pc">${pn} para enviar</span>`:''}</div></div>
     <div class="dlg__act">${paid
       ? (can('comanda:reimprimir')?`<button class="btn btn--sm" type="button" data-pre>Imprimir comprovante</button>`:'')
       : `${tab==='bill'&&can('comanda:lancar_item')?`<button class="btn btn--sm" type="button" data-dtab="launch">← Itens</button>`:''}${can('comanda:reimprimir')?`<button class="btn btn--sm" type="button" data-pre>Pré-conta</button>`:''}${can('comanda:cancelar')?`<button class="btn btn--sm" type="button" data-cancelc>Cancelar comanda</button>`:''}${tab==='launch'?`<button class="btn btn--sm btn--hl" type="button" data-dtab="bill">${can('comanda:fechar')?'Fechar conta →':'Ver a conta →'}</button>`:''}`}</div>
     <div class="dlg__tot num"><small>Consumo</small><b>${brl(total(c))}</b></div><button class="btn btn--sm" type="button" data-back aria-label="Fechar janela (Esc)">Fechar <kbd>Esc</kbd></button>`;
   d.setAttribute('aria-labelledby','dlg-t');
   const ae = document.activeElement;
-  if(!(ae && ae.matches('#reason') && d.contains(ae))){
+  if(!(ae && ae.matches('#reason,#cpk-q,#cpk-n,#cpk-t,#ren-in') && d.contains(ae))){
     if(tab==='launch') $('#dlg-items').innerHTML = `${S.confirmClose?closeWarnHtml(c):''}${cancelBoxHtml(c)}${pendHtml(c)}<p class="lbl lbl--big"><span>Na comanda · ${count(c)} ${count(c)===1?'item':'itens'}</span><b class="num">${brl(total(c))}</b></p>${itemsHtml(c,'dlg')}${cancelHtml(c)}`;
+    if(tab==='launch'){ const it = $('#dlg-items'); it.insertAdjacentHTML('afterbegin',cxPickHtml(c)); if(cxS.hist) it.insertAdjacentHTML('beforeend',cxTimeline(c)); }
   }
   $('#dlg-pre').innerHTML = S.pre ? preHtml(c) : '';
   if(tab==='bill') refreshBill(); else { renderPicker(); if(fresh) $('#dq').focus(); }
@@ -7011,6 +7174,85 @@ function renderPicker(){
   $('#dp-h').textContent = found ? (list.length ? `Enter adiciona ${qty}× ${list[S.hi].n}. Setas escolhem outro.` : 'Nenhum produto encontrado.') : (c&&pendCount(c) ? 'Com a busca vazia, Enter envia os itens para enviar.' : 'Digite o nome ou o código. Um número antes muda a quantidade.');
 }
 function renderDlg(){ renderCrumbs(); dlgRender(S.sel ? byId(S.sel) : null); }
+/* ===== COMANDA: renomear, cliente e histórico (F1, F16) =====
+   Renomear/identificar (comanda:renomear), vincular ou cadastrar cliente (cliente:ver / cliente:gerenciar) e linha do tempo da comanda.
+   Eventos extras ficam em c.log; abertura e itens saem dos próprios dados da comanda. */
+const cLog = (c,x) => { (c.log = c.log||[]).push({t:Date.now(),by:PF().user,x}); };
+const cxS = {ren:null,cpk:null,hist:false,id:null};
+const cliList = c => (c.clis||[]).map(clById).filter(Boolean);
+function cxReset(c){ if(cxS.id!==c.id){ cxS.id = c.id; cxS.ren = null; cxS.cpk = null; cxS.hist = false; } }
+function cxTitle(c){
+  cxReset(c);
+  if(cxS.ren!==null) return `${cnumH(c)}<input id="ren-in" class="ren-in" value="${esc(cxS.ren)}" maxlength="40" aria-label="Nome da comanda" autocomplete="off"><button class="btn btn--sm btn--primary" type="button" data-ren="ok">Salvar</button><button class="btn btn--sm" type="button" data-ren="no">Cancelar</button>`;
+  const can_ = c.status!=='paid' && can('comanda:renomear');
+  return `${cnumH(c)}${esc(c.ident)}${can_?`<button class="ren-b" type="button" data-ren="go" aria-label="Renomear comanda" title="Renomear comanda"><svg viewBox="0 0 16 16"><path d="M2.5 13.5l.7-3L10.8 3a1.4 1.4 0 0 1 2 2l-7.6 7.6zM9.5 4.3l2 2"/></svg></button>`:''}`;
+}
+function cxSub(c){
+  const ls = cliList(c), canL = c.status!=='paid' && can('cliente:ver');
+  const chips = ls.map(cl=>`<span class="cx-chip"><svg viewBox="0 0 16 16"><path d="M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM3 13.5c.5-2.5 2.5-3.5 5-3.5s4.5 1 5 3.5"/></svg>${esc(cl.n)}${canL?`<button type="button" data-cx="unlink" data-cid="${cl.id}" aria-label="Tirar ${esc(cl.n)} da comanda" title="Tirar cliente">×</button>`:''}</span>`).join('');
+  const add = canL ? `<button class="cx-add" type="button" data-cx="pick">${ls.length?'+ Outro cliente':'+ Cliente'}</button>` : '';
+  const arr = isRes(c) && can('comanda:criar') ? `<button class="btn btn--primary btn--sm" type="button" data-res="arrive">Chegou</button>` : '';
+  return `${arr}${chips}${add}<button class="cx-add" type="button" data-cx="hist" aria-pressed="${cxS.hist}">Histórico</button>`;
+}
+function cxTimeline(c){
+  const ev = [{t:c.openedAt,by:c.garcom,x:c.res?'Reserva criada':'Comanda aberta'}];
+  c.items.forEach(i=>{ if(i.at) ev.push({t:i.at,by:i.by||c.garcom,x:`Lançou ${i.q}× ${i.n}`}); if(i.void) ev.push({t:i.at||c.openedAt,by:i.by||c.garcom,x:`Item cancelado: ${i.q}× ${i.n}`,s:1}); });
+  (c.log||[]).forEach(l=>ev.push(l));
+  ev.sort((a,b)=>b.t-a.t);
+  return `<section class="cx-tl" aria-label="Histórico da comanda"><h3>Histórico da comanda</h3><ol>${ev.map(e=>`<li><b>${esc(e.x)}</b><span>${esc(e.by||'')} · ${hhmm(e.t)}</span></li>`).join('')}</ol></section>`;
+}
+function cxPickHtml(c){
+  if(!cxS.cpk || c.status==='paid') return '';
+  const nw = cxS.cpk.nw;
+  return `<section class="cx-pk" aria-label="Vincular cliente"><div class="cx-pk__h"><b>${nw?'Cadastrar cliente':'Vincular cliente'}</b><button class="btn btn--sm" type="button" data-cx="pkx">Fechar</button></div>
+  ${nw?`<div class="cx-f"><label>Nome<input id="cpk-n" autocomplete="off" value="${esc(cxS.cpk.q||'')}"></label><label>Telefone (opcional)<input id="cpk-t" autocomplete="off" placeholder="(31) 9…"></label><div class="row"><button class="btn btn--primary btn--sm" type="button" data-cx="create">Cadastrar e vincular</button><button class="btn btn--sm" type="button" data-cx="back">Voltar à busca</button></div><p class="cx-n">Cadastro mínimo. O resto (aniversário, consentimentos) se completa na tela Clientes.</p></div>`
+  :`<input id="cpk-q" class="cx-q" placeholder="Buscar por nome ou telefone…" autocomplete="off" value="${esc(cxS.cpk.q||'')}" aria-label="Buscar cliente"><div id="cpk-res">${cxResults()}</div>`}</section>`;
+}
+function cxResults(){
+  const q = palNorm(cxS.cpk.q||'').trim(), cur_ = (cur()&&cur().clis)||[], l = CLI.cli.filter(x=>!x.anon && !cur_.includes(x.id) && (!q || palNorm(x.n+' '+(x.tel||'')).includes(q))).slice(0,6);
+  return (l.length ? l.map(x=>`<button class="cx-r" type="button" data-cx="link" data-cid="${x.id}"><b>${esc(x.n)}</b><span>${esc(x.tel||'sem telefone')}${x.fi?' · fiado':''}</span></button>`).join('') : `<p class="cx-n">Nenhum cliente com “${esc(cxS.cpk.q)}”.</p>`)
+    + (can('cliente:gerenciar') ? `<button class="cx-r cx-r--new" type="button" data-cx="new">+ Cadastrar ${cxS.cpk.q?`“${esc(cxS.cpk.q)}”`:'novo cliente'}</button>` : '');
+}
+function cxRefresh(){ renderDlg(); }
+document.addEventListener('click',e=>{
+  const r = e.target.closest('[data-ren]'), x = e.target.closest('[data-cx]'); const c = cur(); if(!c || !(r||x)) return;
+  if(r){ const a = r.dataset.ren;
+    if(a==='go'){ cxS.ren = c.ident; cxRefresh(); $('#ren-in').focus(); $('#ren-in').select(); }
+    else if(a==='no'){ cxS.ren = null; cxRefresh(); }
+    else if(a==='ok') cxRename(c);
+    return; }
+  const a = x.dataset.cx, ae = document.activeElement; if(ae && ae.matches('#cpk-q,#cpk-n,#cpk-t')) ae.blur();
+  if(a==='hist'){ cxS.hist = !cxS.hist; renderDlg(); }
+  else if(a==='pick'){ cxS.cpk = {q:'',nw:false}; renderDlg(); $('#cpk-q') && $('#cpk-q').focus(); }
+  else if(a==='pkx'){ cxS.cpk = null; renderDlg(); }
+  else if(a==='new'){ cxS.cpk.nw = true; renderDlg(); $('#cpk-n').focus(); }
+  else if(a==='back'){ cxS.cpk.nw = false; renderDlg(); $('#cpk-q').focus(); }
+  else if(a==='link'){ cxLink(c,x.dataset.cid); }
+  else if(a==='unlink'){ const cl = clById(x.dataset.cid); c.clis = (c.clis||[]).filter(i=>i!==x.dataset.cid); cLog(c,'Cliente desvinculado: '+(cl?cl.n:'')); toast('Cliente tirado da comanda'); renderDlg(); renderList(); }
+  else if(a==='create'){
+    const n = $('#cpk-n').value.trim(); if(!n){ toast('Informe o nome do cliente'); $('#cpk-n').focus(); return; }
+    const n0 = Date.now(), id = 'c'+(CLI.n++), by = PF().user, cons = {atend:{on:0,t:null},com:{on:0,t:null},fid:{on:0,t:null}};
+    CLI.cli.push({id,n,tel:$('#cpk-t').value.trim(),mail:'',doc:'',nasc:'',tags:[],obs:'',visits:0,gasto:0,ult:null,fav:[],cons,fi:null,hist:[],aud:[{t:n0,by,x:'Cadastro criado na comanda '+c.ident}],cr:n0,anon:0});
+    clSave(); cxLink(c,id,true);
+  }
+});
+function cxRename(c){
+  const v = ($('#ren-in').value||'').trim(); if(!v){ toast('Dê um nome para a comanda'); return; }
+  if(v!==c.ident){ cLog(c,`Renomeada: “${c.ident}” → “${v}”`); c.ident = v; toast('Comanda renomeada'); }
+  cxS.ren = null; renderDlg(); renderList();
+}
+function cxLink(c,id,fresh){
+  const cl = clById(id); if(!cl) return; c.clis = c.clis||[]; if(!c.clis.includes(id)) c.clis.push(id); cxS.cpk = null;
+  cLog(c,(fresh?'Cliente cadastrado e vinculado: ':'Cliente vinculado: ')+cl.n);
+  toast((fresh?'Cadastrado e vinculado: ':'Vinculado: ')+cl.n); renderDlg(); renderList();
+}
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='ren-in'){ if(e.key==='Enter'){ e.preventDefault(); const c = cur(); c && cxRename(c); } else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); cxS.ren = null; cxRefresh(); } }
+  else if((e.target.id==='cpk-q'||e.target.id==='cpk-n'||e.target.id==='cpk-t') && e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); cxS.cpk = null; renderDlg(); }
+  else if(e.target.id==='cpk-n' && e.key==='Enter'){ e.preventDefault(); document.querySelector('[data-cx=create]').click(); }
+},true);
+document.addEventListener('input',e=>{ if(e.target.id==='cpk-q'){ cxS.cpk.q = e.target.value; $('#cpk-res').innerHTML = cxResults(); } });
+
 function tryClose(){
   const c = cur();
   if(S.pre){ S.pre = false; renderDlg(); return false; }
@@ -7043,7 +7285,7 @@ document.addEventListener('click',e=>{
   const t=e.target;
   let el;
   if(tipPinned && !t.closest('#nav a')) tipHide();
-  if(!$('#qp').hidden && !t.closest('#qp,#qpb,#nova')) closeNp(false);
+  if(!$('#qp').hidden && t.isConnected && !t.closest('#qp,#qpb,#nova')) closeNp(false);
   if((el=t.closest('#nav a[data-screen]'))){ e.preventDefault(); go(el.dataset.screen); if(isRail()) tipShow(el,true); return; }
   if((el=t.closest('[data-go]'))){ e.preventDefault(); go(el.dataset.go); return; }
   if(t.closest('#sbtn')){ setRail(!isRail(),true); return; }
@@ -7129,7 +7371,7 @@ document.addEventListener('keydown',e=>{
   }
   if(e.key==='Escape'){ if(document.querySelector('.menu')){ const b=document.querySelector('.menu').opener; closeMenu(); b&&b.focus(); } else if(S.cancelIdx!=null){ S.cancelIdx=null; renderDlg(); } else if(S.sel && !$('#dlg').open) closeComanda(); }
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-id]')){ e.preventDefault(); select(+e.target.dataset.id,e.target); }
-  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); $('#q').focus(); }
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); if($('#pal').dataset.open) palClose(); else palOpen(); }
   if(e.target.closest?.('.menu')&&['ArrowDown','ArrowUp'].includes(e.key)){ e.preventDefault(); const bs=[...document.querySelectorAll('.menu button')]; const i=bs.indexOf(document.activeElement); bs[(i+(e.key==='ArrowDown'?1:-1)+bs.length)%bs.length].focus(); }
 });
 document.addEventListener('input',e=>{
@@ -7150,6 +7392,307 @@ $('#dlg').addEventListener('cancel',e=>{ e.preventDefault(); tryClose(); });
 $('#dlg').addEventListener('close',()=>{ if(!S.dlgProg && S.sel) closeComanda(); });
 $('#q').addEventListener('input',e=>{ S.q=e.target.value; renderList(); });
 $('#nova').addEventListener('click',openNp);
+
+/* ===== BUSCA GLOBAL (U3c): Ctrl/Cmd+K =====
+   Indice montado do registro de telas (FLOW_SCREENS) + abas, relatorios e configuracoes + dados (comandas, produtos) + acoes.
+   Tudo filtrado pela permissao do perfil (okScreen/can). Grupos com cor propria; titulo + subtitulo (caminho) em cada linha. */
+const PAL_G = {
+  tela:{n:'Telas',k:'Tela',c:'--pg-tela',i:'M3 3h10v10H3zM3 6.5h10'},
+  aba:{n:'Abas e seções',k:'Aba',c:'--pg-aba',i:'M2.5 5.5h4v-2h3v2h4v7h-11z'},
+  rel:{n:'Relatórios',k:'Relatório',c:'--pg-rel',i:'M3 13V8M8 13V3M13 13V6'},
+  cfg:{n:'Configurações',k:'Configuração',c:'--pg-cfg',i:'M2 4.5h4M9 4.5h5M2 11.5h7M12 11.5h2M6 3v3M9 10v3'},
+  dado:{n:'Dados',k:'Dado',c:'--pg-dado',i:'M4 2.5h6l2.5 2.5v8.5H4zM9.5 2.5V5.5h3M6 8.5h4.5M6 11h4.5'},
+  acao:{n:'Ações',k:'Ação',c:'--pg-acao',i:'M8 3v10M3 8h10'}
+};
+const PAL_ORDER = ['acao','tela','aba','rel','cfg','dado'];
+/* [tela, estado a aplicar, titulo, palavras-chave, permissao da aba (opcional)] */
+const PAL_TABS = [
+  ['estoque',()=>{ESS.tab='ins'},'Insumos','insumo ingrediente saldo cadastro'],
+  ['estoque',()=>{ESS.tab='mov'},'Movimentações de estoque','extrato entrada saida perda consumo ajuste transferencia'],
+  ['compras',()=>{CPS.tab='compras'},'Compras','pedido nota recebimento'],
+  ['compras',()=>{CPS.tab='forn'},'Fornecedores','fornecedor contato prazo'],
+  ['compras',()=>{CPS.tab='pedir'},'A pedir','reposicao sugestao faltando',()=>cpP.criar()||cpP.ped()],
+  ['compras',()=>{CPS.tab='preco'},'Preços de compra','historico preco aumento',()=>cpP.hp()],
+  ['clientes',()=>{CLS.tab='cli'},'Lista de clientes','cadastro telefone'],
+  ['clientes',()=>{CLS.tab='fiado'},'Fiado','conta fiado em aberto devendo cobranca',()=>clP.hist()],
+  ['clientes',()=>{CLS.tab='dup'},'Possíveis duplicados','mesclar unir repetido',()=>clP.merge()],
+  ['financeiro',()=>{FNS.tab='visao'},'Visão geral do financeiro','resumo saldo'],
+  ['financeiro',()=>{FNS.tab='pagar'},'Contas a pagar','despesa boleto vencimento'],
+  ['financeiro',()=>{FNS.tab='receber'},'A receber','repasse operadora cartao',()=>fnP.rec()],
+  ['financeiro',()=>{FNS.tab='contas'},'Contas financeiras','banco carteira',()=>fnP.accV()],
+  ['financeiro',()=>{FNS.tab='dre'},'DRE','resultado lucro demonstrativo',()=>fnP.dre()],
+  ['financeiro',()=>{FNS.tab='cat'},'Categorias financeiras','centro de custo',()=>fnP.cat()],
+  ['caixa',()=>{CJS.tab='agora'},'Caixa agora','abertura sangria suprimento'],
+  ['caixa',()=>{CJS.tab='turnos'},'Turnos de caixa','fechamento conferencia diferenca operador'],
+  ['caixa',()=>{CJS.tab='aprov'},'Aprovações de caixa','diferenca aprovar',()=>cjP.aprov()&&cjP.todos()],
+  ['caixa',()=>{CJS.tab='dia'},'Dia operacional','virada abrir dia fechar dia',()=>cjP.todos()],
+  ['equipe',()=>{EQS.tab='colab'},'Colaboradores','funcionario garcom equipe',()=>eqP.ver()],
+  ['equipe',()=>{EQS.tab='com'},'Comissões','comissao pagar saldo',()=>eqP.vt()||eqP.vp()],
+  ['equipe',()=>{EQS.tab='regra'},'Regra de comissão','percentual taxa de servico',()=>eqP.cfg()],
+  ['usuarios',()=>{AC.tab='pessoas'},'Pessoas','usuario convidar desativar'],
+];
+const PAL_REL = [
+  ['ini','Resumo de relatórios','inicio visao geral'],['vendas','Vendas do dia e do período','faturamento vendas por dia historico'],
+  ['prod','Produtos mais vendidos','ranking vendas por produto curva'],['caixa','Fechamento de caixa e pagamentos','formas de pagamento pix credito'],
+  ['equipe','Vendas por garçom','ranking equipe desempenho pico por horario'],['custos','Custos e CMV','cmv margem perdas cortesias dre custo por produto']
+];
+const PAL_CFG = [
+  ['cad','Cadastro da unidade','nome endereco cnpj'],['op','Operação da unidade','numeracao comandas fixadas'],
+  ['agenda','Horário de funcionamento','abre fecha dia da semana excecao feriado'],['mesas','Mesas e áreas','mapa areas lugares'],
+  ['venda','Venda: taxa de serviço e descontos','taxa de servico gorjeta desconto limite cortesia'],['caixa','Caixa: sangria e conferência','conferencia cega diferenca sangria'],
+  ['cozinha','Cozinha e bar','pracas impressora preparo'],['estoque','Estoque: baixa e negativo','estoque negativo baixa automatica alerta'],
+  ['hist','Histórico de alterações','quem mudou auditoria configuracao']
+];
+const PAL_ORG = [['dados','Dados da empresa','razao social cnpj'],['unidades','Unidades','filial adicionar unidade'],['padroes','Padrões e travas','heranca padrao'],['seg','Segurança da organização','senha sessao ip'],['plano','Plano e assinatura','cobranca assinatura']];
+
+const palNorm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const palPath = id => flowCrumbs(id).map(c=>c.title).join(' › ');
+const palParent = id => flowCrumbs(id).slice(0,-1).map(c=>c.title).join(' › ');
+const PAL_REC = 'flow.pal.recent';
+let palRecent = []; try{ palRecent = JSON.parse(localStorage.getItem(PAL_REC)||'[]'); }catch(_){}
+let palItems = [], palShown = [], palSel = 0;
+
+function palBuild(){
+  const out = [], add = o => out.push(Object.assign({kw:''},o));
+  SCREENS.filter(s=>s.app==='web' && s.kind!=='group' && s.id!=='comanda-detalhe' && okScreen(s)).forEach(s=>add({id:'t:'+s.id,g:'tela',t:s.title,sub:palParent(s.id)||'Tela principal',kw:(s.keywords||[]).join(' '),run:()=>go(s.id)}));
+  PAL_TABS.forEach(([scr,fn,t,kw,ok])=>{ const s=SC[scr]; if(s && okScreen(s) && (!ok || ok())) add({id:'a:'+scr+t,g:'aba',t,sub:palPath(scr),kw,run:()=>{ fn(); go(scr); }}); });
+  const rl = SC.relatorios, rt = typeof rlTabsList==='function' ? rlTabsList().map(x=>x[0]) : [];
+  if(rl && okScreen(rl)) PAL_REL.forEach(([k,t,kw])=>{ if(rt.includes(k)) add({id:'r:'+k,g:'rel',t,sub:'Gestão › Relatórios',kw,run:()=>{ RLS.tab=k; go('relatorios'); }}); });
+  if(SC.configuracoes && okScreen(SC.configuracoes)) PAL_CFG.forEach(([k,t,kw])=>add({id:'c:'+k,g:'cfg',t,sub:'Administração › Configurações › Unidade',kw,run:()=>{ CO.ct=k; go('configuracoes'); }}));
+  if(SC.organizacao && okScreen(SC.organizacao)) PAL_ORG.forEach(([k,t,kw])=>add({id:'o:'+k,g:'cfg',t,sub:'Administração › Organização e unidades',kw,run:()=>{ CO.tab=k; go('organizacao'); }}));
+  if(can('comanda:ver')) data.forEach(c=>add({id:'d:'+c.id,g:'dado',t:c.ident+' '+cnum(c),sub:'Comanda · '+c.garcom+' · '+(c.status==='pay'?'pedindo a conta':c.status==='paid'?'paga':'aberta'),kw:c.garcom+' '+c.items.map(i=>i.n).join(' '),min:2,run:()=>{ go('comandas'); select(c.id); }}));
+  if(SC.cardapio && okScreen(SC.cardapio)) MENU.forEach(m=>add({id:'p:'+m[0],g:'dado',t:m[0],sub:'Produto · '+m[3]+' · '+brl(m[1]),kw:'cod '+m[2],min:2,run:()=>go('cardapio')}));
+  if(can('comanda:criar')) add({id:'x:nova',g:'acao',t:'Nova comanda',sub:'Abrir uma comanda agora',kw:'abrir mesa criar',key:'N',run:openNp});
+  add({id:'x:tema',g:'acao',t:'Alternar tema claro e escuro',sub:'Aparência',kw:'dark modo noite escuro claro',run:()=>$('#theme').click()});
+  add({id:'x:menu',g:'acao',t:'Recolher ou expandir menu lateral',sub:'Aparência',kw:'sidebar barra',key:'[',run:()=>setRail(!isRail(),true)});
+  out.forEach(o=>{ o.n = palNorm(o.t); o.ns = palNorm(o.sub); o.nk = palNorm(o.kw); });
+  return out;
+}
+function palScore(o,toks,q){
+  let sc = 0;
+  for(const w of toks){
+    if(o.n.startsWith(w)) sc += 50; else if(o.n.split(/[\s·#]+/).some(x=>x.startsWith(w))) sc += 40; else if(o.n.includes(w)) sc += 25;
+    else if(o.nk.split(/\s+/).some(x=>x.startsWith(w))) sc += 14; else if(o.nk.includes(w)) sc += 8;
+    else if(o.ns.includes(w)) sc += 5; else return 0;
+  }
+  if(o.n===q) sc += 40;
+  const r = palRecent.indexOf(o.id); if(r>=0) sc += 12 - r;
+  return sc;
+}
+function palHl(t,toks){
+  const n = palNorm(t); let marks = new Array(t.length).fill(false);
+  toks.forEach(w=>{ if(!w) return; let i = n.indexOf(w); while(i>=0){ for(let j=i;j<i+w.length;j++) marks[j]=true; i = n.indexOf(w,i+w.length); } });
+  let s = '', open = false;
+  for(let i=0;i<t.length;i++){ if(marks[i]&&!open){ s+='<mark>'; open=true; } if(!marks[i]&&open){ s+='</mark>'; open=false; } s+=esc(t[i]); }
+  return s + (open?'</mark>':'');
+}
+function palRender(){
+  const raw = $('#pal-q').value, q = palNorm(raw).trim(), toks = q.split(/\s+/).filter(Boolean);
+  let groups = [];
+  if(!q){
+    const byId = Object.fromEntries(palItems.map(o=>[o.id,o]));
+    const rec = palRecent.map(id=>byId[id]).filter(Boolean).slice(0,4);
+    groups.push(['Recentes',null,rec]);
+    groups.push(['acao',null,palItems.filter(o=>o.g==='acao').slice(0,3)]);
+    groups.push(['tela',null,palItems.filter(o=>o.g==='tela').slice(0,6)]);
+  } else {
+    PAL_ORDER.forEach(g=>{
+      const l = palItems.filter(o=>o.g===g && (!o.min || q.length>=o.min)).map(o=>[o,palScore(o,toks,q)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+      if(l.length) groups.push([g,l.length,l.slice(0,g==='dado'?5:6)]);
+    });
+    groups.sort((a,b)=>palScore(b[2][0],toks,q)-palScore(a[2][0],toks,q));
+  }
+  palShown = [];
+  const body = groups.filter(g=>g[2].length).map(([g,tot,list])=>{
+    const meta = PAL_G[g], head = meta ? meta.n : g, col = meta ? `var(${meta.c})` : 'var(--muted)';
+    return `<div class="pal__g" role="presentation" style="--g:${col}">${meta?'<i></i>':''}${esc(head)}${tot>list.length?` · ${list.length} de ${tot}`:''}</div>` + list.map(o=>{
+      const i = palShown.push(o)-1, m = PAL_G[o.g];
+      const scr = o.g==='tela' && SC[o.id.slice(2)] && SC[o.id.slice(2)].icon;
+      return `<button class="pal__r" type="button" role="option" id="pal-o${i}" data-i="${i}" aria-selected="false" style="--g:var(${m.c})"><span class="pal__ic" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="${scr||m.i}"/></svg></span><span class="pal__t"><b>${palHl(o.t,toks)}</b><span>${palHl(o.sub,toks)}</span></span>${o.key?`<kbd>${esc(o.key)}</kbd>`:''}<span class="pal__k">${m.k}</span></button>`;
+    }).join('');
+  }).join('');
+  $('#pal-b').innerHTML = body || `<div class="pal__none">Nada encontrado para “${esc(raw.trim())}”.<br>Tente o nome da tela, de um relatório ou de uma configuração.</div>`;
+  palSel = 0; palMark();
+}
+function palMark(){
+  const rows = $('#pal-b').querySelectorAll('.pal__r');
+  rows.forEach((r,i)=>r.setAttribute('aria-selected',String(i===palSel)));
+  const cur = rows[palSel]; if(cur){ cur.scrollIntoView({block:'nearest'}); $('#pal-q').setAttribute('aria-activedescendant',cur.id); } else $('#pal-q').removeAttribute('aria-activedescendant');
+}
+function palRun(i){
+  const o = palShown[i]; if(!o) return;
+  palRecent = [o.id].concat(palRecent.filter(x=>x!==o.id)).slice(0,6); try{ localStorage.setItem(PAL_REC,JSON.stringify(palRecent)); }catch(_){}
+  palClose(false); setTimeout(o.run,0);
+}
+let palOpener = null;
+function palOpen(){
+  const p = $('#pal'); if(p.dataset.open) return;
+  palOpener = document.activeElement; palItems = palBuild();
+  $('#pal-q').value = ''; p.dataset.open = '1'; palRender(); $('#pal-q').focus();
+}
+function palClose(back){ const p = $('#pal'); delete p.dataset.open; if(back!==false && palOpener && palOpener.focus && palOpener.id!=='q') palOpener.focus(); else if(back!==false && palOpener && palOpener.id==='q') palOpener.blur(); }
+(function(){
+  const p = document.createElement('div'); p.id = 'pal';
+  p.innerHTML = `<div class="pal" role="dialog" aria-modal="true" aria-label="Busca global"><div class="pal__in"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><input id="pal-q" role="combobox" aria-expanded="true" aria-controls="pal-b" autocomplete="off" spellcheck="false" placeholder="Digite um comando ou busque…"><kbd>Esc</kbd></div><div class="pal__body" id="pal-b" role="listbox" aria-label="Resultados"></div><div class="pal__foot"><span><kbd>↑</kbd><kbd>↓</kbd>navegar</span><span><kbd>↵</kbd>abrir</span><span><kbd>Tab</kbd>próximo grupo</span></div></div>`;
+  document.body.appendChild(p);
+  p.addEventListener('mousedown',e=>{ if(e.target===p){ e.preventDefault(); palClose(); } });
+  p.addEventListener('click',e=>{ const r = e.target.closest('.pal__r'); if(r) palRun(+r.dataset.i); });
+  p.addEventListener('mousemove',e=>{ const r = e.target.closest('.pal__r'); if(r && +r.dataset.i!==palSel){ palSel = +r.dataset.i; palMark(); } });
+  $('#pal-q').addEventListener('input',palRender);
+  $('#pal-q').addEventListener('keydown',e=>{
+    const n = palShown.length, k = e.key;
+    if(k==='ArrowDown'||k==='ArrowUp'){ e.preventDefault(); if(n){ palSel = (palSel+(k==='ArrowDown'?1:-1)+n)%n; palMark(); } }
+    else if(k==='Enter'){ e.preventDefault(); palRun(palSel); }
+    else if(k==='Escape'){ e.preventDefault(); e.stopPropagation(); palClose(); }
+    else if(k==='Tab'){ e.preventDefault(); if(n){ const g = palShown[palSel].g, step = e.shiftKey?-1:1; let i = palSel; do{ i = (i+step+n)%n; }while(palShown[i].g===g && i!==palSel); if(e.shiftKey){ while(i>0 && palShown[i-1].g===palShown[i].g) i--; } palSel = i; palMark(); } }
+  });
+  /* o campo do topo abre a paleta (o filtro de comandas continua na propria lista) */
+  const q = $('#q'); q.placeholder = 'Buscar telas, relatórios, comandas…'; q.readOnly = true;
+  q.addEventListener('focus',palOpen); q.addEventListener('click',palOpen);
+})();
+/* ===== ASSISTENTE DE IA (F19, protótipo) =====
+   Bolinha flutuante que abre um chat. NÃO chama IA de verdade: um motor de regras simula o que o assistente faria
+   (dúvidas sobre o sistema, leitura de dados, navegação, ações com confirmação). Regras mostradas aqui são as da spec:
+   age com a permissão e o limite de valor de quem pergunta; ação que grava pede confirmação; nada é gravado no protótipo. */
+const aiState = {msgs:[], busy:false};
+const aiEyes = '<i></i><i></i>';
+const aiNum = s => parseFloat(String(s).replace(',','.'));
+const aiFindCom = t => {
+  const m = t.match(/\b(mesa|balcao)\s*(\d+)/); if(!m) return null;
+  return vis().find(c=>palNorm(c.ident).includes(m[1]+' '+m[2])) || null;
+};
+const aiCan = (p,what) => can(p) ? true : (aiSay(`Você não tem permissão para ${what}. Peça a quem administra os perfis (Administração › Perfis e permissões).`), false);
+function aiSay(html,card){ aiState.msgs.push({r:'ai',html,card}); }
+function aiHome(){
+  const act = vis().filter(c=>c.status!=='paid'), open = act.length, cons = act.reduce((s,c)=>s+total(c),0), stale = act.filter(isStale).length;
+  let h = `<p>Agora na casa (${esc(CX.u==='all'?'todas as unidades':cxUnit().n)}):</p><ul><li><b>${open}</b> comandas abertas, <span class="num">${rlMoney(cons)}</span> em consumo${stale?`, ${stale} parada${stale>1?'s':''} há muito tempo`:''}.</li>`;
+  if(can('cozinha:ver_fila') && CX.u!=='all' && cfUnitVal(cxUnit(),'k.usa')){ const ts = salTickets(); h += `<li>Cozinha e bar: <b>${ts.length}</b> pedidos na fila, <b>${ts.filter(salLate).length}</b> atrasado${ts.filter(salLate).length===1?'':'s'}.</li>`; }
+  if(can('relatorio:ver_vendas')) h += `<li>Faturamento de hoje: <b class="num">${rlMoney(rlAgg('hoje').fat)}</b> (ontem fechou em ${rlMoney(rlAgg('hoje',true).fat)}).</li>`;
+  const T = dbTodo(); h += `</ul>` + (T.length?`<p>${T.length} ${T.length>1?'itens':'item'} pedindo atenção: ${T.slice(0,3).map(t=>esc(t.txt)).join('; ')}. <button class="ai-link" type="button" data-ai-go="dashboard">Abrir o Dashboard</button></p>`:`<p>Nada pedindo atenção agora.</p>`);
+  aiSay(h);
+}
+function aiAnswer(raw){
+  const t = palNorm(raw), has = (...w) => w.some(x=>t.includes(x));
+  /* ações (gravam): sempre com cartão de confirmação */
+  let m;
+  if(has('desconto') && (m = t.match(/(\d+(?:[.,]\d+)?)\s*%/))){
+    if(!aiCan('comanda:desconto','dar desconto')) return;
+    const pct = aiNum(m[1]), c = aiFindCom(t);
+    if(!c){ aiSay('De qual comanda? Diga, por exemplo: <i>dar 10% de desconto na Mesa 12</i>.'); return; }
+    if(pct > discLimit()){ aiSay(`Não posso aplicar <b>${pct}%</b> na ${esc(c.ident)}: o seu limite de desconto é <b>${discLimit()}%</b>. Posso aplicar até ${discLimit()}%, ou você pode pedir a aprovação de quem tem limite maior.`); return; }
+    const v = total(c)*pct/100;
+    aiSay('Posso fazer isto, mas preciso da sua confirmação:',{k:'Aplicar desconto',rows:[['Comanda',`${c.ident} · ${cnum(c)}`],['Desconto',`${pct}%`],['Valor',`− ${rlMoney(v)} de ${rlMoney(total(c))}`]],ok:`Desconto de ${pct}% aplicado na ${c.ident}.`}); return;
+  }
+  if(has('cancel') && has('item') && (m = t.match(/\b(mesa|balcao)\s*(\d+)/))){
+    if(!aiCan('comanda:cancelar_item','cancelar item')) return;
+    const c = aiFindCom(t), it = c && c.items.filter(i=>!i.void).slice(-1)[0];
+    if(!c || !it){ aiSay('Não achei essa comanda ou ela não tem itens.'); return; }
+    aiSay('Vou cancelar o último item lançado. Confirma?',{k:'Cancelar item',rows:[['Comanda',`${c.ident} · ${cnum(c)}`],['Item',`${it.q}× ${it.n}`],['Valor',rlMoney(it.q*it.price)],['Motivo','Item lançado por engano']],ok:`Item cancelado na ${c.ident}.`}); return;
+  }
+  if(has('abr') && has('comanda','mesa') && (m = t.match(/\b(?:mesa|balcao)\s*(\d+)/))){
+    if(!aiCan('comanda:criar','abrir comandas')) return;
+    aiSay('Abrir comanda nova:',{k:'Abrir comanda',rows:[['Identificação',(t.includes('balcao')?'Balcão ':'Mesa ')+m[1]],['Garçom',PF().nick]],ok:`Comanda aberta: ${(t.includes('balcao')?'Balcão ':'Mesa ')+m[1]}.`}); return;
+  }
+  /* dados */
+  if(has('como esta a casa','como esta o dia','resumo','agora na casa','situacao')){ aiHome(); return; }
+  if(has('faturamento','fatur','vendeu','vendas de hoje','quanto fez','receita')){
+    if(!aiCan('relatorio:ver_vendas','ver faturamento')) return;
+    const A = rlAgg('hoje'), B = rlAgg('hoje',true), M = rlAgg('mes');
+    aiSay(`<p>Hoje: <b class="num">${rlMoney(A.fat)}</b>, ticket médio <span class="num">${rlMoney(A.tk)}</span>. Ontem fechou em ${rlMoney(B.fat)}.</p><p>No mês: <b class="num">${rlMoney(M.fat)}</b>. <button class="ai-link" type="button" data-ai-rel="vendas">Abrir relatório de vendas</button></p>`); return;
+  }
+  if(has('cozinha','bar','atrasad','preparo')){
+    if(!aiCan('cozinha:ver_fila','ver a fila da cozinha')) return;
+    if(CX.u==='all' || !cfUnitVal(cxUnit(),'k.usa')){ aiSay('A cozinha e bar não está ligada nesta unidade (ou há mais de uma unidade selecionada).'); return; }
+    const ts = salTickets(), late = ts.filter(salLate);
+    aiSay(`<p><b>${ts.length}</b> pedidos na fila, <b>${late.length}</b> atrasados (alvo de ${salAlvo()} min).</p><button class="ai-link" type="button" data-ai-go="cozinha">Abrir Cozinha e bar</button>`); return;
+  }
+  if(has('estoque','insumo','acabando','minimo','zerad')){
+    if(!aiCan('estoque:ver','ver o estoque')) return;
+    const n = esAlerts(); aiSay(`<p><b>${n}</b> insumo${n===1?'':'s'} zerado${n===1?'':'s'} ou abaixo do mínimo.</p><button class="ai-link" type="button" data-ai-go="estoque">Abrir Estoque</button>`); return;
+  }
+  if(has('conta','vencid','pagar','boleto')){
+    if(!aiCan('financeiro:ver','ver o financeiro')) return;
+    const n = fnAlerts(); aiSay(`<p><b>${n}</b> conta${n===1?'':'s'} vencida${n===1?'':'s'} ou vencendo hoje.</p><button class="ai-link" type="button" data-ai-go="financeiro">Abrir Financeiro</button>`); return;
+  }
+  if(has('comandas abertas','quantas comandas','comanda aberta','paradas')){
+    if(!aiCan('comanda:ver','ver comandas')) return;
+    const a = vis().filter(c=>c.status==='open'), s = a.filter(isStale);
+    aiSay(`<p><b>${a.length}</b> comandas abertas (${rlMoney(a.reduce((x,c)=>x+total(c),0))}). ${s.length?`Paradas há muito tempo: ${s.map(c=>esc(c.ident)).join(', ')}.`:'Nenhuma parada.'}</p><button class="ai-link" type="button" data-ai-go="comandas">Abrir Comandas</button>`); return;
+  }
+  /* dúvidas sobre o sistema */
+  const HELP = [
+    [['como','desconto'],'Abra a comanda, em <b>Desconto</b> informe valor ou %. Cada perfil tem um limite (o seu é '+discLimit()+'%); acima dele só quem tem limite maior aprova.'],
+    [['como','fech'],'Na comanda, <b>Fechar conta</b>: confira o total, escolha as formas de pagamento (dá para dividir) e confirme. A comanda sai da lista de abertas.'],
+    [['como','cancel'],'Na comanda, toque no item e escolha <b>Cancelar</b>. Depois de enviado à cozinha, pede motivo e fica na auditoria.'],
+    [['fiado'],'Fiado é o pagamento que fica na conta do cliente, com limite. É um recurso opcional, ligado por organização ou unidade em Configurações.'],
+    [['sangria'],'Sangria é a retirada de dinheiro do caixa durante o turno. Fica no turno, exige motivo e entra na conferência do fechamento.'],
+    [['permiss','perfil'],'Em <b>Administração › Perfis e permissões</b> você vê o que cada perfil pode. O simulador mostra o efeito antes de salvar.']
+  ];
+  const h = HELP.find(([ks])=>ks.every(k=>t.includes(k))); if(h){ aiSay(h[1]); return; }
+  if(has('ajuda','o que voce faz','o que voce pode','posso perguntar')){ aiSay('<p>Posso:</p><ul><li>explicar como usar o sistema;</li><li>responder sobre a casa (faturamento, cozinha, estoque, contas, comandas);</li><li>levar você a qualquer tela, aba ou configuração;</li><li>fazer ações, como desconto, cancelar item e abrir comanda, <b>sempre pedindo confirmação</b>.</li></ul><p>Sempre dentro do que o seu perfil pode.</p>'); return; }
+  /* navegação / busca de tela */
+  const toks = t.replace(/\b(me leve|leve|levar|abrir|abra|ir|va|vai|para|pra|ao|a|o|na|no|tela|aba|de|do|da|por favor|mostre|mostrar|ver)\b/g,' ').split(/\s+/).filter(Boolean);
+  if(toks.length){
+    const best = palItems.filter(o=>['tela','aba','rel','cfg'].includes(o.g)).map(o=>[o,palScore(o,toks,toks.join(' '))]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1])[0];
+    if(best){ const o = best[0]; aiState.nav = o; aiSay(`Abrindo <b>${esc(o.t)}</b> <span style="color:var(--muted)">(${esc(o.sub)})</span>.`); setTimeout(()=>{ o.run(); },500); return; }
+  }
+  aiSay('Não entendi esse pedido. Tente algo como <i>“como está a casa agora?”</i>, <i>“me leve ao DRE”</i> ou <i>“dar 10% de desconto na Mesa 12”</i>. Diga <i>“ajuda”</i> para ver o que sei fazer.');
+}
+function aiRender(){
+  const box = $('#ai-m');
+  box.innerHTML = aiState.msgs.map((m,i)=>m.r==='me'
+    ? `<div class="ai-w me"><div class="ai-b">${esc(m.html)}</div></div>`
+    : `<div class="ai-w"><span class="ai-av sm" aria-hidden="true">${aiEyes}</span><div class="ai-b">${m.html}${m.card?aiCard(m.card,i):''}</div></div>`).join('')
+    + (aiState.busy ? `<div class="ai-w"><span class="ai-av sm" aria-hidden="true">${aiEyes}</span><div class="ai-b"><span class="ai-dots" aria-label="Pensando"><i></i><i></i><i></i></span></div></div>` : '');
+  box.scrollTop = box.scrollHeight;
+}
+function aiCard(c,i){
+  const rows = c.rows.map(r=>`<div class="kv"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('');
+  const st = c.st==='ok' ? `<p class="done">✓ ${esc(c.ok)}</p><p class="sim">Registrado na auditoria como feito pelo assistente, em nome de ${esc(PF().user)}. Protótipo: nada foi gravado de verdade.</p>`
+    : c.st==='no' ? `<p class="no">Cancelado. Nada foi alterado.</p>`
+    : `<div class="row"><button class="btn btn--primary btn--sm" type="button" data-ai-ok="${i}">Confirmar</button><button class="btn btn--sm" type="button" data-ai-no="${i}">Cancelar</button></div>`;
+  return `<div class="ai-card"><h4>${esc(c.k)}</h4>${rows}${st}</div>`;
+}
+function aiSend(text){
+  text = (text||'').trim(); if(!text || aiState.busy) return;
+  aiState.msgs.push({r:'me',html:text}); aiState.busy = true; $('#ai-in').value = ''; $('#ai-sug').hidden = true; aiRender();
+  setTimeout(()=>{ aiState.busy = false; const n = aiState.msgs.length; try{ aiAnswer(text); }catch(e){ aiSay('Algo deu errado ao responder (no protótipo). Tente de outra forma.'); } if(aiState.msgs.length===n) aiSay('Não consegui responder.'); aiRender(); },650);
+}
+function aiOpen(){
+  palItems = palBuild(); const p = $('#ai-p'); p.dataset.open = '1'; $('#ai-orb').setAttribute('aria-expanded','true');
+  if(!aiState.msgs.length) aiSay(`Oi, ${esc(PF().nick)}! Posso explicar o sistema, responder sobre a casa, levar você a uma tela e fazer ações (sempre pedindo confirmação). O que você precisa?`);
+  aiRender(); $('#ai-in').focus();
+}
+function aiClose(){ delete $('#ai-p').dataset.open; const o = $('#ai-orb'); o.setAttribute('aria-expanded','false'); o.focus(); }
+function aiMount(){
+  const ok = can('ia:usar'); let orb = $('#ai-orb');
+  if(orb){ orb.hidden = !ok; if(!ok) delete $('#ai-p').dataset.open; return; }
+  orb = document.createElement('button'); orb.id = 'ai-orb'; orb.className = 'ai-orb'; orb.type = 'button'; orb.hidden = !ok;
+  orb.setAttribute('aria-label','Abrir assistente de IA'); orb.setAttribute('aria-expanded','false'); orb.setAttribute('aria-controls','ai-p'); orb.title = 'Assistente de IA'; orb.innerHTML = aiEyes;
+  const p = document.createElement('section'); p.id = 'ai-p'; p.className = 'ai-p'; p.setAttribute('role','dialog'); p.setAttribute('aria-label','Assistente de IA');
+  p.innerHTML = `<header class="ai-h"><span class="ai-av" aria-hidden="true">${aiEyes}</span><div class="ai-ht"><b>Assistente</b><span>Chave da organização · Claude</span></div><button class="ai-x" id="ai-clear" type="button" aria-label="Nova conversa" title="Nova conversa"><svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v3h3"/></svg></button><button class="ai-x" id="ai-close" type="button" aria-label="Fechar"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></header>
+    <div class="ai-m" id="ai-m" role="log" aria-live="polite"></div>
+    <div class="ai-sug" id="ai-sug">${['Como está a casa agora?','O que está atrasado na cozinha?','Dar 10% de desconto na Mesa 12','Me leve ao DRE','Como cancelo um item?'].map(s=>`<button class="ai-chip" type="button" data-ai-s="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    <form class="ai-f" id="ai-f"><input id="ai-in" autocomplete="off" placeholder="Pergunte ou peça algo…" aria-label="Mensagem para o assistente"><button type="submit" aria-label="Enviar"><svg viewBox="0 0 16 16"><path d="M2.5 8h11M9 3.5 13.5 8 9 12.5"/></svg></button></form>
+    <p class="ai-note">Protótipo: respostas simuladas. A IA pode errar; ações pedem confirmação.</p>`;
+  document.body.append(orb,p);
+  orb.addEventListener('click',aiOpen);
+  p.addEventListener('click',e=>{
+    const el = e.target.closest('button'); if(!el) return;
+    if(el.id==='ai-close') aiClose();
+    else if(el.id==='ai-clear'){ aiState.msgs = []; $('#ai-sug').hidden = false; aiOpen(); }
+    else if(el.dataset.aiS) aiSend(el.dataset.aiS);
+    else if(el.dataset.aiGo) go(el.dataset.aiGo);
+    else if(el.dataset.aiRel){ RLS.tab = el.dataset.aiRel; go('relatorios'); }
+    else if(el.dataset.aiOk != null){ const m = aiState.msgs[+el.dataset.aiOk]; if(m && m.card){ m.card.st = 'ok'; aiRender(); } }
+    else if(el.dataset.aiNo != null){ const m = aiState.msgs[+el.dataset.aiNo]; if(m && m.card){ m.card.st = 'no'; aiRender(); } }
+  });
+  $('#ai-f').addEventListener('submit',e=>{ e.preventDefault(); aiSend($('#ai-in').value); });
+  p.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); aiClose(); } });
+}
+aiMount();
+const _applyPerms = applyPerms; applyPerms = function(){ _applyPerms.apply(this,arguments); aiMount(); };
+
 $('#filtros').addEventListener('click',()=>{ S.filter=S.filter==='stale'?'all':'stale'; renderChips(); renderList(); toast(S.filter==='stale'?'Mostrando só comandas em alerta':'Filtro removido'); });
 $('#theme').addEventListener('click',()=>{ const d=document.documentElement; d.dataset.theme=d.dataset.theme==='dark'?'light':'dark'; try{localStorage.setItem('theme',d.dataset.theme)}catch(_){} });
 try{ const t=localStorage.getItem('theme'); if(t) document.documentElement.dataset.theme=t; }catch(_){}
@@ -7804,7 +8347,7 @@ $('#clock').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',mi
 if(S.loading){ renderAll(); if(P.skel!=='1') setTimeout(()=>{S.loading=false;renderAll();},900); }
 else renderAll();
 renderScreen();
-if(P.open){ select(+P.open); }
+if(P.open && byId(+P.open)){ select(+P.open); }
 /* config ao vivo: limiar de alerta, forma de abrir ou taxa de servico mudaram */
 window.__onFlowConfig=()=>{
   applyUser(); applyPerms(); cxInit(); ensureAllowed(); renderNav(); renderScreen();
@@ -7881,7 +8424,7 @@ C.forEach(c=>{c.items.forEach(i=>i.sentAt=c.act)});
 C.forEach(c=>{const n=c.items.length;c.items.forEach((i,ix)=>{i.rd=ix<Math.ceil(n/2)?1:2})});
 const S={view:"list",filter:seeAll()?"all":"mine",q:"",tab:"fav",pq:"",cur:null,offline:false,queue:[],sheet:null,loading:false,err:false,empty:false,toast:null,undo:null,lastFocus:null,cancelItem:null,reason:null,qtyP:null,hora:null,obs:null,obsOther:false,obsT:null,kp:""};
 let KEY=1000;
-S.main=can("comanda:ver")?"com":can("cozinha:ver_fila")?"more":calCan("calendario:ver")?"cal":"nt";if(S.main==="more")S.sub="kds";
+S.main=can("dashboard:ver")&&seeAll()?"now":can("comanda:ver")?"com":can("cozinha:ver_fila")?"more":calCan("calendario:ver")?"cal":"nt";if(S.main==="more")S.sub="kds";
 const total=c=>c.items.filter(i=>i.s!=="cancelled").reduce((a,i)=>a+i.q*PM[i.p].p,0);
 const pend=c=>c.items.filter(i=>i.s==="pend");
 const isStale=c=>c.st==="open"&&c.act>=FLOW_CONFIG.mobile.STALE_ACT_MIN;
@@ -7906,7 +8449,7 @@ function readHash(){
     S.sheet=sh}
   if(sh==="keypad"||sh==="name"||sh==="queue")S.sheet=sh;
   if(h.get("hora"))S.hora=+h.get("hora");
-  const tb=h.get("tab");if(["com","cal","nt","more"].includes(tb)&&TABS().some(t=>t[0]===tb)){S.main=tb;S.sub=tb==="more"?(h.get("sub")||null):null}
+  const tb=h.get("tab");if(["now","com","cal","nt","more"].includes(tb)&&TABS().some(t=>t[0]===tb)){S.main=tb;S.sub=tb==="more"?(h.get("sub")||null):null}
   if(h.get("cmode")==="agenda")CM.mode="agenda";
   if(sh==="cnew"&&S.main==="cal")S.sheet="cnew",S.cf=cfNew();
 }
@@ -8157,7 +8700,7 @@ function redraw(){const sc=$("#sh")?.scrollTop;drawSheet();const s=$("#sh");if(s
 
 /* ---------- abas inferiores: Comandas | Calendario | Avisos (cada perfil ve so o que pode) ---------- */
 Object.assign(I,{cal:'<path d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4"/>',bell:'<path d="M6 16v-5a6 6 0 0112 0v5l1.5 2h-15zM10 21h4"/>',chev:'<path d="M6 9l6 6 6-6"/>',prev:'<path d="M15 5l-7 7 7 7"/>',next:'<path d="M9 5l7 7-7 7"/>'});
-const TABS=()=>[["com","Comandas","list",can("comanda:ver")],["cal","Calendário","cal",calCan("calendario:ver")],["nt","Avisos","bell",true],["more","Mais","more",true]].filter(t=>t[3]);
+const TABS=()=>[["now","Agora","pulse",can("dashboard:ver")&&seeAll()],["com","Comandas","list",can("comanda:ver")],["cal","Calendário","cal",calCan("calendario:ver")],["nt","Avisos","bell",true],["more","Mais","more",true]].filter(t=>t[3]);
 const ntc=()=>{const l=NT.filter(ntShown);return{acoes:l.filter(n=>n.t==="acao").length,avisos:l.filter(n=>n.t==="aviso").length,nao:l.filter(n=>n.t==="aviso").length}};
 function tabBar(){
   const c=ntc();
@@ -8165,7 +8708,7 @@ function tabBar(){
 }
 /* fora da aba Comandas, "nova comanda" vira o circulo pequeno do lado; em Comandas fica a barra grande */
 const fab=()=>S.main!=="com"&&S.main!=="more"&&can("comanda:criar")&&can("comanda:ver")?`<button class="fab" data-act="new" aria-label="Nova comanda">${ic("plus")}</button>`:"";
-function renderList(){ if(S.main==="more")return renderMore(); if(S.main==="cal")return renderCal(); if(S.main==="nt")return renderNt(); renderComList(); }
+function renderList(){ if(S.main==="now")return renderNow(); if(S.main==="more")return renderMore(); if(S.main==="cal")return renderCal(); if(S.main==="nt")return renderNt(); renderComList(); }
 
 /* ---------- calendario (celular): mes com pontos + lista do dia, ou agenda; itens expansiveis ---------- */
 const CM={mon:new Date(calToday.getFullYear(),calToday.getMonth(),1),d:calDay(calToday),mode:"mes",open:new Set()};
@@ -8304,6 +8847,37 @@ function summaryCards(){
     cards.push(`<div class="card mm-s"><small>Consumo em aberto</small><b class="num" style="font-size:1.375rem">${brl(v.reduce((a,c)=>a+total(c),0))}</b><span>${v.length} comandas</span></div>`)}
   return cards.length?`<div class="mm-sg">${cards.join("")}</div>`:""
 }
+
+/* ---------- Agora: painel ao vivo do dono/gerente (celular). Números de venda são exemplo; o resto vem das comandas, cozinha e mesas do protótipo ---------- */
+Object.assign(I,{pulse:'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>'});
+const NOWD={fat:4826.5,ontem:4213,sem:4310,tk:78.2,fech:41,hrs:[["18h",.06],["19h",.11],["20h",.17],["21h",.24],["22h",.22],["23h",.14],["0h",.06]]};
+const rel=(a,b)=>{const p=Math.round((a/b-1)*100);return(p>=0?"+":"−")+Math.abs(p)+"%"};
+function nowAttn(){
+  const L=[],v=C.filter(c=>c.st!=="closed"),stale=v.filter(isStale);
+  if(can("cozinha:ver_fila")&&kdsOn()){const t=mTickets(),late=t.filter(lateT).length,rd=t.filter(x=>x.stage==="ready").length;
+    if(late)L.push(["alert",`${late} ${late===1?"pedido atrasado":"pedidos atrasados"} na cozinha e bar`,"Ver fila","kds"]);
+    if(rd)L.push(["wait",`${rd} ${rd===1?"pedido pronto esperando":"pedidos prontos esperando"} entrega`,"Ver fila","kds"])}
+  if(can("comanda:ver")&&stale.length)L.push(["wait",`${stale.length} ${stale.length===1?"comanda parada":"comandas paradas"} há muito tempo`,"Ver comandas","com"]);
+  const aw=v.filter(c=>c.st==="await");if(can("comanda:ver")&&aw.length)L.push(["wait",`${aw.length} ${aw.length===1?"conta esperando pagamento":"contas esperando pagamento"}: ${brl(aw.reduce((a,c)=>a+total(c),0))}`,"Ver comandas","com"]);
+  if(can("caixa:ver"))L.push(["wait","Caixa 1 aberto há 4h12, sem pendências","Na versão web","web"]);
+  if(can("estoque:ver"))L.push(["alert","3 insumos zerados ou abaixo do mínimo","Na versão web","web"]);
+  if(can("financeiro:ver"))L.push(["alert","2 contas vencidas ou vencendo hoje","Na versão web","web"]);
+  return L.sort((a,b)=>(a[0]==="alert"?0:1)-(b[0]==="alert"?0:1));
+}
+function renderNow(){
+  const sales=can("relatorio:ver_vendas"),D=NOWD,A=nowAttn(),v=C.filter(c=>c.st!=="closed");
+  const hero=sales?`<section class="card nw-h" aria-label="Faturamento de hoje"><small>Faturamento de hoje</small><b class="num">${brl(D.fat)}</b>
+    <p><span class="nw-up">${rel(D.fat,D.sem)}</span> contra a terça passada no mesmo horário <span class="nw-m">(${brl(D.sem)})</span></p>
+    <div class="nw-bars" role="img" aria-label="Faturamento por hora, pico às 21h">${D.hrs.map(([h,p],i)=>`<div class="nw-b${i===3?" nw-b--p":""}"><i style="height:${Math.round(p/.24*100)}%"></i><small>${h}</small></div>`).join("")}</div>
+    <div class="nw-r"><span>Ticket médio<b class="num">${brl(D.tk)}</b></span><span>Comandas fechadas<b class="num">${D.fech}</b></span><span>Ontem, até agora<b class="num">${brl(D.ontem)}</b></span></div></section>`:"";
+  const att=A.length?`<h2 class="mh">Precisa de atenção <small class="mm-mut">${A.length}</small></h2><ul class="nw-a">${A.map(([sev,t,b,go])=>`<li><button data-mx="${go==="web"?"web":go==="kds"?"go":"com"}" ${go==="kds"?'data-k="kds"':""}><i class="nw-d nw-d--${sev}" aria-hidden="true"></i><span>${t}</span><em>${b}</em>${ic("next","mlist__c")}</button></li>`).join("")}</ul>`:`<h2 class="mh">Precisa de atenção</h2><p class="cnone">Tudo em dia.</p>`;
+  const by={};v.forEach(c=>{(by[c.w]=by[c.w]||{n:0,t:0}).n++;by[c.w].t+=total(c)});
+  const gar=Object.entries(by).sort((a,b)=>b[1].t-a[1].t).slice(0,4);
+  const crew=can("comanda:ver_comandas_de_outros")&&gar.length?`<h2 class="mh">Garçons agora</h2><ul class="nw-g">${gar.map(([n,g])=>`<li><span class="avatar" aria-hidden="true">${esc(n[0])}</span><b>${esc(n)}</b><small>${g.n} ${g.n===1?"comanda":"comandas"}</small><em class="num">${brl(g.t)}</em></li>`).join("")}</ul>`:"";
+  const now=new Date(),when=now.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"short"}).replace(/^./,x=>x.toUpperCase());
+  $("#root").innerHTML=`<header class="top"><div class="grow"><h1>Agora</h1><div class="sub">${unitBtn()}</div></div><button class="btn btn--sm" data-act="theme" aria-label="Alternar tema claro e escuro">Tema</button></header>
+  <div class="scroll" id="lscroll"><p class="nw-when">${esc(when)} · ${now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})} · ao vivo</p>${hero}${summaryCards()}${att}${crew}<p class="cnone">Valores de venda são exemplo no protótipo.</p></div>${fab()}${tabBar()}`;
+}
 function renderMore(){
   if(S.sub==="mesas")return renderMesasM();if(S.sub==="kds")return renderKdsM();
   const items=MORE_ITEMS.filter(m=>m[3]()),soon=SOON.filter(([n,p])=>p.split("|").some(can));
@@ -8331,7 +8905,7 @@ function renderMesasM(){
   $("#root").innerHTML=subHead("Mesas")+(body.startsWith('<div class="chips"')?body:`<div class="scroll" id="lscroll">${body}</div>`)+tabBar();
 }
 function mesaTile(m,s){const [l,mod]=MST[s.key],dim=MM.st&&MM.st!==s.key;
-  return `<button class="mm-m mm-m--${s.key}${dim?" dim":""}" data-mx="mesa" data-id="${m.id}" aria-label="Mesa ${m.n}, ${l}${s.cs.length?", "+dur(s.mins):""}"><span class="mm-m__n">${m.n}</span><span class="mm-m__c">${m.cap} lugares</span><span class="badge badge--${mod}">${ic(s.key==="free"?"dot":s.key==="occ"?"dot":"clock")}${l}</span>${["occ","pay"].includes(s.key)?`<span class="mm-m__i num">${dur(s.mins)}${can("comanda:ver")?" · "+brl(s.total):""}</span>`:s.key==="res"?`<span class="mm-m__i">${esc(m.res.h)} · ${esc(m.res.n)}</span>`:""}${s.ready?'<span class="mm-m__r">Pedido pronto</span>':s.stale?'<span class="mm-m__r mm-m__r--w">Parada</span>':""}</button>`}
+  return `<button class="mm-m mm-m--${s.key}${dim?" dim":""}" data-mx="mesa" data-id="${m.id}" aria-label="Mesa ${m.n}, ${l}${s.cs.length?", "+dur(s.mins):""}"><span class="mm-m__n">${m.n}</span><span class="mm-m__c">${m.cap} lugares</span><span class="badge badge--${mod}">${ic(s.key==="free"?"dot":s.key==="occ"?"dot":"clock")}${l}</span>${["occ","pay"].includes(s.key)?`<span class="mm-m__i num">${dur(s.mins)}${can("comanda:ver")?" · "+brl(s.total):""}</span>`:s.key==="res"?`<span class="mm-m__i">${esc((s.rv||m.res).h)} · ${esc((s.rv||m.res).n)}</span>`:""}${s.ready?'<span class="mm-m__r">Pedido pronto</span>':s.stale?'<span class="mm-m__r mm-m__r--w">Parada</span>':""}</button>`}
 
 /* Cozinha e bar */
 function ticketM(t){const late=lateT(t),live=t.items.filter(i=>i.s!=="cancelled"),pr=t.pr==="bar"?"Bar":"Cozinha";
@@ -8363,6 +8937,7 @@ document.addEventListener("click",e=>{
    case"setunit":mSetCtx(b.dataset.id);if(S.sheet)closeSheet();toast(b.dataset.id==="all"?"Agora: todas as unidades":"Agora: "+mUnitName());renderList();break;
    case"go":S.main="more";S.sub=b.dataset.k;renderList();break;
    case"com":S.main="com";S.sub=null;renderList();break;
+   case"web":toast("Esta tela ainda está só na versão web");break;
    case"moreback":S.sub=null;renderList();break;
    case"mst":MM.st=b.dataset.k;renderMesasM();break;
    case"marea":MM.area=b.dataset.k;renderMesasM();break;
@@ -8540,7 +9115,7 @@ window.FLOW_SCREENS = [
   {id:'promocoes', title:'Promoções', parent:'gestao', app:'web', perm:'cardapio:promocao_gerenciar|cardapio:combo_gerenciar', path:'#screen=promocoes', icon:'M2.5 8.5 8 3h5v5l-5.5 5.5zM10.5 5.5h.01', keywords:['promoção','combo','desconto','happy hour','oferta','recorrente','pontual','preço fechado','campanha'], prototyped:true},
   {id:'auditoria', title:'Auditoria', parent:'gestao', app:'web', perm:'auditoria:ver', path:'#screen=auditoria', icon:'M8 2l5 2v4c0 3-2.2 5-5 6-2.8-1-5-3-5-6V4z', keywords:['auditoria','exceção','cancelamento','desconto','estorno','log','quem fez','sensível','antifraude'], prototyped:true},
   {id:'admin',    title:'Administração', parent:null, app:'web', kind:'group', redirect:'usuarios', path:'#screen=usuarios', icon:null, keywords:['administração','acesso','configuração']},
-  {id:'usuarios', title:'Usuários', parent:'admin', app:'web', perm:'usuario:ver', path:'#screen=usuarios', icon:'M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM3 13.5c.5-2.5 2.5-3.5 5-3.5s4.5 1 5 3.5', keywords:['usuário','convidar','desativar','acesso','senha','pin','sessão','aparelho','garçom','funcionário','conta'], prototyped:true},
+  {id:'usuarios', title:'Usuários', parent:'admin', app:'web', perm:'usuario:ver', path:'#screen=usuarios', icon:'M8 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM3 13.5c.5-2.5 2.5-3.5 5-3.5s4.5 1 5 3.5', keywords:['usuário','convidar','desativar','acesso','senha','sessão','aparelho','garçom','funcionário','conta'], prototyped:true},
   {id:'perfis', title:'Perfis e permissões', parent:'admin', app:'web', perm:'perfil:ver', path:'#screen=perfis', icon:'M4 7h8v6.5H4zM5.5 7V5a2.5 2.5 0 0 1 5 0v2', keywords:['perfil','permissão','papel','quem pode','modelo','matriz','limite de desconto','cargo'], prototyped:true},
   {id:'configuracoes', title:'Configurações', parent:'admin', app:'web', perm:'configuracao:ver|organizacao:configurar', path:'#screen=configuracoes', icon:'M2 4.5h4M9 4.5h5M2 11.5h7M12 11.5h2M6 3v3M9 10v3', keywords:['configuração','taxa de serviço','impressora','regras','limites','unidade','horário','caixa','comparar unidades','herdado','travado'], prototyped:true},
   {id:'organizacao', title:'Organização e unidades', parent:'admin', app:'web', nav:false, perm:'organizacao:configurar', path:'#screen=organizacao', icon:'M3.5 13.5V3h6v10.5M9.5 6.5h3v7M5.5 5.5h2M5.5 8h2M5.5 10.5h2M2 13.5h12', keywords:['organização','unidade','nova unidade','fiscal','plano','dados da empresa','padrões','travar','segurança','senha'], prototyped:true},
@@ -9067,6 +9642,7 @@ const PERMS = {
   'comanda:criar':['Abrir comanda','DGCW','Comandas'],
   'comanda:lancar_item':['Lançar item','DGCW','Comandas'],
   'comanda:alterar_item':['Alterar quantidade de item','DGCW','Comandas'],
+  'comanda:renomear':['Renomear ou identificar a comanda','DGCW','Comandas'],
   'comanda:cancelar_item':['Cancelar item','DGCW','Comandas'],
   'comanda:cancelar':['Cancelar a comanda inteira','DG','Comandas'],
   'comanda:desconto':['Aplicar desconto (com limite)','DGC','Comandas'],
@@ -9093,6 +9669,13 @@ const PERMS = {
   'relatorio:ver_vendas':['Relatórios de vendas','DGFR','Menu'],
   'relatorio:ver_estoque':['Relatórios de estoque','DGER','Menu'],
   'dashboard:ver':['Ver dashboard','DGCFR','Menu'],
+  'ia:usar':['Usar o assistente de IA','DGCEFR','Assistente de IA'],
+  'ia:configurar_chave':['Cadastrar, trocar e remover a chave de API','D','Assistente de IA'],
+  'ia:configurar_dados':['Definir o que a IA pode ver','D','Assistente de IA'],
+  'ia:configurar_limites':['Limites de uso por pessoa e por dia','DG','Assistente de IA'],
+  'ia:ver_consumo':['Ver consumo do assistente','DGF','Assistente de IA'],
+  'ia:ver_conversas_de_outros':['Ver conversas de outras pessoas','D','Assistente de IA'],
+  'ia:acao_sem_confirmacao':['Dispensar confirmação em ações do assistente','D','Assistente de IA'],
   'calendario:ver':['Ver calendário','DGCWEFKR','Menu'],
   'calendario:ver_de_outros':['Ver eventos de outros','DGR','Calendário'],
   'calendario:evento_criar':['Criar evento','DG','Calendário'],
@@ -9131,11 +9714,9 @@ const PERMS = {
   'usuario:redefinir_acesso':['Redefinir acesso (auditada)','DG','Acesso'],
   'perfil:gerenciar':['Criar e editar perfis (auditada)','D','Acesso'],
   'permissao:atribuir':['Atribuir perfil e permissões (auditada)','D','Acesso'],
-  'dispositivo:registrar':['Registrar aparelho do salão (auditada)','DG','Acesso'],
-  'dispositivo:revogar':['Revogar aparelho (auditada)','DG','Acesso'],
   'sessao:ver_todas':['Ver sessões ativas','DG','Acesso'],
   'sessao:revogar':['Encerrar sessões (auditada)','DG','Acesso'],
-  'seguranca:politica_editar':['Política de senha, sessão e PIN (auditada)','D','Acesso'],
+  'seguranca:politica_editar':['Política de senha e sessão (auditada)','D','Acesso'],
   'configuracao:unidade_editar':['Editar configurações da unidade (auditada)','DG','Configurações'],
   'configuracao:organizacao_editar':['Editar configurações da organização (auditada)','D','Configurações'],
   'configuracao:travar_opcao':['Travar ou liberar opção para unidades (auditada)','D','Configurações'],
@@ -9224,13 +9805,14 @@ const hx = x => String(x).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt
 const menuNames = p => MENU_PERMS.filter(([n,k])=>k.split('|').some(x=>PERMS[x][1].includes(p.letter))).map(x=>x[0]);
 
 const entryEl = $('#entry');
-let enView = 'choose', enId = null, enPin = '', enUser = '', enMsg = '';
+let enView = 'choose', enId = null, enUser = '', enMsg = '';
+const enUserName = p => (enUser || p.user || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'.');
 function renderEntry(){
   if(enView==='choose'){
     entryEl.innerHTML = `<div class="en__wrap"><header class="en__top"><span class="en__logo">Flow4Tech</span><span class="en__tag">demo do protótipo</span></header>
       <h1 id="en-h">Entrar como…</h1>
       <p class="en__sub">Cada perfil é um conjunto de permissões com nome. O que a pessoa vê e pode fazer muda conforme o perfil. Depois de entrar, ajuste as permissões pela bolinha de configuração.</p>
-      <div class="en__grid" role="list">${ORG_PROFILES.map(p=>`<button class="en__card" role="listitem" type="button" data-pick="${p.id}"><span class="en__av" aria-hidden="true">${p.letter}</span><span class="en__n">${p.name}</span><span class="en__d">${p.desc}</span><span class="en__v"><b>Vê no menu:</b> ${menuNames(p).join(', ')}</span><span class="en__m"><span class="en__chip">${p.device==='mobile'?'Celular':'Web'}</span><span class="en__chip">${p.email?'E-mail e senha':'Usuário e PIN'}</span></span></button>`).join('')}</div>
+      <div class="en__grid" role="list">${ORG_PROFILES.map(p=>`<button class="en__card" role="listitem" type="button" data-pick="${p.id}"><span class="en__av" aria-hidden="true">${p.letter}</span><span class="en__n">${p.name}</span><span class="en__d">${p.desc}</span><span class="en__v"><b>Vê no menu:</b> ${menuNames(p).join(', ')}</span><span class="en__m"><span class="en__chip">${p.device==='mobile'?'Celular':'Web'}</span><span class="en__chip">${p.email?'E-mail e senha':'Usuário e senha'}</span></span></button>`).join('')}</div>
       <p class="en__ct"><b>Control Tower</b> (administradores da plataforma: super admin, suporte, financeiro e operações) é outro sistema, com login e permissões próprios. <a href="control-tower.html#screen=login" target="_blank" rel="noopener">Abrir o protótipo da Control Tower</a>.</p></div>`;
     entryEl.querySelector('.en__card')?.focus();
     return;
@@ -9249,17 +9831,15 @@ function renderEntry(){
   }
   const users = p.users || [p.user];
   entryEl.innerHTML = `<div class="en__wrap en__wrap--login">${head}
-    <span class="en__dev">Aparelho do salão registrado · Unidade Centro</span>
-    ${users.length>1 ? `<p class="en__lbl">Quem está entrando?</p><div class="en__users" role="group" aria-label="Colaborador">${users.map(u=>`<button class="chip" type="button" data-user="${hx(u)}" aria-pressed="${u===enUser}">${hx(u)}</button>`).join('')}</div>` : `<p class="en__lbl">Usuário</p><div class="en__user1">${hx(enUser)}</div>`}
-    <p class="en__lbl">PIN pessoal</p><div class="en__dots" role="img" aria-label="${enPin.length} dígitos digitados">${[0,1,2,3,4,5].map(i=>`<i data-on="${i<enPin.length}"></i>`).join('')}</div>
-    <div class="en__pad" role="group" aria-label="Teclado numérico">${[1,2,3,4,5,6,7,8,9].map(d=>`<button type="button" data-d="${d}" aria-label="${d}">${d}</button>`).join('')}<button type="button" class="sm" data-bs>Apagar</button><button type="button" data-d="0" aria-label="0">0</button><button type="button" class="sm" data-clear>Limpar</button></div>
-    <button class="btn btn--primary en__go" type="button" data-login ${enPin.length>=4?'':'disabled'}>Entrar</button>
-    <p class="en__hint">Demonstração: qualquer PIN de 4 a 6 dígitos entra. O PIN é pessoal e vale só neste aparelho e nesta unidade.</p></div></div>`;
-  entryEl.querySelector('[data-d="1"]')?.focus();
+    ${users.length>1 ? `<p class="en__lbl">Quem está entrando?</p><div class="en__users" role="group" aria-label="Colaborador">${users.map(u=>`<button class="chip" type="button" data-user="${hx(u)}" aria-pressed="${u===enUser}">${hx(u)}</button>`).join('')}</div>` : ''}
+    <form class="en__f" data-login novalidate><label for="en-user">Usuário</label><input id="en-user" type="text" autocomplete="off" value="${hx(enUserName(p))}"><label for="en-pass">Senha</label><input id="en-pass" type="password" autocomplete="off" value="demo1234">
+      <button class="btn btn--primary en__go" type="submit">Entrar</button></form>
+    <p class="en__hint" role="status">${enMsg||'Demonstração: qualquer usuário e senha entram. No sistema real, o primeiro acesso exige trocar a senha temporária. Esqueceu a senha? Quem administra gera uma nova.'}</p></div></div>`;
+  entryEl.querySelector('#en-pass').focus();
 }
 function openEntry(){
   if(typeof closePanel==='function') closePanel(false);
-  enView = 'choose'; enId = null; enPin = ''; enMsg = ''; entryEl.hidden = false; renderEntry();
+  enView = 'choose'; enId = null; enMsg = ''; entryEl.hidden = false; renderEntry();
 }
 function enLogin(){
   const p = profById(enId); if(!p) return;
@@ -9269,23 +9849,13 @@ function enLogin(){
 }
 entryEl.addEventListener('click', e => {
   const t = e.target; let el;
-  if((el=t.closest('[data-pick]'))){ enId = el.dataset.pick; enView = 'login'; enPin = ''; enMsg = ''; const p = profById(enId); enUser = p.user; renderEntry(); return; }
+  if((el=t.closest('[data-pick]'))){ enId = el.dataset.pick; enView = 'login'; enMsg = ''; const p = profById(enId); enUser = p.user; renderEntry(); return; }
   if(t.closest('[data-back]')){ enView = 'choose'; enId = null; renderEntry(); return; }
   if(t.closest('[data-google]')){ enLogin(); return; }
   if(t.closest('[data-forgot]')){ enMsg = 'No sistema real, um link de redefinição seria enviado ao e-mail. Fora do protótipo.'; renderEntry(); return; }
   if((el=t.closest('[data-user]'))){ enUser = el.dataset.user; renderEntry(); return; }
-  if((el=t.closest('[data-d]'))){ if(enPin.length<6) enPin += el.dataset.d; renderEntry(); entryEl.querySelector(`[data-d="${el.dataset.d}"]`)?.focus(); return; }
-  if(t.closest('[data-bs]')){ enPin = enPin.slice(0,-1); renderEntry(); entryEl.querySelector('[data-bs]')?.focus(); return; }
-  if(t.closest('[data-clear]')){ enPin = ''; renderEntry(); return; }
-  if(t.closest('button[data-login]')){ if(enPin.length>=4) enLogin(); return; }
 });
 entryEl.addEventListener('submit', e => { e.preventDefault(); enLogin(); });
-document.addEventListener('keydown', e => {
-  if(entryEl.hidden || enView!=='login' || profById(enId).email) return;
-  if(/^[0-9]$/.test(e.key) && !e.metaKey && !e.ctrlKey){ if(enPin.length<6) enPin += e.key; renderEntry(); e.preventDefault(); return; }
-  if(e.key==='Backspace'){ enPin = enPin.slice(0,-1); renderEntry(); e.preventDefault(); return; }
-  if(e.key==='Enter' && enPin.length>=4){ e.preventDefault(); enLogin(); }
-});
 function renderProfPanel(force){
   const box = document.getElementById('cfg-prof'); if(!box) return;
   try{
@@ -9293,7 +9863,7 @@ function renderProfPanel(force){
     const p = curProf(), pl = profilePayload(), groups = {};
     Object.entries(PERMS).forEach(([k,[l,L,g]])=>{ (groups[g] = groups[g]||[]).push([k,l,permOn(p,k),L.includes(p.letter)]); });
     const nOver = Object.keys((SES && SES.id===p.id && SES.over) || {}).length;
-    box.innerHTML = `<div class="cfg-prof"><div class="cfg-prof__h"><span class="cfg-prof__av" aria-hidden="true">${p.letter}</span><div><b>${p.name}</b><span>${hx(pl.user)} · ${p.email?'e-mail e senha':'usuário e PIN'} · desconto até ${p.limits.desconto}%</span></div></div>
+    box.innerHTML = `<div class="cfg-prof"><div class="cfg-prof__h"><span class="cfg-prof__av" aria-hidden="true">${p.letter}</span><div><b>${p.name}</b><span>${hx(pl.user)} · ${p.email?'e-mail e senha':'usuário e senha'} · desconto até ${p.limits.desconto}%</span></div></div>
       <div class="cfg-prof__b"><button type="button" class="cfg-btn pri" data-trocar>Trocar de perfil</button><button type="button" class="cfg-btn" data-permreset ${nOver?'':'disabled'}>${nOver?`Voltar ao padrão do perfil (${nOver} alteradas)`:'Voltar ao padrão do perfil'}</button></div>
       <p class="cfg-help">Perfil é um conjunto de permissões. Ligue ou desligue abaixo e veja as telas mudarem na hora. Só as permissões que o protótipo já usa estão aqui.</p>
       ${Object.entries(groups).map(([g,list])=>`<p class="cfg-sub">${g}</p>${list.map(([k,l,on,def])=>`<label class="cfg-perm"><input type="checkbox" data-perm="${k}" ${on?'checked':''}><span>${l}<code>${k}</code></span>${on!==def?'<em>alterada</em>':''}</label>`).join('')}`).join('')}</div>`;

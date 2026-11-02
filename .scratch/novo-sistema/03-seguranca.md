@@ -32,7 +32,7 @@ Status: rascunho 1. Independe de stack: define **o que precisa ser verdade**; `0
 |---|---|
 | Atacante externo anônimo | Força bruta, credential stuffing, varredura, injeção, bots |
 | Usuário malicioso de uma organização | Garçom que desvia, tenta ver outra unidade, escala permissão |
-| Funcionário que saiu | Mantém acesso, sessão ou PIN |
+| Funcionário que saiu | Mantém acesso ou sessão |
 | **Organização cliente contra outra** | Tentar ler ou alterar dados de outro tenant |
 | Administrador da plataforma malicioso ou comprometido | Impersonação, exportação indevida |
 | Fornecedor/dependência comprometida | Pacote malicioso, provedor de nuvem |
@@ -42,7 +42,7 @@ Status: rascunho 1. Independe de stack: define **o que precisa ser verdade**; `0
 
 | Ameaça | Cenários principais | Controles principais |
 |---|---|---|
-| **Falsificação de identidade** | Roubo de senha, sessão ou PIN; phishing do dono | Hash Argon2id, bloqueio progressivo, sessões curtas com refresh rotativo, detecção de login novo, PIN preso a dispositivo registrado, (2FA reservado) |
+| **Falsificação de identidade** | Roubo de senha ou sessão; phishing do dono | Hash Argon2id, bloqueio progressivo, sessões curtas com refresh rotativo, detecção de login novo, (2FA reservado) |
 | **Adulteração** | Alterar valor de venda, estoque, caixa; editar log | Registros financeiros e de estoque **imutáveis** (correção por estorno), auditoria append-only com encadeamento de integridade, validação no servidor |
 | **Repúdio** | "Não fui eu que cancelei" | Ato sempre atribuído ao usuário real (e ao admin real na impersonação), motivo e antes/depois gravados |
 | **Vazamento de informação** | Tenant lê outro; IDOR; exportação em massa; logs com dado pessoal | Isolamento por organização no banco e na aplicação, autorização por objeto, exportação como permissão auditada, sem dado pessoal em log |
@@ -67,7 +67,7 @@ Regras adicionais:
 ## S6. Autenticação
 
 - **Senhas:** Argon2id com parâmetros modernos; política mínima de comprimento (não de "símbolos obrigatórios"); checagem contra senhas vazadas; sem dicas, sem limite máximo irrisório; senhas nunca em log.
-- **Contas operacionais** (usuário + senha/PIN, F11): credencial temporária única, mostrada uma vez, troca obrigatória; PIN com hash, restrito a dispositivo registrado e unidade, com bloqueio por tentativas e **sem acesso a funções administrativas, financeiras ou de exportação**.
+- **Contas operacionais** (usuário + senha, F11): credencial temporária única, mostrada uma vez, troca obrigatória; bloqueio progressivo por tentativas e **sem acesso a funções administrativas, financeiras ou de exportação**.
 - **Google:** OpenID Connect, só e-mail verificado; vínculo a conta existente exige confirmação autenticada; nenhuma criação de conta automática em organização existente.
 - **Proteção de login:** bloqueio progressivo por conta **e** por IP, atraso uniforme, respostas que não revelam se o usuário existe, detecção de credential stuffing, CAPTCHA adaptativo sob ataque.
 - **Recuperação de acesso:** link de uso único, expiração curta, invalida sessões antigas, notifica por todos os canais.
@@ -80,7 +80,7 @@ Regras adicionais:
 - Cookies `HttpOnly`, `Secure`, `SameSite`; proteção contra CSRF onde houver cookies; sem tokens em `localStorage`.
 - Cada token carrega **audiência** (app dos clientes vs Control Tower): um **não vale no outro**.
 - **Revogação imediata:** desativar usuário, trocar senha, mudar permissão ou remover de unidade invalida sessões afetadas (lista de revogação ou versão de sessão consultada no servidor).
-- Sessões listadas e encerráveis pelo usuário e por quem administra; expiração por inatividade e duração máxima; sessão de PIN expira rápido.
+- Sessões listadas e encerráveis pelo usuário e por quem administra; expiração por inatividade e duração máxima.
 - **"Sessão curta" explicado:** há dois relógios. (1) O **token de acesso** vive poucos minutos e é renovado em silêncio pelo refresh; o usuário **não percebe**, e serve para limitar o estrago de um token roubado. (2) A **sessão em si** tem um limite por inatividade e um limite absoluto, que são o que o usuário de fato sente (quando precisa digitar a senha de novo). Decisão: o relógio (1) é sempre curto e invisível; o relógio (2) é **configurável por perfil e organização, com padrão generoso** para não atrapalhar a operação (sugestão: salão, até o fim do turno; dono e gerente, dias). Sessão mais restrita para administradores fica disponível como política, desligada por padrão.
 - Vínculo opcional a dispositivo; alerta e registro de login novo.
 
@@ -102,7 +102,7 @@ Complementa F11. Requisitos de segurança do motor:
 
 - **Em trânsito:** TLS 1.2+ em tudo (cliente, entre serviços, banco); HSTS.
 - **Em repouso:** criptografia de disco/banco e de backups; chaves gerenciadas por serviço de chaves, com rotação.
-- **Por campo (extra):** documentos pessoais, certificado digital fiscal, credenciais de integração (TEF, provedores), PIN/segredos de convite. Chaves separadas e, para o certificado fiscal, **por organização**.
+- **Por campo (extra):** documentos pessoais, certificado digital fiscal, credenciais de integração (TEF, provedores), segredos de convite. Chaves separadas e, para o certificado fiscal, **por organização**.
 - **Segredos:** em cofre de segredos, nunca no repositório; rotacionáveis; acesso mínimo por serviço; varredura de segredos no CI e no histórico.
 - **Mascaramento:** valores e dados pessoais mascarados por padrão em telas de baixo privilégio e removidos de logs, e-mails e URLs.
 - **Backups:** criptografados, em outra região, com teste de restauração; acesso restrito e auditado.
@@ -151,7 +151,7 @@ Ligar qualquer um é mudança de configuração, não de código.
 
 - Domínio de identidade **próprio** (D14): tabelas, tokens e permissões separados; audiência de token distinta. **Front em `/control`** no início (mesma origem do app, risco aceito com CSP estrita, cookies próprios e carregamento sob demanda; ver `04` A10.3); extração para host próprio prevista.
 - Super admin: conta protegida, sem exclusão/rebaixamento por terceiros; criação e alteração de administradores é ação auditada e exige reautenticação.
-- **Impersonação** (D15): sessão claramente marcada; todo ato atribuído ao admin real; organização sempre informada; política por administrador (leitura/escrita, tempo, motivo) aplicada no servidor; sem acesso a segredos (hash de senha, PIN, certificado fiscal, chaves) **mesmo para o super admin** (impersonar é ver/operar como usuário, não ler segredo).
+- **Impersonação** (D15): sessão claramente marcada; todo ato atribuído ao admin real; organização sempre informada; política por administrador (leitura/escrita, tempo, motivo) aplicada no servidor; sem acesso a segredos (hash de senha, certificado fiscal, chaves) **mesmo para o super admin** (impersonar é ver/operar como usuário, não ler segredo).
 - Acesso da plataforma ao banco de produção só por canal controlado e auditado (acesso emergencial com registro), nunca por credencial compartilhada.
 - Exportação de dados de cliente pela plataforma é permissão específica, auditada e visível à organização.
 
@@ -209,5 +209,5 @@ Ligar qualquer um é mudança de configuração, não de código.
 - Reautenticação em ações de alto risco: **preparada, desligada** (S12).
 - Sessões: token de acesso curto e invisível; tempos da sessão configuráveis, padrão generoso (S7).
 - Control Tower: **restrição por IP ligada desde o início**.
-- Segredos (hash de senha, PIN, certificado fiscal, chaves) **inacessíveis até para o super admin** (S13).
+- Segredos (hash de senha, certificado fiscal, chaves) **inacessíveis até para o super admin** (S13).
 - **Sem 2FA no lançamento**; encaixe pronto.

@@ -38,6 +38,30 @@ Status: **em construção.** Este documento registra o que foi decidido durante 
 
 - **Celular:** o app é do garçom e também gerencia (aba Mais, U7c). Ele mostra só as **próprias comandas** (`comanda:ver_comandas_de_outros` é de D, G, C e R). Quem tem essa permissão abre direto em "Todas"; perfis sem `comanda:criar` não veem "Nova comanda"; perfis sem `comanda:ver` (cozinha, estoque, financeiro) recebem um aviso de que usam a versão web.
 
+## U3c. Busca global (paleta de comandos, web)
+
+Uma caixa só, aberta por **Ctrl/Cmd+K** ou pelo campo no topo, que acha **telas, abas internas, relatórios, configurações e dados** (comandas, produtos, clientes). Ao digitar "cardápio", vai para o Cardápio; ao digitar o nome de um relatório ou de uma configuração, ela aparece direto.
+
+- **Fonte:** o registro central de telas (U3, `FLOW_SCREENS`). Cada tela, **aba interna**, relatório e configuração é uma entrada própria, com título, **subtítulo (caminho, ex.: "Configurações › Unidade › Mesas e áreas")**, tela-pai, rota, ícone, **tipo** e palavras-chave (sinônimos: "fechar caixa" acha Turnos).
+- **Resultados em grupos, com cabeçalho e cor por tipo.** Cada linha tem ícone na cor do grupo, **título** em destaque, **subtítulo** em tom secundário e, à direita, o tipo em palavra (a cor nunca é o único sinal, U1):
+
+| Grupo | Exemplos | Cor (token de categoria) |
+|---|---|---|
+| Telas | Cardápio, Mesas, Caixa | azul |
+| Abas e seções | Relatórios › Vendas por garçom; Estoque › Movimentações | violeta |
+| Relatórios | Produtos mais vendidos, DRE básico | verde |
+| Configurações | Taxa de serviço, Horário de funcionamento | âmbar |
+| Dados | Comanda #12, produto, cliente | cinza |
+| Ações | Nova comanda, Abrir caixa | azul escuro, com realce |
+
+- **Permissão:** a busca segue o menu. Quem não tem a permissão da tela, da aba ou do dado **não a encontra** (filtrado na API para os dados, no registro para as telas). Configuração só da organização não aparece para quem é só da unidade.
+- **Busca:** ignora acento e caixa, aceita erro leve de digitação, ordena por correspondência no título, depois subtítulo e palavras-chave, e prioriza recentes e mais usados da pessoa. Vazia, mostra **recentes** e atalhos.
+- **Teclado:** setas, Enter abre, Tab alterna o grupo, Esc fecha, prefixos opcionais (`>` ações, `#` comanda número).
+- **Dados** (comandas, clientes, produtos) só aparecem a partir de 2 caracteres, limitados a poucos por grupo, com "ver todos" levando à lista já filtrada (estado na URL, U9).
+- **Celular:** o app do garçom (D16) não ganha a paleta; a busca de lançamento (U4) continua só de produtos. Na aba Mais (U7c) pode haver um campo de busca de telas simples.
+- **No protótipo web:** implementada (`index.html`, campo do topo ou Ctrl/Cmd+K). Layout de paleta com campo no alto, grupos com cabeçalho, linha com ícone, título, subtítulo e etiqueta do tipo na cor do grupo. Indexa telas, abas (respeitando a permissão da aba), relatórios, seções de configuração, comandas, produtos e ações; recentes guardados no aparelho. Clientes e abas do celular ficam de fora.
+- **Pontos abertos:** (1) buscar também dados de clientes (dado pessoal) exige `cliente:ver` e registro em auditoria? (2) o assistente de IA de navegação (U3) reaproveita o mesmo registro. (3) Paleta de cores por grupo a validar no contraste claro e escuro.
+
 ## U3b. Lista de comandas: status, ordenação e fixadas
 
 - **Selo do cartão = etapa da cozinha** (`em preparo`, `pronto`, `entregue`), só quando a unidade usa cozinha. Status da comanda (`aguardando pagamento`, `paga`) fica no rodapé do cartão, ao lado de "Fechar conta" (alinhado à direita, espelhando o selo do topo). "Em alerta" **não é status**: é só o tempo parado, em texto de cor de alerta, mais o filtro "Em alerta".
@@ -122,10 +146,9 @@ Duas telas em Administração (`#screen=usuarios`, `#screen=perfis`), com os 210
 - Resumo: usuários no plano (limite do plano, F12.12), convites pendentes, contas operacionais, sessões ativas. Convidar some do alcance quando o plano enche.
 - Lista **espaçosa e paginada** (ver U9) com busca, chips de situação (Todos, Ativos, Pendentes, Desativados), filtro por perfil e por tipo de conta. Linha de cerca de 76 px: avatar, nome, e-mail ou usuário; perfil com o escopo embaixo; situação (marcador + palavra); último acesso; seta. A linha toda abre a ficha.
 - **Convidar:** conta com e-mail (link de uso único, mostrado com Copiar) ou operacional (usuário único na organização + credencial temporária **mostrada uma só vez**). Perfis que a pessoa que convida não possui ficam desabilitados ("só se concede o que se possui"); perfil com administração, financeiro ou exportação bloqueia conta operacional.
-- **Ficha** em **janela central**, como a comanda (não painel lateral; decisão do dono após o teste). Abas com palavras simples: *Acesso* (perfil, onde pode atuar, permissões extras com motivo), *Permissões* (cada uma como Pode, Pode restrito com limite ou Não pode, com a origem), *Onde entrou* (logado agora, deslogar, aparelhos do PIN), *Avisos* (`02f` §2b), *Histórico*. Textos curtos, sem jargão ("Deslogar de tudo", "Liberar" e "Bloquear" em vez de conceder e negar).
+- **Ficha** em **janela central**, como a comanda (não painel lateral; decisão do dono após o teste). Abas com palavras simples: *Acesso* (perfil, onde pode atuar, permissões extras com motivo), *Permissões* (cada uma como Pode, Pode restrito com limite ou Não pode, com a origem), *Onde entrou* (logado agora, deslogar), *Avisos* (`02f` §2b), *Histórico*. Textos curtos, sem jargão ("Deslogar de tudo", "Liberar" e "Bloquear" em vez de conceder e negar).
 - Ações auditadas pedem motivo: desativar, reativar, redefinir acesso, encerrar sessões, trocar perfil, exceção. Desativar encerra as sessões na hora.
 - **Proteções visíveis:** dono não é desativado nem rebaixado; ninguém altera o próprio acesso; só o dono redefine o acesso do dono; sem `permissao:atribuir` a aba Acesso fica travada com o motivo escrito.
-- **Aparelhos do salão** (aba, `sessao:ver_todas`): registrar com código de pareamento, revogar.
 
 **Perfis e permissões** (`perfil:ver`)
 - Lista dos 8 padrão (travados, só duplicam) e dos personalizados, com pessoas e nº de permissões. Detalhe agrupado por módulo, com busca, "só as concedidas", marcadores **Auditada** e **Restrita** e campo de limite nas permissões `[L]` (desconto: 50 / 20 / 5 / 0 % por perfil, os demais limites seguem em aberto, `02d` §5).
@@ -177,7 +200,7 @@ Toda lista que pode crescer (usuários, comandas fechadas, compras, auditoria, c
 - *Dados da empresa* (razão social, fantasia, CNPJ, contato, logotipo), *Unidades*, *Padrões e travas*, *Segurança*, *Plano*.
 - **Unidades:** lista com pessoas, opções próprias e situação; Abrir configuração (leva ao resumo da unidade), Desativar (pede motivo; bloqueia se for a última ativa) e Reativar; **Nova unidade** pergunta se começa só com o padrão ou **copiando a configuração** de outra (F14.6) e respeita o limite do plano (3 no protótipo). Acesso à unidade nova é dado em Usuários.
 - **Padrões e travas:** o valor padrão de cada opção e a chave **Unidades podem mudar / Travada** (`configuracao:travar_opcao`). Mostra quantas unidades já têm valor próprio; ao travar, esses valores passam a ser ignorados (e voltam se destravar).
-- **Segurança:** tamanho mínimo da senha, sessão sem uso, tamanho do PIN, Google; 2FA aparece desligado ("em breve").
+- **Segurança:** tamanho mínimo da senha, sessão sem uso, Google; 2FA aparece desligado ("em breve").
 - **Plano:** só leitura (plano, unidades, usuários, próxima fatura).
 
 Pontos abertos: (1) "Todas as unidades" para quem tem escopo parcial de 2 ou mais unidades (hoje só vê o seletor entre as suas, sem comparar). (2) Dados por unidade no protótipo (comandas, caixa, estoque) para o seletor mostrar efeito real. (3) Fiscal e Cozinha (praças, impressoras) ainda sem tela. (4) Pedir confirmação ao trocar de unidade com uma comanda aberta ou rascunho pendente.
@@ -372,7 +395,7 @@ Pontos abertos: (1) A **janela operacional** só aparece como texto; abrir fora 
 
 `#screen=equipe&wtab=colab|com|regra&colab=c2`. Dados em `localStorage` (`flow.equipe`). Três abas, filtradas por permissão: **Colaboradores** (`equipe:ver`), **Comissões** (`comissao:ver_todas`; só `ver_proprias` mostra apenas as do próprio nome) e **Regra de comissão** (`comissao:configurar`). O contador da aba Comissões é o número de lançamentos a pagar.
 
-- **Colaboradores:** nome, função (garçom, caixa, cozinha e bar, estoque), unidade, **acesso** (usuário e PIN, ou "Sem acesso ao sistema": colaborador existe sem usuário), comissão (regra padrão, percentual próprio ou "Não comissiona") e saldo a pagar. A **ficha** (janela) mostra últimos 30 dias (vendas, ticket médio, comissão, a pagar), lançamentos recentes e histórico do cadastro; **Editar** e **Desativar** com motivo (`colaborador_gerenciar`). Só garçom comissiona nesta fase.
+- **Colaboradores:** nome, função (garçom, caixa, cozinha e bar, estoque), unidade, **acesso** (usuário e senha, ou "Sem acesso ao sistema": colaborador existe sem usuário), comissão (regra padrão, percentual próprio ou "Não comissiona") e saldo a pagar. A **ficha** (janela) mostra últimos 30 dias (vendas, ticket médio, comissão, a pagar), lançamentos recentes e histórico do cadastro; **Editar** e **Desativar** com motivo (`colaborador_gerenciar`). Só garçom comissiona nesta fase.
 - **Regra (F9):** percentual padrão, valor-base (venda sem ou com taxa de serviço) e se cortesias comissionam (padrão não). Salvar pede motivo, vale para vendas novas e registra a mudança; cada lançamento guarda a regra usada. O percentual próprio vence a regra padrão.
 - **Comissões:** lançamentos por comanda (data, base, percentual, valor, situação em palavra: *A pagar*, *Paga*, *Revertida*, *Excluída*), busca, filtro por colaborador, chips com contagem e paginação (U9). **Saldo por colaborador** com **Pagar**: escolhe a conta financeira, recusa saldo insuficiente e gera a **saída no extrato do Financeiro** (U17). **Ajustar** pede novo valor e motivo e respeita o **limite do perfil** (Gerente R$ 100 de diferença, Dono sem limite; valores de exemplo); **Excluir** pede motivo e deixa o lançamento no histórico. Estorno reverte sozinho (exemplo no Carlos).
 

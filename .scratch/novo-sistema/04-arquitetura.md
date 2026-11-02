@@ -93,7 +93,7 @@ Convenções:
 
 ## A6. Identidade e autorização
 
-**Identidade (ADR-005): implementação própria sobre primitivas consagradas**, não serviço terceirizado. Motivos: contas **sem e-mail** com usuário/PIN por dispositivo, dois domínios de identidade (clientes e Control Tower), impersonação com atribuição dupla, revogação imediata e regras específicas (S6, S7, S13) não se encaixam bem em provedores prontos, e custo por usuário ativo cresceria com o negócio. Usar bibliotecas auditadas para hash (Argon2id), JWT/assinatura, OIDC (Google) e geração de tokens; **não** inventar criptografia.
+**Identidade (ADR-005): implementação própria sobre primitivas consagradas**, não serviço terceirizado. Motivos: contas **sem e-mail** (usuário + senha), dois domínios de identidade (clientes e Control Tower), impersonação com atribuição dupla, revogação imediata e regras específicas (S6, S7, S13) não se encaixam bem em provedores prontos, e custo por usuário ativo cresceria com o negócio. Usar bibliotecas auditadas para hash (Argon2id), JWT/assinatura, OIDC (Google) e geração de tokens; **não** inventar criptografia.
 - Duas "realms" lógicas: `app` e `control`, com tabelas, chaves de assinatura e audiência distintas.
 - Refresh rotativo com detecção de reuso; sessões em tabela com versão para revogação imediata.
 
@@ -151,7 +151,7 @@ Por quê C#:
 - **Testes baseados em propriedades** em regras de dinheiro e estoque (divisão de conta, arredondamento, rateio, custo médio).
 - **Testes de migração** (aplicar, reverter, aplicar em dados realistas).
 - **CI com portões obrigatórios:** tipos, lint, testes, arquitetura, dependências, segredos, SAST; pré-visualização por ramo; deploy só de ramo principal verde.
-- **Dados de teste sintéticos** versionados.
+- **Dados de teste sintéticos** versionados. Plano concreto (camadas, desenho do teste de isolamento, seeds S0 a S4, propriedades, E2E e carga) em `07-plano-de-testes.md`.
 
 ## A10. Infraestrutura e implantação
 
@@ -176,8 +176,8 @@ Por quê C#:
 **Vercel e uso comercial:** conferir o plano. Pelo que conheço, o plano gratuito é para uso pessoal/não comercial e o plano Pro (cerca de US$ 20 por usuário/mês) cobre uso comercial; confirmar nos termos atuais.
 
 **Região:** o Railway não tem região no Brasil (EUA Leste, EUA Oeste, Amsterdã, Singapura). Usar **EUA Leste (Virgínia)**, a mais próxima. Consequência: latência de rede maior para o salão.
-- **Medição inicial (2026-10-21, da máquina do desenvolvedor, serviço atual na região `iad`/Virgínia):** tempo até o primeiro byte entre ~55 e ~155 ms (mediana ~95 ms) em 6 requisições a uma rota que responde 404, ou seja, mede só rede e borda do Railway, **sem trabalho de banco**. Dentro da meta de 300 ms, com folga. Falta medir de um aparelho no salão, em horário de uso e com uma rota real. Uma primeira conexão levou ~6 s (provável resolução de DNS/TLS a frio); observar se se repete.
-- **Ação obrigatória antes de congelar a meta de desempenho:** medir a latência real, de um aparelho no salão até a Virgínia, em horário de uso. Se o p95 de "lançar item" ficar acima de 300 ms por causa da rede, relaxar a meta nessa fase (ex.: 500 ms) ou antecipar a migração.
+- **Medição inicial (2026-10-21, da máquina do desenvolvedor, serviço atual na região `iad`/Virgínia):** tempo até o primeiro byte entre ~55 e ~155 ms (mediana ~95 ms) em 6 requisições a uma rota que responde 404, ou seja, mede só rede e borda do Railway, **sem trabalho de banco**. Dentro da meta de 300 ms, com folga. **Atualização (2026-10-31): a latência do salão até o Railway foi atestada como adequada pelo dono; item encerrado.** Reconfirmar apenas sob a carga real da Fase 2 (`07` T7). Registro original: uma primeira conexão levou ~6 s (provável resolução de DNS/TLS a frio); observar se se repete.
+- ~~Ação obrigatória antes de congelar a meta de desempenho: medir a latência real.~~ **Cumprida** (ver atualização acima). Se, na carga real, o p95 de "lançar item" ficar acima de 300 ms por causa da rede, relaxar a meta nessa fase (ex.: 500 ms) ou antecipar a migração.
 - Mitigações no desenho: ações otimistas na interface, requisições pequenas, SSE com retomada, sem chamadas em cascata.
 
 **Banco e recuperação:** backups do Railway não equivalem a restauração a ponto no tempo. Para esta fase:
@@ -274,7 +274,7 @@ Migração prevista: adicionar o domínio novo ao mesmo projeto, exibir a Contro
 
 ## A15. Decisões em aberto
 
-1. **Latência no salão:** medir de um aparelho real até o Railway (Virgínia) e confirmar a meta de desempenho (A10).
+1. ~~**Latência no salão**~~ **Fechada** (atestada em 2026-10-31); reconfirmar sob carga na Fase 2.
 2. **Backup além do padrão do Railway:** definir a solução (backup lógico diário + WAL contínuo) e o momento de adoção (A10).
 3. **Motor de autorização (ADR-006):** spike com Cedar antes de decidir entre usar ou construir.
 4. **Biblioteca de fila e de acesso a dados:** escolher após spike curto (Wolverine/Hangfire/Quartz; Dapper/EF Core).

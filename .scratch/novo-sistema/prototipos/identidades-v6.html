@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · identidades v6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;700&family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* IDENTIDADES V6 · seis direções radicalmente diferentes, mesma tela (Comandas).
+   Cada uma muda: cor, fonte, raio, borda, sombra, clima. Troque pelas abas no topo (ou teclas 1-6). */
+:root{--ease:cubic-bezier(.22,1,.36,1)}
+
+/* 1 · PAPEL · editorial quente, serifa, terracota */
+body[data-id="1"]{--font:"DM Sans",sans-serif;--disp:"Fraunces",serif;--dw:600;
+  --side:#f1e9dc;--side-ink:#6d5f4e;--side-on:#1f1a14;--side-sel:#fffaf1;--side-line:#e0d4c0;
+  --page:#f8f3ea;--card:#fffdf8;--line:#e6dccb;--ink:#1f1a14;--mut:#7a6c5a;
+  --acc:#b8431f;--on-acc:#fff;--soft:#f6e3d6;--ok:#4f7a3a;--wait:#a8741a;--bad:#b3261e;
+  --r:6px;--bw:1px;--sh:none;--kpi-bg:#f1e9dc}
+/* 2 · GARRAFA · verde profundo, creme, latão */
+body[data-id="2"]{--font:"Inter Tight",sans-serif;--disp:"Inter Tight",sans-serif;--dw:600;
+  --side:#0f3d2e;--side-ink:#9fc2b2;--side-on:#fff;--side-sel:rgb(255 255 255/.1);--side-line:#1c5240;
+  --page:#f4f1e8;--card:#fff;--line:#e3ddcc;--ink:#14231c;--mut:#667a70;
+  --acc:#b8892b;--on-acc:#10261d;--soft:#f3e6c6;--ok:#2f7d4f;--wait:#b8892b;--bad:#b3261e;
+  --r:10px;--bw:1px;--sh:0 1px 2px rgb(15 61 46/.08);--kpi-bg:#0f3d2e}
+/* 3 · TERMINAL · preto, verde limão, mono */
+body[data-id="3"]{--font:"JetBrains Mono",monospace;--disp:"JetBrains Mono",monospace;--dw:700;
+  --side:#000;--side-ink:#7d857c;--side-on:#c6ff3d;--side-sel:#11160b;--side-line:#1d211a;
+  --page:#0a0b09;--card:#11130f;--line:#23271f;--ink:#e8ece3;--mut:#8a9285;
+  --acc:#c6ff3d;--on-acc:#0a0b09;--soft:#1b2310;--ok:#c6ff3d;--wait:#ffcf3d;--bad:#ff5d4d;
+  --r:2px;--bw:1px;--sh:none;--kpi-bg:#11130f}
+/* 4 · BRUTAL · branco, borda grossa preta, amarelo */
+body[data-id="4"]{--font:"Space Grotesk",sans-serif;--disp:"Space Grotesk",sans-serif;--dw:700;
+  --side:#fff;--side-ink:#111;--side-on:#111;--side-sel:#ffe14a;--side-line:#111;
+  --page:#f3f3ee;--card:#fff;--line:#111;--ink:#111;--mut:#555;
+  --acc:#ffe14a;--on-acc:#111;--soft:#ffe14a;--ok:#0a7d3c;--wait:#a35f00;--bad:#d1111b;
+  --r:0px;--bw:2px;--sh:4px 4px 0 #111;--kpi-bg:#ffe14a}
+/* 5 · PETRÓLEO · azul-petróleo frio, suave, arredondado */
+body[data-id="5"]{--font:"Plus Jakarta Sans",sans-serif;--disp:"Plus Jakarta Sans",sans-serif;--dw:700;
+  --side:#e6eff0;--side-ink:#52707a;--side-on:#0b3a44;--side-sel:#fff;--side-line:#d1e0e2;
+  --page:#f1f6f6;--card:#fff;--line:#dbe7e8;--ink:#0b2b33;--mut:#5f7b83;
+  --acc:#0e7c86;--on-acc:#fff;--soft:#d9f0f1;--ok:#1f8a5b;--wait:#c27a10;--bad:#c2335a;
+  --r:20px;--bw:1px;--sh:0 8px 24px -12px rgb(14 124 134/.25);--kpi-bg:#d9f0f1}
+/* 6 · VINHO · bordô, creme, serifa de revista */
+body[data-id="6"]{--font:"DM Sans",sans-serif;--disp:"Instrument Serif",serif;--dw:400;
+  --side:#4a1424;--side-ink:#d9aab6;--side-on:#fff;--side-sel:rgb(255 255 255/.1);--side-line:#64233a;
+  --page:#faf4ee;--card:#fff;--line:#eadfd5;--ink:#2a1119;--mut:#85666e;
+  --acc:#7a1d38;--on-acc:#fff;--soft:#f3dde3;--ok:#3d7a4f;--wait:#b0701a;--bad:#c1272d;
+  --r:14px;--bw:1px;--sh:0 1px 3px rgb(74 20 36/.1);--kpi-bg:#7a1d38}
+
+*{box-sizing:border-box}
+body{margin:0;font:400 14px/1.45 var(--font);color:var(--ink);background:var(--page);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.pick{position:sticky;top:0;z-index:9;display:flex;gap:6px;align-items:center;padding:8px 14px;background:#16161a;color:#ddd;font:500 13px/1 system-ui}
+.pick b{margin-right:8px;color:#fff}
+.pick button{border:1px solid #333;background:#222;color:#ddd;border-radius:999px;padding:7px 12px}
+.pick button[aria-pressed=true]{background:#fff;color:#111;border-color:#fff}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 38px)}
+.side{background:var(--side);border-right:var(--bw) solid var(--side-line);padding:16px 12px;color:var(--side-ink)}
+.org{display:flex;gap:10px;align-items:center;padding:6px 8px 18px}
+.org i{width:34px;height:34px;border-radius:var(--r);background:var(--acc);color:var(--on-acc);display:grid;place-items:center;font:var(--dw) 16px var(--disp);font-style:normal;border:var(--bw) solid var(--side-line)}
+.org b{display:block;color:var(--side-on);font-weight:600}
+.org small{font-size:12px}
+.grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:14px 10px 6px;opacity:.8}
+.nav a{display:flex;justify-content:space-between;padding:8px 10px;border-radius:var(--r);color:var(--side-ink);text-decoration:none;margin:1px 0}
+.nav a[aria-current]{background:var(--side-sel);color:var(--side-on);font-weight:600}
+body[data-id="4"] .nav a[aria-current]{border:2px solid #111}
+.main{padding:22px 28px 60px;min-width:0}
+.top{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+.srch{flex:1;max-width:420px;border:var(--bw) solid var(--line);background:var(--card);border-radius:var(--r);padding:9px 12px;color:var(--mut)}
+.bell{margin-left:auto;width:38px;height:38px;border-radius:var(--r);border:var(--bw) solid var(--line);background:var(--acc);color:var(--on-acc);display:grid;place-items:center}
+.crumb{color:var(--mut);font-size:13px}
+.h1{display:flex;justify-content:space-between;align-items:flex-end;margin:6px 0 18px}
+h1{margin:0;font:var(--dw) 34px/1.1 var(--disp);letter-spacing:-.01em}
+.sub{color:var(--mut);margin-top:4px}
+.btn{border:var(--bw) solid var(--ink);background:var(--acc);color:var(--on-acc);border-radius:var(--r);padding:10px 16px;font-weight:600;box-shadow:var(--sh)}
+body:not([data-id="4"]) .btn{border-color:transparent}
+.ghost{background:var(--card);color:var(--ink);border:var(--bw) solid var(--line);margin-right:8px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.k{background:var(--card);border:var(--bw) solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--sh)}
+.k small{color:var(--mut)}
+.k b{display:block;font:var(--dw) 30px/1.2 var(--disp);margin:4px 0}
+.k.hl{background:var(--kpi-bg)}
+body[data-id="2"] .k.hl,body[data-id="6"] .k.hl{color:#fff}
+body[data-id="2"] .k.hl small,body[data-id="6"] .k.hl small{color:rgb(255 255 255/.75)}
+.chips{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.chip{border:var(--bw) solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px}
+body[data-id="3"] .chip,body[data-id="4"] .chip{border-radius:var(--r)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+body[data-id="4"] .chip[aria-pressed=true]{background:var(--acc);color:var(--on-acc)}
+body[data-id="3"] .chip[aria-pressed=true]{background:var(--acc);color:var(--on-acc);border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.c{background:var(--card);border:var(--bw) solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
+.c.late{border-color:var(--bad)}
+body[data-id="4"] .c.late{background:#fff0f0}
+.c__h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.c__n{font:var(--dw) 18px var(--disp)}
+.num{color:var(--mut);font-size:12px;margin-right:6px}
+.st{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+body[data-id="3"] .st::before,body[data-id="4"] .st::before{border-radius:0}
+.st.prep{color:var(--wait)}.st.ok{color:var(--ok)}.st.done{color:var(--mut)}
+.tot{font:var(--dw) 28px/1.2 var(--disp);margin:10px 0 2px}
+.meta{color:var(--mut);font-size:13px}
+.meta .bad{color:var(--bad);font-weight:600}
+.last{border-top:var(--bw) dashed var(--line);margin-top:12px;padding-top:10px;color:var(--mut);font-size:13px}
+.foot{display:flex;justify-content:flex-end;margin-top:8px;font-weight:600;color:var(--acc)}
+body[data-id="2"] .foot,body[data-id="4"] .foot{color:var(--ink)}
+body[data-id="4"] .foot{text-decoration:underline}
+.note{margin-top:26px;padding:14px 16px;border:var(--bw) dashed var(--line);border-radius:var(--r);color:var(--mut);font-size:13px}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body data-id="1">
+<div class="pick" id="pick"><b>Identidade</b></div>
+<div class="app">
+  <aside class="side">
+    <div class="org"><i>Z</i><div><b>Bar do Zé</b><small>Unidade Centro</small></div></div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <main class="main">
+    <div class="top"><div class="srch">Buscar telas, relatórios, comandas…</div><div class="bell">🔔</div></div>
+    <div class="crumb">Operação › Comandas</div>
+    <div class="h1">
+      <div><h1>Comandas</h1><div class="sub">Turno noite, Unidade Centro</div></div>
+      <div><button class="btn ghost">Filtros</button><button class="btn">Nova comanda</button></div>
+    </div>
+    <section class="kpis">
+      <div class="k"><small>Abertas</small><b>14</b><small>4 acima de 90 min</small></div>
+      <div class="k hl"><small>Em consumo</small><b>R$ 3.349,50</b><small>17 comandas ativas</small></div>
+      <div class="k"><small>Aguardando pagamento</small><b>3</b><small>R$ 689,00 a receber</small></div>
+      <div class="k"><small>Tempo médio aberta</small><b>1h05</b><small>Alerta a partir de 1h30</small></div>
+    </section>
+    <div class="chips"><button class="chip" aria-pressed="true">Todas</button><button class="chip">Abertas</button><button class="chip">Aguardando</button><button class="chip">Em alerta</button><button class="chip">Reservas</button></div>
+    <section class="grid" id="grid"></section>
+    <div class="note" id="note"></div>
+  </main>
+</div>
+<script>
+const IDS={
+ 1:["Papel","Editorial quente. Serifa nos títulos, fundo de papel, terracota. Clima de bar de bairro com personalidade."],
+ 2:["Garrafa","Verde profundo + creme + latão. Sóbrio e caro, cara de casa tradicional/gastrobar."],
+ 3:["Terminal","Preto, verde limão, tudo em mono. Cara de ferramenta técnica/PDV, alto contraste, cantos retos."],
+ 4:["Brutal","Borda grossa preta, sombra dura, amarelo. Ousado, super legível, nada de sutileza."],
+ 5:["Petróleo","Azul-petróleo frio, cantos bem arredondados, sombra suave. Moderno e leve, tipo SaaS amigável."],
+ 6:["Vinho","Bordô + creme, serifa de revista nos números. Premium, restaurante/adega."]};
+const pick=document.getElementById('pick');
+Object.entries(IDS).forEach(([k,[n]])=>{const b=document.createElement('button');b.textContent=k+' · '+n;b.dataset.k=k;b.onclick=()=>set(k);pick.appendChild(b)});
+const nav=[["Operação"],["Dashboard"],["Comandas",17,1],["Cozinha e bar",9],["Mesas"],["Cardápio"],["Clientes"],["Gestão"],["Estoque",6],["Caixa",1],["Financeiro",2],["Relatórios"],["Equipe e comissões"],["Administração"],["Usuários"],["Configurações"]];
+document.getElementById('nav').innerHTML=nav.map(([t,n,cur])=>n===undefined&&!cur&&["Operação","Gestão","Administração"].includes(t)?`<div class="grp">${t}</div>`:`<a href="#" ${cur?'aria-current="page"':''}><span>${t}</span><span>${n??''}</span></a>`).join('');
+const D=[["#17","Mesa 2","prep","37,50","7 min","Carlos",3,"1× Chope Pilsen 300ml · 21:48"],["#5","Mesa 1","prep","162,00","1h37","Rafael",9,"2× Caldinho de feijão · 21:47",1],["#9","Mesa 11","prep","144,00","57 min","Rafael",6,"2× Caipirinha de limão · 21:45"],["#1","Mesa 12","prep","462,00","2h23","Carlos",21,"1× Porção de fritas · 21:43",1],["#3","Mesa 5","ok","410,00","1h58","Carlos",22,"1× Torresmo crocante · 21:35",1],["#14","Mesa 9","ok","92,00","22 min","Juliana",3,"1× Pastel de carne (4) · 21:33"],["#13","Balcão 5","done","38,00","29 min","Marcos",4,"4× Chope Pilsen 300ml · 21:23"],["#4","Mesa 7","done","444,00","1h44","Carlos",16,"4× Dose de cachaça · 21:17",1]];
+const L={prep:"Em preparo",ok:"Pronto",done:"Entregue"};
+document.getElementById('grid').innerHTML=D.map(([n,m,s,t,tm,g,i,l,late])=>`<article class="c ${late?'late':''}"><div class="c__h"><div><span class="num">${n}</span><span class="c__n">${m}</span></div><span class="st ${s}">${L[s]}</span></div><div class="tot">R$ ${t}</div><div class="meta"><span class="${late?'bad':''}">${tm} aberta</span> · ${g} · ${i} itens</div><div class="last">Último: ${l}</div><div class="foot">Fechar conta</div></article>`).join('');
+function set(k){document.body.dataset.id=k;document.querySelectorAll('.pick button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k==k));document.getElementById('note').innerHTML='<b>'+k+' · '+IDS[k][0]+'.</b> '+IDS[k][1];history.replaceState(null,'','#'+k)}
+addEventListener('keydown',e=>{if(IDS[e.key])set(e.key)});
+set((location.hash||'#1').slice(1)in IDS?location.hash.slice(1):'1');
+</script>
+</body>
+</html>

@@ -41,7 +41,7 @@ A **Fase 6 pode correr em paralelo** com as 7 e 8. As fases 9 e 10 podem ser ant
 |---|---|---|
 | 0.1 | Repositório e estrutura | Solução .NET modular, front React/TypeScript, convenções, instruções para agentes (novos `AGENTS.md`/`CLAUDE.md`) |
 | 0.2 | CI/CD e ambientes | Portões obrigatórios; ambientes `staging` e `production` no Railway; front na Vercel |
-| 0.3 | Spike de latência | Do salão até o Railway (Virgínia), com rota real e banco; **crítico para o lançamento rápido** |
+| 0.3 | ~~Spike de latência~~ | **Validado pelo dono (2026-10-31):** latência do salão até o Railway (Virgínia) atestada. Só reconfirmar com a carga real da Fase 2 (`07` T7) |
 | 0.4 | Spike do worker | Worker dentro da API; segundo serviço no Railway sem domínio público |
 | 0.5 | Spike do motor de autorização | Cedar contra três casos reais; decidir usar ou construir |
 | 0.6 | Spike de dados e fila | Dapper/EF Core e Wolverine/Hangfire/Quartz; RLS com contexto por transação |
@@ -51,7 +51,7 @@ A **Fase 6 pode correr em paralelo** com as 7 e 8. As fases 9 e 10 podem ser ant
 | 0.10 | **Protótipo do lançamento rápido** | Tela mobile navegável (sem back-end real), testada com o cliente e garçons em **aparelho real**: meta de 2 toques por item e abertura de comanda em menos de 10 s; decide PWA ou nativo (`04` A11) |
 | 0.11 | ADRs | Escrever e aprovar as decisões do `04` |
 
-**Critério de saída:** decisões dos spikes em ADR; pipeline verde; `staging` no ar; **protótipo aprovado pelo cliente**; latência medida e meta confirmada.
+**Critério de saída:** decisões dos spikes em ADR; pipeline verde; `staging` no ar; **protótipo aprovado pelo cliente**; latência validada e meta confirmada.
 
 ---
 
@@ -63,7 +63,7 @@ A **Fase 6 pode correr em paralelo** com as 7 e 8. As fases 9 e 10 podem ser ant
 | 1.2 | Banco com RLS, usuário de aplicação sem bypass, **testes de isolamento entre organizações** | S5 | M |
 | 1.3 | Identidade: e-mail/senha, Google, conta operacional (usuário + senha), troca obrigatória, recuperação | F11, S6 | G |
 | 1.4 | Sessões e tokens: acesso curto, refresh rotativo, revogação, sessões | S7 | M |
-| 1.5 | Dispositivos do salão e PIN | F11 | M |
+| 1.5 | ~~Dispositivos do salão e PIN~~ | removido: só usuário/e-mail + senha | — |
 | 1.6 | Motor de permissões: catálogo, perfis padrão e personalizados, escopo por unidade, limites, deny, simulador; **matriz testada** | F11, S8, `02d` | G |
 | 1.7 | Auditoria imutável encadeada e log técnico com correlação | S14 | M |
 | 1.8 | Eventos de domínio: outbox, despachante, fila em PostgreSQL | A5 | M |
@@ -146,7 +146,7 @@ Nada novo de valor: é **reproduzir o que o restaurante usa hoje**, conforme `02
 
 | # | Entrega | Detalhe |
 |---|---|---|
-| 5.1 | **Migração do restaurante atual** | Exportar do antigo em planilha e importar (F17); conferência de cadastros, saldos de estoque e saldos em aberto |
+| 5.1 | **Migração do restaurante atual** | Plano em `08`: extrator do banco antigo gera as planilhas F17; ensaios repetidos em `staging` sobre legado anonimizado; conferência de cadastros, saldos de estoque e saldos em aberto; histórico conforme a opção escolhida pelo dono (`08` M3). Depende das respostas de `08` M8 |
 | 5.2 | Operação em paralelo curta | Sistema novo em uso real, antigo disponível para conferência |
 | 5.3 | **Portão de segurança** (`03` S18) | Isolamento 100% coberto, matriz de permissões, auditoria verificável, segredos, backup restaurado dentro do objetivo, alertas ativos, teste de invasão externo, plano de incidentes, termos e política de privacidade |
 | 5.4 | Teste de carga | Meta de escala do RNF1 simulada |
@@ -181,7 +181,7 @@ Contas a receber, contas financeiras, fluxo de caixa, DRE gerencial completo, ca
 
 ## R11. Fase 8: Gestão avançada
 
-Alerta de margem e simulador (F18.3); chope, doses e garrafas (F18.4); painel de exceções (F18.5, adiado: a tela Auditoria já filtra "só sensíveis"); documentos e vencimentos (F18.6, adiado: fora do menu, vencimentos como lembrete no calendário); rentabilidade por evento (F18.7); compras avançadas (F18.8). **Critério:** cada item validado com um mês de operação real.
+Alerta de margem e simulador (F18.3); chope, doses e garrafas (F18.4); painel de exceções (F18.5, adiado: a tela Auditoria já filtra "só sensíveis"); documentos e vencimentos (F18.6, adiado: fora do menu, vencimentos como lembrete no calendário); rentabilidade por evento (F18.7); compras avançadas (F18.8). **Assistente de IA com chave própria (F19)**: etapa 1 (leitura e navegação) já útil nesta fase; etapas 2 e 3 (ações com confirmação, ações amplas) em seguida. **Critério:** cada item validado com um mês de operação real.
 
 ## R12. Fases 9 e 10: Cozinha e fiscal
 
@@ -211,6 +211,7 @@ Alerta de margem e simulador (F18.3); chope, doses e garrafas (F18.4); painel de
 | F16 Clientes | 2 |
 | F17 Importação/exportação | 2 (cardápio), 3 (insumos), 4, 5 (migração), 7 (completo) |
 | F18 Gestão avançada | 4 (resumo e painel), 8 |
+| F19 Assistente de IA (chave própria) | 8 (leitura e navegação, depois ações) |
 
 Toda linha de `02c` está em alguma fase; o critério de saída da Fase 4 exige a conferência com dados reais.
 
@@ -227,7 +228,7 @@ Toda linha de `02c` está em alguma fase; o critério de saída da Fase 4 exige 
 | Fase 1 grande sem tela útil | A fatia vertical (1.12) roda no celular cedo; demonstrações a cada marco |
 | Motor de permissões mais complexo que o previsto | Spike na Fase 0; começar com menos condições e ampliar |
 | Escopo cresce | Congelar o escopo de cada fase ao iniciá-la; ideias novas entram na lista do `02e` |
-| Latência do Railway pior em campo | Spike 0.3 e gatilhos de migração (`04` A10) |
+| Latência do Railway pior em campo | Validada na Fase 0 (0.3); reconfirmar sob carga real na Fase 2 e manter gatilhos de migração (`04` A10) |
 | Dados do legado inconsistentes | Importação com validação linha a linha e conferência manual na Fase 5 |
 
 ## R15. Como medir progresso

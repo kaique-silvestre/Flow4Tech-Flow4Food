@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · identidades v7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&family=Manrope:wght@400;500;600;700;800&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* IDENTIDADES V7 · seis direções profissionais, azul permitido, estrutura diferente em cada uma.
+   Muda: layout (lateral, trilho, topo), cartão vs tabela, densidade, fonte, cor. Abas no topo ou teclas 1-6. */
+
+/* 1 · MARINHO · menu lateral azul-marinho, acento índigo, cartões macios (família Stripe/Mercury) */
+body[data-id="1"]{--font:"Inter",sans-serif;--disp:"Inter",sans-serif;--dw:650;--fs:14px;
+  --chrome:#0b1b3a;--chrome-ink:#93a5c8;--chrome-on:#fff;--chrome-sel:rgb(255 255 255/.09);--chrome-line:#16294f;
+  --page:#f5f7fb;--card:#fff;--line:#e3e8f1;--ink:#0d1b36;--mut:#62708b;
+  --acc:#4f46e5;--on-acc:#fff;--soft:#eceafd;--ok:#12805c;--wait:#b7791f;--bad:#c0262d;
+  --r:12px;--sh:0 1px 2px rgb(13 27 54/.06),0 4px 14px -6px rgb(13 27 54/.08);--pad:16px}
+/* 2 · TRILHO · trilho de ícones + lista densa, cobalto, estilo ferramenta de produto (Linear/Height) */
+body[data-id="2"]{--font:"Geist",sans-serif;--disp:"Geist",sans-serif;--dw:600;--fs:13px;
+  --chrome:#fbfbfc;--chrome-ink:#6b7280;--chrome-on:#111827;--chrome-sel:#e8edff;--chrome-line:#e6e8ec;
+  --page:#fff;--card:#fff;--line:#e8eaee;--ink:#111827;--mut:#6b7280;
+  --acc:#2457f5;--on-acc:#fff;--soft:#e8edff;--ok:#0f8a5f;--wait:#b45309;--bad:#d1242f;
+  --r:6px;--sh:none;--pad:10px}
+/* 3 · TOPO · sem menu lateral, navegação horizontal, azul royal, muito ar (família Vercel/Stripe) */
+body[data-id="3"]{--font:"Manrope",sans-serif;--disp:"Manrope",sans-serif;--dw:700;--fs:14px;
+  --chrome:#fff;--chrome-ink:#51607a;--chrome-on:#0a2540;--chrome-sel:#eaf1ff;--chrome-line:#e3e9f3;
+  --page:#f6f9fc;--card:#fff;--line:#e3e9f3;--ink:#0a2540;--mut:#5b6b85;
+  --acc:#0b5fff;--on-acc:#fff;--soft:#eaf1ff;--ok:#0e8f63;--wait:#b8730b;--bad:#cf2a3a;
+  --r:10px;--sh:0 1px 1px rgb(10 37 64/.04);--pad:18px}
+/* 4 · CORPORATIVO · faixa azul no topo, branco e cinza, tabela-first (família Office/Fiori) */
+body[data-id="4"]{--font:"Source Sans 3",sans-serif;--disp:"Source Sans 3",sans-serif;--dw:700;--fs:14px;
+  --chrome:#0f4c9c;--chrome-ink:#cfe0f7;--chrome-on:#fff;--chrome-sel:rgb(255 255 255/.16);--chrome-line:#0c3f83;
+  --page:#eef1f5;--card:#fff;--line:#d9dfe8;--ink:#1d2733;--mut:#5b6777;
+  --acc:#0f62d6;--on-acc:#fff;--soft:#e3eefc;--ok:#1e7d3a;--wait:#a8620a;--bad:#c4262e;
+  --r:3px;--sh:none;--pad:12px}
+/* 5 · CONSOLE · escuro frio, ciano, denso, mono nos números (família Datadog/Grafana) */
+body[data-id="5"]{--font:"IBM Plex Sans",sans-serif;--disp:"IBM Plex Sans",sans-serif;--dw:600;--fs:13px;
+  --chrome:#0b1220;--chrome-ink:#8497b5;--chrome-on:#e8f0ff;--chrome-sel:#16233b;--chrome-line:#1a2740;
+  --page:#0f1829;--card:#141f35;--line:#1f2d49;--ink:#e6edf9;--mut:#8a9bb8;
+  --acc:#38bdf8;--on-acc:#04202e;--soft:#12304a;--ok:#34d399;--wait:#fbbf24;--bad:#fb7185;
+  --r:6px;--sh:none;--pad:12px}
+/* 6 · CLÍNICO · branco puro, azul-aço, serifado nunca; hierarquia só por peso e tamanho (família Notion/Attio) */
+body[data-id="6"]{--font:"IBM Plex Sans",sans-serif;--disp:"IBM Plex Sans",sans-serif;--dw:600;--fs:14px;
+  --chrome:#f7f7f5;--chrome-ink:#6b6f76;--chrome-on:#1a1d21;--chrome-sel:#ebebe8;--chrome-line:#ebebe8;
+  --page:#fff;--card:#fff;--line:#e9e9e6;--ink:#1a1d21;--mut:#6b6f76;
+  --acc:#2f5d8a;--on-acc:#fff;--soft:#e8f0f8;--ok:#2d7a54;--wait:#a86a12;--bad:#b4363c;
+  --r:8px;--sh:none;--pad:16px}
+
+*{box-sizing:border-box}
+body{margin:0;font:400 var(--fs)/1.45 var(--font);color:var(--ink);background:var(--page);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+a{text-decoration:none}
+.pick{position:sticky;top:0;z-index:20;display:flex;gap:6px;align-items:center;padding:8px 14px;background:#16161a;color:#ddd;font:500 13px/1 system-ui;flex-wrap:wrap}
+.pick b{margin-right:8px;color:#fff}
+.pick button{border:1px solid #333;background:#222;color:#ddd;border-radius:999px;padding:7px 12px}
+.pick button[aria-pressed=true]{background:#fff;color:#111;border-color:#fff}
+
+/* ---------- esqueleto: lateral / trilho / topo ---------- */
+.app{display:grid;grid-template-columns:var(--sw,244px) 1fr;grid-template-rows:auto 1fr;min-height:calc(100vh - 40px)}
+.side{grid-row:1/3;background:var(--chrome);border-right:1px solid var(--chrome-line);padding:14px 10px;color:var(--chrome-ink);overflow:hidden}
+.bar{grid-column:2;display:flex;align-items:center;gap:12px;padding:12px 28px;border-bottom:1px solid var(--line);background:var(--card)}
+.main{grid-column:2;padding:24px 28px 60px;min-width:0}
+.org{display:flex;gap:10px;align-items:center;padding:4px 8px 16px;color:var(--chrome-on)}
+.org i{width:30px;height:30px;border-radius:8px;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;font:700 14px var(--font);font-style:normal;flex:none}
+.org b{display:block;font-weight:600;line-height:1.2}.org small{color:var(--chrome-ink);font-size:12px}
+.grp{font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:14px 10px 5px;opacity:.75}
+.nav a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:calc(var(--r) - 2px);color:var(--chrome-ink);margin:1px 0}
+.nav a svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav a em{margin-left:auto;font-style:normal;font-size:12px;opacity:.8}
+.nav a[aria-current]{background:var(--chrome-sel);color:var(--chrome-on);font-weight:600}
+.srch{flex:1;max-width:440px;border:1px solid var(--line);background:var(--page);border-radius:var(--r);padding:8px 12px;color:var(--mut)}
+.bar .sp{margin-left:auto}
+.ic{width:34px;height:34px;border-radius:var(--r);border:1px solid var(--line);display:grid;place-items:center;background:var(--card);color:var(--mut)}
+.ic.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.av{width:30px;height:30px;border-radius:50%;background:var(--soft);color:var(--acc);display:grid;place-items:center;font-weight:700;font-size:12px}
+.topnav{display:none}
+
+/* variante 2: trilho */
+body[data-id="2"]{--sw:56px}
+body[data-id="2"] .org b,body[data-id="2"] .org small,body[data-id="2"] .grp,body[data-id="2"] .nav a span,body[data-id="2"] .nav a em{display:none}
+body[data-id="2"] .nav a{justify-content:center;padding:9px}
+body[data-id="2"] .org{justify-content:center;padding:4px 0 14px}
+/* variante 3: topo */
+body[data-id="3"] .app{grid-template-columns:1fr}
+body[data-id="3"] .side{display:none}
+body[data-id="3"] .bar,body[data-id="3"] .main{grid-column:1}
+body[data-id="3"] .bar{padding:0 32px;height:60px}
+body[data-id="3"] .topnav{display:flex;gap:2px;margin-left:10px}
+body[data-id="3"] .topnav a{padding:8px 12px;border-radius:8px;color:var(--chrome-ink);font-weight:500}
+body[data-id="3"] .topnav a[aria-current]{background:var(--chrome-sel);color:var(--acc);font-weight:600}
+body[data-id="3"] .srch{max-width:260px;flex:none}
+body[data-id="3"] .main{max-width:1240px;margin:0 auto;width:100%;padding-top:32px}
+/* variante 4: faixa azul */
+body[data-id="4"] .app{grid-template-columns:1fr}
+body[data-id="4"] .side{display:none}
+body[data-id="4"] .bar,body[data-id="4"] .main{grid-column:1}
+body[data-id="4"] .bar{background:var(--chrome);border:0;padding:0 24px;height:52px;color:#fff}
+body[data-id="4"] .topnav{display:flex;margin-left:8px;align-self:stretch}
+body[data-id="4"] .topnav a{display:flex;align-items:center;padding:0 14px;color:var(--chrome-ink);border-bottom:3px solid transparent}
+body[data-id="4"] .topnav a[aria-current]{color:#fff;font-weight:600;border-bottom-color:#fff;background:var(--chrome-sel)}
+body[data-id="4"] .srch{background:rgb(255 255 255/.14);border-color:transparent;color:#dbe8fb;max-width:300px;flex:none}
+body[data-id="4"] .ic{background:rgb(255 255 255/.14);border-color:transparent;color:#fff}
+body[data-id="4"] .av{background:#fff}
+body[data-id="4"] .logo{color:#fff;font-weight:700;font-size:16px;margin-right:10px}
+body[data-id="4"] .main{padding-top:20px}
+
+/* ---------- conteúdo ---------- */
+.crumb{color:var(--mut);font-size:13px}
+.h1{display:flex;justify-content:space-between;align-items:flex-end;margin:6px 0 18px;gap:12px;flex-wrap:wrap}
+h1{margin:0;font:var(--dw) 28px/1.15 var(--disp);letter-spacing:-.015em}
+.sub{color:var(--mut);margin-top:3px}
+.btn{border:1px solid var(--acc);background:var(--acc);color:var(--on-acc);border-radius:var(--r);padding:8px 14px;font-weight:600}
+.btn.ghost{background:var(--card);color:var(--ink);border-color:var(--line);margin-right:6px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:var(--pad) calc(var(--pad) + 2px);box-shadow:var(--sh)}
+.k small{color:var(--mut)}.k b{display:block;font:var(--dw) 26px/1.25 var(--disp);margin:2px 0;letter-spacing:-.01em}
+.k .d{color:var(--ok);font-size:12px;font-weight:600}.k .d.w{color:var(--bad)}
+body[data-id="2"] .kpis{gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+body[data-id="2"] .k{border:0;border-right:1px solid var(--line);border-radius:0}
+body[data-id="2"] .k b{font-size:22px}
+body[data-id="4"] .k{border-top:3px solid var(--acc)}
+body[data-id="5"] .k b,body[data-id="5"] .tot,body[data-id="5"] td.n{font-family:"IBM Plex Mono",monospace;font-weight:500}
+body[data-id="6"] .kpis{gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+body[data-id="6"] .k{border:0;border-radius:0;padding-left:0}
+
+.tabs{display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;color:var(--mut)}
+.chip[aria-pressed=true]{background:var(--soft);color:var(--acc);border-color:transparent;font-weight:600}
+body[data-id="4"] .chip{border-radius:3px}
+body[data-id="2"] .chip,body[data-id="6"] .chip{border-radius:6px}
+.tabs .vw{margin-left:auto;color:var(--mut)}
+
+/* cartões */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:12px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:var(--pad) calc(var(--pad) + 2px);box-shadow:var(--sh)}
+.c.late{box-shadow:inset 3px 0 0 var(--bad),var(--sh)}
+.c__h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.c__n{font:var(--dw) 16px var(--disp)}.num{color:var(--mut);font-size:12px;margin-right:6px}
+.st{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st.prep{color:var(--wait);background:color-mix(in srgb,var(--wait) 13%,transparent)}
+.st.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.st.done{color:var(--mut);background:color-mix(in srgb,var(--mut) 13%,transparent)}
+body[data-id="4"] .st,body[data-id="2"] .st{border-radius:3px}
+.tot{font:var(--dw) 24px/1.25 var(--disp);margin:8px 0 2px;letter-spacing:-.01em}
+.meta{color:var(--mut);font-size:13px}.meta .bad{color:var(--bad);font-weight:600}
+.last{border-top:1px solid var(--line);margin-top:10px;padding-top:9px;color:var(--mut);font-size:12.5px}
+.foot{display:flex;justify-content:flex-end;margin-top:6px;font-weight:600;color:var(--acc)}
+
+/* tabela */
+.tbl{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;font-weight:600;color:var(--mut);text-align:left;padding:9px 14px;background:color-mix(in srgb,var(--mut) 6%,var(--card));border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:var(--rp,10px) 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:color-mix(in srgb,var(--acc) 5%,var(--card))}
+td.n,th.n{text-align:right}td .bad{color:var(--bad);font-weight:600}td b{font-weight:600}
+td a{color:var(--acc);font-weight:600}
+/* quem usa tabela como padrão */
+body[data-id="2"] .grid,body[data-id="4"] .grid{display:none}
+body[data-id="2"] .tbl,body[data-id="4"] .tbl{display:block}
+body[data-id="2"] td{--rp:7px}
+body[data-id="4"] th{background:#e9eef5;color:var(--ink)}
+.note{margin-top:22px;padding:12px 14px;border:1px dashed var(--line);border-radius:var(--r);color:var(--mut);font-size:13px}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.bar,.main{grid-column:1}.kpis{grid-template-columns:1fr 1fr}.topnav{display:none!important}}
+</style>
+</head>
+<body data-id="1">
+<div class="pick" id="pick"><b>Identidade</b></div>
+<div class="app">
+  <aside class="side">
+    <div class="org"><i>Z</i><div><b>Bar do Zé</b><small>Unidade Centro</small></div></div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <header class="bar">
+    <span class="logo" style="display:none">Flow</span>
+    <nav class="topnav" id="topnav"></nav>
+    <div class="srch">Buscar telas, relatórios, comandas…</div>
+    <span class="sp"></span>
+    <div class="ic on" title="Avisos">🔔</div>
+    <div class="av">ZA</div>
+  </header>
+  <main class="main">
+    <div class="crumb">Operação › Comandas</div>
+    <div class="h1">
+      <div><h1>Comandas</h1><div class="sub">Turno noite, Unidade Centro</div></div>
+      <div><button class="btn ghost">Filtros</button><button class="btn">Nova comanda</button></div>
+    </div>
+    <section class="kpis">
+      <div class="k"><small>Abertas</small><b>14</b><span class="d w">4 acima de 90 min</span></div>
+      <div class="k"><small>Em consumo</small><b>R$ 3.349,50</b><span class="d">17 comandas ativas</span></div>
+      <div class="k"><small>Aguardando pagamento</small><b>3</b><span class="d w">R$ 689,00 a receber</span></div>
+      <div class="k"><small>Tempo médio aberta</small><b>1h05</b><span class="d">Alerta a partir de 1h30</span></div>
+    </section>
+    <div class="tabs">
+      <button class="chip" aria-pressed="true">Todas</button><button class="chip">Abertas</button><button class="chip">Aguardando</button><button class="chip">Em alerta</button><button class="chip">Reservas</button>
+      <span class="vw">17 comandas</span>
+    </div>
+    <section class="grid" id="grid"></section>
+    <section class="tbl"><table id="tbl"></table></section>
+    <div class="note" id="note"></div>
+  </main>
+</div>
+<script>
+const IDS={
+ 1:["Marinho","Menu lateral azul-marinho, acento índigo, cartões macios com sombra leve. Fintech confiável. Estrutura clássica, só mais refinada."],
+ 2:["Trilho","Menu vira trilho de ícones, tela vira lista densa em tabela, cobalto vivo, sem sombra. Rápido de escanear com muitas comandas."],
+ 3:["Topo","Sem menu lateral: navegação horizontal, muito ar, azul royal. Tela mais larga e limpa, cara de produto moderno."],
+ 4:["Corporativo","Faixa azul no topo, fundo cinza, tabela como padrão, cantos retos. Cara de sistema de gestão sério (ERP)."],
+ 5:["Console","Escuro frio, ciano, números em mono, denso. Cara de painel de operação, bom para salão à noite."],
+ 6:["Clínico","Branco puro, azul-aço discreto, hierarquia só por peso e espaço, sem caixas. O mais silencioso e elegante."]};
+const pick=document.getElementById('pick');
+Object.entries(IDS).forEach(([k,[n]])=>{const b=document.createElement('button');b.textContent=k+' · '+n;b.dataset.k=k;b.onclick=()=>set(k);pick.appendChild(b)});
+const P={
+ Dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ Comandas:'<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+ Cozinha:'<path d="M4 11h16M6 11a6 6 0 0 1 12 0M3 15h18"/>',
+ Mesas:'<path d="M3 9h18M6 9v10M18 9v10"/>',
+ Estoque:'<path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7"/>',
+ Caixa:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+ Financeiro:'<path d="M3 17l5-6 4 3 6-8"/>',
+ Relatórios:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
+ Equipe:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M17 11a3 3 0 0 0 0-6"/>',
+ Config:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>'};
+const N=[["Operação"],["Dashboard"],["Comandas",17,1],["Cozinha","9"],["Mesas"],["Gestão"],["Estoque",6],["Caixa",1],["Financeiro",2],["Relatórios"],["Equipe"],["Sistema"],["Config"]];
+const lab={Cozinha:"Cozinha e bar",Equipe:"Equipe e comissões",Config:"Configurações"};
+document.getElementById('nav').innerHTML=N.map(([t,n,cur])=>["Operação","Gestão","Sistema"].includes(t)?`<div class="grp">${t}</div>`:`<a href="#" ${cur?'aria-current="page"':''}><svg viewBox="0 0 24 24">${P[t]||''}</svg><span>${lab[t]||t}</span><em>${n??''}</em></a>`).join('');
+document.getElementById('topnav').innerHTML=["Comandas","Cozinha e bar","Mesas","Caixa","Estoque","Financeiro","Relatórios"].map((t,i)=>`<a href="#" ${i==0?'aria-current="page"':''}>${t}</a>`).join('');
+const D=[["#17","Mesa 2","prep","37,50","7 min","Carlos",3,"1× Chope Pilsen 300ml · 21:48"],["#5","Mesa 1","prep","162,00","1h37","Rafael",9,"2× Caldinho de feijão · 21:47",1],["#9","Mesa 11","prep","144,00","57 min","Rafael",6,"2× Caipirinha de limão · 21:45"],["#1","Mesa 12","prep","462,00","2h23","Carlos",21,"1× Porção de fritas · 21:43",1],["#3","Mesa 5","ok","410,00","1h58","Carlos",22,"1× Torresmo crocante · 21:35",1],["#14","Mesa 9","ok","92,00","22 min","Juliana",3,"1× Pastel de carne (4) · 21:33"],["#13","Balcão 5","done","38,00","29 min","Marcos",4,"4× Chope Pilsen 300ml · 21:23"],["#4","Mesa 7","done","444,00","1h44","Carlos",16,"4× Dose de cachaça · 21:17",1]];
+const L={prep:"Em preparo",ok:"Pronto",done:"Entregue"};
+document.getElementById('grid').innerHTML=D.map(([n,m,s,t,tm,g,i,l,late])=>`<article class="c ${late?'late':''}"><div class="c__h"><div><span class="num">${n}</span><span class="c__n">${m}</span></div><span class="st ${s}">${L[s]}</span></div><div class="tot">R$ ${t}</div><div class="meta"><span class="${late?'bad':''}">${tm} aberta</span> · ${g} · ${i} itens</div><div class="last">Último: ${l}</div><div class="foot">Fechar conta</div></article>`).join('');
+document.getElementById('tbl').innerHTML='<thead><tr><th>Nº</th><th>Comanda</th><th>Etapa</th><th>Aberta há</th><th>Atendente</th><th class="n">Itens</th><th>Último item</th><th class="n">Total</th><th></th></tr></thead><tbody>'+D.map(([n,m,s,t,tm,g,i,l,late])=>`<tr><td>${n}</td><td><b>${m}</b></td><td><span class="st ${s}">${L[s]}</span></td><td><span class="${late?'bad':''}">${tm}</span></td><td>${g}</td><td class="n">${i}</td><td style="color:var(--mut)">${l}</td><td class="n"><b>R$ ${t}</b></td><td><a href="#">Fechar conta</a></td></tr>`).join('')+'</tbody>';
+function set(k){document.body.dataset.id=k;document.querySelectorAll('.pick button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k==k));document.querySelector('.logo').style.display=k==4?'block':'none';document.getElementById('note').innerHTML='<b>'+k+' · '+IDS[k][0]+'.</b> '+IDS[k][1];history.replaceState(null,'','#'+k)}
+addEventListener('keydown',e=>{if(IDS[e.key])set(e.key)});
+set((location.hash||'#1').slice(1)in IDS?location.hash.slice(1):'1');
+</script>
+</body>
+</html>

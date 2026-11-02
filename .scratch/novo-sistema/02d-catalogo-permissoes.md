@@ -211,7 +211,7 @@ Contas, fluxo, DRE.
 | `auditoria:exportar` | Exportar auditoria | A | ● |  |  |  |  |  |  |  |
 
 ### Identidade e acesso (F11)
-Usuários, perfis, dispositivos, sessões.
+Usuários, perfis, sessões.
 
 | Permissão | O que permite | Marc. | D | G | C | W | E | F | K | R |
 |---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -222,11 +222,9 @@ Usuários, perfis, dispositivos, sessões.
 | `perfil:ver` | Ver perfis |  | ● | ● |  |  |  |  |  |  |
 | `perfil:gerenciar` | Criar/editar perfis | A | ● |  |  |  |  |  |  |  |
 | `permissao:atribuir` | Atribuir perfil/permissões a usuários (só o que a pessoa já tem) | A | ● |  |  |  |  |  |  |  |
-| `dispositivo:registrar` | Registrar dispositivo do salão | A | ● | ● |  |  |  |  |  |  |
-| `dispositivo:revogar` | Revogar dispositivo | A | ● | ● |  |  |  |  |  |  |
 | `sessao:ver_todas` | Ver sessões ativas |  | ● | ● |  |  |  |  |  |  |
 | `sessao:revogar` | Encerrar sessões | A | ● | ● |  |  |  |  |  |  |
-| `seguranca:politica_editar` | Política de senha, sessão e PIN | A | ● |  |  |  |  |  |  |  |
+| `seguranca:politica_editar` | Política de senha e sessão | A | ● |  |  |  |  |  |  |  |
 | `seguranca:exigir_2fa` | Exigir 2FA (reservado) | A | ● |  |  |  |  |  |  |  |
 
 ### Notificações (F13)
@@ -329,9 +327,23 @@ Usuários, perfis, dispositivos, sessões.
 | `pedido_compra:criar` | Criar pedido de compra | | ● | ● |  |  | ● |  |  |  |
 | `pedido_compra:enviar` | Enviar pedido ao fornecedor | A | ● | ● |  |  | ● |  |  |  |
 
+### Assistente de IA (F19)
+
+| Permissão | O que permite | Marc. | D | G | C | W | E | F | K | R |
+|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `ia:usar` | Usar o assistente | | ● | ● | ● |  | ● | ● |  | ● |
+| `ia:configurar_chave` | Cadastrar, trocar e remover a chave de API | A | ● |  |  |  |  |  |  |  |
+| `ia:configurar_dados` | Definir o que a IA pode ver | A | ● |  |  |  |  |  |  |  |
+| `ia:configurar_limites` | Limites de uso por pessoa e por dia | A | ● | ● |  |  |  |  |  |  |
+| `ia:ver_consumo` | Ver consumo do assistente | | ● | ● |  |  |  | ● |  |  |
+| `ia:ver_conversas_de_outros` | Ver conversas de outras pessoas | A | ● |  |  |  |  |  |  |  |
+| `ia:acao_sem_confirmacao` | Dispensar confirmação em ações do assistente | A L | ● |  |  |  |  |  |  |  |
+
+Perfil Somente leitura (R) usa a IA só para leitura (as ações seguem as permissões do perfil). Perfis padrão são ponto de partida: tudo editável.
+
 Legenda: ● concedida · ◐ concedida com limite ou escopo restrito · vazio = negada.
 
-Total de permissões da organização neste rascunho: **205** (165 dos módulos F1 a F15, 13 de mesas, clientes e importação, e 27 de gestão avançada).
+Total de permissões da organização neste rascunho: **212** (165 dos módulos F1 a F15, 13 de mesas, clientes e importação, 27 de gestão avançada e 7 do assistente de IA).
 
 ## 4. Control Tower: permissões e perfis da plataforma
 
