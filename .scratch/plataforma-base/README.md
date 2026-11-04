@@ -7,3 +7,5 @@ Premissas adotadas até o dono responder as questões abertas da spec:
 - Cópia externa da auditoria fica como dívida (questão 3).
 - Provedor de e-mail e CAPTCHA só como interface (questão 4).
 - Conta operacional não usa Google (questão 6).
+
+Estado e histórico da execução: `state.md`.
