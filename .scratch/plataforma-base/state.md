@@ -9,7 +9,7 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | 01 | Contexto de organização e unidade | **done-local** | `b784339`, `f10ed7a` | PASS COM RISCOS, achados médios corrigidos |
 | 02 | Auditoria encadeada e log técnico | **done-local** | `dfcfdcd`, `f6ce74d` | PASS COM RISCOS, achados médios e 2 baixos corrigidos |
 | 03 | Identidade, senhas e pré-autenticação sob RLS | **done-local** | `87d5ec5`, `8d9c698` | PASS COM RISCOS, achados corrigidos |
-| 04 | Sessões e tokens | **in-progress, NÃO validado** | `cf358cf` (WIP), `281a20f` | nenhuma |
+| 04 | Sessões e tokens | **done-local, sem revisão independente** | `cf358cf` (WIP), `281a20f`, correção de conexões (a commitar) | pendente |
 | 05 a 11 | Permissões no HTTP, perfis, registro de organizações, proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
 
 Último estado **validado** (rodado por mim, suíte inteira): `8d9c698`.
@@ -24,18 +24,14 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | Audit (novo) | n/a | 143 |
 | Identidade (novo) | n/a | 149 |
 
-## Ticket 04: o que é verdade hoje
+## Ticket 04: o que é verdade hoje (atualizado em 2026-11-04, retomada)
 
-O rascunho foi escrito por um subagente que foi **interrompido** a pedido do dono antes de rodar a suíte, de fazer a rodada adversarial e de marcar os critérios. Conferido em 2026-11-04 sobre `281a20f`:
-
-- `dotnet build`: 0 erros, 0 avisos.
-- Architecture 118, Flow4Tech.Tests 118, Isolation 49, Authorization 94, Audit 143, Outbox 18 (+1 ignorado): verdes.
-- **Identidade: 28 falhas em 210.** Todas com `53300: remaining connection slots are reserved for roles with the SUPERUSER attribute`: o PostgreSQL de teste fica sem conexões quando o projeto inteiro roda em paralelo. A mesma classe (`GestaoDeContasIntegrationTests`) passa isolada (20/20), tanto no rascunho quanto em `8d9c698`. Leitura: defeito de infraestrutura de teste do rascunho (pools/containers em excesso no paralelismo), não de regra de negócio. **Ainda não investigado a fundo**; é a primeira coisa a resolver ao retomar.
-- `dotnet format --verify-no-changes`: 6 linhas com "error" no rascunho (eram 13 antes; a contagem mudou e não foi analisada). Ver "Divergências de ambiente".
-- Já existem no rascunho: migração `0009_sessoes.sql`, `docs/adr/010-sessoes-tokens-e-revogacao.md` e a seção "Sessões e tokens" do `CLAUDE.md`. Esses textos descrevem o **desenho pretendido**; não foram verificados contra o comportamento. Tratar o `CLAUDE.md` dessa seção como não confirmado até o ticket fechar.
-- Os critérios do ticket 04 **não estão marcados** (sem evidência). Status mantido `in-progress`.
-
-Retomada recomendada: um agente novo parte de `cf358cf`, corrige a falha de conexões, roda a suíte, faz a rodada adversarial (forja/reuso de token, CSRF, enumeração, vazamento em log e auditoria, sessão sobrevivendo a gatilho), fecha o ticket, e então vem o revisor independente. Se o desenho do rascunho estiver ruim, descartar é válido (o rascunho está isolado em dois commits).
+- Causa das 28 falhas: `PostgresFixture` sobe um PostgreSQL com `max_connections` padrão (100); os ambientes de teste de Identidade, em paralelo, esgotavam as conexões (`53300`). Correção: `-c max_connections=600` no container. Identidade agora **210/210**.
+- Mesma execução: Isolation 49, Audit 143, Authorization 94, Outbox 18 (+1 ignorado), Flow4Tech.Tests 118, Architecture 118. Build limpo.
+- Rodada adversarial por leitura de código e dos testes: sem achado novo (forja de token, reuso/corrida de refresh, CSRF, enumeração, vazamento, gatilhos de revogação, todos com teste).
+- Critério em aberto por dependência: mudança de permissão/perfil invalidar sessões (tickets 05/06).
+- **Falta o revisor independente** antes de tratar o 04 como fechado. O texto de sessões no `CLAUDE.md`/ADR-010 continua descrevendo o desenho; a medição de latência e a leitura acima o sustentam, mas o revisor ainda não o confrontou.
+- Próximo: ticket 05 (permissões no HTTP).
 
 ## O que foi entregue (tickets 01 a 03)
 
@@ -70,6 +66,8 @@ Para tickets futuros (já anotadas nos tickets):
 Herdadas da Fase 0 (não mexidas): pipeline do GitHub **nunca rodou**; ticket 12 (reversão de deploy, latência em `staging`, ADRs finais) pulado por decisão do dono; Railway, Vercel, segredos, proteção do `main` e medição do pipeline continuam do lado do dono (P1 a P13 no ticket 11 da Fase 0); itens do outbox ainda não construídos (alerta e reprocesso de estacionados, poda de 30 dias; a descoberta de organizações pendentes é o ticket 07).
 
 ## Divergências de ambiente
+
+- **Retomada no Windows (2026-11-04):** SDK 10.0.101, Docker Desktop. O clone tinha `core.autocrlf=true` (CRLF quebrava a comparação de `permissions.catalog.txt` e o `dotnet format`); passou a `false` (local) com checkout refeito. A pasta `backend/src/Api` estava como `api` no disco (resto do layout Python da `development`); renomeada. `ModuleGraph` agora ignora `obj`/`bin` com qualquer separador. Sugestão para o ticket 11: `.gitattributes` com `* text=auto eol=lf`. O `dotnet format` ainda acusa só `CA1515` (divergência de SDK já descrita abaixo).
 
 - Esta sessão não tinha .NET: instalei `dotnet-sdk-10.0` e `postgresql` por `apt` e subi o Docker (`dockerd`) manualmente; a imagem `postgres:17-alpine` baixou normalmente. `dot.net` e `builds.dotnet.microsoft.com` são bloqueados pelo proxy; `apt` e NuGet funcionam.
 - `dotnet format --verify-no-changes` acusa erros **CA1515** em classes de teste públicas (13 desde `8d9c698`, 11 já na linha de base, medidos com o SDK 10.0.114 daqui). A hipótese é divergência de versão do SDK em relação à máquina do dono, que reportou "limpo". Ao tornar a classe `internal`, o xUnit1000 exige que seja pública, então não dá para zerar por código. Resolver no ticket 11 (por exemplo fixando o SDK em `global.json`) e **não** suprimir regra.

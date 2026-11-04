@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Contract (OpenAPI), RLS
-**Status:** in-progress (rascunho WIP em cf358cf; NÃO validado: projeto Identidade com 28 falhas em 210 por esgotamento de conexões do PostgreSQL de teste, ver state.md)
+**Status:** done-local (suíte verde em 2026-11-04; critério "mudar permissão" transferido aos tickets 05/06; revisão independente ainda não feita)
 
 - [x] Reuso de refresh derruba a cadeia da sessão (`SessoesIntegrationTests.Presenting_a_used_refresh_again_revokes_the_whole_family...`, `...Two_simultaneous_refreshes...`, HTTP `Replaying_a_used_refresh_cookie_kills_the_session...`)
 - [ ] Desativar usuário, trocar senha e mudar permissão invalidam sessões na próxima requisição (PARCIAL: provados desativar, trocar senha, mudar flag de dono, remover vínculo da unidade ativa e revogar, um teste por gatilho; **mudar permissão/perfil não existe ainda** (tickets 05/06) e deve chamar a mesma mecânica; fica aberto até lá)
@@ -28,8 +28,11 @@
 - A permissão `sessao:revogar`/`sessao:ver-todas` está só declarada no catálogo de rotas; hoje quem decide é "ser dono" (`Conta.Dono`); o ticket 05 deve substituir por `DecidirAsync` e separar "revogar a própria" (sempre permitido) de "revogar de terceiro" (a permissão), hoje numa só rota.
 - Não provado: comportamento atrás de TLS/proxy real, cookie em navegador real (só o `Set-Cookie` e a repetição manual), carga concorrente de login (Argon2 de 46 MiB por tentativa), expiração por relógio real (usa `IClock` falso).
 
-## Estado verificado em 2026-11-04 (rascunho WIP)
+## Estado verificado em 2026-11-04 (retomada)
 
-- Build limpo. Architecture 118, Flow4Tech.Tests 118, Isolation 49, Authorization 94, Audit 143, Outbox 18 verdes.
-- Identidade: 28 falhas em 210, todas `53300 remaining connection slots are reserved`. A classe `GestaoDeContasIntegrationTests` passa isolada (20/20). Defeito de infraestrutura de teste a corrigir ao retomar; causa ainda não investigada.
-- Nenhum critério marcado: faltam suíte verde, rodada adversarial e revisão independente. Detalhes e plano de retomada em `../state.md`.
+- Causa das 28 falhas de Identidade: o PostgreSQL de teste (`PostgresFixture`, um container por execução) usava `max_connections` padrão (100) e os ambientes de teste, em paralelo, abriam pools demais (`53300`). Correção: `max_connections=600` no container. Identidade: **210/210**.
+- Demais suítes na mesma execução: Isolation 49, Audit 143, Authorization 94, Outbox 18 (+1 ignorado), Flow4Tech.Tests 118, Architecture 118. Build 0 erros, 0 avisos.
+- Rodada adversarial (leitura de `Sessoes`, `JwtEmissorDeTokens`, `RouteGuards` e da lista de testes): forja de token (alg none, outra chave, emissor, realm, payload), reuso e corrida de refresh, CSRF/Origin/Sec-Fetch-Site, enumeração, vazamento em log/auditoria/outbox/tabelas e cada gatilho de revogação têm teste. Nenhum achado novo.
+- Critério ainda aberto por dependência: "mudar permissão/perfil invalida sessões" (tickets 05/06 devem chamar `versao_credencial`/`RevogarOutrasDaContaAsync`).
+- Falta: revisor independente (ainda não rodou).
+- Ambiente Windows: o repositório foi aberto com `core.autocrlf=true` e a pasta `backend/src/Api` estava em minúsculas no disco; isso quebrava 2 testes de Architecture e o `dotnet format` (ENDOFLINE). Corrigido localmente (autocrlf=false, pasta `Api`) e `ModuleGraph` ignora `obj`/`bin` com qualquer separador.

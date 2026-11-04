@@ -22,7 +22,11 @@ public sealed class PostgresFixture : IAsyncLifetime
     private const string OwnerPassword = "owner-pw";
     private const string AppPassword = "app-pw";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    // The whole run shares one server and test classes run in parallel; each test environment opens several pools.
+    // The default max_connections (100) is exhausted (53300), so the test server gets a generous ceiling.
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
+        .WithCommand("-c", "max_connections=600")
+        .Build();
 
     public const string AppPasswordValue = AppPassword;
 

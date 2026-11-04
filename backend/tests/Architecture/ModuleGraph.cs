@@ -55,7 +55,7 @@ internal static partial class ModuleGraph
                 .Select(p => System.IO.Path.GetRelativePath(backendRoot, p).Replace('\\', '/'))
                 .ToList();
             var usings = Directory.EnumerateFiles(System.IO.Path.GetDirectoryName(file)!, "*.cs", SearchOption.AllDirectories)
-                .Where(f => !f.Contains("/obj/", StringComparison.Ordinal) && !f.Contains("/bin/", StringComparison.Ordinal))
+                .Where(f => !IsBuildOutput(f))
                 .SelectMany(f => UsingRegex().Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))
                 .ToList();
             var mentions = ScanSource(System.IO.Path.GetDirectoryName(file)!);
@@ -177,6 +177,13 @@ internal static partial class ModuleGraph
 
     private static bool IsAudit(string path) => path.StartsWith("src/Infrastructure/Audit/", StringComparison.Ordinal);
 
+    /// <summary>Generated build output (obj/bin), whatever the OS path separator is.</summary>
+    private static bool IsBuildOutput(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        return normalized.Contains("/obj/", StringComparison.Ordinal) || normalized.Contains("/bin/", StringComparison.Ordinal);
+    }
+
     private static bool IsNpgsqlName(string name) => name == "Npgsql" || name.StartsWith("Npgsql.", StringComparison.Ordinal);
 
     private static bool IsEfName(string name) => name == "Microsoft.EntityFrameworkCore" || name.StartsWith("Microsoft.EntityFrameworkCore.", StringComparison.Ordinal);
@@ -185,7 +192,7 @@ internal static partial class ModuleGraph
     public static List<string> ScanSource(string projectDirectory)
     {
         var code = Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains("/obj/", StringComparison.Ordinal) && !f.Contains("/bin/", StringComparison.Ordinal))
+            .Where(f => !IsBuildOutput(f))
             .Select(File.ReadAllText)
             .ToList();
         var mentions = new List<string>();
