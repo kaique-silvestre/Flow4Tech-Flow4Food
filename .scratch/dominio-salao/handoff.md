@@ -1,5 +1,7 @@
 # Handoff: spec do domínio do salão (Fase 1B)
 
+**Atualização posterior (mesma data):** os itens 2 e 3 de "O que falta" foram feitos como rascunho: `docs/design/DESIGN.md` (base + seção "Salão (mobile slice)", modo `--auto`, `approved: pending`) e `.scratch/dominio-salao/spec.md`. O seam de UI foi escrito como "proposto, aguardando confirmação do dono". Faltam: o dono revisar a spec e responder as 5 perguntas em aberto (seção Notas), e então `/tickets`. O restante deste arquivo descreve o estado de antes desses dois arquivos.
+
 Escrito em 2026-11-05. Branch: `claude/flow4tech-fase-1-handoff-vgu3m9` (parte da Fase 1A fechada, commit `0103b56`). Nada foi enviado ao GitHub por esta sessão.
 
 ## Onde estamos no projeto
