@@ -1,3 +1,4 @@
+acesso:negar
 autenticacao:falhar
 conta:criar
 conta:definir-dono

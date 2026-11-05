@@ -7,11 +7,21 @@ namespace Flow4Tech.Api;
 internal static class RoutePermissionExtensions
 {
     /// <summary>Declares the <c>resource:action</c> permission of a route as endpoint metadata. Every route needs it (see <see cref="RoutePermissions"/>).</summary>
-    public static TBuilder RequirePermission<TBuilder>(this TBuilder builder, string permission)
+    /// <param name="builder">The route.</param>
+    /// <param name="permission">The catalog permission, DECIDED by the engine for every request (the route also needs <c>.RequireSession()</c>, see <see cref="RoutePermissions.CheckSessions"/>).</param>
+    /// <param name="sensitive">A denial on this route is written to the audit trail (<c>acesso:negar</c>), not only to the technical log. Opt-in: every audited denial takes the organization's chain lock.</param>
+    public static TBuilder RequirePermission<TBuilder>(this TBuilder builder, string permission, bool sensitive = false)
         where TBuilder : IEndpointConventionBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.Add(endpoint => endpoint.Metadata.Add(new PermissionDeclaration(permission)));
+        builder.Add(endpoint =>
+        {
+            endpoint.Metadata.Add(new PermissionDeclaration(permission));
+            if (sensitive)
+            {
+                endpoint.Metadata.Add(new SensitiveRouteMetadata());
+            }
+        });
         return builder;
     }
 }
@@ -32,6 +42,36 @@ internal static class RoutePermissions
         "/health/ready",
         "/openapi/{documentName}.json",
     };
+
+    /// <summary>
+    /// The ONLY routes that declare a permission without a session, as <c>VERB pattern</c>. <c>/version</c> only reports the build version (no tenant data) and is used by deploy
+    /// smoke checks before anyone can sign in. <c>/login</c> creates the session (the credential in the body is the authentication); <c>/refresh</c> and <c>/logout</c> are
+    /// authenticated by the HttpOnly refresh cookie, guarded against CSRF (ticket 04). Adding a route here needs the same review as adding one to <see cref="Allowlist"/>.
+    /// </summary>
+    public static readonly IReadOnlySet<string> PublicWithoutSession = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "GET /version",
+        "POST /login",
+        "POST /refresh",
+        "POST /logout",
+    };
+
+    /// <summary>
+    /// A declared permission is decided by the engine, which needs to know WHO asks: every route outside <see cref="Allowlist"/> and <see cref="PublicWithoutSession"/> must be
+    /// marked <c>.RequireSession()</c>. A route that declares a permission but accepts anonymous callers is the bug this catches.
+    /// </summary>
+    public static IReadOnlyList<string> CheckSessions(IEnumerable<Endpoint> endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+        return [.. endpoints.OfType<RouteEndpoint>()
+            .Where(e => !(Allowlist.Contains(e.RoutePattern.RawText ?? "") && IsGetOnly(e)) && !PublicWithoutSession.Contains(KeyOf(e)))
+            .Where(e => e.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
+            .Select(e => $"Route '{KeyOf(e)}' needs .RequireSession(): a declared permission is decided for a signed-in user (or add it to RoutePermissions.PublicWithoutSession after review).")
+            .Order(StringComparer.Ordinal)];
+    }
+
+    internal static string KeyOf(RouteEndpoint endpoint) =>
+        $"{(endpoint.Metadata.GetMetadata<HttpMethodMetadata>() is { HttpMethods: [var method, ..] } ? method : "ANY")} {endpoint.RoutePattern.RawText}";
 
     public static IReadOnlyList<string> Check(IEnumerable<Endpoint> endpoints, IReadOnlySet<string> catalog)
     {
@@ -72,7 +112,8 @@ internal static class RoutePermissions
 
     public static void EnsureValid(IEnumerable<Endpoint> endpoints, IReadOnlySet<string> catalog)
     {
-        var violations = Check(endpoints, catalog);
+        var materialized = endpoints as IReadOnlyCollection<Endpoint> ?? [.. endpoints];
+        var violations = Check(materialized, catalog).Concat(CheckSessions(materialized)).ToList();
         if (violations.Count > 0)
         {
             throw new InvalidOperationException("Route permission check failed:" + Environment.NewLine + string.Join(Environment.NewLine, violations));

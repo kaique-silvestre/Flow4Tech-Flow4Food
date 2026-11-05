@@ -183,7 +183,7 @@ internal static class SessaoEndpoints
             })
             .WithName("listSessoesTodas")
             .RequireSession()
-            .RequirePermission(SessaoPermissions.VerTodas)
+            .RequirePermission(SessaoPermissions.VerTodas, sensitive: true)
             .Produces<List<SessaoItem>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -192,7 +192,7 @@ internal static class SessaoEndpoints
                 await sessoes.RevogarAsync(request, id, cancellationToken) == ResultadoRevogacao.Revogada ? Results.NoContent() : Results.NotFound())
             .WithName("revogarSessao")
             .RequireSession()
-            .RequirePermission(SessaoPermissions.Revogar)
+            .RequirePermission(SessaoPermissions.RevogarPropria)
             .WithBodyLimit(SmallBody)
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status401Unauthorized)

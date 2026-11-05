@@ -3,6 +3,7 @@ organizacao:ver-unidades
 sessao:entrar
 sessao:renovar
 sessao:revogar
+sessao:revogar-propria
 sessao:sair
 sessao:trocar-senha
 sessao:ver-proprias

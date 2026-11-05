@@ -22,5 +22,9 @@ public static class SessaoPermissions
 
     public const string VerTodas = "sessao:ver-todas";
 
+    /// <summary>Ending one of the caller's OWN sessions (the route <c>POST /sessoes/{id}/revogar</c> declares this one; ending someone else's is <see cref="Revogar"/>).</summary>
+    public const string RevogarPropria = "sessao:revogar-propria";
+
+    /// <summary>Ending a session of ANOTHER person. Until the application handler asks the engine for it (ticket 06), the service still lets only an owner do it.</summary>
     public const string Revogar = "sessao:revogar";
 }

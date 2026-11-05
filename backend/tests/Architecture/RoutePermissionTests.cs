@@ -54,30 +54,13 @@ public sealed class RoutePermissionTests
 
     // ---- session requirement (ticket 01 follow-up): every route outside the allowlists needs .RequireSession() ----
 
-    /// <summary>
-    /// Own, deliberately tiny allowlist. <c>/version</c> only reports the build version (no tenant data) and is used by deploy smoke checks
-    /// before anyone can sign in, so it stays public. Adding a route here needs the same review as adding one to <see cref="RoutePermissions.Allowlist"/>.
-    /// </summary>
-    private static readonly HashSet<string> PublicWithoutSession = new(StringComparer.Ordinal)
-    {
-        "GET /version",
-
-        // Ticket 04. These three are the ONLY routes that exist before a session or that authenticate by the refresh cookie instead of the access token:
-        // /login (it creates the session; the credential in the body is the authentication), /refresh and /logout (the HttpOnly refresh cookie is the credential, guarded
-        // against CSRF by a custom header + Origin/Sec-Fetch-Site check). Each declares a catalog permission (sessao:entrar/renovar/sair) and a small body limit.
-        // Adding a route here needs the same review as adding one to RoutePermissions.Allowlist.
-        "POST /login",
-        "POST /refresh",
-        "POST /logout",
-    };
-
     private static string KeyOf(RouteEndpoint endpoint) =>
         $"{(endpoint.Metadata.GetMetadata<HttpMethodMetadata>() is { HttpMethods: [var method, ..] } ? method : "ANY")} {endpoint.RoutePattern.RawText}";
 
     private static List<string> RoutesWithoutSession(IEnumerable<Endpoint> endpoints) =>
         [.. endpoints.OfType<RouteEndpoint>()
             .Select(e => (Route: e.RoutePattern.RawText ?? e.DisplayName ?? "<unnamed endpoint>", Endpoint: e))
-            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !PublicWithoutSession.Contains(KeyOf(x.Endpoint)))
+            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !RoutePermissions.PublicWithoutSession.Contains(KeyOf(x.Endpoint)))
             .Where(x => x.Endpoint.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
             .Select(x => x.Route)
             .Order(StringComparer.Ordinal)];
@@ -280,5 +263,71 @@ public sealed class RoutePermissionTests
 
         Assert.True(File.Exists(exportPath), "backend/permissions.catalog.txt is missing: run with UPDATE_PERMISSION_CATALOG=1");
         Assert.Equal(rendered, File.ReadAllText(exportPath));
+    }
+
+    // ---- ticket 05: a declared permission is decided, so the route must be authenticated ----
+
+    [Fact]
+    public void A_route_with_a_permission_but_no_session_is_reported_unless_it_is_one_of_the_public_ones()
+    {
+        var endpoints = EndpointsOf(app =>
+        {
+            app.MapGet("/sem-sessao", () => "x").RequirePermission("alpha:gravar");
+            app.MapGet("/com-sessao", () => "x").RequirePermission("alpha:gravar").RequireSession();
+            app.MapPost("/login", () => "x").RequirePermission("alpha:gravar");
+            app.MapGet("/health/live", () => "x");
+        });
+
+        var violation = Assert.Single(RoutePermissions.CheckSessions(endpoints));
+        Assert.Contains("/sem-sessao", violation, StringComparison.Ordinal);
+        Assert.Throws<InvalidOperationException>(() => RoutePermissions.EnsureValid(endpoints, Catalog));
+    }
+
+    [Fact]
+    public void The_real_api_has_no_route_with_a_permission_and_no_session_outside_the_public_ones()
+    {
+        using var api = new WebApplicationFactory<Program>();
+        var endpoints = api.Services.GetRequiredService<EndpointDataSource>().Endpoints;
+
+        Assert.Empty(RoutePermissions.CheckSessions(endpoints));
+    }
+
+    // ---- ticket 05: the contract exposes the permission of every operation (x-permission) ----
+
+    [Fact]
+    public void The_committed_openapi_document_exposes_x_permission_for_every_operation_that_declares_one()
+    {
+        using var api = new WebApplicationFactory<Program>();
+        var declared = api.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
+            .Select(e => (Name: e.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName, Permission: e.Metadata.GetMetadata<PermissionDeclaration>()?.Name))
+            .Where(x => x.Name is not null && x.Permission is not null)
+            .ToDictionary(x => x.Name!, x => x.Permission!, StringComparer.Ordinal);
+        Assert.NotEmpty(declared);
+
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "modules.dependencies.json")))
+        {
+            dir = dir.Parent;
+        }
+
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(dir!.FullName, "src", "Api", "openapi.json")));
+        var found = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var operation in path.Value.EnumerateObject())
+            {
+                var id = operation.Value.GetProperty("operationId").GetString()!;
+                found[id] = operation.Value.TryGetProperty("x-permission", out var permission) ? permission.GetString() : null;
+            }
+        }
+
+        foreach (var (name, permission) in declared)
+        {
+            Assert.True(found.ContainsKey(name), $"operation '{name}' is missing from openapi.json (regenerate the contract)");
+            Assert.Equal(permission, found[name]);
+        }
+
+        // Operations without a declaration (the health probes) carry no x-permission.
+        Assert.All(found.Where(f => !declared.ContainsKey(f.Key)), f => Assert.Null(f.Value));
     }
 }

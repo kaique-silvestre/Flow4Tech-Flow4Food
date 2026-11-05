@@ -38,6 +38,7 @@
     <ProjectReference Include="../Identidade/Application/Flow4Tech.Identidade.Application.csproj" />
     <ProjectReference Include="../Identidade/Infrastructure/Flow4Tech.Identidade.Infrastructure.csproj" />
     <ProjectReference Include="../Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />
+    <ProjectReference Include="../Permissoes/Infrastructure/Flow4Tech.Permissoes.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

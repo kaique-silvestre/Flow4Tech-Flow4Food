@@ -5,7 +5,12 @@ using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Infrastructure;
+using Flow4Tech.Kernel.Authorization;
 using Flow4Tech.Permissoes.Application;
+using Flow4Tech.Permissoes.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.OpenApi;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 
@@ -32,11 +37,28 @@ if (databaseConnection is not null)
 // (a ?token= would land in the log), so they are muted below Warning: CorrelationMiddleware writes the request line instead (method, route pattern, status).
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
-builder.Services.AddOpenApi();
+// The permission catalog is generated from the module code (assemblies next to the host); the factory policy, the engine and the route check all read it.
+var moduleCatalog = ModuleCatalog.Load(AppContext.BaseDirectory);
+// x-permission (ticket 05): the contract tells every client which permission an operation needs, so the generated client and the screens can hide what a user may not do.
+builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
+{
+    if (context.Description.ActionDescriptor.EndpointMetadata.OfType<PermissionDeclaration>().FirstOrDefault() is { } declaration)
+    {
+        operation.Extensions ??= new Dictionary<string, IOpenApiExtension>();
+        operation.Extensions["x-permission"] = new JsonNodeExtension(JsonValue.Create(declaration.Name));
+    }
+
+    return Task.CompletedTask;
+}));
 builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"));
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao();
+// Permissions on HTTP (ticket 05): one engine (IAuthorizationEngine.DecidirAsync), asked by the handler for every route that declares a permission.
+builder.Services.AddPermissoes(moduleCatalog);
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddSingleton<IPerfisDoUsuario, PerfisDaConta>();
 // Identidade (tickets 03 and 04): accounts, passwords, pre-authentication, sessions and tokens.
 // Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check
 // and Flow4Tech:Identidade:Hibp:IndisponivelRecusa (default false) makes an unreachable breach service refuse the password instead of accepting it;
@@ -73,6 +95,7 @@ if (Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
 app.UseMiddleware<CorrelationMiddleware>();
 app.UseMiddleware<RouteGuardsMiddleware>();
 app.UseMiddleware<RequestContextMiddleware>();
+app.UseMiddleware<PermissionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -120,7 +143,7 @@ app.MapSessao();
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(
     ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints),
-    ModuleCatalog.Load(AppContext.BaseDirectory).ToHashSet(StringComparer.Ordinal));
+    moduleCatalog.ToHashSet(StringComparer.Ordinal));
 
 app.Run();
 

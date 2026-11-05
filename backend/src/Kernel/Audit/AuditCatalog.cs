@@ -18,6 +18,9 @@ public static class PlatformAuditActions
 {
     /// <summary>Switch of the active unit (spec 5.1.4). Result <c>sucesso</c> or, when the target is not linked to the user, <c>negado</c>.</summary>
     public const string SessaoTrocarUnidade = "sessao:trocar-unidade";
+
+    /// <summary>A signed-in user was denied a sensitive route (spec 5.4.8). Always result <c>negado</c>; the engine's reason stays in the technical log.</summary>
+    public const string AcessoNegar = "acesso:negar";
 }
 
 public static partial class AuditActionName

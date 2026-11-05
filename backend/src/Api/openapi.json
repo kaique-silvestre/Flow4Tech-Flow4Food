@@ -22,7 +22,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "sistema:ver-versao"
       }
     },
     "/health/live": {
@@ -94,7 +95,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "organizacao:ver-unidades"
       }
     },
     "/sessao/unidade-ativa": {
@@ -120,7 +122,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "organizacao:ver-unidades"
       },
       "post": {
         "tags": [
@@ -154,7 +157,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "organizacao:trocar-unidade"
       }
     },
     "/login": {
@@ -196,7 +200,8 @@
           "413": {
             "description": "Payload Too Large"
           }
-        }
+        },
+        "x-permission": "sessao:entrar"
       }
     },
     "/refresh": {
@@ -222,7 +227,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "sessao:renovar"
       }
     },
     "/logout": {
@@ -238,7 +244,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "sessao:sair"
       }
     },
     "/sessao/trocar-senha": {
@@ -297,7 +304,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "sessao:trocar-senha"
       }
     },
     "/sessoes": {
@@ -326,7 +334,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "sessao:ver-proprias"
       }
     },
     "/sessoes/todas": {
@@ -355,7 +364,8 @@
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "x-permission": "sessao:ver-todas"
       }
     },
     "/sessoes/{id}/revogar": {
@@ -388,7 +398,8 @@
           "404": {
             "description": "Not Found"
           }
-        }
+        },
+        "x-permission": "sessao:revogar-propria"
       }
     }
   },
