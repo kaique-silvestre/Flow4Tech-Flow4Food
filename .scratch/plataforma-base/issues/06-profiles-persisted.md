@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** RLS, Authorization, Cumulative limits
-**Status:** done-local (código e testes escritos; só `tests/Authorization` foi rodado, 199 de 200 verdes antes da última correção de teste; `Architecture` 125/125 verde; `Isolation` 49/49 verde; `Flow4Tech.Tests` e `dotnet format` NÃO foram rodados; sem revisão independente)
+**Status:** done-local (código e testes escritos; só `tests/Authorization` foi rodado, 199 de 200 verdes antes da última correção de teste; `Architecture` 125/125 verde; `Isolation` 49/49; `Flow4Tech.Tests` 123/124 (1 falha por carga, verde isolada); `dotnet format` limpo; sem revisão independente)
 
 - [x] Matriz perfil x catálogo verde com as permissões novas, também sobre regras lidas do banco (`PersistedRulesEngineTests` roda o contrato inteiro sobre `PostgresPolicySource`; as três permissões novas estão no catálogo, mas a matriz de fábrica só as dá ao `dono`)
 - [x] Perfis de fábrica não editáveis, só duplicáveis (`A_factory_profile_cannot_be_edited`, `Duplicating_a_factory_profile_by_copy...`)
@@ -30,4 +30,4 @@
 - Simulador: não chamar dentro de outra unidade de trabalho (o rollback levaria o trabalho do chamador).
 - `ProfileBranchingTests` é regex: nomes de variável que começam com `Perfil`/`Profile` seguidos de `==` falham o gate (por isso `IdDoPerfil`, `novo`).
 - Mudança de perfil de fábrica no código (nova permissão para `conta`) NÃO invalida sessões; só edição de dados invalida.
-- `tests/Architecture` rodou: 125/125. `tests/Isolation` rodou: 49/49 (inclui a regra RLS das 4 tabelas novas). Não rodados: `Flow4Tech.Tests`, `dotnet format --verify-no-changes`.
+- `tests/Architecture` rodou: 125/125. `tests/Isolation` rodou: 49/49 (inclui a regra RLS das 4 tabelas novas). `Flow4Tech.Tests` 123/124 (o teste de readiness com DATABASE_URL estourou por carga e passa isolado) e `dotnet format` limpo.
