@@ -142,14 +142,14 @@ Todas as tabelas são de tenant: `organizacao_id uuid NOT NULL`, `ENABLE` e `FOR
   - **Fechar conta** (folha) → `/salao/comandas/:id` (folha) → refs: `05.png` (somente a estrutura; só o botão Dinheiro e a linha de troco) → estados: valor menor que o saldo (pagamento parcial, "restará R$ x"), troco em destaque, caixa fechado ("Abra o caixa para receber") → fluxo crítico: dinheiro recebido, troco, confirmar, comanda Fechada.
   - **Caixa** (abrir e fechar turno) → `/salao/caixa` → seção "Salão" › conflicts (sem referência) → refs: nenhuma (autoral, regras de U18) → estados: sem turno (cartão "Abrir caixa" com fundo de troco), com turno (esperado visível porque a fatia não tem conferência cega), fechado com diferença em palavras.
 - fora do DESIGN.md: nenhum token ou padrão novo; a barra de rodada e a fila de ações pendentes já estão registradas como assinatura.
-- Referências faltando: lista de comandas, entrar, trocar senha e unidade, caixa. O dono pode acrescentar imagens em `docs/design/refs/salao/` antes do primeiro ticket de UI ou aceitar o desenho autoral (o `DESIGN.md` registra a aprovação pendente: `approved: pending`).
+- Referências faltando: lista de comandas, entrar, trocar senha e unidade, caixa. O dono aceitou o desenho autoral para essas telas e aprova pelos screenshots do primeiro ticket de UI (o `DESIGN.md` registra `approved: pending`); imagens de referência podem ser acrescentadas em `docs/design/refs/salao/` a qualquer momento.
 
 ## Seams
 tdd-scope: required (domínio, HTTP, UI) / not-applicable (migrações e configuração, cobertas pelos testes de arquitetura e de esquema existentes)
 
 1. **HTTP com PostgreSQL real** (seam principal, existente): xUnit em `backend/tests/Flow4Tech.Tests`, classes `*Endpoints*` (rodam como integração com Testcontainers `postgres:17-alpine`). Observa: status e corpo de cada rota, linhas gravadas pela credencial `flow4tech_app` sob RLS, registro de auditoria encadeado, eventos no outbox, 401/403/409, idempotência, isolamento entre duas organizações. Prior art: `DoisTenantsEndpointsTests`, `RequestContextEndpointsTests`, `SessoesEndpointsTests`, `PermissoesEndpointsTests` (sessões reais por `Sessoes.IniciarAsync`).
 2. **Domínio puro** (seam novo, sem I/O, sem banco): xUnit em testes unitários dos módulos, sem relógio nem aleatoriedade ambientes (`IClock` injetado). Observa: transições da comanda, saldo, taxa de serviço e arredondamento em centavos, troco, janela de desfazer, numeração. Justificativa: essas regras são numéricas e de borda, e testá-las só por HTTP seria lento e indireto. Prior art: `KernelSmokeTests`, `GrantGuardTests` (regras puras sem banco).
-3. **UI no navegador** (seam novo, proposto; **o dono ainda precisa confirmar**): vitest com testing-library para lógica de estado, formatação em reais e componentes (fila de ações, barra de rodada, teclado); Playwright em 390x844 e 360x740 com screenshots para os fluxos críticos (entrar, abrir caixa, abrir comanda, lançar e enviar, desfazer, fechar em dinheiro, offline e reconexão) com a API real em `docker compose`. Observa: o que o garçom vê e toca, nunca o interior dos componentes. Prior art: nenhum (o front não tem testes; `pnpm -r --if-present test` passa a existir).
+3. **UI no navegador** (seam novo, **confirmado pelo dono em 2026-11-05**): vitest com testing-library para lógica de estado, formatação em reais e componentes (fila de ações, barra de rodada, teclado); Playwright em 390x844 e 360x740 com screenshots para os fluxos críticos (entrar, abrir caixa, abrir comanda, lançar e enviar, desfazer, fechar em dinheiro, offline e reconexão) com a API real em `docker compose`. Observa: o que o garçom vê e toca, nunca o interior dos componentes. Prior art: nenhum (o front não tem testes; `pnpm -r --if-present test` passa a existir).
 - Os testes de arquitetura existentes continuam como portões: fronteiras de módulo, rota sem permissão declarada, catálogo de permissões e de auditoria append-only, `RlsArchitectureIntegrationTests`, `ClientContextInputTests`, `ProfileBranchingTests`, ban de `Npgsql` e de `DbContext` fora de Data.
 
 ## Decisões de teste
@@ -196,19 +196,19 @@ Cada linha vira um checkbox de ticket.
 - Fase 2: cortesia, brinde, desconto, couvert, transferir, juntar, dividir conta, reabrir comanda, cancelar comanda, estorno, gorjeta, fiado, voucher, outros métodos de pagamento (Pix, crédito, débito, vale), preço promocional, opções e adicionais, ficha técnica, combos, estoque, impressão e comprovante, cozinha e KDS, reservas, clientes, relatórios.
 - Caixa completo (2.10): cadastro de caixas físicos, suprimento, sangria, conferência cega, aprovação de diferença e tolerância, fechamento do dia operacional, reabertura, agenda de funcionamento e bloqueio por horário (2.10b).
 - Itens 1.9 (notificações e SSE), 1.13 (Control Tower) e 1.14 (observabilidade) da própria Fase 1B: cada um terá a sua spec; a central de comandas na web (2.5) e o mapa de mesas em tempo real também.
-- Rotas HTTP para gerir perfis e atribuir permissões (a 1A deixou isso pendente): os testes criam perfis e atribuições pelo serviço `GestaoDePerfis` e por semeadura, e a tela de usuários e perfis é da Fase 2. Ver a pergunta aberta 1 nas Notas.
+- Rotas HTTP para gerir perfis e atribuir permissões (a 1A deixou isso pendente): os testes criam perfis e atribuições pelo serviço `GestaoDePerfis` e por semeadura, e a tela de usuários e perfis é da Fase 2 (decisão do dono, ver Notas).
 - Convite, recuperação de acesso e login com Google na tela do celular (as rotas existem; a UI delas não faz parte da fatia: só entrar com usuário operacional ou e-mail e senha, trocar a senha temporária e escolher a unidade).
 - App nativo, impressão Bluetooth, leitura de código de barras, ditado de voz e offline completo (D7).
 - Enviar e-mail real, CAPTCHA real e agendamento do despachante do outbox (continuam pendentes da 1A; esta fatia só grava eventos).
 - Identidade visual final (v6 ou v7), logotipo e nome do produto; os tokens do protótipo valem como provisórios.
 
 ## Notas
-- **Perguntas em aberto para o dono:**
-  1. *Como o garçom recebe permissões?* Só existem os perfis de fábrica `dono` e `conta`, e não há rota HTTP para criar ou atribuir perfis. Recomendação: manter fora do escopo e semear nos testes; mas, para o piloto na Fase 2, é preciso ao menos perfis de fábrica "garçom" e "caixa" ou as rotas de perfis. Decidir antes da Fase 2.
-  2. *Caixa por operador.* A fatia usa turno por operador sem cadastro de caixa; confirmar que serve para a demonstração.
-  3. *Taxa de serviço padrão de 10%.* Valor de exemplo do protótipo; confirmar o padrão.
-  4. *Referências visuais* para login, caixa e lista de comandas: enviar imagens ou aceitar autoral.
-  5. *Confirmar o seam de UI* (3 acima) e a decisão de que o Playwright roda contra a API real em `docker compose`.
+- **Perguntas respondidas pelo dono (2026-11-05):**
+  1. *Perfis:* fora da fatia; os testes semeiam perfis pelo serviço `GestaoDePerfis`. Para o piloto da Fase 2 ainda é preciso decidir entre rotas de perfis ou perfis de fábrica "garçom" e "caixa" (pendência registrada para a Fase 2).
+  2. *Caixa:* turno por operador, sem cadastro de caixas, serve para a demonstração.
+  3. *Taxa de serviço:* padrão 10% ligado.
+  4. *Referências visuais:* desenho autoral para entrar, caixa e lista de comandas; o dono aprova olhando os screenshots do primeiro ticket de UI (`approved: pending` no `DESIGN.md` até lá). Se tiver imagens, colocar em `docs/design/refs/salao/`.
+  5. *Seam de UI:* confirmado, com o Playwright contra a API real em `docker compose`.
 - **Capturas do protótipo que faltaram** (lista de comandas, vazio, esqueleto, erro): a navegação por aba não é endereçável por hash no protótipo; recapturar com Playwright clicando no botão da barra inferior ou abrir o protótipo no navegador (`index.html#m=mobile`). `13-fila.png` não foi conferida visualmente.
 - **Pendências herdadas da 1A que esta fatia pisa:** o CI do GitHub nunca rodou; as suítes de PostgreSQL dos tickets 04 a 11 não foram todas executadas; os tickets 04 a 11 não têm revisão independente; o despachante do outbox não está no DI nem agendado; o resolvedor do dia operacional não lê as opções `dia-operacional.*`. Rodar o CI e as suítes completas antes do primeiro ticket desta spec reduz o risco.
 - **Riscos de desenho a observar:** o bloqueio de numeração (contador por unidade e dia sob trava) e a cadeia de auditoria por organização (trava de advisory) são pontos de serialização no pico; manter as unidades de trabalho curtas e medir com carga simulada na Fase 2. Dois aparelhos refrescando a sessão ao mesmo tempo matam a sessão (regra do refresh rotativo): o app deve renovar de um único lugar.
