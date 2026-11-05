@@ -24,6 +24,9 @@ public sealed class RlsArchitectureIntegrationTests(PostgresFixture postgres)
         // before any organization context exists. It has no RLS because no tenant owns it; the application role has NO privilege on it
         // (Exempt_tables_are_not_reachable_by_the_application_role) and only SECURITY DEFINER functions read or write it (IdentidadeSchemaIntegrationTests).
         ["identidade_emails"] = "global e-mail -> account lookup for pre-authentication; no privilege for the application role, reached only through SECURITY DEFINER functions",
+        // Ticket 07 (spec 5.8): ids of organizations that have pending outbox events and an instant, no event data. Same shape of exception as identidade_emails:
+        // no privilege for the application role, written by a trigger and read/closed by SECURITY DEFINER functions (OutboxPendingRegistryIntegrationTests).
+        ["outbox_organizacoes_pendentes"] = "registry of organizations with pending outbox events for the dispatcher; no privilege for the application role, reached only through SECURITY DEFINER functions",
     };
 
     [Fact]

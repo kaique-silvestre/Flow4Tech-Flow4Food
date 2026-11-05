@@ -12,7 +12,8 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | 04 | Sessões e tokens | **done-local, sem revisão independente** | `cf358cf` (WIP), `281a20f`, correção de conexões (a commitar) | pendente |
 | 05 | Permissões ligadas ao HTTP | **done-local, sem revisão independente** (cliente TS não regenerado) | a commitar | pendente |
 | 06 | Perfis, regras e overrides persistidos, anti-autopromoção, simulador | **done-local, parcialmente verificado, sem revisão independente** | a commitar | pendente |
-| 07 a 11 | Registro de organizações, proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
+| 07 | Registro de organizações com eventos pendentes | **done-local, testes de PostgreSQL não rodados, sem revisão independente** | a commitar | pendente |
+| 08 a 11 | Proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
 
 Último estado **validado** (rodado por mim, suíte inteira): `8d9c698`.
 
@@ -35,7 +36,8 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 - **Falta o revisor independente** antes de tratar o 04 como fechado. O texto de sessões no `CLAUDE.md`/ADR-010 continua descrevendo o desenho; a medição de latência e a leitura acima o sustentam, mas o revisor ainda não o confrontou.
 - Ticket 05 feito em seguida (ver `issues/05-permissions-http.md`). Em 2026-11-04: Flow4Tech.Tests 124, Architecture 125, Authorization 106, Identidade 210, Audit 143, todos verdes.
 - Ticket 06 feito em 2026-11-04 (ver `issues/06-profiles-persisted.md`). Só `tests/Authorization` rodou (199/200 antes da última correção). `Architecture` rodou depois: 125/125 verde (achou e corrigiu: construtor ambíguo do motor na DI, `Npgsql` em Permissoes.Infrastructure, ordem do `audit.catalog.txt`, regenerado). `Isolation` rodou depois: 49/49 verde (RLS das 4 tabelas novas ok). `Flow4Tech.Tests` 123/124 (a falha, `Readiness_works_from_a_railway_style_DATABASE_URL`, deu ServiceUnavailable com a máquina saturada e passou isolada) e `dotnet format --verify-no-changes` limpo. Falta só a revisão independente do 06.
-- Próximo: ticket 07 (registro de organizações / dispatcher).
+- Ticket 07 feito em 2026-11-05 (nuvem, sem Docker; ver `issues/07-event-org-registry.md`): migração 0011 (tabela sem RLS e sem privilégio para a aplicação, gatilho no evento, 3 funções SECURITY DEFINER), `PendingOrganizationsDatabase` (Data), `OutboxSweeper`, ADR-003 F2 fechado. Rodou: build, `dotnet format` (só CA1515), Architecture 125/125 e as funções SQL à mão num PG 16 local. NÃO rodou: Outbox, Isolation (exceção nova em `Exempt`), Identidade (teste do conjunto exato de SECURITY DEFINER atualizado), todos com Testcontainers. Rodar no Mac. Varredura ainda sem agendamento (precisa do worker Quartz).
+- Próximo: ticket 08.
 
 ## O que foi entregue (tickets 01 a 03)
 

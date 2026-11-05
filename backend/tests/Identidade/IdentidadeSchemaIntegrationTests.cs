@@ -11,6 +11,8 @@ namespace Flow4Tech.Identidade.Tests;
 [Collection(PostgresDefinition.Name)]
 public sealed class IdentidadeSchemaIntegrationTests(PostgresFixture postgres)
 {
+    private const string TriggerFunction = "outbox_registrar_pendente";
+
     [Fact]
     public async Task The_identity_model_has_no_drift_against_the_migrated_database()
     {
@@ -178,7 +180,7 @@ public sealed class IdentidadeSchemaIntegrationTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task The_only_security_definer_functions_are_the_three_identity_ones_with_a_fixed_search_path_and_no_public_execute()
+    public async Task The_only_security_definer_functions_are_the_three_identity_ones_and_the_three_outbox_registry_ones_with_a_fixed_search_path_and_no_public_execute()
     {
         var db = await postgres.CreateDatabaseAsync();
         await using var owner = NpgsqlDataSource.Create(db.OwnerConnectionString);
@@ -204,13 +206,21 @@ public sealed class IdentidadeSchemaIntegrationTests(PostgresFixture postgres)
         }
 
         Assert.Equal(
-            ["identidade_localizar_por_email", "identidade_localizar_por_usuario", "identidade_registrar_email"],
+            [
+                "identidade_localizar_por_email",
+                "identidade_localizar_por_usuario",
+                "identidade_registrar_email",
+                "outbox_encerrar_pendencia",
+                "outbox_organizacoes_pendentes",
+                TriggerFunction,
+            ],
             functions.Select(f => f.Name));
         foreach (var f in functions)
         {
             Assert.Contains("search_path=pg_catalog, pg_temp", f.Config ?? [], StringComparer.Ordinal);
             Assert.False(f.PublicExecute, $"{f.Name} is executable by PUBLIC");
-            Assert.True(f.AppExecute, $"{f.Name} is not executable by the application role");
+            // The outbox trigger function (ticket 07) fires with the owner's rights on insert into outbox_eventos; nobody calls it, so the application role has no EXECUTE.
+            Assert.Equal(f.Name != TriggerFunction, f.AppExecute);
             Assert.False(f.OwnerSuper, $"{f.Name} is owned by a superuser");
             Assert.False(f.OwnerBypass, $"{f.Name} is owned by a role that bypasses RLS");
         }

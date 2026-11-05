@@ -34,6 +34,7 @@ internal sealed class Env : IAsyncDisposable
         Db = db;
         Tenant = new TenantDatabase(app);
         Writer = new OutboxWriter(Clock);
+        Pending = new PendingOrganizationsDatabase(app);
     }
 
     public NpgsqlDataSource App { get; }
@@ -45,6 +46,12 @@ internal sealed class Env : IAsyncDisposable
     public FixedClock Clock { get; } = new();
 
     public OutboxWriter Writer { get; }
+
+    public PendingOrganizationsDatabase Pending { get; }
+
+    public OutboxSweeper Sweeper(params IOutboxConsumer[] consumers) => new(Pending, Tenant, new OutboxDispatcher(Tenant, consumers, Clock));
+
+    public async Task<Guid[]> PendingIdsAsync() => [.. (await Pending.ListAsync(100)).Select(p => p.OrganizationId)];
 
     public static async Task<Env> CreateAsync(PostgresFixture postgres)
     {
