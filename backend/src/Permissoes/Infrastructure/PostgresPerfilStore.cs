@@ -99,6 +99,15 @@ public sealed class PostgresPerfilStore : IPerfilStore
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<bool> UnidadesExistemAsync(Guid organizationId, IReadOnlyCollection<Guid> unidades, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(unidades);
+        await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));
+        var ids = unidades.ToArray();
+        var found = await context.Database.SqlQuery<long>($"SELECT count(*) AS \"Value\" FROM unidades WHERE id = ANY({ids})").SingleAsync(cancellationToken);
+        return found == ids.Length;
+    }
+
     public async Task<bool> ContaAtivaExisteAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken)
     {
         await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));

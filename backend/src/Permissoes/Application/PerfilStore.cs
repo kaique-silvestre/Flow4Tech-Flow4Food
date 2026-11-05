@@ -31,6 +31,9 @@ public interface IPerfilStore
 
     Task SubstituirOverridesAsync(Guid organizationId, Guid userId, IReadOnlyList<RegraDeAcesso> regras, CancellationToken cancellationToken);
 
+    /// <summary>True when EVERY unit exists in the organization (RLS: a unit of another organization does not exist here).</summary>
+    Task<bool> UnidadesExistemAsync(Guid organizationId, IReadOnlyCollection<Guid> unidades, CancellationToken cancellationToken);
+
     /// <summary>True when the account exists in the organization (RLS) and is active.</summary>
     Task<bool> ContaAtivaExisteAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken);
 }

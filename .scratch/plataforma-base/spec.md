@@ -129,23 +129,42 @@ Os eventos de segurança e de auditoria dependem do outbox. O dispatcher precisa
 
 ## 6. Critérios de aceite
 
-- [ ] Requisição sem sessão a rota protegida responde 401; com sessão sem a permissão responde 403 (sem revelar o motivo); rota com permissão e escopo corretos responde 2xx. Cobertos por teste para o caso permitido e o negado.
-- [ ] Nenhuma rota recebe organização ou unidade do cliente; o teste de arquitetura falha ao introduzir um campo `organizacaoId` em DTO de entrada.
-- [ ] Dois tenants de teste: usuário de A não lê nem altera dado, sessão, convite, configuração ou auditoria de B (credencial da aplicação, sem bypass), inclusive nas tabelas de identidade.
-- [ ] Reapresentar um refresh já usado derruba a cadeia da sessão; desativar usuário, trocar senha e mudar permissão invalidam as sessões na próxima requisição.
-- [ ] Token do realm `control` é recusado no realm `app` e vice-versa.
-- [ ] Login não revela se o usuário existe; bloqueio progressivo por conta e por IP demonstrado em teste.
-- [ ] Credencial temporária aparece uma única vez, e a primeira sessão só pode trocar a senha até a troca ser feita.
-- [ ] Login com Google só aceita e-mail verificado e nunca cria conta sozinho.
-- [ ] Anti-autopromoção, "sempre um dono" e "dono não é rebaixado" têm teste.
-- [ ] Matriz perfil x permissão verde com as permissões desta spec; o simulador devolve o mesmo resultado do motor.
-- [ ] Auditoria: `UPDATE`/`DELETE` negados à credencial da aplicação; adulteração de um registro é detectada pela verificação de cadeia; ação [A] sem registro falha o teste.
-- [ ] Registro e correlação: a mesma id de correlação aparece na requisição, no log técnico e na auditoria; teste de varredura não acha senha, token nem hash de senha.
-- [ ] Configuração: herança, trava, histórico e restauração testados; mudança com efeito operacional não retroage.
-- [ ] Dispatcher entrega eventos de segurança de qualquer organização pendente sem ler dados de outra e sem papel que ignore RLS.
+Conferido no ticket 11 (2026-11-05). `[x]` = evidência nomeada e rodada; `[~]` = parcial, com o que falta; `[ ]` = não verificado. "Rodado" significa contra um PostgreSQL 16 local no lugar de Testcontainers (ambiente de nuvem sem Docker); nada rodou no GitHub Actions. Nenhum ticket teve revisão independente depois do 03.
+
+- [x] Requisição sem sessão a rota protegida responde 401; com sessão sem a permissão responde 403 (sem revelar o motivo); rota com permissão e escopo corretos responde 2xx. Cobertos por teste para o caso permitido e o negado.
+  - Evidência: `PermissoesEndpointsTests` (`Without_a_session...`, `A_permission_the_profile_has_is_allowed`, `A_permission_the_profile_lacks_answers_403...`), `RequestContextEndpointsTests` e, em duas organizações, `DoisTenantsEndpointsTests.The_authenticated_route_answers_401_without_a_session_and_403_without_the_permission` (403 de corpo vazio). Rodado contra PostgreSQL 16 local, não contra Testcontainers.
+- [x] Nenhuma rota recebe organização ou unidade do cliente; o teste de arquitetura falha ao introduzir um campo `organizacaoId` em DTO de entrada.
+  - Evidência: `tests/Architecture` `ClientContextInputTests` (campo `organizacaoId`/`unidadeId` em DTO, inclusive genérico, público e `[FromForm]`, falha o teste) e `PreSessionContextTests`. Convenção por nome/regex: barra o descuido, não o ataque.
+- [x] Dois tenants de teste: usuário de A não lê nem altera dado, sessão, convite, configuração ou auditoria de B (credencial da aplicação, sem bypass), inclusive nas tabelas de identidade.
+  - Evidência: `DoisTenantsEndpointsTests` (ticket 11: login real em duas organizações; unidades, sessões, configuração e histórico, perfis, convites, contas, auditoria, mais varredura de TODAS as tabelas com `organizacao_id` e leitura sem contexto = 0) + `TenantIsolationIntegrationTests`, `UsuarioUnidadeIsolationIntegrationTests`, `RlsArchitectureIntegrationTests`, `IdentidadeSchemaIntegrationTests` (credencial da aplicação, sem BYPASSRLS). Rodado contra PostgreSQL 16 local; a execução em Testcontainers/CI ainda não aconteceu.
+- [x] Reapresentar um refresh já usado derruba a cadeia da sessão; desativar usuário, trocar senha e mudar permissão invalidam as sessões na próxima requisição.
+  - Evidência: `SessoesIntegrationTests` (`Presenting_a_used_refresh_again_revokes_the_whole_family...`, `Two_simultaneous_refreshes...`; um teste por gatilho de revogação para desativar, trocar senha, flag de dono e remover vínculo), `PerfisPersistidosIntegrationTests.Every_change_of_rights_ends_the_sessions_of_the_affected_account_only` (mudar permissão/perfil), HTTP em `SessoesEndpointsTests`.
+- [x] Token do realm `control` é recusado no realm `app` e vice-versa.
+  - Evidência: `TokenDeAcessoTests` (`A_control_token_is_refused_by_the_app...`, `The_audience_alone_separates_the_realms...`) e `SessoesEndpointsTests.Tokens_of_the_other_realm...`. Só a audiência e a chave estão provadas: nenhuma rota emite token `control` (login do super admin é da 1B).
+- [~] Login não revela se o usuário existe; bloqueio progressivo por conta e por IP demonstrado em teste.
+  - Evidência: `AutenticacaoIntegrationTests` (uma só falha para 9 caminhos; mesma contagem de trabalho de hash), `LimitadorDeLoginTests`/`AutenticacaoProtegidaTests` (bloqueio progressivo por conta e por IP), `SessoesEndpointsTests.Repeated_failures_lock_...` (429). NÃO verificado: tempo de resposta real uniforme (só o piso de 400 ms é testado, não a medição), e o limitador é em memória por instância (ADR-011).
+- [x] Credencial temporária aparece uma única vez, e a primeira sessão só pode trocar a senha até a troca ser feita.
+  - Evidência: `GestaoDeContasIntegrationTests` (devolvida uma vez, não aparece em nenhuma tabela; prazo de 72 h), `Autenticacao` devolve `DeveTrocarSenha`, `SessoesEndpointsTests` (a sessão só alcança `POST /sessao/trocar-senha` e `POST /logout`; 403 no resto).
+- [~] Login com Google só aceita e-mail verificado e nunca cria conta sozinho.
+  - Evidência: `ContasGoogleTests` (e-mail não verificado, sem e-mail, sem vínculo e desconhecido dão a mesma resposta neutra; nunca cria conta) e `ProvedorOidcGoogleTests` (o `ProvedorOidcGoogle` real contra um provedor falso, RSA de teste). NÃO verificado: o Google de verdade (sem rede e sem credenciais neste ambiente; depende de ClientId/Secret do dono).
+- [x] Anti-autopromoção, "sempre um dono" e "dono não é rebaixado" têm teste.
+  - Evidência: `ProtecaoDeContaTests` (puro), `GestaoDeContasIntegrationTests` (inclui dois donos saindo ao mesmo tempo), `PerfisPersistidosIntegrationTests` (`Nobody_changes_their_own_rights_by_assignment_or_override`, `Nobody_edits_a_profile_they_hold`), `GrantGuardTests`.
+- [~] Matriz perfil x permissão verde com as permissões desta spec; o simulador devolve o mesmo resultado do motor.
+  - Evidência: `AuthorizationEngineContract` (falha se faltar par perfil x catálogo), `PersistedRulesEngineTests` (o contrato inteiro sobre regras lidas do banco), `PerfisPersistidosIntegrationTests.The_simulator_returns_exactly_what_the_engine_decides`. Ressalva: a matriz de fábrica só dá `perfil:gerir`/`perfil:ver`/`permissao:atribuir` ao `dono`, e nenhuma rota HTTP os usa ainda (pendência: rotas de gestão de perfis).
+- [~] Auditoria: `UPDATE`/`DELETE` negados à credencial da aplicação; adulteração de um registro é detectada pela verificação de cadeia; ação [A] sem registro falha o teste.
+  - Evidência: `AuditTrailIntegrationTests.The_application_credential_cannot_update_delete_or_truncate_the_trail` (42501), `AuditChainVerificationIntegrationTests` (9 colunas adulteradas, remoção, reordenação, truncamento). NÃO verificado: "ação [A] sem registro falha o teste" como regra geral; não existe o catálogo [A] nem o gate que o varre. Cada ação existente tem seu teste de que grava (`Switching_unit_writes_an_audit_record...`, `Every_change_and_restore_is_audited...`, etc.). O job de verificação periódica existe e é testado, mas nada o agenda.
+- [x] Registro e correlação: a mesma id de correlação aparece na requisição, no log técnico e na auditoria; teste de varredura não acha senha, token nem hash de senha.
+  - Evidência: `RequestContextEndpointsTests.Switching_unit_writes_an_audit_record_with_actor_before_after_and_the_correlation_id...` (o mesmo id em `traceparent`, `X-Correlation-Id`, linha `http.requisicao` e auditoria), `SensitiveDataTests`, `TechnicalLogTests`, `SecretsLeakIntegrationTests` (varredura sem senha, token nem hash).
+- [x] Configuração: herança, trava, histórico e restauração testados; mudança com efeito operacional não retroage.
+  - Evidência: `ConfiguracaoResolucaoTests`, `ConfiguracaoIntegrationTests` (herança, trava, histórico, restauração, `A_change_applies_from_its_instant_and_never_reaches_back`, CHECK no banco), `ConfiguracoesDeIdentidadeTests`, e entre organizações `DoisTenantsEndpointsTests.Settings_are_per_organization_...`. Sem opção operacional real ainda (o dia operacional não lê as opções).
+- [x] Dispatcher entrega eventos de segurança de qualquer organização pendente sem ler dados de outra e sem papel que ignore RLS.
+  - Evidência: `OutboxPendingRegistryIntegrationTests` (varredura de várias organizações, cada uma sob o próprio contexto; gatilho na mesma transação; sem papel BYPASSRLS), ADR-003. Ressalva: o varredor não está agendado e o despachante não está registrado no host (falta o worker Quartz); a entrega ocorre nos testes, não em produção.
 - [ ] Pipeline continua verde (`gates`), `openapi.json` expõe a permissão exigida de cada rota (`x-permission`) e o cliente TypeScript é regenerado.
-- [ ] ADRs novos escritos e aceitos: identidade e sessões (ADR-005), política de revogação e, se mudar, o desenho de pré-autenticação sob RLS.
-- [ ] `CLAUDE.md` atualizado com a rota autenticada de ponta a ponta.
+  - PENDENTE DO DONO / NÃO verificado: o pipeline `gates` do GitHub NUNCA rodou (registrado no `state.md` desde a Fase 0: nenhum PR aberto, nada em `main`; o CI nunca foi observado). O que está provado: `x-permission` em toda operação com permissão (`RoutePermissionTests.The_committed_openapi_document_exposes_x_permission...`) e `openapi.json` + cliente TypeScript regenerados sem diferença (conferido no ticket 11: `-p:GenerateContract=true` + `pnpm generate`, `git diff` vazio). `oasdiff` e `dependency-audit`/`gitleaks` não rodaram.
+- [~] ADRs novos escritos e aceitos: identidade e sessões (ADR-005), política de revogação e, se mudar, o desenho de pré-autenticação sob RLS.
+  - Escritos: ADR-005 (identidade), ADR-010 (sessões e política de revogação), ADR-006 (regras persistidas, atualizado), ADR-011 (proteção de login), ADR-012 (convites, recuperação e Google; registra que a pré-autenticação por `SECURITY DEFINER` NÃO cresceu), ADR-013 (configurações em camadas). Todos com status "accepted" pelo implementador: falta o dono ler e confirmar, e nenhum teve revisão independente.
+- [x] `CLAUDE.md` atualizado com a rota autenticada de ponta a ponta.
+  - Evidência: seção "A rota autenticada de ponta a ponta (fechamento da 1A)" no `CLAUDE.md` (ticket 11).
 
 ## 7. Ordem sugerida
 

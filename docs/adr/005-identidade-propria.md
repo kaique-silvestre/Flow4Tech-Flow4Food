@@ -25,6 +25,8 @@ Toda requisição precisa saber quem é o usuário (spec `plataforma-base`, 5.2)
 - Custo: cada login faz um hash Argon2id de 46 MiB (limitado por `MaxConcurrentHashes`); o piso de 400 ms acrescenta latência uniforme.
 
 ## O que fica para depois (não está neste ADR nem neste ticket)
+Atualização (fechamento da 1A): tickets 04, 06, 08, 09 e 10 foram construídos; ver ADR-010 (sessões), ADR-006 (regras persistidas), ADR-011 (proteção de login), ADR-012 (convites, recuperação e Google) e ADR-013 (configurações em camadas). A lista abaixo é a original, mantida como registro.
+
 - **Ticket 04:** tokens de acesso e refresh, sessões, audiência por realm, revogação por `versao_credencial`, a rota HTTP de login, e a regra de que a sessão do estado "deve trocar a senha" só alcança a troca.
 - **Ticket 08:** bloqueio progressivo por conta e por IP, detecção de credential stuffing, CAPTCHA adaptativo, alertas.
 - **Ticket 09:** convites, recuperação de acesso por link, redefinição de credencial temporária por `usuario:redefinir-acesso`, login com Google.

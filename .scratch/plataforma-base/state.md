@@ -1,6 +1,6 @@
 # Estado da execução: Fase 1A (plataforma base)
 
-Atualizado em 2026-11-05. Branch de trabalho: `claude/flow4tech-fase-1-handoff-vgu3m9` (parte da `fundacao-tecnica` @ `972708a`, fast-forward). Spec: `spec.md`. Tickets: `issues/`. Nenhum PR aberto, nada em `main`.
+Atualizado em 2026-11-05 (ticket 11). Branch de trabalho: `claude/flow4tech-fase-1-handoff-vgu3m9` (parte da `fundacao-tecnica` @ `972708a`, fast-forward). Spec: `spec.md`. Tickets: `issues/`. Nenhum PR aberto, nada em `main`.
 
 ## Placar
 
@@ -16,7 +16,7 @@ Atualizado em 2026-11-05. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | 08 | Proteção de login e alertas | **done-local, testes de PostgreSQL/HTTP não rodados, sem revisão independente** | a commitar | pendente |
 | 09 | Convites, recuperação de acesso, login com Google | **done-local, sem revisão independente** | a commitar | pendente |
 | 10 | Configurações em camadas | **done-local, sem revisão independente** | a commitar | pendente |
-| 11 | Fechamento | pending | | |
+| 11 | Fechamento | **done-local, parcial** (evidência só em PostgreSQL 16 local; CI do GitHub nunca rodou) | a commitar | pendente |
 
 Último estado **validado** (rodado por mim, suíte inteira): `8d9c698`.
 
@@ -44,6 +44,28 @@ Atualizado em 2026-11-05. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 - Ticket 09 feito em 2026-11-05 (nuvem, sem Docker; ver `issues/09-invites-recovery-google.md`): migração 0013 (`convites`, `recuperacoes`, `identidades_externas`, sem função SECURITY DEFINER nova: o token leva a organização como localizador), convite de uso único (aceita com a senha da própria pessoa, e-mail só reservado ao aceitar), recuperação por e-mail sem enumeração (limitador do 08, piso de tempo, 202 sempre), credencial temporária nova para conta operacional (`usuario:redefinir-acesso`), Google OIDC (código + PKCE, `sub` + e-mail verificado, nunca cria conta, vínculo com senha atual + mesmo e-mail, operacional recusada no serviço e no banco), `openapi.json` e cliente TS regenerados. **Rodou**: build, `dotnet format` (só CA1515), Architecture 125/125, Flow4Tech.Tests unitários 37, Identidade sem banco (66 novos) e, contra um PostgreSQL 16 local com o fixture trocado TEMPORARIAMENTE (nada disso foi commitado): Identidade 346/346 (inclui as integrações do 08 e as 17 novas), Isolation 49/49, Audit 143/143, Authorization 203/203, Outbox 31 (+1 ignorado), `SessoesEndpointsTests` 48/48 (inclui o 429 do 08 e 5 testes HTTP novos). Achou e corrigiu: teste do 07 que supunha 1 item visível (o seed dá 2), `Program.cs` lendo `Bloqueio:*` cedo demais (teste 429 do 08 não passaria). NÃO rodou no Docker/CI: nada disso com Testcontainers de verdade (rodar no Mac), as outras classes `*Endpoints*` de Flow4Tech.Tests (Permissoes, RequestContext, Deploy), Google real. Pendências: aplicar perfil/unidade do convite ao aceitar (evento `identidade.convite-aceito` sem consumidor; depende do despachante e deve usar os direitos do convidador), liberação de e-mail após desativar, 500 em dois convites simultâneos ao mesmo e-mail, tempo real da recuperação não medido.
 
 - Ticket 10 feito em 2026-11-05 (nuvem, sem Docker; ver `issues/10-layered-settings.md`): opções declaradas em código (`[SettingsCatalog]`, Kernel `Settings`, `settings.catalog.txt`), resolução sistema > organização > unidade com trava, histórico só de acréscimo e restauração (migração 0014, `configuracoes_versoes`), vigência a partir de um instante sem retroagir (CHECK no banco), `Configuracoes` + 4 rotas (`organizacao:configurar`, auditoria `configuracao:alterar|restaurar`), `openapi.json` e cliente TS regenerados, projeto `tests/Organizacao` e job `organizacao-tests`. Tempos de sessão leem por organização; `bloqueio.*` lê a camada de sistema (só sistema por decisão: o limitador age antes de saber a organização). Resolvedor do dia operacional intocado. **Rodou** (fixture trocado TEMPORARIAMENTE por PostgreSQL 16 local, nada commitado): Architecture 127, Organizacao 47, Identidade 346 + 5, Isolation 49, Audit 143, Authorization 204, Outbox 31 (+1), `SessoesEndpointsTests` 51 (3 novos), Flow4Tech.Tests unitários 37, format só CA1515, `pnpm -r typecheck`. NÃO rodou: Testcontainers de verdade, as outras classes `*Endpoints*`, `openapi-contract`/oasdiff, PG 17. Falta revisão independente; sem camada de perfil; sem cache. Próximo: ticket 11.
+
+## Fechamento da 1A (ticket 11, 2026-11-05)
+
+**Fase 1A: fechada somente no que tem evidência.** Veredito por critério da spec 6 em `spec.md` seção 6 (11 `[x]`, 5 `[~]`, 1 `[ ]`). Nada disso rodou em Testcontainers nem no GitHub Actions.
+
+Rodou (nuvem, sem Docker; fixtures trocados TEMPORARIAMENTE por PostgreSQL 16 local e revertidos, nada commitado), uma suíte por vez, `-m:1`: Architecture 127, Authorization 205 (inclui `Lowering_the_cap_in_the_database_takes_effect_on_the_next_decision`, verde, e o teste novo de unidade inexistente), Identidade 351, Audit 143, Outbox 31 (+1 ignorado), Isolation 49, Organizacao 47, `SessoesEndpointsTests` 51, `DoisTenantsEndpointsTests` 5 (novo). Build limpo, `dotnet format --verify-no-changes` só com CA1515, `-p:GenerateContract=true` + `pnpm generate` sem diferença, `pnpm -r typecheck` verde. Obs.: duas classes `*Endpoints*` com o fixture local não podem rodar em paralelo (disputam o papel `flow4tech_app` do cluster); é artefato da troca, não do código.
+
+NÃO rodou: nada em Testcontainers (`postgres:17-alpine`), as outras classes `*Endpoints*` de `Flow4Tech.Tests` (Permissoes, RequestContext, Deploy, Health), pipeline do GitHub, `oasdiff`, `gitleaks`, auditoria de dependências, Google real, HIBP real, e-mail real.
+
+### Pendências do dono (nada disto foi inventado como verde)
+- O CI do GitHub **nunca rodou**. Não há PR, nada em `main`. Tempo do pipeline nunca medido.
+- Railway (API + PostgreSQL), Vercel, segredos, `Flow4Tech__Tokens__AppKey` real, `APP_DB_PASSWORD`, `Flow4Tech__Rede__ProxyConfiavel` e proteção do `main` (merge só com o job `gates`) **não estão configurados**: P1 a P13 do ticket 11 da Fase 0 seguem abertos.
+- ADRs 011, 012 e 013 (e a atualização do 006) foram escritos com status "accepted" pelo implementador; o dono precisa ler e confirmar. Nenhum ticket depois do 03 teve revisão independente.
+- Questões abertas da spec (seção 9) seguem sem resposta: 1 a 7.
+
+### Pendências técnicas herdadas ou novas
+- Rotas HTTP para gerir perfis (`perfil:gerir`, `perfil:ver`, `permissao:atribuir` sem rota). Não implementado, de propósito.
+- Resolvido no 11: regra de perfil com unidade inexistente dava 500 (FK); agora é `Invalido`.
+- Gate geral "toda ação [A] tem registro de auditoria" não existe (falta o catálogo [A]); job de verificação da cadeia, varredor do outbox e despachante sem agendamento (falta o worker Quartz); limitador de login em memória por instância (ADR-011); aplicar perfil/unidade do convite ao aceitar; liberar e-mail de conta desativada; 500 em dois convites simultâneos; tempo real do login e da recuperação não medido; cópia externa da auditoria; `CA1515` (fixar SDK em `global.json`); `.gitattributes` com `eol=lf`; ticket 12 da Fase 0 (reversão de deploy, latência em `staging`) pulado por decisão do dono.
+
+### O que rodar no Mac (Docker ligado)
+`dotnet test backend/Flow4Tech.sln` (todas as suítes com Testcontainers, incluindo `DoisTenantsEndpointsTests` e as outras `*Endpoints*`), `dotnet format backend/Flow4Tech.sln --verify-no-changes`, e então abrir o PR para `main` para o primeiro pipeline real.
 
 ## O que foi entregue (tickets 01 a 03)
 

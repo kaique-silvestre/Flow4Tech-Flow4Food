@@ -1,0 +1,438 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Flow4Tech.Api;
+using Flow4Tech.Identidade.Application;
+using Flow4Tech.Infrastructure.Data;
+using Flow4Tech.Infrastructure.Migrator;
+using Flow4Tech.Kernel;
+using Flow4Tech.Kernel.Authorization;
+using Flow4Tech.Permissoes.Application;
+using Flow4Tech.Permissoes.Domain;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using Testcontainers.PostgreSql;
+
+namespace Flow4Tech.Tests;
+
+/// <summary>
+/// Ticket 11, spec section 6 ("dois tenants"): the whole authenticated route end to end for two organizations. Real login in each one (HTTP, real tokens, real sessions), the
+/// application credential (RLS on, no bypass) and real PostgreSQL. A person of organization A neither reads nor changes anything of B: units, sessions, settings, profiles, invitations,
+/// accounts and the audit trail. A table sweep closes what the scenarios do not name.
+/// </summary>
+public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabase>
+{
+    private const string Key = "chave-de-teste-nao-usar-em-producao-0123456789";
+    private const string Csrf = "X-F4T-Csrf";
+    private const string DonoSenha = "Senha-do-dono-123";
+    private const string NovaSenha = "senha-longa-da-pessoa-2026";
+    private const string Inatividade = "sessao.inatividade-horas";
+
+    private readonly DoisTenantsDatabase _db;
+
+    public DoisTenantsEndpointsTests(DoisTenantsDatabase db) => _db = db;
+
+    // ---- scenarios ------------------------------------------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_person_of_one_organization_neither_sees_nor_changes_units_sessions_or_accounts_of_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var loginA = await LoginAsync(client, a.OwnerEmail, DonoSenha);
+        var loginB = await LoginAsync(client, b.OwnerEmail, DonoSenha);
+        var opA = await LoginOperationalAsync(client, a, a.Operational);
+
+        // Units: each one lists only its own, and a switch to the other's unit is refused (403, the destination is validated against the person's own links).
+        Assert.Equal([a.Unit], await UnitsAsync(client, loginA.AccessToken));
+        Assert.Equal([b.Unit], await UnitsAsync(client, loginB.AccessToken));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client, HttpMethod.Post, "/sessao/unidade-ativa", loginA.AccessToken, new { unidadeDestinoId = b.Unit }));
+
+        // Sessions: the "all sessions" list of A has A's sessions and none of B's.
+        var todasA = await SessionsAsync(client, loginA.AccessToken, "/sessoes/todas");
+        Assert.Contains(todasA, s => s.Id == loginA.SessaoId);
+        Assert.Contains(todasA, s => s.Id == opA.SessaoId);
+        Assert.DoesNotContain(todasA, s => s.Id == loginB.SessaoId);
+        Assert.All(todasA, s => Assert.Contains(s.ContaId, new[] { a.Owner, a.Operational.Id }));
+
+        // Ending a session of B with A's token finds nothing (RLS), and B's session keeps working.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/sessoes/{loginB.SessaoId}/revogar", loginA.AccessToken));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Get, "/unidades", loginB.AccessToken));
+
+        // Accounts: B's owner cannot reset the access of A's operational account (404) and the account keeps its password.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/contas/{a.Operational.Id}/redefinir-acesso", loginB.AccessToken));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, "/login", null, new { organizacaoDoLogin = a.Id, usuario = a.Operational.Usuario, senha = NovaSenha }, csrf: true));
+    }
+
+    [Fact]
+    public async Task Settings_are_per_organization_and_one_cannot_read_change_or_restore_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var tokenA = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
+        var tokenB = (await LoginAsync(client, b.OwnerEmail, DonoSenha)).AccessToken;
+
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/configuracoes/{Inatividade}", tokenA, new { camada = "organizacao", valor = "6", motivo = "turno curto" }));
+
+        Assert.Equal("6", (await SettingAsync(client, tokenA)).Valor);
+        var seenByB = await SettingAsync(client, tokenB);
+        Assert.Equal("12", seenByB.Valor);
+        Assert.Equal("sistema", seenByB.Origem);
+        Assert.Null(seenByB.ValorDaOrganizacao);
+
+        // History: A has one version, B has none, and B cannot restore A's version 1.
+        Assert.Single(await HistoryAsync(client, tokenA));
+        Assert.Empty(await HistoryAsync(client, tokenB));
+        Assert.NotEqual(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Post, $"/configuracoes/{Inatividade}/restaurar", tokenB, new { camada = "organizacao", versao = 1 }));
+
+        // B writes its own value; A keeps 6 and its history stays a single version.
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/configuracoes/{Inatividade}", tokenB, new { camada = "organizacao", valor = "3" }));
+        Assert.Equal("6", (await SettingAsync(client, tokenA)).Valor);
+        Assert.Single(await HistoryAsync(client, tokenA));
+        Assert.Equal("3", (await SettingAsync(client, tokenB)).Valor);
+
+        // Audit: each organization's trail carries its own change, written by its own person, and nothing of the other.
+        var trailA = await QueryAsync(a, "SELECT usuario_id FROM auditoria_registros WHERE acao = 'configuracao:alterar'", r => r.GetGuid(0));
+        var trailB = await QueryAsync(b, "SELECT usuario_id FROM auditoria_registros WHERE acao = 'configuracao:alterar'", r => r.GetGuid(0));
+        Assert.Equal([a.Owner], trailA);
+        Assert.Equal([b.Owner], trailB);
+    }
+
+    [Fact]
+    public async Task Profiles_and_invitations_of_one_organization_do_not_exist_for_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var tokenA = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
+        var tokenB = (await LoginAsync(client, b.OwnerEmail, DonoSenha)).AccessToken;
+        var perfis = api.Services.GetRequiredService<GestaoDePerfis>();
+
+        // No HTTP route manages profiles yet (pending, see the ticket): the service is the path, called with each owner's real request.
+        var criado = await perfis.CriarAsync(a.RequestOfOwner(), "Gerente A", [new RegraDeAcesso(RuleEffect.Allow, "organizacao:ver-unidades")]);
+        Assert.Equal(ResultadoGestao.Ok, criado.Resultado);
+        var perfilA = criado.Id!.Value;
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM perfis", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM perfis", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM perfil_regras", r => r.GetInt64(0))).Single());
+
+        // B cannot hand A's profile to its own person, nor can A hand it to B's person; nothing is written.
+        Assert.Equal(ResultadoGestao.NaoEncontrado, await perfis.AtribuirAsync(b.RequestOfOwner(), b.Operational.Id, perfilA));
+        Assert.NotEqual(ResultadoGestao.Ok, await perfis.AtribuirAsync(a.RequestOfOwner(), b.Operational.Id, perfilA));
+        Assert.Equal(0L, (await QueryAsync(a, "SELECT count(*) FROM usuario_perfis", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM usuario_perfis", r => r.GetInt64(0))).Single());
+        Assert.NotEqual(ResultadoGestao.Ok, await perfis.SubstituirRegrasAsync(b.RequestOfOwner(), perfilA.ToString("D"), [new RegraDeAcesso(RuleEffect.Deny, "organizacao:ver-unidades")]));
+        Assert.NotEqual(ResultadoGestao.Ok, await perfis.DefinirOverridesAsync(b.RequestOfOwner(), a.Operational.Id, [new RegraDeAcesso(RuleEffect.Deny, "organizacao:ver-unidades")]));
+
+        // Invitations: A invites; B neither sees nor revokes it, and cannot attach A's profile or unit to its own invitation (400).
+        using var invite = await SendAsync(client, HttpMethod.Post, "/convites", tokenA, new { email = $"convidado-{Guid.NewGuid():N}@a.test", nome = "Convidado" });
+        Assert.Equal(HttpStatusCode.Created, invite.StatusCode);
+        var inviteId = (await invite.Content.ReadFromJsonAsync<ConviteDto>())!.Id;
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/convites/{inviteId}/revogar", tokenB));
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM convites WHERE revogado_em IS NULL", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM convites", r => r.GetInt64(0))).Single());
+        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(client, HttpMethod.Post, "/convites", tokenB, new { email = $"x-{Guid.NewGuid():N}@b.test", nome = "X", perfilId = perfilA }));
+        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(client, HttpMethod.Post, "/convites", tokenB, new { email = $"y-{Guid.NewGuid():N}@b.test", nome = "Y", unidadeInicialId = a.Unit }));
+    }
+
+    [Fact]
+    public async Task The_authenticated_route_answers_401_without_a_session_and_403_without_the_permission()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var tokenOwner = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
+        var tokenOp = (await LoginOperationalAsync(client, a, a.Operational)).AccessToken;
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, HttpMethod.Get, "/configuracoes", null));
+        Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, HttpMethod.Get, "/configuracoes", "token-invalido"));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Get, "/configuracoes", tokenOwner));
+
+        // The operational account is a person of the same organization with the factory profile "conta": own units yes, administration no.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Get, "/unidades", tokenOp));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client, HttpMethod.Get, "/configuracoes", tokenOp));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client, HttpMethod.Get, "/sessoes/todas", tokenOp));
+        using var denied = await SendAsync(client, HttpMethod.Get, "/configuracoes", tokenOp);
+        Assert.Empty(await denied.Content.ReadAsByteArrayAsync()); // 403 without a reason
+    }
+
+    [Fact]
+    public async Task No_table_with_an_organization_returns_a_row_of_another_organization_or_any_row_without_context()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var tokenA = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
+        _ = await LoginAsync(client, b.OwnerEmail, DonoSenha);
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/configuracoes/{Inatividade}", tokenA, new { camada = "organizacao", valor = "5" }));
+        _ = await api.Services.GetRequiredService<GestaoDePerfis>().CriarAsync(a.RequestOfOwner(), "Qualquer", [new RegraDeAcesso(RuleEffect.Allow, "organizacao:ver-unidades")]);
+
+        // Tables are discovered, not listed: a new tenant table is swept without editing this test.
+        var tables = await ListTablesAsync();
+        Assert.Contains("sessoes", tables);
+        Assert.Contains("configuracoes_versoes", tables);
+        Assert.Contains("auditoria_registros", tables);
+        Assert.Contains("convites", tables);
+        Assert.Contains("perfis", tables);
+        foreach (var tenant in new[] { a, b })
+        {
+            foreach (var table in tables)
+            {
+                var foreign = await QueryAsync(tenant, $"SELECT count(*) FROM {table} WHERE organizacao_id <> @o", r => r.GetInt64(0), ("o", tenant.Id));
+                Assert.True(foreign.Single() == 0, $"{table} returned a row of another organization to {tenant.Id}");
+            }
+
+            // The sweep is not vacuous: the tenant does see its own rows.
+            Assert.Equal(2L, (await QueryAsync(tenant, "SELECT count(*) FROM contas", r => r.GetInt64(0))).Single());
+            Assert.True((await QueryAsync(tenant, "SELECT count(*) FROM sessoes", r => r.GetInt64(0))).Single() >= 1);
+            Assert.Equal(0L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes WHERE id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes", r => r.GetInt64(0))).Single());
+        }
+
+        // Without any context the application credential reads nothing at all.
+        await using var source = NpgsqlDataSource.Create(_db.AppConnection);
+        foreach (var table in tables.Append("organizacoes"))
+        {
+            await using var command = source.CreateCommand($"SELECT count(*) FROM {table}");
+            Assert.True((long)(await command.ExecuteScalarAsync())! == 0, $"{table} returned rows without an organization context");
+        }
+    }
+
+    // ---- fixtures ---------------------------------------------------------------------------------------------------------------------------------
+
+    internal sealed record Tenant(Guid Id, Guid Unit, Guid Owner, string OwnerEmail, Conta Operational)
+    {
+        public FakeRequest RequestOfOwner() => new FakeRequest(Owner, Guid.NewGuid(), new OrganizationContext(Id, Unit));
+    }
+
+    internal sealed record Conta(Guid Id, string Usuario);
+
+    private sealed record SessaoDto(string AccessToken, Guid SessaoId, Guid? UnidadeAtivaId);
+
+    private sealed record UnidadeDto(Guid Id, string Nome);
+
+    private sealed record SessaoItemDto(Guid Id, Guid ContaId);
+
+    private sealed record ConviteDto(Guid Id);
+
+    private sealed record ConfiguracaoDto(string Chave, string Valor, string Origem, string? ValorDaOrganizacao);
+
+    private sealed record VersaoDto(int Versao);
+
+    internal sealed class FakeRequest(Guid user, Guid session, OrganizationContext organization) : IRequestContext
+    {
+        public Guid UserId => user;
+
+        public Guid SessionId => session;
+
+        public OrganizationContext Organization => organization;
+    }
+
+    private ApiFactory Api() => new(_db.AppConnection);
+
+    /// <summary>A new organization with one unit, its founder (e-mail account, own password) and one operational account (temporary credential already replaced), both linked to the unit.</summary>
+    private async Task<Tenant> NewTenantAsync(ApiFactory api)
+    {
+        var org = Guid.CreateVersion7();
+        var unit = Guid.CreateVersion7();
+        await using (var ownerSource = NpgsqlDataSource.Create(_db.OwnerConnection))
+        {
+            await using var tx = await new TenantDatabase(ownerSource).BeginAsync(new OrganizationContext(org, unit));
+            await ExecAsync(tx, "INSERT INTO organizacoes (id, nome) VALUES (@o, @n)", ("o", org), ("n", "Bar " + org.ToString("N")[..8]));
+            await ExecAsync(tx, "INSERT INTO unidades (id, organizacao_id, nome) VALUES (@u, @o, 'Centro')", ("u", unit), ("o", org));
+            await tx.CommitAsync();
+        }
+
+        var email = $"dono-{org:N}@exemplo.test";
+        var dono = await api.Services.GetRequiredService<GestaoDeContas>().CriarDonoAsync(org, email, "Dono", DonoSenha);
+        Assert.Equal(StatusCriacao.Criada, dono.Status);
+        var owner = dono.ContaId!.Value;
+        var request = new FakeRequest(owner, Guid.NewGuid(), new OrganizationContext(org, unit));
+        var usuario = "u" + org.ToString("N")[..10];
+        var criada = await api.Services.GetRequiredService<GestaoDeContas>().CriarOperacionalAsync(request, usuario, "Pessoa " + usuario);
+        Assert.Equal(StatusCriacao.Criada, criada.Status);
+        var troca = await api.Services.GetRequiredService<TrocaDeSenha>().TrocarAsync(org, criada.ContaId!.Value, criada.Credencial!.Valor, NovaSenha);
+        Assert.Equal(StatusTrocaDeSenha.Trocada, troca.Status);
+
+        await using var source = NpgsqlDataSource.Create(_db.AppConnection);
+        await using var link = await new TenantDatabase(source).BeginAsync(new OrganizationContext(org, unit));
+        foreach (var id in new[] { owner, criada.ContaId.Value })
+        {
+            await ExecAsync(link, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @c, @u)", ("o", org), ("c", id), ("u", unit));
+        }
+
+        await link.CommitAsync();
+        return new Tenant(org, unit, owner, email, new Conta(criada.ContaId.Value, usuario));
+    }
+
+    private static async Task<int> ExecAsync(TenantTransaction tx, string sql, params (string Name, object Value)[] args)
+    {
+        await using var command = new NpgsqlCommand(sql, tx.Connection, tx.Transaction);
+        foreach (var (name, value) in args)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
+        return await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Reads as the application credential inside the tenant's own context (what the app does), never as the owner.</summary>
+    private async Task<List<T>> QueryAsync<T>(Tenant tenant, string sql, Func<NpgsqlDataReader, T> map, params (string Name, object Value)[] args)
+    {
+        await using var source = NpgsqlDataSource.Create(_db.AppConnection);
+        await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(tenant.Id, tenant.Unit));
+        await using var command = new NpgsqlCommand(sql, tx.Connection, tx.Transaction);
+        foreach (var (name, value) in args)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+
+        var rows = new List<T>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            rows.Add(map(reader));
+        }
+
+        return rows;
+    }
+
+    private async Task<List<string>> ListTablesAsync()
+    {
+        await using var source = NpgsqlDataSource.Create(_db.AppConnection);
+        await using var command = source.CreateCommand(
+            "SELECT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'organizacao_id' AND table_name <> 'schema_migrations' ORDER BY table_name");
+        var names = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            names.Add(reader.GetString(0));
+        }
+
+        return names;
+    }
+
+    // ---- HTTP helpers -----------------------------------------------------------------------------------------------------------------------------
+
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string path, string? token, object? body = null, bool csrf = false)
+    {
+        using var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative));
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        if (token is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        if (csrf)
+        {
+            request.Headers.Add(Csrf, "1");
+        }
+
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpStatusCode> StatusAsync(HttpClient client, HttpMethod method, string path, string? token, object? body = null, bool csrf = false)
+    {
+        using var response = await SendAsync(client, method, path, token, body, csrf);
+        return response.StatusCode;
+    }
+
+    private static async Task<SessaoDto> LoginAsync(HttpClient client, string email, string senha)
+    {
+        using var response = await SendAsync(client, HttpMethod.Post, "/login", null, new { email, senha }, csrf: true);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<SessaoDto>())!;
+    }
+
+    private static async Task<SessaoDto> LoginOperationalAsync(HttpClient client, Tenant tenant, Conta conta)
+    {
+        using var response = await SendAsync(client, HttpMethod.Post, "/login", null, new { organizacaoDoLogin = tenant.Id, usuario = conta.Usuario, senha = NovaSenha }, csrf: true);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<SessaoDto>())!;
+    }
+
+    private static async Task<List<Guid>> UnitsAsync(HttpClient client, string token)
+    {
+        using var response = await SendAsync(client, HttpMethod.Get, "/unidades", token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return [.. (await response.Content.ReadFromJsonAsync<List<UnidadeDto>>())!.Select(u => u.Id)];
+    }
+
+    private static async Task<List<SessaoItemDto>> SessionsAsync(HttpClient client, string token, string path)
+    {
+        using var response = await SendAsync(client, HttpMethod.Get, path, token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<List<SessaoItemDto>>())!;
+    }
+
+    private static async Task<ConfiguracaoDto> SettingAsync(HttpClient client, string token)
+    {
+        using var response = await SendAsync(client, HttpMethod.Get, "/configuracoes", token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<List<ConfiguracaoDto>>())!.Single(c => c.Chave == Inatividade);
+    }
+
+    private static async Task<List<VersaoDto>> HistoryAsync(HttpClient client, string token)
+    {
+        using var response = await SendAsync(client, HttpMethod.Get, $"/configuracoes/{Inatividade}/historico?camada=organizacao", token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<List<VersaoDto>>())!;
+    }
+
+    private sealed class ApiFactory(string connectionString) : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Testing");
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = connectionString,
+                ["Flow4Tech:Tokens:AppKey"] = Key,
+                ["Flow4Tech:Identidade:TempoMinimoDeLoginMs"] = "0",
+            }));
+        }
+    }
+}
+
+/// <summary>One migrated PostgreSQL for the class; every test creates its own two organizations, so none depends on another.</summary>
+public sealed class DoisTenantsDatabase : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
+
+    public string AppConnection { get; private set; } = "";
+
+    public string OwnerConnection { get; private set; } = "";
+
+    public async Task InitializeAsync()
+    {
+        await _postgres.StartAsync();
+        var owner = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString());
+        OwnerConnection = owner.ConnectionString;
+        var app = new NpgsqlConnectionStringBuilder(owner.ConnectionString) { Username = "flow4tech_app", Password = "app-secret-for-test" };
+        AppConnection = app.ConnectionString;
+        using var output = new StringWriter();
+        var env = new Dictionary<string, string?>
+        {
+            ["MIGRATION_DATABASE_URL"] = $"postgres://{owner.Username}:{Uri.EscapeDataString(owner.Password!)}@{owner.Host}:{owner.Port}/{owner.Database}",
+            ["APP_DB_PASSWORD"] = app.Password,
+            ["ConnectionStrings__Default"] = app.ConnectionString,
+            ["MIGRATIONS_DIR"] = SessoesEndpointsTests.MigrationsDirectory(),
+        };
+        Assert.True(await MigratorHost.RunAsync(name => env.GetValueOrDefault(name), output, CancellationToken.None) == 0, output.ToString());
+    }
+
+    Task IAsyncLifetime.DisposeAsync() => _postgres.DisposeAsync().AsTask();
+}

@@ -107,7 +107,7 @@ public sealed class GestaoDePerfis(
                     return new Saida(ResultadoGestao.NaoEncontrado);
                 }
 
-                if (!Valid(set, regras))
+                if (!Valid(set, regras) || !await UnitsExistAsync(request.Organization.OrganizationId, regras, ct))
                 {
                     return new Saida(ResultadoGestao.Invalido);
                 }
@@ -176,7 +176,7 @@ public sealed class GestaoDePerfis(
                 }
 
                 var set = await policies.ObterAsync(organizationId, ct);
-                if (!Valid(set, regras))
+                if (!Valid(set, regras) || !await UnitsExistAsync(organizationId, regras, ct))
                 {
                     return new Saida(ResultadoGestao.Invalido);
                 }
@@ -222,7 +222,7 @@ public sealed class GestaoDePerfis(
 
                 var name = nome?.Trim() ?? string.Empty;
                 var set = await policies.ObterAsync(request.Organization.OrganizationId, ct);
-                if (name.Length is 0 or > 80 || !Valid(set, regras))
+                if (name.Length is 0 or > 80 || !Valid(set, regras) || !await UnitsExistAsync(request.Organization.OrganizationId, regras, ct))
                 {
                     return new Saida(ResultadoGestao.Invalido);
                 }
@@ -348,6 +348,13 @@ public sealed class GestaoDePerfis(
         return rules.Count == 0
             ? null
             : [.. rules.Select(r => new RegraDeAcesso(r.Effect, r.Permission, r.UnitId, r.MaxPercent, r.MaxValueCents, r.DailyCapCents))];
+    }
+
+    /// <summary>A rule scoped to a unit must name a unit of THIS organization (RLS hides the others): without the check the foreign key would surface as a 500.</summary>
+    private async Task<bool> UnitsExistAsync(Guid organizationId, IReadOnlyList<RegraDeAcesso> regras, CancellationToken cancellationToken)
+    {
+        var units = regras.Where(r => r.UnitId is not null).Select(r => r.UnitId!.Value).Distinct().ToList();
+        return units.Count == 0 || await store.UnidadesExistemAsync(organizationId, units, cancellationToken);
     }
 
     private static bool IsFactoryKey(PolicySet set, string key) => PolicyEvaluator.RulesOfProfile(set, key).Count > 0;

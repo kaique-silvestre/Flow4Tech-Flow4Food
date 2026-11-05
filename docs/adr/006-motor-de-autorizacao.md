@@ -47,7 +47,7 @@ Customers or support need to AUTHOR policies in a language (not pick profiles an
 - Easier: one door for every authorization question; engine swap is local; matrix coverage is enforced by a test; the cap cannot be overshot under concurrency (proved); the budget reservation is part of the business transaction, so a failed operation releases it and a retry cannot double count.
 - Harder / accepted: we maintain the rules model; every capped decision must run inside `IUnitOfWork.ExecuteAsync` (the store throws otherwise); the counter lock is held for the whole business operation, which serializes capped operations of the same user and calls for short units.
 - Callers (ticket 10 onward) run the decision, the state change and the outbox write in one `IUnitOfWork.ExecuteAsync`; a failure is expressed by throwing, which rolls all of it back.
-- The rules are in memory (`PolicySet`) in this ticket. Loading them per organization and the admin UI are future work; the evaluator already takes the `PolicySet` as input. The `PolicySet` catalog argument is to be fed from the module catalog collected by the host (`ModuleCatalog`, `[PermissionCatalog]` classes, exported in `backend/permissions.catalog.txt`).
+- ~~The rules are in memory (`PolicySet`)~~ Superseded by "Persisted rules (built)" below: factory rules stay in code, each organization's own rules are read from the database on every decision. The `PolicySet` catalog argument is fed from the module catalog collected by the host (`ModuleCatalog`, `[PermissionCatalog]`).
 
 ## Alternatives considered
 - Cedar as the engine: viable and correct on all contract cases; rejected for now on latency (about 1.1 ms measured), maturity of the .NET binding and the extra translation layer, with the revisit triggers above. Tested only through generated policies and without a Cedar schema; native policy authoring and schema validation were not evaluated.
@@ -57,3 +57,12 @@ Customers or support need to AUTHOR policies in a language (not pick profiles an
 
 ## Open items
 1. Persisting per-unit operating-day rules and feeding them from opening hours (roadmap 2.10b).
+
+## Persisted rules (built)
+Plataforma base ticket 06 (spec 5.4.3 to 5.4.9), migration `0010`. Decided and built after the spike; the single door (`IAuthorizationEngine.DecidirAsync`) did not change.
+- **Factory profiles stay in code** (`PoliticaDeFabrica`: `dono`, `conta`), not editable, only duplicable (copy, or follow the template). Custom profiles, their rules, assignments and individual overrides are tenant tables (`perfis`, `perfil_regras`, `usuario_perfis`, `usuario_regras`, exact RLS). A custom profile's key for the engine is its id; a person's overrides are one more private profile `usuario:<id>`, so the evaluator has no special case.
+- **The engine reads rules through `IPolicySource`** (`PostgresPolicySource` = factory rules + the organization's persisted rules), on every decision, with no cache: a change is in force on the next decision. Cost accepted for now (one short read inside the unit of work in progress, or its own read transaction); a cache needs an invalidation story first.
+- **Changes only through `GestaoDePerfis`**, one unit of work each, asking the same engine (`perfil:gerir`, `permissao:atribuir`). Anti-self-promotion (own assignment, own override, a profile the actor holds) and anti-escalation (`GrantGuard`: nobody hands on what they do not hold or hold less generously) are enforced there and audited as `permissao:negar-escalada`. A rule scoped to a unit must name a unit of the same organization (invalid otherwise, 400-class result, never a foreign-key 500).
+- **Sessions follow rights:** database triggers bump `contas.versao_credencial` of every affected account on any change of rights, so the sessions of ADR-010 end on their next request (5.4.9). A change to the factory rules in CODE does not bump anything.
+- **Simulator** (`SimuladorDePermissoes`) asks `DecidirAsync` for another person inside a unit of work that is rolled back; it never reserves a cap.
+- Still open: no HTTP route manages profiles (the service exists and is tested), and the permissions `perfil:gerir`, `perfil:ver`, `permissao:atribuir` are declared in the catalog but no route asks for them yet.

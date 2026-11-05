@@ -283,6 +283,29 @@ public sealed class PerfisPersistidosIntegrationTests(PostgresFixture postgres)
         Assert.Equal(ResultadoGestao.NomeEmUso, (await env.Gestao.CriarAsync(PerfisTestEnv.As(owner), " Unico ", [])).Resultado);
     }
 
+    [Fact]
+    public async Task A_rule_for_a_unit_that_does_not_exist_here_is_invalid_not_a_server_error()
+    {
+        await using var env = await PerfisTestEnv.CreateAsync(postgres);
+        var owner = await env.AddAccountAsync(owner: true);
+        var person = await env.AddAccountAsync(owner: false);
+        var created = await env.Gestao.CriarAsync(PerfisTestEnv.As(owner), "Com unidade", [Allow(Relatorio, unit: Unit2)]);
+        Assert.Equal(ResultadoGestao.Ok, created.Resultado);
+
+        var unknown = Guid.NewGuid();
+        var otherOrganizationUnit = UnitB; // exists, but in tenant B: RLS hides it from tenant A
+        foreach (var unit in new[] { unknown, otherOrganizationUnit })
+        {
+            Assert.Equal(ResultadoGestao.Invalido, (await env.Gestao.CriarAsync(PerfisTestEnv.As(owner), "P" + unit, [Allow(Relatorio, unit: unit)])).Resultado);
+            Assert.Equal(ResultadoGestao.Invalido, await env.Gestao.SubstituirRegrasAsync(PerfisTestEnv.As(owner), created.Id!.Value.ToString("D"), [Allow(Relatorio, unit: unit)]));
+            Assert.Equal(ResultadoGestao.Invalido, await env.Gestao.DefinirOverridesAsync(PerfisTestEnv.As(owner), person, [Allow(Relatorio, unit: unit)]));
+        }
+
+        // The refused attempts changed nothing: the profile keeps its rule for the real unit.
+        var policy = await env.Policies.ObterAsync(OrgA, CancellationToken.None);
+        Assert.Contains(policy.Rules, r => r.Profile == ChavesDePerfil.Personalizado(created.Id!.Value) && r.UnitId == Unit2);
+    }
+
     // ---- Sessions are ended by every change of rights (spec 5.4.9) ----
 
     [Fact]
