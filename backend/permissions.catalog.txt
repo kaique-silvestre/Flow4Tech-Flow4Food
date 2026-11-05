@@ -4,6 +4,8 @@ caixa:ver
 caixa:ver-todos
 conta:gerir-google
 convite:aceitar
+mesa:gerenciar
+mesa:ver
 organizacao:configurar
 organizacao:trocar-unidade
 organizacao:ver-unidades

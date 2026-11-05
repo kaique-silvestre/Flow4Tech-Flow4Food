@@ -1683,6 +1683,91 @@
         },
         "x-permission": "caixa:fechar"
       }
+    },
+    "/mesas": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listMesas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MesaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "mesa:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarMesa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarMesaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "mesa:gerenciar"
+      }
     }
   },
   "components": {
@@ -2070,6 +2155,30 @@
           }
         }
       },
+      "CriarMesaRequest": {
+        "required": [
+          "identificacao",
+          "capacidade"
+        ],
+        "type": "object",
+        "properties": {
+          "identificacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "capacidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CriarProdutoRequest": {
         "required": [
           "codigo",
@@ -2192,6 +2301,52 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "MesaDto": {
+        "required": [
+          "id",
+          "unidadeId",
+          "identificacao",
+          "capacidade",
+          "ativa"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unidadeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identificacao": {
+            "type": "string"
+          },
+          "capacidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ativa": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MesaErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
           }
         }
       },

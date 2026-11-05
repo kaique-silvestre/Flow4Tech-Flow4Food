@@ -4,8 +4,8 @@ wave: sequential 01..15
 tickets:
 - 01 · modules-and-adrs · done · 47effea · rounds: 1
 - 02 · menu-minimum · done · 46ab960 · rounds: 1 · risks: no pure-domain test, no ToQueryString test, unique race 500 (23505), price-freeze unproved until 06
-- 03 · cash-shift · running · round 1
-- 04 · tables · pending · blocked_by: 01
+- 03 · cash-shift · done · 96479e7 · rounds: 1 · risks: body fields missing default to 0 (close count), no rollback-atomicity test; fix in 07
+- 04 · tables · running · round 1
 - 05 · open-comanda-and-list · pending · blocked_by: 04
 - 06 · rounds-and-items · pending · blocked_by: 02,05
 - 07 · cash-payment-and-close · pending · blocked_by: 03,06

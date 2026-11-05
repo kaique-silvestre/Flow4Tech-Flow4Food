@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** HTTP with real PostgreSQL; Pure domain; Architecture gates
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration adds `turnos_caixa` (tenant table, RLS): unit, operator, opened_at, float cents, closed_at, counted cents, expected cents, difference cents; a partial unique index allows at most one open shift per operator and unit.
 - [ ] Open accepts a float of zero; a second open by the same operator in the same unit is refused; the float never appears as sales.

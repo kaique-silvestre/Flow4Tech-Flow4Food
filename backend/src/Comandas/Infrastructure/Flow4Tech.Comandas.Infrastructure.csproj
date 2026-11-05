@@ -1,6 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Flow4Tech.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Application/Flow4Tech.Comandas.Application.csproj" />
     <ProjectReference Include="../../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+  </ItemGroup>
+
 </Project>

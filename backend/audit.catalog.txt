@@ -19,6 +19,7 @@ conta:vincular-google
 convite:aceitar
 convite:criar
 convite:revogar
+mesa:criar
 perfil:atribuir
 perfil:criar
 perfil:editar-regras

@@ -8,6 +8,7 @@ bloqueio.maximo-minutos|Numero|SomenteSistema|15
 caixa.exigir-caixa-aberto|Booleano|OrganizacaoEUnidade|true
 dia-operacional.fuso|Texto|OrganizacaoEUnidade|America/Sao_Paulo
 dia-operacional.virada|Hora|OrganizacaoEUnidade|05:00
+operacao.usar-mesas|Booleano|OrganizacaoEUnidade|true
 sessao.absoluta-dias|Numero|Organizacao|14
 sessao.inatividade-horas|Numero|Organizacao|12
 sessao.intervalo-atividade-segundos|Inteiro|SomenteSistema|60
