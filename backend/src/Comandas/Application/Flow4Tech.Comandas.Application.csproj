@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Flow4Tech.Comandas.Domain.csproj" />
+    <ProjectReference Include="../../Cardapio/Application/Flow4Tech.Cardapio.Application.csproj" />
+    <ProjectReference Include="../../Pagamentos/Application/Flow4Tech.Pagamentos.Application.csproj" />
+  </ItemGroup>
+</Project>

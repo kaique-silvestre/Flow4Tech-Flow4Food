@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Flow4Tech.Pagamentos.Domain.csproj" />
+    <ProjectReference Include="../../Caixa/Application/Flow4Tech.Caixa.Application.csproj" />
+  </ItemGroup>
+</Project>

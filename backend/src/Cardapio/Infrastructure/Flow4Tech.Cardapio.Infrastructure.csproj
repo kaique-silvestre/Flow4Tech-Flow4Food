@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Application/Flow4Tech.Cardapio.Application.csproj" />
+    <ProjectReference Include="../../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+  </ItemGroup>
+</Project>

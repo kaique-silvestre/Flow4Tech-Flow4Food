@@ -1,5 +1,9 @@
 {
   "Organizacao": [],
   "Permissoes": [],
-  "Identidade": []
+  "Identidade": [],
+  "Cardapio": [],
+  "Caixa": [],
+  "Pagamentos": ["Caixa"],
+  "Comandas": ["Cardapio", "Pagamentos"]
 }

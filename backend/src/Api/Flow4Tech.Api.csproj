@@ -39,6 +39,10 @@
     <ProjectReference Include="../Identidade/Infrastructure/Flow4Tech.Identidade.Infrastructure.csproj" />
     <ProjectReference Include="../Permissoes/Application/Flow4Tech.Permissoes.Application.csproj" />
     <ProjectReference Include="../Permissoes/Infrastructure/Flow4Tech.Permissoes.Infrastructure.csproj" />
+    <ProjectReference Include="../Cardapio/Application/Flow4Tech.Cardapio.Application.csproj" />
+    <ProjectReference Include="../Comandas/Application/Flow4Tech.Comandas.Application.csproj" />
+    <ProjectReference Include="../Pagamentos/Application/Flow4Tech.Pagamentos.Application.csproj" />
+    <ProjectReference Include="../Caixa/Application/Flow4Tech.Caixa.Application.csproj" />
   </ItemGroup>
 
 </Project>
