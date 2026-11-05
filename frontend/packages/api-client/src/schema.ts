@@ -210,6 +210,7 @@ export interface components {
             usuario: null | string;
             email: null | string;
             senha: null | string;
+            captchaResposta?: null | string;
         };
         SessaoItem: {
             /** Format: uuid */
@@ -492,6 +493,20 @@ export interface operations {
             };
             /** @description Payload Too Large */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

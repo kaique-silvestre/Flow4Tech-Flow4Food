@@ -10,7 +10,7 @@ namespace Flow4Tech.Identidade.Application;
 /// credential itself), so a stolen "must change" session cannot be used without it. The caller (ticket 04, the session) supplies the account of the session, never
 /// a value from the request body.
 /// </summary>
-public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPasswordHasher hasher, ICompromisedPasswordCheck compromised, IAuditLog audit, IClock clock)
+public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPasswordHasher hasher, ICompromisedPasswordCheck compromised, IAuditLog audit, IClock clock, IEventosDeSeguranca eventos)
 {
     public async Task<ResultadoTrocaDeSenha> TrocarAsync(Guid organizationId, Guid contaId, string senhaAtual, string novaSenha, CancellationToken cancellationToken = default)
     {
@@ -90,6 +90,8 @@ public sealed class TrocaDeSenha(IUnitOfWork unitOfWork, IContaStore contas, IPa
             {
                 await contas.TrocarSenhaAsync(organizationId, contaId, novoHash, ct);
                 await audit.RecordAsync(context, Entry(contaId, AuditResult.Sucesso, null), ct);
+                // Security event of spec 5.5.6, in the same unit of work: the person is told by e-mail (consumer) that the password changed.
+                await eventos.PublicarAsync(context, new SenhaTrocada(EntityId.New().Value, organizationId, contaId, clock.UtcNow), ct);
             },
             cancellationToken);
         return new ResultadoTrocaDeSenha(StatusTrocaDeSenha.Trocada, []);

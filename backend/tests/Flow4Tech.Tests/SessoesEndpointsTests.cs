@@ -341,6 +341,42 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
     }
 
     [Fact]
+    public async Task Repeated_failures_lock_the_login_with_429_and_Retry_After_for_known_and_unknown_names_alike()
+    {
+        await using var api = Api(extra: new Dictionary<string, string?> { ["Flow4Tech:Identidade:Bloqueio:FalhasOperacional"] = "3" });
+        using var client = api.CreateClient();
+        var conta = await NewAccountAsync(api, [UnitA1]);
+        var observed = new Dictionary<string, List<(HttpStatusCode Status, string Body, bool Cookie, bool RetryAfter)>>();
+
+        foreach (var usuario in new[] { conta.Usuario, "naoexiste01" })
+        {
+            var list = observed[usuario] = [];
+            for (var i = 0; i < 5; i++)
+            {
+                using var request = Post("/login", new { organizacaoDoLogin = OrgA, usuario, senha = "senha-errada-123456" }, csrf: true);
+                using var response = await client.SendAsync(request);
+                list.Add((response.StatusCode, await response.Content.ReadAsStringAsync(), response.Headers.Contains("Set-Cookie"), response.Headers.Contains("Retry-After")));
+            }
+        }
+
+        var expected = new (HttpStatusCode, string, bool, bool)[]
+        {
+            (HttpStatusCode.Unauthorized, string.Empty, false, false),
+            (HttpStatusCode.Unauthorized, string.Empty, false, false),
+            (HttpStatusCode.Unauthorized, string.Empty, false, false),
+            (HttpStatusCode.TooManyRequests, string.Empty, false, true),
+            (HttpStatusCode.TooManyRequests, string.Empty, false, true),
+        };
+        Assert.Equal(expected, observed[conta.Usuario]);
+        Assert.Equal(expected, observed["naoexiste01"]); // no enumeration: the unknown name is locked exactly like the known one
+        // The right password does not open a locked account.
+        using var certa = Post("/login", new { organizacaoDoLogin = OrgA, usuario = conta.Usuario, senha = conta.Senha }, csrf: true);
+        using var resposta = await client.SendAsync(certa);
+        Assert.Equal(HttpStatusCode.TooManyRequests, resposta.StatusCode);
+        Assert.False(resposta.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
     public async Task A_malformed_login_is_a_bad_request_and_a_big_body_is_cut_off_with_413()
     {
         await using var api = Api();

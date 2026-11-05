@@ -9,6 +9,7 @@ using Flow4Tech.Kernel.Authorization;
 using Flow4Tech.Permissoes.Application;
 using Flow4Tech.Permissoes.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -70,7 +71,32 @@ builder.Services.AddIdentidade(options =>
     options.UsarHibp = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:Enabled", false);
     options.HibpIndisponivelRecusa = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:IndisponivelRecusa", false);
     options.CredencialTemporariaHoras = builder.Configuration.GetValue("Flow4Tech:Identidade:CredencialTemporariaHoras", 72);
+    // Login protection (ticket 08, spec 5.5): Flow4Tech:Identidade:Bloqueio:{FalhasEmail,FalhasOperacional,BloqueioBaseSegundos,BloqueioMaximoMinutos,FalhasPorIp,ContasPorIp,IpsPorConta}.
+    var padrao = new LimitesDeLogin();
+    options.Bloqueio = padrao with
+    {
+        FalhasParaBloquearEmail = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasEmail", padrao.FalhasParaBloquearEmail),
+        FalhasParaBloquearOperacional = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasOperacional", padrao.FalhasParaBloquearOperacional),
+        BloqueioBase = TimeSpan.FromSeconds(builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioBaseSegundos", padrao.BloqueioBase.TotalSeconds)),
+        BloqueioMaximo = TimeSpan.FromMinutes(builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioMaximoMinutos", padrao.BloqueioMaximo.TotalMinutes)),
+        FalhasParaBloquearIp = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasPorIp", padrao.FalhasParaBloquearIp),
+        ContasDistintasPorIp = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:ContasPorIp", padrao.ContasDistintasPorIp),
+        IpsDistintosPorConta = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:IpsPorConta", padrao.IpsDistintosPorConta),
+    };
 });
+// The address of the client (login throttling by address, new-login alert). Behind a reverse proxy the peer is the proxy: with Flow4Tech:Rede:ProxyConfiavel=true the LAST entry of
+// X-Forwarded-For (the one the proxy itself appended, ForwardLimit 1) becomes the client address. Only safe when the API is reachable ONLY through that proxy (Railway); default false.
+var proxyConfiavel = builder.Configuration.GetValue("Flow4Tech:Rede:ProxyConfiavel", false);
+if (proxyConfiavel)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+        options.ForwardLimit = 1;
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 builder.Services.Replace(ServiceDescriptor.Singleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(
     provider.GetRequiredService<IClock>(),
     SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()))));
@@ -90,6 +116,11 @@ var app = builder.Build();
 if (Assembly.GetEntryAssembly()?.GetName().Name != "GetDocument.Insider")
 {
     _ = app.Services.GetRequiredService<IEmissorDeTokens>();
+}
+
+if (proxyConfiavel)
+{
+    app.UseForwardedHeaders();
 }
 
 app.UseMiddleware<CorrelationMiddleware>();

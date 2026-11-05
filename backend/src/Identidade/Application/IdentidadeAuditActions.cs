@@ -16,6 +16,9 @@ public static class IdentidadeAuditActions
 
     public const string AutenticacaoFalhar = "autenticacao:falhar";
 
+    /// <summary>An account was locked by the login protection (too many failures or credential stuffing, spec 5.5).</summary>
+    public const string AutenticacaoBloquear = "autenticacao:bloquear";
+
     /// <summary>A session started (login success, or the new session after a password change). The unit switch is <c>sessao:trocar-unidade</c> (Kernel).</summary>
     public const string SessaoIniciar = "sessao:iniciar";
 

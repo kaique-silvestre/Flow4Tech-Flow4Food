@@ -199,6 +199,12 @@
           },
           "413": {
             "description": "Payload Too Large"
+          },
+          "428": {
+            "description": "Precondition Required"
+          },
+          "429": {
+            "description": "Too Many Requests"
           }
         },
         "x-permission": "sessao:entrar"
@@ -451,6 +457,12 @@
             ]
           },
           "senha": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "captchaResposta": {
             "type": [
               "null",
               "string"

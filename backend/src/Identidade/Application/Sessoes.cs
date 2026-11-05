@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using Flow4Tech.Identidade.Domain;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
 
@@ -22,7 +23,8 @@ public sealed class Sessoes(
     IAuditLog audit,
     IEventosDeSeguranca eventos,
     IClock clock,
-    RelogiosDaSessao relogios)
+    RelogiosDaSessao relogios,
+    IAcessosConhecidos acessos)
 {
     private const string RefreshPrefix = "r1";
 
@@ -40,7 +42,7 @@ public sealed class Sessoes(
         ArgumentNullException.ThrowIfNull(cliente);
         return unitOfWork.ExecuteAsync(
             OrganizationContext.WithoutUnit(organizacaoId),
-            ct => CriarAsync(contaId, organizacaoId, versaoCredencial, deveTrocarSenha, cliente, ct),
+            ct => CriarAsync(contaId, organizacaoId, versaoCredencial, deveTrocarSenha, cliente, true, ct),
             cancellationToken);
     }
 
@@ -61,7 +63,7 @@ public sealed class Sessoes(
                     return (SessaoEmitida?)null;
                 }
 
-                var emitida = await CriarAsync(contaId, organizacaoId, conta.VersaoCredencial, false, cliente, ct);
+                var emitida = await CriarAsync(contaId, organizacaoId, conta.VersaoCredencial, false, cliente, false, ct);
                 await store.RevogarOutrasDaContaAsync(organizacaoId, contaId, emitida.SessaoId, MotivoSenhaTrocada, clock.UtcNow, ct);
                 return emitida;
             },
@@ -70,7 +72,8 @@ public sealed class Sessoes(
 
     private const string MotivoSenhaTrocada = "senha-trocada";
 
-    private async Task<SessaoEmitida> CriarAsync(Guid contaId, Guid organizacaoId, int versaoCredencial, bool deveTrocarSenha, ClienteDaSessao cliente, CancellationToken ct)
+    /// <param name="alertarAcessoNovo">True for a login. The new session after the person's own password change is the same person on the same device: it is neither judged nor learned.</param>
+    private async Task<SessaoEmitida> CriarAsync(Guid contaId, Guid organizacaoId, int versaoCredencial, bool deveTrocarSenha, ClienteDaSessao cliente, bool alertarAcessoNovo, CancellationToken ct)
     {
         var now = clock.UtcNow;
         var linked = await unidades.ListarAsync(organizacaoId, contaId, ct);
@@ -90,8 +93,14 @@ public sealed class Sessoes(
         await store.InserirAsync(organizacaoId, sessao, ct);
         var (refresh, hash) = NewRefreshToken(organizacaoId);
         await store.InserirRefreshAsync(organizacaoId, EntityId.New().Value, sessao.Id, hash, now, ct);
+
+        // New device or place (spec 5.5.5): learned and judged in the SAME unit of work as the session, so the event and the audit exist exactly when the session does.
+        var aparelho = ImpressaoDeAcesso.Aparelho(cliente.Agente);
+        var rede = ImpressaoDeAcesso.Rede(cliente.Ip);
+        var visita = alertarAcessoNovo ? await acessos.RegistrarAsync(organizacaoId, contaId, aparelho, rede, now, ct) : null;
+        var contexto = OrganizationContext.WithoutUnit(organizacaoId);
         await audit.RecordAsync(
-            OrganizationContext.WithoutUnit(organizacaoId),
+            contexto,
             new AuditEntry
             {
                 Action = IdentidadeAuditActions.SessaoIniciar,
@@ -101,9 +110,22 @@ public sealed class Sessoes(
                 UnitId = active,
                 ObjectType = "sessao",
                 ObjectId = sessao.Id.ToString("D"),
-                After = new JsonObject { ["restrita"] = deveTrocarSenha }, // never a key with "senha": the audit refuses it
+                After = new JsonObject
+                {
+                    ["restrita"] = deveTrocarSenha, // never a key with "senha": the audit refuses it
+                    ["aparelhoNovo"] = visita is { DeveAlertar: true, AparelhoNovo: true },
+                    ["redeNova"] = visita is { DeveAlertar: true, RedeNova: true },
+                },
             },
             ct);
+        if (visita is { DeveAlertar: true })
+        {
+            await eventos.PublicarAsync(
+                contexto,
+                new LoginNovo(EntityId.New().Value, organizacaoId, contaId, sessao.Id, visita.AparelhoNovo, visita.RedeNova, rede, aparelho, now),
+                ct);
+        }
+
         return Emitida(sessao.Id, contaId, organizacaoId, active, deveTrocarSenha, versaoCredencial, sessao.ExpiraEm, refresh, now);
     }
 

@@ -22,6 +22,9 @@ public sealed class IdentidadeOptions
     /// <summary>How long a temporary credential works, in hours (default 72). Ticket 10 moves this to layered settings.</summary>
     public int CredencialTemporariaHoras { get; set; } = 72;
 
+    /// <summary>Progressive lock, credential stuffing and CAPTCHA thresholds (ticket 08, spec 5.5). Ticket 10 moves them to layered settings.</summary>
+    public LimitesDeLogin Bloqueio { get; set; } = new();
+
     /// <summary>
     /// Only meaningful with <see cref="UsarHibp"/>. When HIBP is unreachable: false = accept the password (availability, the local list still applies), true = refuse it with the
     /// typed result <c>VerificacaoIndisponivel</c> (the person tries again later). With HIBP off the option does nothing: there is no check to be unavailable.
@@ -78,6 +81,18 @@ public static class IdentidadeServices
                 provider.GetRequiredService<ITechnicalLog>(),
                 options.HibpIndisponivelRecusa));
         services.AddSingleton<IResponseTimeFloor>(_ => new ResponseTimeFloor(options.TempoMinimoDeLogin));
+        ValidarLimites(options.Bloqueio);
+        services.AddSingleton<ILimitadorDeLogin>(provider => new LimitadorDeLoginEmMemoria(provider.GetRequiredService<IClock>(), options.Bloqueio));
+        services.TryAddSingleton<ICaptcha, CaptchaNaoConfigurado>();
+        services.TryAddSingleton<EnviadorDeEmailDeDesenvolvimento>();
+        services.TryAddSingleton<IEnviadorDeEmail>(provider => provider.GetRequiredService<EnviadorDeEmailDeDesenvolvimento>());
+        services.TryAddSingleton<IProcessedEventStore, DatabaseProcessedEventStore>();
+        services.AddSingleton<IAcessosConhecidos, PostgresAcessosConhecidos>();
+        // The alert consumers are registered as IOutboxConsumer; the dispatcher (not in the DI yet) takes every registered consumer. Built by factory: one instance per event type.
+        foreach (var tipo in new[] { LoginNovo.Type, ContaBloqueada.Type, SenhaTrocada.Type })
+        {
+            services.AddSingleton<IOutboxConsumer>(provider => AlertasDeSeguranca.Consumidores(provider.GetRequiredService<IProcessedEventStore>(), provider.GetRequiredService<IEnviadorDeEmail>()).Single(c => c.EventType == tipo));
+        }
         services.AddSingleton<IContaStore, PostgresContaStore>();
         services.AddSingleton<IPreAuthLookup, PostgresPreAuthLookup>();
         if (options.Sessoes.Inatividade <= TimeSpan.Zero || options.Sessoes.Absoluta <= TimeSpan.Zero || options.Sessoes.IntervaloDeAtividade < TimeSpan.Zero)
@@ -96,6 +111,15 @@ public static class IdentidadeServices
         services.AddSingleton<TrocaDeSenha>();
         services.AddSingleton<Autenticacao>();
         return services;
+    }
+
+    private static void ValidarLimites(LimitesDeLogin l)
+    {
+        if (l.FalhasParaBloquearEmail < 1 || l.FalhasParaBloquearOperacional < 1 || l.FalhasParaBloquearIp < 1 || l.ContasDistintasPorIp < 2 || l.IpsDistintosPorConta < 2 || l.FalhasParaCaptchaConta < 1 || l.FalhasParaCaptchaIp < 1
+            || l.BloqueioBase <= TimeSpan.Zero || l.BloqueioMaximo < l.BloqueioBase || l.JanelaDeFalhas <= TimeSpan.Zero || l.BloqueioDeStuffing <= TimeSpan.Zero || l.MaximoDeRegistros < 1)
+        {
+            throw new InvalidOperationException("The login protection limits are not valid.");
+        }
     }
 
     private static HttpClient HibpClient(IdentidadeOptions options)

@@ -188,6 +188,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
             o.HibpIndisponivelRecusa = options.HibpIndisponivelRecusa;
             o.Tokens = options.Tokens;
             o.Sessoes = options.Sessoes;
+            o.Bloqueio = options.Bloqueio;
         });
         services.AddSingleton<IUnidadesDaConta, SqlUnidadesDaConta>();
         services.Replace(ServiceDescriptor.Singleton<IPasswordHasher>(_ => new CountingHasher(new Argon2PasswordHasher(options.Argon2))));

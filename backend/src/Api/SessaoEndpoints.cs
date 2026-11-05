@@ -7,7 +7,7 @@ namespace Flow4Tech.Api;
 /// Login body. <c>OrganizacaoDoLogin</c> is the organization the person TYPES to sign in (operational accounts: organization + user name). It identifies who is logging in and is checked
 /// against the credential; it is NOT the request context, which after login comes only from the session (spec 5.1.3, hence the name).
 /// </summary>
-internal sealed record LoginRequest(Guid? OrganizacaoDoLogin, string? Usuario, string? Email, string? Senha)
+internal sealed record LoginRequest(Guid? OrganizacaoDoLogin, string? Usuario, string? Email, string? Senha, string? CaptchaResposta = null)
 {
     /// <summary>Carries a password: it prints as a placeholder so no log line or exception message can ever show it.</summary>
     public override string ToString() => "[login]";
@@ -56,17 +56,30 @@ internal static class SessaoEndpoints
                 }
 
                 ResultadoAutenticacao resultado;
+                var contexto = new ContextoDeLogin(http.Connection.RemoteIpAddress?.ToString(), body.CaptchaResposta);
                 if (!string.IsNullOrWhiteSpace(body.Email))
                 {
-                    resultado = await autenticacao.AutenticarPorEmailAsync(body.Email, body.Senha, cancellationToken);
+                    resultado = await autenticacao.AutenticarPorEmailAsync(body.Email, body.Senha, contexto, cancellationToken);
                 }
                 else if (body.OrganizacaoDoLogin is { } organizacao && !string.IsNullOrWhiteSpace(body.Usuario))
                 {
-                    resultado = await autenticacao.AutenticarOperacionalAsync(organizacao, body.Usuario, body.Senha, cancellationToken);
+                    resultado = await autenticacao.AutenticarOperacionalAsync(organizacao, body.Usuario, body.Senha, contexto, cancellationToken);
                 }
                 else
                 {
                     return Results.BadRequest();
+                }
+
+                // Login protection (ticket 08, spec 5.5): answered before anything was checked, so these two tell nothing about the account. Unknown names get them too.
+                if (resultado is LoginBloqueado bloqueado)
+                {
+                    http.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling((bloqueado.Ate - clock.UtcNow).TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+                }
+
+                if (resultado is CaptchaExigido)
+                {
+                    return Results.StatusCode(StatusCodes.Status428PreconditionRequired);
                 }
 
                 var emitida = resultado switch
@@ -86,7 +99,9 @@ internal static class SessaoEndpoints
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status413PayloadTooLarge);
+            .Produces(StatusCodes.Status413PayloadTooLarge)
+            .Produces(StatusCodes.Status428PreconditionRequired)
+            .Produces(StatusCodes.Status429TooManyRequests);
 
         app.MapPost("/refresh", async (HttpContext http, Sessoes sessoes, IClock clock, CancellationToken cancellationToken) =>
             {
@@ -202,7 +217,7 @@ internal static class SessaoEndpoints
 
     private static SessaoItem Item(SessaoResumo s) => new(s.Id, s.ContaId, s.UnidadeAtivaId, s.CriadaEm, s.UltimaAtividadeEm, s.ExpiraEm, s.Ip, s.Agente, s.Atual);
 
-    /// <summary>Where the request came from; <see cref="Sessoes"/> truncates it. The peer address is used as is: <c>X-Forwarded-For</c> is client-controlled and is NOT read here (a trusted-proxy setup belongs to deploy, ticket 08).</summary>
+    /// <summary>Where the request came from; <see cref="Sessoes"/> truncates it. The peer address is used as is: <c>X-Forwarded-For</c> is client-controlled and is NOT read here; behind a proxy the host rewrites the peer address from it only when <c>Flow4Tech:Rede:ProxyConfiavel</c> is on (Program.cs).</summary>
     private static ClienteDaSessao Cliente(HttpContext http) => new(http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString());
 
     /// <summary>The access token goes in the body (the client keeps it in memory), the refresh token only in the cookie; neither may be cached.</summary>

@@ -13,7 +13,8 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | 05 | Permissões ligadas ao HTTP | **done-local, sem revisão independente** (cliente TS não regenerado) | a commitar | pendente |
 | 06 | Perfis, regras e overrides persistidos, anti-autopromoção, simulador | **done-local, parcialmente verificado, sem revisão independente** | a commitar | pendente |
 | 07 | Registro de organizações com eventos pendentes | **done-local, testes de PostgreSQL não rodados, sem revisão independente** | a commitar | pendente |
-| 08 a 11 | Proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
+| 08 | Proteção de login e alertas | **done-local, testes de PostgreSQL/HTTP não rodados, sem revisão independente** | a commitar | pendente |
+| 09 a 11 | Convites/recuperação/Google, configurações, fechamento | pending | | |
 
 Último estado **validado** (rodado por mim, suíte inteira): `8d9c698`.
 
@@ -37,7 +38,7 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 - Ticket 05 feito em seguida (ver `issues/05-permissions-http.md`). Em 2026-11-04: Flow4Tech.Tests 124, Architecture 125, Authorization 106, Identidade 210, Audit 143, todos verdes.
 - Ticket 06 feito em 2026-11-04 (ver `issues/06-profiles-persisted.md`). Só `tests/Authorization` rodou (199/200 antes da última correção). `Architecture` rodou depois: 125/125 verde (achou e corrigiu: construtor ambíguo do motor na DI, `Npgsql` em Permissoes.Infrastructure, ordem do `audit.catalog.txt`, regenerado). `Isolation` rodou depois: 49/49 verde (RLS das 4 tabelas novas ok). `Flow4Tech.Tests` 123/124 (a falha, `Readiness_works_from_a_railway_style_DATABASE_URL`, deu ServiceUnavailable com a máquina saturada e passou isolada) e `dotnet format --verify-no-changes` limpo. Falta só a revisão independente do 06.
 - Ticket 07 feito em 2026-11-05 (nuvem, sem Docker; ver `issues/07-event-org-registry.md`): migração 0011 (tabela sem RLS e sem privilégio para a aplicação, gatilho no evento, 3 funções SECURITY DEFINER), `PendingOrganizationsDatabase` (Data), `OutboxSweeper`, ADR-003 F2 fechado. Rodou: build, `dotnet format` (só CA1515), Architecture 125/125 e as funções SQL à mão num PG 16 local. NÃO rodou: Outbox, Isolation (exceção nova em `Exempt`), Identidade (teste do conjunto exato de SECURITY DEFINER atualizado), todos com Testcontainers. Rodar no Mac. Varredura ainda sem agendamento (precisa do worker Quartz).
-- Próximo: ticket 08.
+- Ticket 08 feito em 2026-11-05 (nuvem, sem Docker; ver `issues/08-login-protection.md`): limitador progressivo por conta e IP em memória, credential stuffing, `ICaptcha` sem provedor, alerta de login novo (migração 0012 `acessos_conhecidos`), eventos `seguranca.login-novo|conta-bloqueada|senha-trocada` no outbox, consumidores de e-mail, `IEnviadorDeEmail` de desenvolvimento, 429/428 no `/login`. Rodou: build, `dotnet format` (só CA1515), Architecture 125/125 (catálogo de auditoria com `autenticacao:bloquear`), 40 testes unitários novos (Identidade, sem banco; 128 não-integração verdes), Flow4Tech.Tests unitários 37 verdes, SQL da 0012 à mão num PG 16, `openapi.json` e cliente TS regenerados (pnpm disponível aqui). NÃO rodou: `AlertasDeSegurancaIntegrationTests`, o teste 429 em `SessoesEndpointsTests`, Identidade/Isolation/Outbox inteiras (Testcontainers). Rodar no Mac. Recuperação sem enumeração fica para o 09. Próximo: ticket 09.
 
 ## O que foi entregue (tickets 01 a 03)
 
@@ -63,7 +64,7 @@ Auditoria de segurança pelos revisores: nenhum achado alto nos três tickets.
 Para tickets futuros (já anotadas nos tickets):
 - 04: sessão sem unidade ativa; troca de unidade na mesma unidade de trabalho; limite de corpo na troca de senha; nenhum caminho de sessão de teste em Production.
 - 05/06: autorização completa por `DecidirAsync`; gate "toda ação [A] tem registro de auditoria" (depende do catálogo [A]); `sessao:ver-todas`/`sessao:revogar` hoje só para donos.
-- 08: DoS de login (cadeia de auditoria e fila de hash sem teto), throttling na troca de senha, alertas.
+- 08 (resolvido em parte): DoS de login coberto pelo bloqueio (tentativa bloqueada não audita nem faz hashing); ainda faltam throttling na troca de senha, estado do limitador compartilhado entre instâncias, `ProxyConfiavel` ligado no Railway, e-mail real, consumidores sem agendamento.
 - 09: **reserva de e-mail sem prova de posse** (quem cadastra primeiro com o e-mail alheio trava o e-mail na plataforma; o cadastro vira oráculo de existência; não há liberação); redefinição de credencial temporária vencida; o cadastro do fundador só pode ser chamado por fluxo confiável (Control Tower, 1B), nunca como rota pública.
 - Auditoria: job periódico de verificação existe e é testado, mas **nada o agenda**; evento de integridade sem consumidor; custo do lock da cadeia sob carga não medido; cópia externa pendente.
 - Identidade: HIBP real nunca foi chamada (sem rede no ambiente); tempo uniforme do login só tem o piso testado (400 ms), não o tempo real; linhas anteriores à migração 0008 não têm prazo e nunca expiram.
