@@ -14,6 +14,21 @@ public static class PolicyEvaluator
     /// <summary>Limits are expressed in cents of this currency only; a value in any other currency fails closed (ADR-006).</summary>
     public const string LimitCurrency = "BRL";
 
+    /// <summary>The rules of <paramref name="permission"/> that the subject holds through any of its profiles (the only other reader of <c>Subject.Profiles</c>, for the anti-escalation check).</summary>
+    public static IReadOnlyList<Rule> RulesHeldBy(PolicySet policies, Subject who, string permission)
+    {
+        ArgumentNullException.ThrowIfNull(policies);
+        ArgumentNullException.ThrowIfNull(who);
+        return [.. policies.Rules.Where(r => r.Permission == permission && who.Profiles.Contains(r.Profile))];
+    }
+
+    /// <summary>The rules that belong to one profile key (to copy a factory or custom profile).</summary>
+    public static IReadOnlyList<Rule> RulesOfProfile(PolicySet policies, string key)
+    {
+        ArgumentNullException.ThrowIfNull(policies);
+        return [.. policies.Rules.Where(r => string.Equals(r.Profile, key, StringComparison.Ordinal))];
+    }
+
     public static Evaluation Evaluate(PolicySet policies, Subject who, string permission, Scope where, DecisionContext context)
     {
         ArgumentNullException.ThrowIfNull(policies);

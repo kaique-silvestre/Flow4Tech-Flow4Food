@@ -238,7 +238,7 @@ public sealed class PermissoesEndpointsTests : IAsyncLifetime
 
     private sealed class SemPerfis : IPerfisDoUsuario
     {
-        public Task<IReadOnlyList<string>> ListarAsync(IRequestContext request, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<IReadOnlyList<string>> ListarAsync(OrganizationContext organization, Guid userId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<string>>([]);
     }
 
     private sealed class CapturedLogs : ILoggerProvider, ISupportExternalScope

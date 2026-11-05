@@ -11,7 +11,8 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 | 03 | Identidade, senhas e pré-autenticação sob RLS | **done-local** | `87d5ec5`, `8d9c698` | PASS COM RISCOS, achados corrigidos |
 | 04 | Sessões e tokens | **done-local, sem revisão independente** | `cf358cf` (WIP), `281a20f`, correção de conexões (a commitar) | pendente |
 | 05 | Permissões ligadas ao HTTP | **done-local, sem revisão independente** (cliente TS não regenerado) | a commitar | pendente |
-| 06 a 11 | Perfis, registro de organizações, proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
+| 06 | Perfis, regras e overrides persistidos, anti-autopromoção, simulador | **done-local, parcialmente verificado, sem revisão independente** | a commitar | pendente |
+| 07 a 11 | Registro de organizações, proteção de login, convites/recuperação/Google, configurações, fechamento | pending | | |
 
 Último estado **validado** (rodado por mim, suíte inteira): `8d9c698`.
 
@@ -33,7 +34,8 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 - Critério em aberto por dependência: mudança de permissão/perfil invalidar sessões (tickets 05/06).
 - **Falta o revisor independente** antes de tratar o 04 como fechado. O texto de sessões no `CLAUDE.md`/ADR-010 continua descrevendo o desenho; a medição de latência e a leitura acima o sustentam, mas o revisor ainda não o confrontou.
 - Ticket 05 feito em seguida (ver `issues/05-permissions-http.md`). Em 2026-11-04: Flow4Tech.Tests 124, Architecture 125, Authorization 106, Identidade 210, Audit 143, todos verdes.
-- Próximo: ticket 06 (perfis persistidos).
+- Ticket 06 feito em 2026-11-04 (ver `issues/06-profiles-persisted.md`). Só `tests/Authorization` rodou (199/200 antes da última correção). `Architecture`, `Isolation`, `Flow4Tech.Tests` e `dotnet format` ficaram sem rodar a pedido do dono (máquina travando). **Antes de aceitar o 06: rodar essas suítes e conferir os dois catálogos editados à mão.**
+- Próximo: ticket 07 (registro de organizações / dispatcher).
 
 ## O que foi entregue (tickets 01 a 03)
 

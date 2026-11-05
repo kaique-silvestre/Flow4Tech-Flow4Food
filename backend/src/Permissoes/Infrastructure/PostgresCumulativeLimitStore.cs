@@ -17,10 +17,92 @@ internal sealed class LimiteConsumoRow
     public long ConsumidoCentavos { get; set; }
 }
 
-/// <summary>EF mapping of the cumulative-limit counter (schema owned by <c>0003_limites_consumo.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
+internal sealed class PerfilRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public string? Modelo { get; set; }
+
+    public bool AcompanhaModelo { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+}
+
+/// <summary>The columns every rule table shares (profile rules and individual overrides).</summary>
+internal abstract class RegraRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public string Permissao { get; set; } = "";
+
+    public string Efeito { get; set; } = "allow";
+
+    public Guid? UnidadeId { get; set; }
+
+    public decimal? MaxPercentual { get; set; }
+
+    public long? MaxValorCentavos { get; set; }
+
+    public long? TetoDiarioCentavos { get; set; }
+}
+
+internal sealed class RegraDoPerfilRow : RegraRow
+{
+    public Guid IdDoPerfil { get; set; }
+}
+
+internal sealed class RegraDoUsuarioRow : RegraRow
+{
+    public Guid UsuarioId { get; set; }
+}
+
+internal sealed class AtribuicaoRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UsuarioId { get; set; }
+
+    public Guid IdDoPerfil { get; set; }
+}
+
+internal sealed class ContaRow
+{
+    public Guid Id { get; set; }
+
+    public bool Ativa { get; set; }
+}
+
+/// <summary>EF mapping of the cumulative-limit counter and of the profiles, rules, assignments and overrides (schema owned by <c>0003_limites_consumo.sql</c> and <c>0010_perfis_regras.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class PermissoesDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
     public DbSet<LimiteConsumoRow> Limites => Set<LimiteConsumoRow>();
+
+    public DbSet<PerfilRow> Perfis => Set<PerfilRow>();
+
+    public DbSet<RegraDoPerfilRow> RegrasDosPerfis => Set<RegraDoPerfilRow>();
+
+    public DbSet<AtribuicaoRow> Atribuicoes => Set<AtribuicaoRow>();
+
+    public DbSet<RegraDoUsuarioRow> RegrasDosUsuarios => Set<RegraDoUsuarioRow>();
+
+    public DbSet<ContaRow> Contas => Set<ContaRow>();
+
+    private static void MapRule<T>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<T> e)
+        where T : RegraRow
+    {
+        e.Property(x => x.Permissao).HasColumnName("permissao");
+        e.Property(x => x.Efeito).HasColumnName("efeito");
+        e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+        e.Property(x => x.MaxPercentual).HasColumnName("max_percentual").HasColumnType("numeric(5,2)");
+        e.Property(x => x.MaxValorCentavos).HasColumnName("max_valor_centavos");
+        e.Property(x => x.TetoDiarioCentavos).HasColumnName("teto_diario_centavos");
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +116,51 @@ internal sealed class PermissoesDbContext(TenantTransaction transaction) : Tenan
             e.Property(x => x.Permissao).HasColumnName("permissao");
             e.Property(x => x.Dia).HasColumnName("dia");
             e.Property(x => x.ConsumidoCentavos).HasColumnName("consumido_centavos");
+        });
+        modelBuilder.Entity<PerfilRow>(e =>
+        {
+            e.ToTable("perfis");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.Modelo).HasColumnName("modelo");
+            e.Property(x => x.AcompanhaModelo).HasColumnName("acompanha_modelo");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+        });
+        modelBuilder.Entity<RegraDoPerfilRow>(e =>
+        {
+            e.ToTable("perfil_regras");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.IdDoPerfil).HasColumnName("perfil_id");
+            MapRule(e);
+        });
+        modelBuilder.Entity<AtribuicaoRow>(e =>
+        {
+            e.ToTable("usuario_perfis");
+            e.HasKey(x => new { x.OrganizacaoId, x.UsuarioId, x.IdDoPerfil });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UsuarioId).HasColumnName("usuario_id");
+            e.Property(x => x.IdDoPerfil).HasColumnName("perfil_id");
+        });
+        modelBuilder.Entity<RegraDoUsuarioRow>(e =>
+        {
+            e.ToTable("usuario_regras");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UsuarioId).HasColumnName("usuario_id");
+            MapRule(e);
+        });
+        // Read-only view of the account (owned by the Identidade module) to learn whether it exists and is active; never written from here.
+        modelBuilder.Entity<ContaRow>(e =>
+        {
+            e.ToTable("contas");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Ativa).HasColumnName("ativa");
         });
     }
 }

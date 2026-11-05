@@ -9,3 +9,9 @@ sessao:iniciar
 sessao:refresh-reutilizado
 sessao:revogar
 sessao:trocar-unidade
+perfil:criar
+perfil:editar-regras
+perfil:atribuir
+perfil:remover-atribuicao
+permissao:definir-overrides
+permissao:negar-escalada

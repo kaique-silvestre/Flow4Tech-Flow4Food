@@ -38,7 +38,7 @@ internal sealed class PermissionHandler(IAuthorizationEngine engine, IPerfisDoUs
         ArgumentNullException.ThrowIfNull(requirement);
         ArgumentNullException.ThrowIfNull(facts);
         var organization = facts.Request.Organization;
-        var profiles = await perfis.ListarAsync(facts.Request, facts.CancellationToken);
+        var profiles = await perfis.ListarAsync(organization, facts.Request.UserId, facts.CancellationToken);
         var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
         var decision = await engine.DecidirAsync(
             new Subject(facts.Request.UserId, profiles),

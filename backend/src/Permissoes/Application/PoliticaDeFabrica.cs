@@ -17,8 +17,7 @@ public static class PerfisDeFabrica
 }
 
 /// <summary>
-/// The rules of the factory profiles, as <see cref="PolicySet"/> data (spec 5.4.3). Ticket 06 persists profiles per organization; until then these are the rules the engine
-/// reads. The catalog is generated from the code; a permission named here that the catalog lacks stops the host at startup (<see cref="PolicySet"/> refuses it), so a rename
+/// The rules of the factory profiles, as <see cref="PolicySet"/> data (spec 5.4.3). The persisted profiles of an organization are added to these rules by the policy source (ticket 06). The catalog is generated from the code; a permission named here that the catalog lacks stops the host at startup (<see cref="PolicySet"/> refuses it), so a rename
 /// can never silently grant nothing.
 /// </summary>
 public static class PoliticaDeFabrica
@@ -45,10 +44,11 @@ public static class PoliticaDeFabrica
 }
 
 /// <summary>
-/// Port: the profiles an authenticated user holds in the organization of the request. The host asks it per decision; the engine, not the caller, interprets the names.
-/// An account that is gone or inactive holds none (everything is denied).
+/// Port: the profile keys a person holds in an organization (<see cref="ChavesDePerfil"/>): the factory profile of the account, the custom profiles assigned to it and its
+/// private override profile. The host asks it per decision; the engine, not the caller, interprets the keys. An account that is gone or inactive holds none (everything is denied).
+/// Takes the person explicitly so the simulator can ask for someone other than the caller.
 /// </summary>
 public interface IPerfisDoUsuario
 {
-    Task<IReadOnlyList<string>> ListarAsync(IRequestContext request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> ListarAsync(OrganizationContext organization, Guid userId, CancellationToken cancellationToken);
 }

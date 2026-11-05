@@ -1,5 +1,8 @@
 organizacao:trocar-unidade
 organizacao:ver-unidades
+perfil:gerir
+perfil:ver
+permissao:atribuir
 sessao:entrar
 sessao:renovar
 sessao:revogar
