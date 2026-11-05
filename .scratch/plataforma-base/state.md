@@ -34,7 +34,7 @@ Atualizado em 2026-11-04. Branch de trabalho: `claude/flow4tech-fase-1-handoff-v
 - Critério em aberto por dependência: mudança de permissão/perfil invalidar sessões (tickets 05/06).
 - **Falta o revisor independente** antes de tratar o 04 como fechado. O texto de sessões no `CLAUDE.md`/ADR-010 continua descrevendo o desenho; a medição de latência e a leitura acima o sustentam, mas o revisor ainda não o confrontou.
 - Ticket 05 feito em seguida (ver `issues/05-permissions-http.md`). Em 2026-11-04: Flow4Tech.Tests 124, Architecture 125, Authorization 106, Identidade 210, Audit 143, todos verdes.
-- Ticket 06 feito em 2026-11-04 (ver `issues/06-profiles-persisted.md`). Só `tests/Authorization` rodou (199/200 antes da última correção). `Architecture` rodou depois: 125/125 verde (achou e corrigiu: construtor ambíguo do motor na DI, `Npgsql` em Permissoes.Infrastructure, ordem do `audit.catalog.txt`, regenerado). `Isolation`, `Flow4Tech.Tests` e `dotnet format` ficaram sem rodar a pedido do dono (máquina travando). **Antes de aceitar o 06: rodar essas três.**
+- Ticket 06 feito em 2026-11-04 (ver `issues/06-profiles-persisted.md`). Só `tests/Authorization` rodou (199/200 antes da última correção). `Architecture` rodou depois: 125/125 verde (achou e corrigiu: construtor ambíguo do motor na DI, `Npgsql` em Permissoes.Infrastructure, ordem do `audit.catalog.txt`, regenerado). `Isolation` rodou depois: 49/49 verde (RLS das 4 tabelas novas ok). `Flow4Tech.Tests` e `dotnet format` ficaram sem rodar a pedido do dono (máquina travando). **Antes de aceitar o 06: rodar essas duas.**
 - Próximo: ticket 07 (registro de organizações / dispatcher).
 
 ## O que foi entregue (tickets 01 a 03)
