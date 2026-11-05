@@ -3,8 +3,8 @@ mode: auto   max_parallel: 1 (sequential, shared catalogs; no worktrees)
 wave: sequential 01..15
 tickets:
 - 01 · modules-and-adrs · done · 47effea · rounds: 1
-- 02 · menu-minimum · running · round 1
-- 03 · cash-shift · pending · blocked_by: 01
+- 02 · menu-minimum · done · 46ab960 · rounds: 1 · risks: no pure-domain test, no ToQueryString test, unique race 500 (23505), price-freeze unproved until 06
+- 03 · cash-shift · running · round 1
 - 04 · tables · pending · blocked_by: 01
 - 05 · open-comanda-and-list · pending · blocked_by: 04
 - 06 · rounds-and-items · pending · blocked_by: 02,05

@@ -44,6 +44,7 @@
     <ProjectReference Include="../Comandas/Application/Flow4Tech.Comandas.Application.csproj" />
     <ProjectReference Include="../Pagamentos/Application/Flow4Tech.Pagamentos.Application.csproj" />
     <ProjectReference Include="../Caixa/Application/Flow4Tech.Caixa.Application.csproj" />
+    <ProjectReference Include="../Caixa/Infrastructure/Flow4Tech.Caixa.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

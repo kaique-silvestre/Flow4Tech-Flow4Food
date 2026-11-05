@@ -516,10 +516,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/caixa/turnos/atual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTurnoAtual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listTurnos"];
+        put?: never;
+        post: operations["abrirTurno"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/atual/fechar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fecharTurno"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbrirTurnoRequest: {
+            /** Format: int64 */
+            fundoCentavos: number | string;
+        };
         AceitarConviteRequest: {
             token: null | string;
             senha: null | string;
@@ -552,6 +604,9 @@ export interface components {
             ativo: boolean;
             /** Format: int32 */
             versao: number | string;
+        };
+        CaixaErro: {
+            codigo: string;
         };
         CardapioErro: {
             codigo: string;
@@ -612,6 +667,10 @@ export interface components {
             categoriaId: string;
             /** @default true */
             ativo: boolean;
+        };
+        FecharTurnoRequest: {
+            /** Format: int64 */
+            contadoCentavos: number | string;
         };
         HealthStatus: {
             status: string;
@@ -698,6 +757,27 @@ export interface components {
         TrocarUnidadeRequest: {
             /** Format: uuid */
             unidadeDestinoId: string;
+        };
+        TurnoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            unidadeId: string;
+            /** Format: uuid */
+            operadorId: string;
+            /** Format: date-time */
+            abertoEm: string;
+            /** Format: int64 */
+            fundoCentavos: number | string;
+            /** Format: date-time */
+            fechadoEm: null | string;
+            /** Format: int64 */
+            contadoCentavos: null | number | string;
+            /** Format: int64 */
+            esperadoCentavos: null | number | string;
+            /** Format: int64 */
+            diferencaCentavos: null | number | string;
+            diferencaTexto: null | string;
         };
         UnidadeAtivaResponse: {
             /** Format: uuid */
@@ -2339,6 +2419,195 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    getTurnoAtual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    listTurnos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    abrirTurno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbrirTurnoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    fecharTurno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FecharTurnoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
                 };
             };
         };

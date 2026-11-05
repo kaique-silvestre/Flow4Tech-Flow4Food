@@ -1,6 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Flow4Tech.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Application/Flow4Tech.Caixa.Application.csproj" />
     <ProjectReference Include="../../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <!-- Register events go through the transactional outbox, on the unit of work of the action. -->
+    <ProjectReference Include="../../Infrastructure/Outbox/Flow4Tech.Infrastructure.Outbox.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+  </ItemGroup>
+
 </Project>

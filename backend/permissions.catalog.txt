@@ -1,3 +1,7 @@
+caixa:abrir
+caixa:fechar
+caixa:ver
+caixa:ver-todos
 conta:gerir-google
 convite:aceitar
 organizacao:configurar

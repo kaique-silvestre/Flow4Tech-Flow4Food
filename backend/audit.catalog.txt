@@ -1,6 +1,8 @@
 acesso:negar
 autenticacao:bloquear
 autenticacao:falhar
+caixa:abrir
+caixa:fechar
 categoria:alterar
 categoria:criar
 configuracao:alterar

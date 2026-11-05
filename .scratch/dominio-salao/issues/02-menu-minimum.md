@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** HTTP with real PostgreSQL; Pure domain; Architecture gates
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration adds `categorias` and `produtos` as tenant tables (organizacao_id, RLS enabled+forced, exact policy, composite FKs); product has unique short code per organization, price as `bigint` cents + currency `BRL`, active flag, `versao`; `RlsArchitectureIntegrationTests` passes with no new exemption and the EF context has a `SchemaDrift` test.
 - [ ] Routes with `.WithName`, typed responses, `.RequireSession()` and `.RequirePermission(...)`: list, search (name or code), frequent items, create/alter product and category; no route takes organization or unit from the client.
