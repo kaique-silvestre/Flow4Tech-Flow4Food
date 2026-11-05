@@ -24,6 +24,8 @@ public sealed class PoliticaDeFabricaTests
         "sessao:revogar",
         "sistema:ver-versao",
         "financeiro:exportar",
+        "produto:ver",
+        "produto:gerenciar",
     ];
 
     private static readonly Guid Org = Guid.Parse("0197a000-0000-7000-8000-00000000000a");
@@ -54,6 +56,8 @@ public sealed class PoliticaDeFabricaTests
     [InlineData("usuario:redefinir-acesso")]
     [InlineData("organizacao:configurar")]
     [InlineData("financeiro:exportar")]
+    [InlineData("produto:ver")]
+    [InlineData("produto:gerenciar")]
     public async Task An_ordinary_account_gets_nothing_administrative_or_financial_by_default(string permission)
     {
         Assert.False((await AskAsync(permission, PerfisDeFabrica.Conta)).IsAllowed);

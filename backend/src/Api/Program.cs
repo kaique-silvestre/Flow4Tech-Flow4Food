@@ -3,6 +3,7 @@ using Flow4Tech.Identidade.Application;
 using Flow4Tech.Identidade.Infrastructure;
 using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
+using Flow4Tech.Cardapio.Infrastructure;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Infrastructure;
 using Flow4Tech.Kernel.Authorization;
@@ -61,6 +62,7 @@ builder.Services.AddAuditoria();
 builder.Services.AddOrganizacao(
     moduleSettings,
     provider => definition => provider.GetRequiredService<IConfiguration>()[definition.SystemConfigPath]);
+builder.Services.AddCardapio();
 builder.Services.AddSingleton<IPermissaoDoChamador, PermissaoDoChamador>();
 // Permissions on HTTP (ticket 05): one engine (IAuthorizationEngine.DecidirAsync), asked by the handler for every route that declares a permission.
 builder.Services.AddPermissoes(moduleCatalog);
@@ -182,6 +184,7 @@ app.MapOrganizacao();
 app.MapSessao();
 app.MapAcesso();
 app.MapConfiguracao();
+app.MapCardapio();
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(

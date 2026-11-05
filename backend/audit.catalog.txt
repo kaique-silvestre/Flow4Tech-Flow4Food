@@ -1,6 +1,8 @@
 acesso:negar
 autenticacao:bloquear
 autenticacao:falhar
+categoria:alterar
+categoria:criar
 configuracao:alterar
 configuracao:restaurar
 conta:criar
@@ -21,6 +23,8 @@ perfil:editar-regras
 perfil:remover-atribuicao
 permissao:definir-overrides
 permissao:negar-escalada
+produto:alterar
+produto:criar
 sessao:encerrar
 sessao:iniciar
 sessao:refresh-reutilizado

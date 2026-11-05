@@ -1059,6 +1059,451 @@
         },
         "x-permission": "organizacao:configurar"
       }
+    },
+    "/cardapio/categorias": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listCategorias",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoriaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarCategoria",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarCategoriaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoriaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/categorias/{id}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "alterarCategoria",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarCategoriaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoriaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/produtos": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listProdutos",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProdutoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarProduto",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarProdutoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProdutoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/produtos/busca": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "buscarProdutos",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProdutoDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:ver"
+      }
+    },
+    "/cardapio/produtos/frequentes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listProdutosFrequentes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProdutoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:ver"
+      }
+    },
+    "/cardapio/produtos/gestao": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listProdutosGestao",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProdutoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/produtos/{id}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "alterarProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarProdutoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProdutoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
     }
   },
   "components": {
@@ -1102,6 +1547,33 @@
           }
         }
       },
+      "AlterarCategoriaRequest": {
+        "required": [
+          "nome",
+          "ativa",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ativa": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "AlterarConfiguracaoRequest": {
         "required": [
           "camada",
@@ -1142,6 +1614,94 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "AlterarProdutoRequest": {
+        "required": [
+          "codigo",
+          "nome",
+          "precoCentavos",
+          "categoriaId",
+          "ativo",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "categoriaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CardapioErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoriaDto": {
+        "required": [
+          "id",
+          "nome",
+          "ativa",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "ativa": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -1290,6 +1850,59 @@
           }
         }
       },
+      "CriarCategoriaRequest": {
+        "required": [
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CriarProdutoRequest": {
+        "required": [
+          "codigo",
+          "nome",
+          "precoCentavos",
+          "categoriaId"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "categoriaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
       "HealthStatus": {
         "required": [
           "status"
@@ -1357,6 +1970,57 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ProdutoDto": {
+        "required": [
+          "id",
+          "categoriaId",
+          "codigo",
+          "nome",
+          "precoCentavos",
+          "moeda",
+          "ativo",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoriaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "moeda": {
+            "type": "string"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

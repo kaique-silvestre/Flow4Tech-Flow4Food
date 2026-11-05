@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** not-applicable
 **Seams:** Architecture gates
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Projects `Flow4Tech.<Module>.<Layer>` exist for Cardapio, Comandas, Pagamentos and Caixa and are in `Flow4Tech.sln`; Api references each module's Application project.
 - [ ] `backend/modules.dependencies.json` declares exactly `Comandas → Cardapio`, `Comandas → Pagamentos`, `Pagamentos → Caixa` and no other new edge; `backend/tests/Architecture` passes (no cycles, no internals across modules).

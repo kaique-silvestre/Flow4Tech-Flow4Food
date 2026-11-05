@@ -6,6 +6,8 @@ organizacao:ver-unidades
 perfil:gerir
 perfil:ver
 permissao:atribuir
+produto:gerenciar
+produto:ver
 recuperacao:redefinir
 recuperacao:solicitar
 sessao:entrar
