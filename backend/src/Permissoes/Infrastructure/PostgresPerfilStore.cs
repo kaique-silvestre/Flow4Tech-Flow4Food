@@ -3,7 +3,6 @@ using Flow4Tech.Kernel;
 using Flow4Tech.Permissoes.Application;
 using Flow4Tech.Permissoes.Domain;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Flow4Tech.Permissoes.Infrastructure;
 
@@ -13,8 +12,6 @@ namespace Flow4Tech.Permissoes.Infrastructure;
 /// </summary>
 public sealed class PostgresPerfilStore : IPerfilStore
 {
-    private const string UniqueViolation = "23505";
-
     public async Task<bool> CriarAsync(Guid organizationId, PerfilPersonalizado novo, DateTimeOffset em, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(novo);
@@ -33,9 +30,9 @@ public sealed class PostgresPerfilStore : IPerfilStore
             context.RegrasDosPerfis.AddRange(novo.Regras.Select(r => ToRow<RegraDoPerfilRow>(organizationId, r, row => row.IdDoPerfil = novo.Id)));
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: UniqueViolation })
+        catch (DbUpdateException ex)
         {
-            throw new InvalidOperationException("A concurrent request created a profile with the same name; retry.", ex);
+            throw new InvalidOperationException("The profile could not be saved (most likely a concurrent request created one with the same name); retry.", ex);
         }
 
         return true;

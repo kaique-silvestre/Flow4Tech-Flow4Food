@@ -23,7 +23,11 @@ public static class PermissoesServices
         services.AddSingleton<SimuladorDePermissoes>();
         services.AddSingleton<ICumulativeLimitStore, PostgresCumulativeLimitStore>();
         services.AddSingleton<IOperatingDayResolver>(provider => new ConfiguredOperatingDayResolver(provider.GetRequiredService<Flow4Tech.Kernel.IClock>()));
-        services.AddSingleton<IAuthorizationEngine, RulesAuthorizationEngine>();
+        // Explicit factory: the engine has two public constructors (persisted source, fixed policy) and the container refuses to choose.
+        services.AddSingleton<IAuthorizationEngine>(provider => new RulesAuthorizationEngine(
+            provider.GetRequiredService<IPolicySource>(),
+            provider.GetRequiredService<ICumulativeLimitStore>(),
+            provider.GetRequiredService<IOperatingDayResolver>()));
         return services;
     }
 }
