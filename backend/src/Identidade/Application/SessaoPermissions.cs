@@ -12,6 +12,9 @@ public static class SessaoPermissions
 {
     public const string Entrar = "sessao:entrar";
 
+    /// <summary>The two PUBLIC routes of the Google sign-in (start and callback, ticket 09). Never creates an account; an unlinked Google account gets a neutral answer.</summary>
+    public const string EntrarComGoogle = "sessao:entrar-google";
+
     public const string Renovar = "sessao:renovar";
 
     public const string Sair = "sessao:sair";

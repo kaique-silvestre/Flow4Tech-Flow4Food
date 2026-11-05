@@ -71,17 +71,16 @@ builder.Services.AddIdentidade(options =>
     options.UsarHibp = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:Enabled", false);
     options.HibpIndisponivelRecusa = builder.Configuration.GetValue("Flow4Tech:Identidade:Hibp:IndisponivelRecusa", false);
     options.CredencialTemporariaHoras = builder.Configuration.GetValue("Flow4Tech:Identidade:CredencialTemporariaHoras", 72);
-    // Login protection (ticket 08, spec 5.5): Flow4Tech:Identidade:Bloqueio:{FalhasEmail,FalhasOperacional,BloqueioBaseSegundos,BloqueioMaximoMinutos,FalhasPorIp,ContasPorIp,IpsPorConta}.
-    var padrao = new LimitesDeLogin();
-    options.Bloqueio = padrao with
+    // Ticket 09: Flow4Tech:Identidade:ConviteDias (7), RecuperacaoMinutos (60), Flow4Tech:App:BaseUrl (front end that receives the links), and Google (off without ClientId and ClientSecret):
+    // Flow4Tech:Identidade:Google:ClientId|ClientSecret|RedirectUri (the /login/google/retorno of this API, registered at Google).
+    options.ConviteDias = builder.Configuration.GetValue("Flow4Tech:Identidade:ConviteDias", 7);
+    options.RecuperacaoMinutos = builder.Configuration.GetValue("Flow4Tech:Identidade:RecuperacaoMinutos", 60);
+    options.UrlDoApp = new Uri(builder.Configuration["Flow4Tech:App:BaseUrl"] is { Length: > 0 } baseUrl ? baseUrl : "http://localhost:5173");
+    options.Google = new OpcoesGoogle
     {
-        FalhasParaBloquearEmail = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasEmail", padrao.FalhasParaBloquearEmail),
-        FalhasParaBloquearOperacional = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasOperacional", padrao.FalhasParaBloquearOperacional),
-        BloqueioBase = TimeSpan.FromSeconds(builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioBaseSegundos", padrao.BloqueioBase.TotalSeconds)),
-        BloqueioMaximo = TimeSpan.FromMinutes(builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioMaximoMinutos", padrao.BloqueioMaximo.TotalMinutes)),
-        FalhasParaBloquearIp = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasPorIp", padrao.FalhasParaBloquearIp),
-        ContasDistintasPorIp = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:ContasPorIp", padrao.ContasDistintasPorIp),
-        IpsDistintosPorConta = builder.Configuration.GetValue("Flow4Tech:Identidade:Bloqueio:IpsPorConta", padrao.IpsDistintosPorConta),
+        ClientId = builder.Configuration["Flow4Tech:Identidade:Google:ClientId"],
+        ClientSecret = builder.Configuration["Flow4Tech:Identidade:Google:ClientSecret"],
+        RedirectUri = builder.Configuration["Flow4Tech:Identidade:Google:RedirectUri"] is { Length: > 0 } redirect ? new Uri(redirect) : null,
     };
 });
 // The address of the client (login throttling by address, new-login alert). Behind a reverse proxy the peer is the proxy: with Flow4Tech:Rede:ProxyConfiavel=true the LAST entry of
@@ -100,6 +99,14 @@ if (proxyConfiavel)
 builder.Services.Replace(ServiceDescriptor.Singleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(
     provider.GetRequiredService<IClock>(),
     SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()))));
+// Login protection (ticket 08, spec 5.5): Flow4Tech:Identidade:Bloqueio:{FalhasEmail,FalhasOperacional,BloqueioBaseSegundos,BloqueioMaximoMinutos,FalhasPorIp,ContasPorIp,IpsPorConta}. Read lazily, like the other
+// settings, so a test host (configuration added after Program.cs ran its top level) and the real host see the same values.
+builder.Services.Replace(ServiceDescriptor.Singleton<ILimitadorDeLogin>(provider => new LimitadorDeLoginEmMemoria(
+    provider.GetRequiredService<IClock>(),
+    SessionConfiguration.LimitesDeLogin(provider.GetRequiredService<IConfiguration>()))));
+builder.Services.Replace(ServiceDescriptor.Singleton<ISeloDeTransacao>(provider => new SeloDeTransacaoHmac(
+    SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()).AppKey,
+    provider.GetRequiredService<IClock>())));
 builder.Services.Replace(ServiceDescriptor.Singleton(provider => SessionConfiguration.Relogios(provider.GetRequiredService<IConfiguration>())));
 builder.Services.Replace(ServiceDescriptor.Singleton<IResponseTimeFloor>(provider => new ResponseTimeFloor(
     TimeSpan.FromMilliseconds(provider.GetRequiredService<IConfiguration>().GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400)))));
@@ -170,6 +177,7 @@ app.MapGet("/health/ready", async (IConfiguration configuration, CancellationTok
 
 app.MapOrganizacao();
 app.MapSessao();
+app.MapAcesso();
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(

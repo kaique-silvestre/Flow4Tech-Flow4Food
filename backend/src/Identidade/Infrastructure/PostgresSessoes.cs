@@ -20,7 +20,7 @@ internal sealed class RefreshTravadoRow
 /// Sessions on PostgreSQL. Joins the caller's unit of work (<see cref="TenantUnitOfWork.Require"/>): the organization is the one the unit was opened with, RLS filters, nothing
 /// here filters on <c>organizacao_id</c>. Writes are explicit interpolated SQL (the statement is visible); reads are EF with <c>AsNoTracking</c>.
 /// </summary>
-public sealed class PostgresSessaoStore : ISessaoStore
+public sealed class PostgresSessaoStore : ISessaoStore, IRevogacaoDeSessoes
 {
     public async Task InserirAsync(Guid organizacaoId, NovaSessao sessao, CancellationToken cancellationToken)
     {
@@ -112,6 +112,9 @@ public sealed class PostgresSessaoStore : ISessaoStore
             $"UPDATE sessoes SET revogada_em = {agora}, revogada_motivo = {motivo} WHERE conta_id = {contaId} AND id <> {exceto} AND revogada_em IS NULL",
             cancellationToken);
     }
+
+    public async Task RevogarTodasDaContaAsync(Guid organizacaoId, Guid contaId, string motivo, DateTimeOffset agora, CancellationToken cancellationToken) =>
+        await RevogarOutrasDaContaAsync(organizacaoId, contaId, Guid.Empty, motivo, agora, cancellationToken);
 
     public async Task DefinirUnidadeAtivaAsync(Guid organizacaoId, Guid sessaoId, Guid unidadeId, CancellationToken cancellationToken)
     {

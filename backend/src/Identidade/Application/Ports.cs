@@ -90,6 +90,12 @@ public interface IContaStore
     Task TrocarSenhaAsync(Guid organizacaoId, Guid contaId, string novoHash, CancellationToken cancellationToken);
 
     /// <summary>
+    /// An administrator reset an OPERATIONAL account: stores the hash of the new temporary credential, forces the change at the next login, sets its deadline and bumps the credential version
+    /// (every session of the old credential ends). False (nothing written) when the account is not an active operational one.
+    /// </summary>
+    Task<bool> RedefinirCredencialTemporariaAsync(Guid organizacaoId, Guid contaId, string novoHash, DateTimeOffset expiraEm, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Replaces a hash made with outdated parameters by one of the SAME password. Only if the stored hash is still <paramref name="hashAnterior"/> (a password changed meanwhile wins);
     /// keeps the credential version. False when it no longer matched.
     /// </summary>

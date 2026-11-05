@@ -4,7 +4,15 @@ autenticacao:falhar
 conta:criar
 conta:definir-dono
 conta:desativar
+conta:desvincular-google
+conta:recuperar-acesso
+conta:redefinir-acesso
+conta:solicitar-recuperacao
 conta:trocar-senha
+conta:vincular-google
+convite:aceitar
+convite:criar
+convite:revogar
 perfil:atribuir
 perfil:criar
 perfil:editar-regras

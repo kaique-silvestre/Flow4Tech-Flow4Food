@@ -31,6 +31,18 @@ public sealed class IdentidadeOptions
     /// </summary>
     public bool HibpIndisponivelRecusa { get; set; }
 
+    /// <summary>How long an invitation works, in days (default 7). Ticket 10 moves this to layered settings.</summary>
+    public int ConviteDias { get; set; } = 7;
+
+    /// <summary>How long a recovery link works, in minutes (default 60).</summary>
+    public int RecuperacaoMinutos { get; set; } = 60;
+
+    /// <summary>The front end that receives the links of invitation and recovery e-mails (<c>Flow4Tech:App:BaseUrl</c>). Only the path <c>/convite</c> and <c>/recuperar</c> are appended; the token goes in the fragment.</summary>
+    public Uri UrlDoApp { get; set; } = new("http://localhost:5173");
+
+    /// <summary>Google sign-in (off without client id and secret).</summary>
+    public OpcoesGoogle Google { get; set; } = new();
+
     /// <summary>Signing keys and lifetime of the access token (ticket 04). <c>AppKey</c> is required.</summary>
     public TokensOptions Tokens { get; set; } = new();
 
@@ -71,6 +83,13 @@ public static class IdentidadeServices
             throw new InvalidOperationException("A temporary credential must be valid for at least one hour.");
         }
 
+        if (options.ConviteDias < 1 || options.RecuperacaoMinutos < 5 || options.RecuperacaoMinutos > 24 * 60)
+        {
+            throw new InvalidOperationException("An invitation must last at least a day; a recovery link between 5 minutes and 24 hours.");
+        }
+
+        options.Google.Validar();
+        services.AddSingleton(new OpcoesDeAcesso(TimeSpan.FromDays(options.ConviteDias), TimeSpan.FromMinutes(options.RecuperacaoMinutos), options.UrlDoApp));
         services.AddSingleton(new ValidadeDaCredencialTemporaria(TimeSpan.FromHours(options.CredencialTemporariaHoras)));
         services.AddSingleton<IPasswordHasher>(_ => new Argon2PasswordHasher(options.Argon2));
         services.AddSingleton<ITemporaryCredentialGenerator, TemporaryCredentialGenerator>();
@@ -89,7 +108,7 @@ public static class IdentidadeServices
         services.TryAddSingleton<IProcessedEventStore, DatabaseProcessedEventStore>();
         services.AddSingleton<IAcessosConhecidos, PostgresAcessosConhecidos>();
         // The alert consumers are registered as IOutboxConsumer; the dispatcher (not in the DI yet) takes every registered consumer. Built by factory: one instance per event type.
-        foreach (var tipo in new[] { LoginNovo.Type, ContaBloqueada.Type, SenhaTrocada.Type })
+        foreach (var tipo in new[] { LoginNovo.Type, ContaBloqueada.Type, SenhaTrocada.Type, AcessoRecuperado.Type })
         {
             services.AddSingleton<IOutboxConsumer>(provider => AlertasDeSeguranca.Consumidores(provider.GetRequiredService<IProcessedEventStore>(), provider.GetRequiredService<IEnviadorDeEmail>()).Single(c => c.EventType == tipo));
         }
@@ -104,23 +123,29 @@ public static class IdentidadeServices
         services.AddSingleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(provider.GetRequiredService<IClock>(), options.Tokens));
         services.AddSingleton(new RelogiosDaSessao(options.Sessoes.Inatividade, options.Sessoes.Absoluta, options.Sessoes.IntervaloDeAtividade));
         services.TryAddSingleton<OutboxWriter>();
-        services.AddSingleton<ISessaoStore, PostgresSessaoStore>();
+        services.AddSingleton<PostgresSessaoStore>();
+        services.AddSingleton<ISessaoStore>(provider => provider.GetRequiredService<PostgresSessaoStore>());
+        services.AddSingleton<IRevogacaoDeSessoes>(provider => provider.GetRequiredService<PostgresSessaoStore>());
+        services.AddSingleton<IConvitesStore, PostgresConvitesStore>();
+        services.AddSingleton<IRecuperacoesStore, PostgresRecuperacoesStore>();
+        services.AddSingleton<IIdentidadesExternasStore, PostgresIdentidadesExternasStore>();
+        // Google (ticket 09). The HTTP client is one long-lived instance with short timeouts; the transaction seal is derived from the token key (replaced by the host with the configured key, like the emitter).
+        services.AddSingleton<IProvedorOidc>(provider => options.Google.Configurada
+            ? new ProvedorOidcGoogle(new HttpClient { Timeout = TimeSpan.FromSeconds(5), MaxResponseContentBufferSize = 256 * 1024 }, options.Google, provider.GetRequiredService<IClock>())
+            : new OidcNaoConfigurado());
+        services.AddSingleton<ISeloDeTransacao>(provider => new SeloDeTransacaoHmac(options.Tokens.AppKey, provider.GetRequiredService<IClock>()));
         services.AddSingleton<IEventosDeSeguranca, OutboxEventosDeSeguranca>();
         services.AddSingleton<Sessoes>();
         services.AddSingleton<GestaoDeContas>();
         services.AddSingleton<TrocaDeSenha>();
         services.AddSingleton<Autenticacao>();
+        services.AddSingleton<Convites>();
+        services.AddSingleton<RecuperacaoDeAcesso>();
+        services.AddSingleton<ContasGoogle>();
         return services;
     }
 
-    private static void ValidarLimites(LimitesDeLogin l)
-    {
-        if (l.FalhasParaBloquearEmail < 1 || l.FalhasParaBloquearOperacional < 1 || l.FalhasParaBloquearIp < 1 || l.ContasDistintasPorIp < 2 || l.IpsDistintosPorConta < 2 || l.FalhasParaCaptchaConta < 1 || l.FalhasParaCaptchaIp < 1
-            || l.BloqueioBase <= TimeSpan.Zero || l.BloqueioMaximo < l.BloqueioBase || l.JanelaDeFalhas <= TimeSpan.Zero || l.BloqueioDeStuffing <= TimeSpan.Zero || l.MaximoDeRegistros < 1)
-        {
-            throw new InvalidOperationException("The login protection limits are not valid.");
-        }
-    }
+    private static void ValidarLimites(LimitesDeLogin l) => l.Validar();
 
     private static HttpClient HibpClient(IdentidadeOptions options)
     {

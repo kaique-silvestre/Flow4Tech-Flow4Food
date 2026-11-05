@@ -218,7 +218,7 @@ internal static class SessaoEndpoints
     private static SessaoItem Item(SessaoResumo s) => new(s.Id, s.ContaId, s.UnidadeAtivaId, s.CriadaEm, s.UltimaAtividadeEm, s.ExpiraEm, s.Ip, s.Agente, s.Atual);
 
     /// <summary>Where the request came from; <see cref="Sessoes"/> truncates it. The peer address is used as is: <c>X-Forwarded-For</c> is client-controlled and is NOT read here; behind a proxy the host rewrites the peer address from it only when <c>Flow4Tech:Rede:ProxyConfiavel</c> is on (Program.cs).</summary>
-    private static ClienteDaSessao Cliente(HttpContext http) => new(http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString());
+    internal static ClienteDaSessao Cliente(HttpContext http) => new(http.Connection.RemoteIpAddress?.ToString(), http.Request.Headers.UserAgent.ToString());
 
     /// <summary>The access token goes in the body (the client keeps it in memory), the refresh token only in the cookie; neither may be cached.</summary>
     private static IResult Entregar(HttpContext http, SessaoEmitida emitida, IClock clock)

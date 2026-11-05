@@ -14,6 +14,25 @@ public static class IdentidadeAuditActions
 
     public const string ContaTrocarSenha = "conta:trocar-senha";
 
+    /// <summary>An administrator generated a new temporary credential for an operational account (spec 5.2.5).</summary>
+    public const string ContaRedefinirAcesso = "conta:redefinir-acesso";
+
+    /// <summary>Someone asked to recover access to an account with e-mail (known accounts only; the answer to the requester is identical either way).</summary>
+    public const string ContaSolicitarRecuperacao = "conta:solicitar-recuperacao";
+
+    /// <summary>Access was recovered by e-mail: new password, every session ended.</summary>
+    public const string ContaRecuperarAcesso = "conta:recuperar-acesso";
+
+    public const string ContaVincularGoogle = "conta:vincular-google";
+
+    public const string ContaDesvincularGoogle = "conta:desvincular-google";
+
+    public const string ConviteCriar = "convite:criar";
+
+    public const string ConviteRevogar = "convite:revogar";
+
+    public const string ConviteAceitar = "convite:aceitar";
+
     public const string AutenticacaoFalhar = "autenticacao:falhar";
 
     /// <summary>An account was locked by the login protection (too many failures or credential stuffing, spec 5.5).</summary>

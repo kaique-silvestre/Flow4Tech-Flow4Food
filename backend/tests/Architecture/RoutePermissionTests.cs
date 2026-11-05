@@ -85,10 +85,12 @@ public sealed class RoutePermissionTests
             Assert.Contains(route, all);
         }
 
-        // The public routes are exactly the three declared above and they are all POST.
+        // The public routes are exactly these (ticket 04: login, refresh, logout; ticket 09: invitation, recovery and the two redirects of the Google round trip).
         var publicOnes = endpoints.OfType<RouteEndpoint>().Where(e => e.Metadata.GetMetadata<SessionRequiredMetadata>() is null && !RoutePermissions.Allowlist.Contains(e.RoutePattern.RawText ?? ""))
             .Select(KeyOf).Order(StringComparer.Ordinal).ToList();
-        Assert.Equal(["GET /version", "POST /login", "POST /logout", "POST /refresh"], publicOnes);
+        Assert.Equal(
+            ["GET /login/google", "GET /login/google/retorno", "GET /version", "POST /convites/aceitar", "POST /login", "POST /logout", "POST /recuperacao/redefinir", "POST /recuperacao/solicitar", "POST /refresh"],
+            publicOnes);
     }
 
     [Fact]

@@ -1,9 +1,14 @@
+conta:gerir-google
+convite:aceitar
 organizacao:trocar-unidade
 organizacao:ver-unidades
 perfil:gerir
 perfil:ver
 permissao:atribuir
+recuperacao:redefinir
+recuperacao:solicitar
 sessao:entrar
+sessao:entrar-google
 sessao:renovar
 sessao:revogar
 sessao:revogar-propria
@@ -12,3 +17,5 @@ sessao:trocar-senha
 sessao:ver-proprias
 sessao:ver-todas
 sistema:ver-versao
+usuario:convidar
+usuario:redefinir-acesso

@@ -40,6 +40,16 @@ public sealed record LimitesDeLogin
 
     /// <summary>Upper bound of tracked accounts (and of tracked addresses): the memory cannot be exhausted by typing random names.</summary>
     public int MaximoDeRegistros { get; init; } = 100_000;
+
+    /// <summary>Refuses limits that would lock nobody or lock forever (a configuration error stops the host).</summary>
+    public void Validar()
+    {
+        if (FalhasParaBloquearEmail < 1 || FalhasParaBloquearOperacional < 1 || FalhasParaBloquearIp < 1 || ContasDistintasPorIp < 2 || IpsDistintosPorConta < 2 || FalhasParaCaptchaConta < 1 || FalhasParaCaptchaIp < 1
+            || BloqueioBase <= TimeSpan.Zero || BloqueioMaximo < BloqueioBase || JanelaDeFalhas <= TimeSpan.Zero || BloqueioDeStuffing <= TimeSpan.Zero || MaximoDeRegistros < 1)
+        {
+            throw new InvalidOperationException("The login protection limits are not valid.");
+        }
+    }
 }
 
 /// <summary>

@@ -37,6 +37,24 @@ internal static class SessionConfiguration
         };
     }
 
+    public static LimitesDeLogin LimitesDeLogin(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        var padrao = new LimitesDeLogin();
+        var limites = padrao with
+        {
+            FalhasParaBloquearEmail = configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasEmail", padrao.FalhasParaBloquearEmail),
+            FalhasParaBloquearOperacional = configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasOperacional", padrao.FalhasParaBloquearOperacional),
+            BloqueioBase = TimeSpan.FromSeconds(configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioBaseSegundos", padrao.BloqueioBase.TotalSeconds)),
+            BloqueioMaximo = TimeSpan.FromMinutes(configuration.GetValue("Flow4Tech:Identidade:Bloqueio:BloqueioMaximoMinutos", padrao.BloqueioMaximo.TotalMinutes)),
+            FalhasParaBloquearIp = configuration.GetValue("Flow4Tech:Identidade:Bloqueio:FalhasPorIp", padrao.FalhasParaBloquearIp),
+            ContasDistintasPorIp = configuration.GetValue("Flow4Tech:Identidade:Bloqueio:ContasPorIp", padrao.ContasDistintasPorIp),
+            IpsDistintosPorConta = configuration.GetValue("Flow4Tech:Identidade:Bloqueio:IpsPorConta", padrao.IpsDistintosPorConta),
+        };
+        limites.Validar();
+        return limites;
+    }
+
     public static RelogiosDaSessao Relogios(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);

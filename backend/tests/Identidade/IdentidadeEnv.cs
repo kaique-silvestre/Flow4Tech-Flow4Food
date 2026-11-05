@@ -158,7 +158,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
     public T Get<T>()
         where T : notnull => _services.GetRequiredService<T>();
 
-    public static async Task<IdentidadeEnv> CreateAsync(PostgresFixture postgres, Action<IdentidadeOptions>? tweak = null, Func<IAuditLog, IAuditLog>? decorateAudit = null, TestDatabase? existing = null, ICompromisedPasswordCheck? compromised = null)
+    public static async Task<IdentidadeEnv> CreateAsync(PostgresFixture postgres, Action<IdentidadeOptions>? tweak = null, Func<IAuditLog, IAuditLog>? decorateAudit = null, TestDatabase? existing = null, ICompromisedPasswordCheck? compromised = null, Action<IServiceCollection>? configure = null)
     {
         var db = existing;
         if (db is null)
@@ -204,6 +204,7 @@ internal sealed class IdentidadeEnv : IAsyncDisposable
             services.Replace(ServiceDescriptor.Singleton<IAuditLog>(p => decorateAudit((IAuditLog)ActivatorUtilities.CreateInstance(p, real.ImplementationType!))));
         }
 
+        configure?.Invoke(services);
         return new IdentidadeEnv(db, services.BuildServiceProvider());
     }
 

@@ -79,7 +79,7 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
 
     private sealed record Conta(Guid Id, string Usuario, string Email, string Senha);
 
-    private ApiFactory Api(TestClock? clock = null, CapturedLogs? logs = null, Dictionary<string, string?>? extra = null) => new(_appConnection, clock, logs, extra);
+    private ApiFactory Api(TestClock? clock = null, CapturedLogs? logs = null, Dictionary<string, string?>? extra = null, Action<IServiceCollection>? services = null) => new(_appConnection, clock, logs, extra, services);
 
     private const string NovaSenhaPadrao = "senha-longa-da-pessoa-2026";
 
@@ -929,6 +929,205 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
         Assert.Equal(["sucesso"], await QueryAsync(OrgA, "SELECT resultado FROM auditoria_registros WHERE acao = 'sessao:revogar' AND objeto_id = @s", r => r.GetString(0), ("s", mariaSessao.SessaoId.ToString("D"))));
     }
 
+    // ---- ticket 09: invitations, recovery, credential reset, Google ---------------------------------------------------------------------------
+
+    private sealed class ProvedorStub : IProvedorOidc
+    {
+        public IdentidadeOidc? Identidade { get; set; }
+
+        public bool Configurado => true;
+
+        public Uri UrlDeAutorizacao(string state, string nonce, string codeChallenge) => new($"https://provedor.invalido/auth?state={Uri.EscapeDataString(state)}");
+
+        public Task<IdentidadeOidc?> TrocarCodigoAsync(string code, string codeVerifier, string nonceEsperado, CancellationToken cancellationToken) => Task.FromResult(code == "bom" ? Identidade : null);
+    }
+
+    private static string LastLinkToken(ApiFactory api, string subject) =>
+        api.Services.GetRequiredService<Flow4Tech.Identidade.Infrastructure.EnviadorDeEmailDeDesenvolvimento>().Enviadas
+            .Last(m => m.Assunto.Contains(subject, StringComparison.Ordinal)).Texto.Split("#token=")[1].Split(['\n', ' '])[0];
+
+    /// <summary>An account with e-mail created through the real invitation routes (owner invites, person accepts); returns its address and password.</summary>
+    private async Task<(string Email, string Senha)> InvitedAccountAsync(ApiFactory api, HttpClient client)
+    {
+        await EnsureOwnerAsync(api);
+        using var dono = await LoginOwnerAsync(client);
+        var email = $"pessoa{Guid.NewGuid():N}"[..16] + "@a.com";
+        using var convite = Post("/convites", new { email, nome = "Pessoa Convidada" }, token: dono.Token);
+        using var criado = await client.SendAsync(convite);
+        Assert.Equal(HttpStatusCode.Created, criado.StatusCode);
+        const string senha = "senha-da-pessoa-convidada-2026";
+        using var aceitar = Post("/convites/aceitar", new { token = LastLinkToken(api, "convidado"), senha }, csrf: true);
+        using var aceito = await client.SendAsync(aceitar);
+        Assert.Equal(HttpStatusCode.NoContent, aceito.StatusCode);
+        return (email, senha);
+    }
+
+    private static async Task<SessaoDto> LoginByEmailAsync(HttpClient client, string email, string senha)
+    {
+        using var request = Post("/login", new { email, senha }, csrf: true);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<SessaoDto>())!;
+    }
+
+    [Fact]
+    public async Task Invitation_over_http_creates_an_account_with_the_chosen_password_once_and_only_for_whoever_may_invite()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        await EnsureOwnerAsync(api);
+        var operacional = await NewAccountAsync(api, [UnitA1]);
+        var (_, sessaoOperacional) = (0, (await LoginAsync(client, operacional)).Sessao);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(client, () => Post("/convites", new { email = "x@a.com", nome = "X" })));
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post("/convites", new { email = "x@a.com", nome = "X" }, token: sessaoOperacional.AccessToken)));
+
+        var (email, senha) = await InvitedAccountAsync(api, client);
+        var token = LastLinkToken(api, "convidado");
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Post("/convites/aceitar", new { token, senha }, csrf: true))); // single use
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post("/convites/aceitar", new { token, senha }))); // CSRF guard
+        Assert.Equal(email, (await QueryAsync(OrgA, "SELECT email FROM contas WHERE email = @e", r => r.GetString(0), ("e", email))).Single());
+        _ = await LoginByEmailAsync(client, email, senha);
+    }
+
+    [Fact]
+    public async Task Recovery_over_http_answers_the_same_for_known_and_unknown_addresses_and_ends_every_session()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var (email, senha) = await InvitedAccountAsync(api, client);
+        var sessao = await LoginByEmailAsync(client, email, senha);
+        const string nova = "uma-nova-senha-bem-longa-2027";
+
+        var respostas = new List<(HttpStatusCode, string)>();
+        foreach (var endereco in new[] { email, "ninguem@a.com", "isto-nao-e-email" })
+        {
+            using var request = Post("/recuperacao/solicitar", new { email = endereco }, csrf: true);
+            using var response = await client.SendAsync(request);
+            respostas.Add((response.StatusCode, await response.Content.ReadAsStringAsync()));
+        }
+
+        Assert.All(respostas, r => Assert.Equal((HttpStatusCode.Accepted, string.Empty), r));
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post("/recuperacao/solicitar", new { email }))); // CSRF guard
+
+        var token = LastLinkToken(api, "Recupera");
+        Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Post("/recuperacao/redefinir", new { token, novaSenha = nova }, csrf: true)));
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Post("/recuperacao/redefinir", new { token, novaSenha = nova }, csrf: true))); // single use
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(client, () => Get("/unidades", sessao.AccessToken))); // the old session died
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(client, () => Post("/login", new { email, senha }, csrf: true)));
+        _ = await LoginByEmailAsync(client, email, nova);
+        Assert.True((await QueryAsync(OrgA, "SELECT count(*) FROM outbox_eventos WHERE tipo = 'seguranca.acesso-recuperado'", r => r.GetInt64(0))).Single() >= 1);
+    }
+
+    [Fact]
+    public async Task Resetting_the_access_of_an_operational_account_over_http_returns_the_credential_once_and_only_for_who_may()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        await EnsureOwnerAsync(api);
+        var (emailDaPessoa, _) = await InvitedAccountAsync(api, client);
+        var pessoaComEmail = (await QueryAsync(OrgA, "SELECT id FROM contas WHERE email = @e", r => r.GetGuid(0), ("e", emailDaPessoa))).Single();
+        var garcom = await NewAccountAsync(api, [UnitA1]);
+        var outro = await NewAccountAsync(api, [UnitA1]);
+        var sessaoDoOutro = (await LoginAsync(client, outro)).Sessao;
+        using var login = await LoginOwnerAsync(client);
+
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post($"/contas/{garcom.Id}/redefinir-acesso", token: sessaoDoOutro.AccessToken)));
+        using var request = Post($"/contas/{garcom.Id}/redefinir-acesso", token: login.Token);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
+        var credencial = (await response.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("credencial").GetString()!;
+
+        var entrou = await LoginAsync(client, garcom, credencial);
+        Assert.True(entrou.Sessao.DeveTrocarSenha);
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(client, () => Post("/login", new { organizacaoDoLogin = OrgA, usuario = garcom.Usuario, senha = garcom.Senha }, csrf: true))); // the old password is gone
+        Assert.Equal(HttpStatusCode.Conflict, await Status(client, () => Post($"/contas/{pessoaComEmail}/redefinir-acesso", token: login.Token))); // e-mail accounts recover by e-mail
+        Assert.Equal(HttpStatusCode.NotFound, await Status(client, () => Post($"/contas/{Guid.NewGuid()}/redefinir-acesso", token: login.Token)));
+    }
+
+    [Fact]
+    public async Task Google_is_off_without_configuration_and_the_callback_always_ends_in_the_neutral_redirect()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        using var inicio = await client.GetAsync(new Uri("/login/google", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.NotFound, inicio.StatusCode);
+
+        using var retorno = await client.GetAsync(new Uri("/login/google/retorno?code=qualquer&state=qualquer", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, retorno.StatusCode);
+        Assert.EndsWith("/entrar?google=erro", retorno.Headers.Location!.ToString(), StringComparison.Ordinal);
+        Assert.Null(ReadCookie(retorno)); // no session
+    }
+
+    [Fact]
+    public async Task Google_over_http_links_with_the_password_signs_in_through_the_refresh_cookie_and_refuses_operational_accounts()
+    {
+        var provedor = new ProvedorStub();
+        await using var api = Api(services: s => s.Replace(ServiceDescriptor.Singleton<IProvedorOidc>(provedor)));
+        using var client = api.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var (email, senha) = await InvitedAccountAsync(api, client);
+        provedor.Identidade = new IdentidadeOidc("sub-da-pessoa", email, true);
+        var sessao = await LoginByEmailAsync(client, email, senha);
+
+        // not linked: neutral, no session
+        var (selo0, state0) = await StartGoogleAsync(client);
+        using var semVinculo = await Callback(client, selo0, state0);
+        Assert.EndsWith("/entrar?google=erro", semVinculo.Headers.Location!.ToString(), StringComparison.Ordinal);
+        Assert.Null(ReadCookie(semVinculo));
+
+        // link: wrong password refused, right one starts the round trip
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Post("/conta/google/vinculo", new { senhaAtual = "senha-errada-123456" }, token: sessao.AccessToken)));
+        using var vinculo = Post("/conta/google/vinculo", new { senhaAtual = senha }, token: sessao.AccessToken);
+        using var iniciado = await client.SendAsync(vinculo);
+        Assert.Equal(HttpStatusCode.OK, iniciado.StatusCode);
+        var selo = OidcCookieValue(iniciado)!;
+        var state = System.Web.HttpUtility.ParseQueryString(new Uri((await iniciado.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("url").GetString()!).Query)["state"]!;
+        using var vinculado = await Callback(client, selo, state);
+        Assert.EndsWith("/conta?google=vinculado", vinculado.Headers.Location!.ToString(), StringComparison.Ordinal);
+        Assert.Null(ReadCookie(vinculado)); // linking never starts a session
+
+        // now it signs in: the refresh cookie arrives and /refresh turns it into an access token
+        var (selo1, state1) = await StartGoogleAsync(client);
+        using var entrou = await Callback(client, selo1, state1);
+        Assert.EndsWith("/entrar?google=ok", entrou.Headers.Location!.ToString(), StringComparison.Ordinal);
+        var cookie = ReadCookie(entrou);
+        Assert.NotNull(cookie);
+        Assert.Equal(HttpStatusCode.OK, (await RefreshAsync(client, cookie!)).Status);
+
+        // a state that does not match the cookie is refused, and an operational account may not even start
+        var (selo2, _) = await StartGoogleAsync(client);
+        using var errado = await Callback(client, selo2, "state-errado");
+        Assert.EndsWith("/entrar?google=erro", errado.Headers.Location!.ToString(), StringComparison.Ordinal);
+        var operacional = await NewAccountAsync(api, [UnitA1]);
+        var sessaoOperacional = (await LoginAsync(client, operacional)).Sessao;
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post("/conta/google/vinculo", new { senhaAtual = operacional.Senha }, token: sessaoOperacional.AccessToken)));
+    }
+
+    private static string? OidcCookieValue(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("Set-Cookie", out var values)
+            ? values.FirstOrDefault(v => v.StartsWith("__Host-f4t_oidc=", StringComparison.Ordinal))?.Split(';')[0]["__Host-f4t_oidc=".Length..]
+            : null;
+
+    private static async Task<(string Selo, string State)> StartGoogleAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync(new Uri("/login/google", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var setCookie = response.Headers.GetValues("Set-Cookie").Single(v => v.StartsWith("__Host-f4t_oidc=", StringComparison.Ordinal));
+        Assert.Contains("samesite=lax", setCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
+        return (OidcCookieValue(response)!, System.Web.HttpUtility.ParseQueryString(response.Headers.Location!.Query)["state"]!);
+    }
+
+    private static async Task<HttpResponseMessage> Callback(HttpClient client, string selo, string state)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"/login/google/retorno?code=bom&state={Uri.EscapeDataString(state)}", UriKind.Relative));
+        request.Headers.Add("Cookie", $"__Host-f4t_oidc={selo}");
+        return await client.SendAsync(request);
+    }
+
     private sealed class OwnerLogin(string token) : IDisposable
     {
         public string Token { get; } = token;
@@ -1070,7 +1269,7 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
         }
     }
 
-    private sealed class ApiFactory(string connectionString, TestClock? clock, CapturedLogs? logs, Dictionary<string, string?>? extra) : WebApplicationFactory<Program>
+    private sealed class ApiFactory(string connectionString, TestClock? clock, CapturedLogs? logs, Dictionary<string, string?>? extra, Action<IServiceCollection>? services = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -1099,7 +1298,12 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
             });
             if (clock is not null)
             {
-                builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<IClock>(clock)));
+                builder.ConfigureTestServices(replaced => replaced.Replace(ServiceDescriptor.Singleton<IClock>(clock)));
+            }
+
+            if (services is not null)
+            {
+                builder.ConfigureTestServices(services);
             }
         }
     }

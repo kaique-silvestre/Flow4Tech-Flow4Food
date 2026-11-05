@@ -16,6 +16,9 @@ public sealed class PoliticaDeFabricaTests
         "sessao:trocar-senha",
         "sessao:ver-proprias",
         "sessao:revogar-propria",
+        "conta:gerir-google",
+        "usuario:convidar",
+        "usuario:redefinir-acesso",
         "sessao:ver-todas",
         "sessao:revogar",
         "sistema:ver-versao",
@@ -36,6 +39,7 @@ public sealed class PoliticaDeFabricaTests
     [InlineData("sessao:trocar-senha")]
     [InlineData("sessao:ver-proprias")]
     [InlineData("sessao:revogar-propria")]
+    [InlineData("conta:gerir-google")]
     public async Task Every_account_can_do_what_concerns_only_itself(string permission)
     {
         Assert.True((await AskAsync(permission, PerfisDeFabrica.Conta)).IsAllowed);
@@ -45,6 +49,8 @@ public sealed class PoliticaDeFabricaTests
     [Theory]
     [InlineData("sessao:ver-todas")]
     [InlineData("sessao:revogar")]
+    [InlineData("usuario:convidar")]
+    [InlineData("usuario:redefinir-acesso")]
     [InlineData("financeiro:exportar")]
     public async Task An_ordinary_account_gets_nothing_administrative_or_financial_by_default(string permission)
     {

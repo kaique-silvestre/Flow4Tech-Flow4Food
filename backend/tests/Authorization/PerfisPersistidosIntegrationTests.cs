@@ -155,7 +155,7 @@ public sealed class PerfisPersistidosIntegrationTests(PostgresFixture postgres)
         var stored = await env.Uow.ExecuteAsync(PerfisTestEnv.OrgContext, ct => env.Store.ObterAsync(OrgA, copy.Id!.Value, ct));
         Assert.NotNull(stored);
         Assert.False(stored.AcompanhaModelo);
-        Assert.Equal(5, stored.Regras.Count);
+        Assert.Equal(6, stored.Regras.Count); // the factory "conta" rules: 5 of ticket 05 + conta:gerir-google (ticket 09)
         Assert.Equal(ResultadoGestao.Ok, await env.Gestao.SubstituirRegrasAsync(PerfisTestEnv.As(owner), copy.Id!.Value.ToString("D"), [Allow(Relatorio)])); // editable
     }
 

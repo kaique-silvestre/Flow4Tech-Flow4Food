@@ -139,6 +139,58 @@ public sealed class GestaoDeContas(
             : new ResultadoCriacaoOperacional(StatusCriacao.Indisponivel, null, null);
     }
 
+    /// <summary>
+    /// Spec 5.2.5: whoever holds <c>usuario:redefinir-acesso</c> (decided by the route) generates a NEW temporary credential for an OPERATIONAL account whose person lost the access: returned ONCE, never stored or
+    /// recoverable, expires, forces the change at the next login (<see cref="Autenticacao"/>), and ends every session of the old credential. Nobody types the password for the person. It is also the only way back
+    /// for an account whose temporary credential expired. Accounts with e-mail recover by e-mail (<see cref="RecuperacaoDeAcesso"/>); nobody resets their own access this way.
+    /// </summary>
+    public async Task<ResultadoRedefinicao> RedefinirAcessoAsync(IRequestContext request, Guid contaId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var organizationId = request.Organization.OrganizationId;
+        var credencial = temporary.Generate();
+        var hash = await hasher.HashAsync(PoliticaDeSenha.Normalizar(credencial), cancellationToken);
+        var expiraEm = clock.UtcNow + validade.Valor;
+        var status = await unitOfWork.ExecuteAsync(
+            request,
+            async ct =>
+            {
+                if (contaId == request.UserId || (await contas.ObterComCredencialAsync(organizationId, request.UserId, ct)) is not { Ativa: true, DeveTrocarSenha: false })
+                {
+                    return StatusRedefinicao.Negada;
+                }
+
+                var alvo = await contas.ObterAsync(organizationId, contaId, ct);
+                if (alvo is not { Ativa: true })
+                {
+                    return StatusRedefinicao.NaoEncontrada;
+                }
+
+                if (alvo.Tipo != TipoConta.Operacional)
+                {
+                    return StatusRedefinicao.ContaComEmail;
+                }
+
+                if (!await contas.RedefinirCredencialTemporariaAsync(organizationId, contaId, hash, expiraEm, ct))
+                {
+                    return StatusRedefinicao.NaoEncontrada;
+                }
+
+                await audit.RecordAsync(request, Entry(IdentidadeAuditActions.ContaRedefinirAcesso, AuditResult.Sucesso, contaId, null, new JsonObject { ["tipo"] = "operacional" }), ct);
+                return StatusRedefinicao.Redefinida;
+            },
+            cancellationToken);
+
+        if (status == StatusRedefinicao.Negada)
+        {
+            await audit.RecordDetachedAsync(request, Entry(IdentidadeAuditActions.ContaRedefinirAcesso, AuditResult.Negado, contaId, null, new JsonObject { ["motivo"] = "ator-nao-pode-agir" }), cancellationToken);
+        }
+
+        return status == StatusRedefinicao.Redefinida
+            ? new ResultadoRedefinicao(status, new CredencialTemporaria(credencial), expiraEm)
+            : new ResultadoRedefinicao(status, null, null);
+    }
+
     /// <summary>Deactivates an account (marks it, ends its sessions through the credential version, keeps all history). The protection rules of spec 5.2.7 apply.</summary>
     public async Task<ResultadoProtecao> DesativarAsync(IRequestContext request, Guid contaId, CancellationToken cancellationToken = default)
     {

@@ -46,7 +46,7 @@ internal static class RoutePermissions
     /// <summary>
     /// The ONLY routes that declare a permission without a session, as <c>VERB pattern</c>. <c>/version</c> only reports the build version (no tenant data) and is used by deploy
     /// smoke checks before anyone can sign in. <c>/login</c> creates the session (the credential in the body is the authentication); <c>/refresh</c> and <c>/logout</c> are
-    /// authenticated by the HttpOnly refresh cookie, guarded against CSRF (ticket 04). Adding a route here needs the same review as adding one to <see cref="Allowlist"/>.
+    /// authenticated by the HttpOnly refresh cookie, guarded against CSRF (ticket 04). Ticket 09 adds the routes a person reaches before having a session: accepting an invitation and redeeming a recovery link (the single-use token in the body is the credential), asking for a recovery link (the answer never depends on the account), and the two redirects of the Google round trip (the signed cookie and the `state` are the credential). Adding a route here needs the same review as adding one to <see cref="Allowlist"/>.
     /// </summary>
     public static readonly IReadOnlySet<string> PublicWithoutSession = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -54,6 +54,11 @@ internal static class RoutePermissions
         "POST /login",
         "POST /refresh",
         "POST /logout",
+        "POST /convites/aceitar",
+        "POST /recuperacao/solicitar",
+        "POST /recuperacao/redefinir",
+        "GET /login/google",
+        "GET /login/google/retorno",
     };
 
     /// <summary>

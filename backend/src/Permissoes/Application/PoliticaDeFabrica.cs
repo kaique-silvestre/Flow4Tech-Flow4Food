@@ -30,6 +30,7 @@ public static class PoliticaDeFabrica
         "sessao:trocar-senha",
         "sessao:ver-proprias",
         "sessao:revogar-propria",
+        "conta:gerir-google",
     ];
 
     public static PolicySet Criar(IEnumerable<string> catalogo)

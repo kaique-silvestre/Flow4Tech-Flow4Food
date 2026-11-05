@@ -82,6 +82,7 @@ internal sealed class PerfisTestEnv : IAsyncDisposable
         "sessao:trocar-senha",
         "sessao:ver-proprias",
         "sessao:revogar-propria",
+        "conta:gerir-google",
     ];
 
     private readonly NpgsqlDataSource _source;

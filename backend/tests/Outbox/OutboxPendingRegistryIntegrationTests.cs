@@ -59,14 +59,21 @@ public sealed class OutboxPendingRegistryIntegrationTests(PostgresFixture postgr
         await using var env = await Env.CreateAsync(postgres);
         var a = await env.CreateItemAsync(Ctx(OrgA), "A-evento");
         var b = await env.CreateItemAsync(Ctx(OrgB), "B-evento");
-        var seen = new List<(Guid Event, long VisibleItems)>();
+        var seen = new List<(Guid Event, List<string> Names)>();
         var consumer = new RecordingConsumer
         {
             // Inside the delivery transaction only the event's own organization is visible (RLS): the other organization's item must not be.
             Inside = async (m, tx) =>
             {
-                await using var command = new NpgsqlCommand("SELECT count(*) FROM amostra_itens", tx.Connection, tx.Transaction);
-                seen.Add((m.Id, (long)(await command.ExecuteScalarAsync())!));
+                await using var command = new NpgsqlCommand("SELECT nome FROM amostra_itens", tx.Connection, tx.Transaction);
+                var names = new List<string>();
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    names.Add(reader.GetString(0));
+                }
+
+                seen.Add((m.Id, names));
             },
         };
 
@@ -74,7 +81,10 @@ public sealed class OutboxPendingRegistryIntegrationTests(PostgresFixture postgr
 
         Assert.Equal(2, delivered);
         Assert.Equal([a.EventId, b.EventId], consumer.Deliveries.Order());
-        Assert.All(seen, s => Assert.Equal(1, s.VisibleItems));
+        // The seed gives each organization its own sample item too, so the proof is by name: every item seen starts with the prefix of the event's own organization ("A-" / "B-").
+        Assert.Equal(2, seen.Count);
+        Assert.All(seen, s => Assert.All(s.Names, name => Assert.StartsWith(s.Event == a.EventId ? "A-" : "B-", name, StringComparison.Ordinal)));
+        Assert.All(seen, s => Assert.Contains(s.Event == a.EventId ? "A-evento" : "B-evento", s.Names));
         Assert.Empty(await env.PendingIdsAsync());
         Assert.Equal(0, await env.PendingEventsAsync(Ctx(OrgA)));
         Assert.Equal(0, await env.PendingEventsAsync(Ctx(OrgB)));

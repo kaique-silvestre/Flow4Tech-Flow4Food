@@ -407,10 +407,538 @@
         },
         "x-permission": "sessao:revogar-propria"
       }
+    },
+    "/convites": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarConvite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConviteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large"
+          }
+        },
+        "x-permission": "usuario:convidar"
+      }
+    },
+    "/convites/{id}/revogar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "revogarConvite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "x-permission": "usuario:convidar"
+      }
+    },
+    "/convites/aceitar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "aceitarConvite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AceitarConviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "convite:aceitar"
+      }
+    },
+    "/recuperacao/solicitar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "solicitarRecuperacao",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitarRecuperacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          }
+        },
+        "x-permission": "recuperacao:solicitar"
+      }
+    },
+    "/recuperacao/redefinir": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "redefinirSenha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedefinirSenhaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "recuperacao:redefinir"
+      }
+    },
+    "/contas/{id}/redefinir-acesso": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "redefinirAcessoDaConta",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredencialTemporariaResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "usuario:redefinir-acesso"
+      }
+    },
+    "/login/google": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "entrarComGoogle",
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "x-permission": "sessao:entrar-google"
+      }
+    },
+    "/login/google/retorno": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "retornoDoGoogle",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "sessao:entrar-google"
+      }
+    },
+    "/conta/google/vinculo": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "iniciarVinculoGoogle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VincularGoogleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IniciarGoogleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcessoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        },
+        "x-permission": "conta:gerir-google"
+      },
+      "delete": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "desvincularGoogle",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "x-permission": "conta:gerir-google"
+      }
     }
   },
   "components": {
     "schemas": {
+      "AceitarConviteRequest": {
+        "required": [
+          "token",
+          "senha"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "senha": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AcessoErro": {
+        "required": [
+          "codigo",
+          "problemas"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "problemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ConviteRequest": {
+        "required": [
+          "email",
+          "nome",
+          "perfilId",
+          "unidadeInicialId"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "perfilId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "unidadeInicialId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "ConviteResponse": {
+        "required": [
+          "id",
+          "expiraEm",
+          "emailEnviado"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "emailEnviado": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CredencialTemporariaResponse": {
+        "required": [
+          "credencial",
+          "expiraEm"
+        ],
+        "type": "object",
+        "properties": {
+          "credencial": {
+            "type": "string"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "HealthStatus": {
         "required": [
           "status"
@@ -425,6 +953,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "IniciarGoogleResponse": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           }
         }
       },
@@ -463,6 +1002,27 @@
             ]
           },
           "captchaResposta": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RedefinirSenhaRequest": {
+        "required": [
+          "token",
+          "novaSenha"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "novaSenha": {
             "type": [
               "null",
               "string"
@@ -574,6 +1134,20 @@
           }
         }
       },
+      "SolicitarRecuperacaoRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "TrocarSenhaErro": {
         "required": [
           "codigo",
@@ -661,6 +1235,20 @@
         "properties": {
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "VincularGoogleRequest": {
+        "required": [
+          "senhaAtual"
+        ],
+        "type": "object",
+        "properties": {
+          "senhaAtual": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       }

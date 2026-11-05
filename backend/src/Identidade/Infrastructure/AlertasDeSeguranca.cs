@@ -22,6 +22,7 @@ public static class AlertasDeSeguranca
         new IdempotentConsumer("identidade.alerta-login-novo", LoginNovo.Type, inbox, (message, tx, ct) => LoginNovoAsync(email, message, tx, ct)),
         new IdempotentConsumer("identidade.alerta-conta-bloqueada", ContaBloqueada.Type, inbox, (message, tx, ct) => ContaBloqueadaAsync(email, message, tx, ct)),
         new IdempotentConsumer("identidade.alerta-senha-trocada", SenhaTrocada.Type, inbox, (message, tx, ct) => SenhaTrocadaAsync(email, message, tx, ct)),
+        new IdempotentConsumer("identidade.alerta-acesso-recuperado", AcessoRecuperado.Type, inbox, (message, tx, ct) => AcessoRecuperadoAsync(email, message, tx, ct)),
     ];
 
     private static async Task LoginNovoAsync(IEnviadorDeEmail email, OutboxMessage message, TenantTransaction tx, CancellationToken ct)
@@ -66,6 +67,22 @@ public static class AlertasDeSeguranca
             await email.EnviarAsync(
                 new MensagemDeEmail(destino, "Sua senha foi alterada", $"A senha da sua conta Flow4Tech foi alterada em {Quando(evento.TrocadaEm)} e as outras sessões foram encerradas.\n\nSe não foi você, entre em contato com o responsável da sua organização imediatamente."),
                 ct);
+        }
+    }
+
+    /// <summary>Spec 5.2.5: access was recovered by e-mail. Goes to the person AND the owners (a recovered owner account is worth a second pair of eyes); nothing in it is a secret.</summary>
+    private static async Task AcessoRecuperadoAsync(IEnviadorDeEmail email, OutboxMessage message, TenantTransaction tx, CancellationToken ct)
+    {
+        var evento = JsonSerializer.Deserialize<AcessoRecuperado>(message.Payload, Json) ?? throw new InvalidOperationException("Malformed security event.");
+        var (pessoa, donos) = await DestinatariosAsync(tx, evento.ContaId, ct);
+        var quando = Quando(evento.RecuperadoEm);
+        foreach (var destino in Unicos(pessoa, donos))
+        {
+            var propria = pessoa is not null && destino == pessoa.Email;
+            var texto = propria
+                ? $"O acesso à sua conta Flow4Tech foi recuperado em {quando}: a senha foi redefinida pelo link enviado ao seu e-mail e todas as sessões foram encerradas.\n\nSe não foi você, entre em contato com o responsável da sua organização imediatamente."
+                : $"O acesso à conta de {pessoa?.Nome ?? "um usuário"} foi recuperado por e-mail em {quando} (senha redefinida, sessões encerradas).";
+            await email.EnviarAsync(new MensagemDeEmail(destino, "Acesso à sua conta recuperado", texto), ct);
         }
     }
 

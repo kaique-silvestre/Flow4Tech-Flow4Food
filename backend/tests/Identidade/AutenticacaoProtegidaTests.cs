@@ -85,6 +85,8 @@ internal sealed class FakeLookup : IPreAuthLookup
         return conta;
     }
 
+    public void AddEmailExistente(string email, ContaParaLogin conta) => _byEmail[email] = conta;
+
     public ContaParaLogin AddOperacional(Guid org, string usuario, string senha)
     {
         var conta = new ContaParaLogin(Guid.NewGuid(), org, TipoConta.Operacional, "hash:" + senha, false, true, 1, null);

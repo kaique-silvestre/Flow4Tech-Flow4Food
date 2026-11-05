@@ -91,6 +91,69 @@ internal sealed class SessaoRefreshRow
     public DateTimeOffset? UsadoEm { get; set; }
 }
 
+internal sealed class ConviteRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public string Email { get; set; } = "";
+
+    public string Nome { get; set; } = "";
+
+    public Guid? PerfilId { get; set; }
+
+    public Guid? UnidadeId { get; set; }
+
+    public byte[] TokenHash { get; set; } = [];
+
+    public Guid CriadoPor { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+
+    public DateTimeOffset ExpiraEm { get; set; }
+
+    public DateTimeOffset? UsadoEm { get; set; }
+
+    public DateTimeOffset? RevogadoEm { get; set; }
+
+    public Guid? ContaId { get; set; }
+}
+
+internal sealed class RecuperacaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid ContaId { get; set; }
+
+    public byte[] TokenHash { get; set; } = [];
+
+    public DateTimeOffset CriadoEm { get; set; }
+
+    public DateTimeOffset ExpiraEm { get; set; }
+
+    public DateTimeOffset? UsadoEm { get; set; }
+}
+
+internal sealed class IdentidadeExternaRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid ContaId { get; set; }
+
+    public string Provedor { get; set; } = "";
+
+    public string Sub { get; set; } = "";
+
+    public string Email { get; set; } = "";
+
+    public string TipoConta { get; set; } = "";
+
+    public DateTimeOffset CriadaEm { get; set; }
+}
+
 /// <summary>EF mapping of accounts and credentials (schema owned by <c>0007_identidade.sql</c>). One instance per unit of work, from a tenant transaction. The global e-mail table is NOT mapped: only the SECURITY DEFINER functions touch it.</summary>
 internal sealed class IdentidadeDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
@@ -101,6 +164,12 @@ internal sealed class IdentidadeDbContext(TenantTransaction transaction) : Tenan
     public DbSet<SessaoRow> Sessoes => Set<SessaoRow>();
 
     public DbSet<SessaoRefreshRow> SessaoRefresh => Set<SessaoRefreshRow>();
+
+    public DbSet<ConviteRow> Convites => Set<ConviteRow>();
+
+    public DbSet<RecuperacaoRow> Recuperacoes => Set<RecuperacaoRow>();
+
+    public DbSet<IdentidadeExternaRow> IdentidadesExternas => Set<IdentidadeExternaRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -151,6 +220,48 @@ internal sealed class IdentidadeDbContext(TenantTransaction transaction) : Tenan
             e.Property(x => x.Hash).HasColumnName("hash");
             e.Property(x => x.CriadoEm).HasColumnName("criado_em");
             e.Property(x => x.UsadoEm).HasColumnName("usado_em");
+        });
+        modelBuilder.Entity<ConviteRow>(e =>
+        {
+            e.ToTable("convites");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.Email).HasColumnName("email");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.PerfilId).HasColumnName("perfil_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.TokenHash).HasColumnName("token_hash");
+            e.Property(x => x.CriadoPor).HasColumnName("criado_por");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+            e.Property(x => x.ExpiraEm).HasColumnName("expira_em");
+            e.Property(x => x.UsadoEm).HasColumnName("usado_em");
+            e.Property(x => x.RevogadoEm).HasColumnName("revogado_em");
+            e.Property(x => x.ContaId).HasColumnName("conta_id");
+        });
+        modelBuilder.Entity<RecuperacaoRow>(e =>
+        {
+            e.ToTable("recuperacoes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.ContaId).HasColumnName("conta_id");
+            e.Property(x => x.TokenHash).HasColumnName("token_hash");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+            e.Property(x => x.ExpiraEm).HasColumnName("expira_em");
+            e.Property(x => x.UsadoEm).HasColumnName("usado_em");
+        });
+        modelBuilder.Entity<IdentidadeExternaRow>(e =>
+        {
+            e.ToTable("identidades_externas");
+            e.HasKey(x => new { x.OrganizacaoId, x.ContaId, x.Provedor });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.ContaId).HasColumnName("conta_id");
+            e.Property(x => x.Provedor).HasColumnName("provedor");
+            e.Property(x => x.Sub).HasColumnName("sub");
+            e.Property(x => x.Email).HasColumnName("email");
+            e.Property(x => x.TipoConta).HasColumnName("tipo_conta");
+            e.Property(x => x.CriadaEm).HasColumnName("criada_em");
         });
         modelBuilder.Entity<CredencialRow>(e =>
         {

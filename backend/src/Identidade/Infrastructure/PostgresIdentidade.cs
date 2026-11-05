@@ -81,6 +81,26 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
         await context.Database.ExecuteSqlAsync($"UPDATE contas SET versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
     }
 
+    public async Task<bool> RedefinirCredencialTemporariaAsync(Guid organizacaoId, Guid contaId, string novoHash, DateTimeOffset expiraEm, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var now = clock.UtcNow;
+        // Only an ACTIVE OPERATIONAL account: the guard is in the statement, not only in the caller. The credential and the version change in the same unit of work.
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE credenciais SET senha_hash = {novoHash}, deve_trocar_senha = true, temporaria_expira_em = {expiraEm}, atualizada_em = {now}
+             WHERE conta_id = {contaId} AND EXISTS (SELECT 1 FROM contas c WHERE c.id = credenciais.conta_id AND c.tipo = 'operacional' AND c.ativa)
+            """,
+            cancellationToken);
+        if (rows != 1)
+        {
+            return false;
+        }
+
+        await context.Database.ExecuteSqlAsync($"UPDATE contas SET versao_credencial = versao_credencial + 1 WHERE id = {contaId}", cancellationToken);
+        return true;
+    }
+
     public async Task<bool> RehashAsync(Guid organizacaoId, Guid contaId, string hashAnterior, string novoHash, CancellationToken cancellationToken)
     {
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
