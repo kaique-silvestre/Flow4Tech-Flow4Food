@@ -13,6 +13,7 @@ public sealed class PoliticaDeFabricaTests
     [
         "organizacao:ver-unidades",
         "organizacao:trocar-unidade",
+        "organizacao:configurar",
         "sessao:trocar-senha",
         "sessao:ver-proprias",
         "sessao:revogar-propria",
@@ -51,6 +52,7 @@ public sealed class PoliticaDeFabricaTests
     [InlineData("sessao:revogar")]
     [InlineData("usuario:convidar")]
     [InlineData("usuario:redefinir-acesso")]
+    [InlineData("organizacao:configurar")]
     [InlineData("financeiro:exportar")]
     public async Task An_ordinary_account_gets_nothing_administrative_or_financial_by_default(string permission)
     {

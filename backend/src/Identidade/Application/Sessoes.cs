@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Flow4Tech.Identidade.Domain;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
+using Flow4Tech.Kernel.Settings;
 
 namespace Flow4Tech.Identidade.Application;
 
@@ -23,7 +24,7 @@ public sealed class Sessoes(
     IAuditLog audit,
     IEventosDeSeguranca eventos,
     IClock clock,
-    RelogiosDaSessao relogios,
+    ISettings settings,
     IAcessosConhecidos acessos)
 {
     private const string RefreshPrefix = "r1";
@@ -76,6 +77,7 @@ public sealed class Sessoes(
     private async Task<SessaoEmitida> CriarAsync(Guid contaId, Guid organizacaoId, int versaoCredencial, bool deveTrocarSenha, ClienteDaSessao cliente, bool alertarAcessoNovo, CancellationToken ct)
     {
         var now = clock.UtcNow;
+        var relogios = await ConfiguracoesDeIdentidade.RelogiosAsync(settings, organizacaoId, now, ct);
         var linked = await unidades.ListarAsync(organizacaoId, contaId, ct);
         Guid? active = linked.Count == 1 ? linked[0] : null;
         var sessao = new NovaSessao(
@@ -145,7 +147,7 @@ public sealed class Sessoes(
 
     /// <summary>
     /// Authenticates an access token: signature, audience and lifetime, then the SESSION ROW and its account. Null for any reason (the caller answers 401 and does not say why).
-    /// Activity slides the inactivity window; the write happens at most once per <see cref="RelogiosDaSessao.IntervaloDeAtividade"/> so a busy session is not a write per request.
+    /// Activity slides the inactivity window; the write happens at most once per <see cref="IdentidadeSettings.SessaoIntervaloDeAtividadeSegundos"/> so a busy session is not a write per request.
     /// </summary>
     public async Task<SessaoAutenticada?> AutenticarAsync(string accessToken, CancellationToken cancellationToken = default)
     {
@@ -166,8 +168,10 @@ public sealed class Sessoes(
                     return null;
                 }
 
-                if (now - sessao.UltimaAtividadeEm >= relogios.IntervaloDeAtividade)
+                if (now - sessao.UltimaAtividadeEm >= ConfiguracoesDeIdentidade.IntervaloDeAtividade(settings))
                 {
+                    // The inactivity window is read only when it slides (once per interval per session), so a request does not pay a settings read.
+                    var relogios = await ConfiguracoesDeIdentidade.RelogiosAsync(settings, claims.OrganizacaoId, now, ct);
                     await store.TocarAtividadeAsync(claims.OrganizacaoId, sessao.Id, now, Min(now + relogios.Inatividade, sessao.ExpiraEm), ct);
                 }
 
@@ -224,6 +228,7 @@ public sealed class Sessoes(
                 await store.MarcarRefreshUsadoAsync(organizacaoId, found.Id, now, ct);
                 await store.PodarRefreshUsadosAsync(organizacaoId, sessao.Id, now - RefreshUsadoRetencao, ct);
                 await store.InserirRefreshAsync(organizacaoId, EntityId.New().Value, sessao.Id, nextHash, now, ct);
+                var relogios = await ConfiguracoesDeIdentidade.RelogiosAsync(settings, organizacaoId, now, ct);
                 await store.TocarAtividadeAsync(organizacaoId, sessao.Id, now, Min(now + relogios.Inatividade, sessao.ExpiraEm), ct);
                 var emitida = Emitida(sessao.Id, sessao.ContaId, organizacaoId, sessao.UnidadeAtivaId, sessao.DeveTrocarSenha, sessao.VersaoCredencialDaSessao, sessao.ExpiraEm, next, now);
                 return new ResultadoRenovacao(StatusRenovacao.Renovada, emitida);

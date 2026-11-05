@@ -1,5 +1,6 @@
 conta:gerir-google
 convite:aceitar
+organizacao:configurar
 organizacao:trocar-unidade
 organizacao:ver-unidades
 perfil:gerir

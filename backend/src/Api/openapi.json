@@ -822,6 +822,243 @@
         },
         "x-permission": "conta:gerir-google"
       }
+    },
+    "/configuracoes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listConfiguracoes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfiguracaoItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/configuracoes/{chave}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "alterarConfiguracao",
+        "parameters": [
+          {
+            "name": "chave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarConfiguracaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/configuracoes/{chave}/historico": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "historicoConfiguracao",
+        "parameters": [
+          {
+            "name": "chave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "camada",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VersaoDaConfiguracao"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/configuracoes/{chave}/restaurar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "restaurarConfiguracao",
+        "parameters": [
+          {
+            "name": "chave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestaurarConfiguracaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
     }
   },
   "components": {
@@ -862,6 +1099,120 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "AlterarConfiguracaoRequest": {
+        "required": [
+          "camada",
+          "valor",
+          "travado",
+          "vigenteAPartirDe",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "camada": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "valor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "travado": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "vigenteAPartirDe": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ConfiguracaoErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          }
+        }
+      },
+      "ConfiguracaoItem": {
+        "required": [
+          "chave",
+          "tipo",
+          "descricao",
+          "camadas",
+          "exigeVigencia",
+          "padrao",
+          "valor",
+          "origem",
+          "travadaPelaOrganizacao",
+          "valorDaOrganizacao",
+          "valorDaUnidade"
+        ],
+        "type": "object",
+        "properties": {
+          "chave": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "camadas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exigeVigencia": {
+            "type": "boolean"
+          },
+          "padrao": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "string"
+          },
+          "origem": {
+            "type": "string"
+          },
+          "travadaPelaOrganizacao": {
+            "type": "boolean"
+          },
+          "valorDaOrganizacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "valorDaUnidade": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1023,6 +1374,44 @@
             ]
           },
           "novaSenha": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RestaurarConfiguracaoRequest": {
+        "required": [
+          "camada",
+          "versao",
+          "vigenteAPartirDe",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "camada": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "vigenteAPartirDe": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "motivo": {
             "type": [
               "null",
               "string"
@@ -1224,6 +1613,80 @@
           },
           "nome": {
             "type": "string"
+          }
+        }
+      },
+      "VersaoDaConfiguracao": {
+        "required": [
+          "versao",
+          "valor",
+          "travado",
+          "vigenteAPartirDe",
+          "criadoEm",
+          "criadoPor",
+          "motivo",
+          "restauraVersao",
+          "emVigor",
+          "agendada",
+          "substituida"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "valor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "travado": {
+            "type": "boolean"
+          },
+          "vigenteAPartirDe": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "criadoPor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "restauraVersao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "emVigor": {
+            "type": "boolean"
+          },
+          "agendada": {
+            "type": "boolean"
+          },
+          "substituida": {
+            "type": "boolean"
           }
         }
       },

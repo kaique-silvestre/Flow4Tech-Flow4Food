@@ -6,6 +6,7 @@ using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Infrastructure;
 using Flow4Tech.Kernel.Authorization;
+using Flow4Tech.Organizacao.Application;
 using Flow4Tech.Permissoes.Application;
 using Flow4Tech.Permissoes.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -40,6 +41,7 @@ builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 // The permission catalog is generated from the module code (assemblies next to the host); the factory policy, the engine and the route check all read it.
 var moduleCatalog = ModuleCatalog.Load(AppContext.BaseDirectory);
+var moduleSettings = ModuleCatalog.LoadSettings(AppContext.BaseDirectory);
 // x-permission (ticket 05): the contract tells every client which permission an operation needs, so the generated client and the screens can hide what a user may not do.
 builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
 {
@@ -54,7 +56,12 @@ builder.Services.AddOpenApi(options => options.AddOperationTransformer((operatio
 builder.Services.AddTenantData(provider => provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"));
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddAuditoria();
-builder.Services.AddOrganizacao();
+// Layered settings (ticket 10): the catalog is collected from the modules; the SYSTEM layer of an option is its declared default, overridden by configuration (SettingDefinition.SystemConfigPath,
+// which keeps the old Flow4Tech:Sessoes:* and Flow4Tech:Identidade:Bloqueio:* keys working). Read late, after every configuration source is loaded.
+builder.Services.AddOrganizacao(
+    moduleSettings,
+    provider => definition => provider.GetRequiredService<IConfiguration>()[definition.SystemConfigPath]);
+builder.Services.AddSingleton<IPermissaoDoChamador, PermissaoDoChamador>();
 // Permissions on HTTP (ticket 05): one engine (IAuthorizationEngine.DecidirAsync), asked by the handler for every route that declares a permission.
 builder.Services.AddPermissoes(moduleCatalog);
 builder.Services.AddAuthorization();
@@ -63,8 +70,8 @@ builder.Services.AddSingleton<IPerfisDoUsuario, PerfisDaConta>();
 // Identidade (tickets 03 and 04): accounts, passwords, pre-authentication, sessions and tokens.
 // Flow4Tech:Identidade:TempoMinimoDeLoginMs (default 400) is the response-time floor of a login attempt; Flow4Tech:Identidade:Hibp:Enabled turns on the k-anonymity breach check
 // and Flow4Tech:Identidade:Hibp:IndisponivelRecusa (default false) makes an unreachable breach service refuse the password instead of accepting it;
-// Flow4Tech:Identidade:CredencialTemporariaHoras (default 72) is how long a temporary credential works (ticket 10 moves it to layered settings).
-// Token keys and session clocks are read lazily (SessionConfiguration), after all configuration is loaded.
+// Flow4Tech:Identidade:CredencialTemporariaHoras (default 72) is how long a temporary credential works.
+// Token keys are read lazily (SessionConfiguration), after all configuration is loaded; the session clocks and the lock policy are layered settings (IdentidadeSettings).
 builder.Services.AddIdentidade(options =>
 {
     options.TempoMinimoDeLogin = TimeSpan.FromMilliseconds(builder.Configuration.GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400));
@@ -99,15 +106,11 @@ if (proxyConfiavel)
 builder.Services.Replace(ServiceDescriptor.Singleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(
     provider.GetRequiredService<IClock>(),
     SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()))));
-// Login protection (ticket 08, spec 5.5): Flow4Tech:Identidade:Bloqueio:{FalhasEmail,FalhasOperacional,BloqueioBaseSegundos,BloqueioMaximoMinutos,FalhasPorIp,ContasPorIp,IpsPorConta}. Read lazily, like the other
-// settings, so a test host (configuration added after Program.cs ran its top level) and the real host see the same values.
-builder.Services.Replace(ServiceDescriptor.Singleton<ILimitadorDeLogin>(provider => new LimitadorDeLoginEmMemoria(
-    provider.GetRequiredService<IClock>(),
-    SessionConfiguration.LimitesDeLogin(provider.GetRequiredService<IConfiguration>()))));
+// Login protection (ticket 08, spec 5.5): the thresholds are the system layer of the bloqueio.* settings (Flow4Tech:Identidade:Bloqueio:{FalhasEmail,FalhasOperacional,BloqueioBaseSegundos,
+// BloqueioMaximoMinutos,FalhasPorIp,ContasPorIp,IpsPorConta}), read when the limiter is first needed (AddIdentidade builds it from ISettings), after every configuration source is loaded.
 builder.Services.Replace(ServiceDescriptor.Singleton<ISeloDeTransacao>(provider => new SeloDeTransacaoHmac(
     SessionConfiguration.Tokens(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IHostEnvironment>()).AppKey,
     provider.GetRequiredService<IClock>())));
-builder.Services.Replace(ServiceDescriptor.Singleton(provider => SessionConfiguration.Relogios(provider.GetRequiredService<IConfiguration>())));
 builder.Services.Replace(ServiceDescriptor.Singleton<IResponseTimeFloor>(provider => new ResponseTimeFloor(
     TimeSpan.FromMilliseconds(provider.GetRequiredService<IConfiguration>().GetValue("Flow4Tech:Identidade:TempoMinimoDeLoginMs", 400)))));
 builder.Services.AddSingleton(provider => SessionConfiguration.Origins(provider.GetRequiredService<IConfiguration>()));
@@ -178,6 +181,7 @@ app.MapGet("/health/ready", async (IConfiguration configuration, CancellationTok
 app.MapOrganizacao();
 app.MapSessao();
 app.MapAcesso();
+app.MapConfiguracao();
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(

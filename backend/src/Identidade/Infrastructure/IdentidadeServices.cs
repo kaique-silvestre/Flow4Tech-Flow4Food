@@ -1,6 +1,7 @@
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
+using Flow4Tech.Kernel.Settings;
 using Flow4Tech.Infrastructure.Outbox;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -101,7 +102,9 @@ public static class IdentidadeServices
                 options.HibpIndisponivelRecusa));
         services.AddSingleton<IResponseTimeFloor>(_ => new ResponseTimeFloor(options.TempoMinimoDeLogin));
         ValidarLimites(options.Bloqueio);
-        services.AddSingleton<ILimitadorDeLogin>(provider => new LimitadorDeLoginEmMemoria(provider.GetRequiredService<IClock>(), options.Bloqueio));
+        // Without the Organizacao module's layered settings (a test host, a console) the system layer is what the options carry: same declared options, values from code.
+        services.TryAddSingleton<ISettings>(_ => new SystemSettings(definition => OpcoesComoSistema(options, definition)));
+        services.AddSingleton<ILimitadorDeLogin>(provider => new LimitadorDeLoginEmMemoria(provider.GetRequiredService<IClock>(), ConfiguracoesDeIdentidade.Limites(provider.GetRequiredService<ISettings>(), options.Bloqueio)));
         services.TryAddSingleton<ICaptcha, CaptchaNaoConfigurado>();
         services.TryAddSingleton<EnviadorDeEmailDeDesenvolvimento>();
         services.TryAddSingleton<IEnviadorDeEmail>(provider => provider.GetRequiredService<EnviadorDeEmailDeDesenvolvimento>());
@@ -121,7 +124,6 @@ public static class IdentidadeServices
 
         // The emitter is built lazily so the host can resolve it at start and refuse to boot without a signing key (Program.cs).
         services.AddSingleton<IEmissorDeTokens>(provider => new JwtEmissorDeTokens(provider.GetRequiredService<IClock>(), options.Tokens));
-        services.AddSingleton(new RelogiosDaSessao(options.Sessoes.Inatividade, options.Sessoes.Absoluta, options.Sessoes.IntervaloDeAtividade));
         services.TryAddSingleton<OutboxWriter>();
         services.AddSingleton<PostgresSessaoStore>();
         services.AddSingleton<ISessaoStore>(provider => provider.GetRequiredService<PostgresSessaoStore>());
@@ -146,6 +148,59 @@ public static class IdentidadeServices
     }
 
     private static void ValidarLimites(LimitesDeLogin l) => l.Validar();
+
+    /// <summary>The value the options hold for a system-layer setting of this module, or null (= the declared default). Only used when the host did not register the layered settings.</summary>
+    private static string? OpcoesComoSistema(IdentidadeOptions options, SettingDefinition definition)
+    {
+        var b = options.Bloqueio;
+        var c = System.Globalization.CultureInfo.InvariantCulture;
+        if (definition.Key == IdentidadeSettings.SessaoInatividadeHoras.Key)
+        {
+            return ConfiguracoesDeIdentidade.Horas(options.Sessoes.Inatividade);
+        }
+
+        if (definition.Key == IdentidadeSettings.SessaoAbsolutaDias.Key)
+        {
+            return ConfiguracoesDeIdentidade.Dias(options.Sessoes.Absoluta);
+        }
+
+        if (definition.Key == IdentidadeSettings.SessaoIntervaloDeAtividadeSegundos.Key)
+        {
+            return ((long)options.Sessoes.IntervaloDeAtividade.TotalSeconds).ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioFalhasEmail.Key)
+        {
+            return b.FalhasParaBloquearEmail.ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioFalhasOperacional.Key)
+        {
+            return b.FalhasParaBloquearOperacional.ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioBaseSegundos.Key)
+        {
+            return b.BloqueioBase.TotalSeconds.ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioMaximoMinutos.Key)
+        {
+            return b.BloqueioMaximo.TotalMinutes.ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioFalhasPorIp.Key)
+        {
+            return b.FalhasParaBloquearIp.ToString(c);
+        }
+
+        if (definition.Key == IdentidadeSettings.BloqueioContasPorIp.Key)
+        {
+            return b.ContasDistintasPorIp.ToString(c);
+        }
+
+        return definition.Key == IdentidadeSettings.BloqueioIpsPorConta.Key ? b.IpsDistintosPorConta.ToString(c) : null;
+    }
 
     private static HttpClient HibpClient(IdentidadeOptions options)
     {

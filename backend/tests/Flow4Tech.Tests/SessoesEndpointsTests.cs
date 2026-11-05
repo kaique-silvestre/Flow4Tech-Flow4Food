@@ -624,6 +624,111 @@ public sealed class SessoesEndpointsTests : IClassFixture<SessoesEndpointsDataba
         Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshAsync(client, cookie)).Status);
     }
 
+    // ---- layered settings over HTTP (ticket 10, spec 5.7) --------------------------------------------------------------------------------------------
+
+    private static HttpRequestMessage Put(string path, object body, string token)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, new Uri(path, UriKind.Relative)) { Content = JsonContent.Create(body) };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    [Fact]
+    public async Task The_settings_routes_need_organizacao_configurar_and_a_denied_change_is_audited()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var conta = await NewAccountAsync(api, [UnitA1]);
+        var (sessao, _) = await LoginAsync(client, conta);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(client, () => Get("/configuracoes", null)));
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Get("/configuracoes", sessao.AccessToken)));
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Get("/configuracoes/sessao.absoluta-dias/historico?camada=organizacao", sessao.AccessToken)));
+        using var negadaRequest = Put("/configuracoes/sessao.absoluta-dias", new { camada = "organizacao", valor = "1" }, sessao.AccessToken);
+        using var negada = await client.SendAsync(negadaRequest);
+        Assert.Equal(HttpStatusCode.Forbidden, negada.StatusCode);
+        Assert.Equal(string.Empty, await negada.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden, await Status(client, () => Post("/configuracoes/sessao.absoluta-dias/restaurar", new { camada = "organizacao", versao = 1 }, sessao.AccessToken)));
+
+        Assert.Equal(["negado", "negado"], await QueryAsync(OrgA, "SELECT resultado FROM auditoria_registros WHERE acao = 'acesso:negar' AND usuario_id = @c AND objeto_id = 'organizacao:configurar'", r => r.GetString(0), ("c", conta.Id)));
+        Assert.Empty(await QueryAsync(OrgA, "SELECT 1 FROM configuracoes_versoes", r => r.GetInt32(0)));
+    }
+
+    [Fact]
+    public async Task A_session_reads_its_clocks_from_the_organization_setting_and_a_change_does_not_reach_sessions_already_started()
+    {
+        var clock = new TestClock();
+        await using var api = Api(clock);
+        using var client = api.CreateClient();
+        var antes = await NewAccountAsync(api, [UnitA1]);
+        var depois = await NewAccountAsync(api, [UnitA1]);
+        var (_, cookieAntes) = await LoginAsync(client, antes);
+        using var dono = await LoginOwnerAsync(client);
+        try
+        {
+            Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Put("/configuracoes/sessao.absoluta-dias", new { camada = "organizacao", valor = "0.05", motivo = "turno curto" }, dono.Token))); // 72 minutes
+            var (_, cookieDepois) = await LoginAsync(client, depois);
+
+            clock.UtcNow = clock.UtcNow.AddMinutes(90);
+
+            Assert.Equal(HttpStatusCode.OK, (await RefreshAsync(client, cookieAntes)).Status); // started before the change: keeps the 14 days it was born with
+            Assert.Equal(HttpStatusCode.Unauthorized, (await RefreshAsync(client, cookieDepois)).Status); // started after: the organization's 72 minutes
+            Assert.Equal(["configuracao:alterar|sucesso"], await QueryAsync(OrgA, "SELECT acao || '|' || resultado FROM auditoria_registros WHERE acao LIKE 'configuracao:%'", r => r.GetString(0)));
+        }
+        finally
+        {
+            clock.UtcNow = DateTimeOffset.UtcNow.AddHours(1);
+            using var dono2 = await LoginOwnerAsync(client);
+            Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Put("/configuracoes/sessao.absoluta-dias", new { camada = "organizacao", valor = (string?)null }, dono2.Token)));
+        }
+    }
+
+    [Fact]
+    public async Task The_settings_routes_validate_lock_keep_the_history_and_restore()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        await EnsureOwnerAsync(api);
+        using var dono = await LoginOwnerAsync(client);
+        var amanha = DateTimeOffset.UtcNow.AddDays(1);
+        const string Virada = "/configuracoes/dia-operacional.virada";
+
+        using var semInstanteRequest = Put(Virada, new { camada = "unidade", valor = "04:00" }, dono.Token);
+        using var semInstante = await client.SendAsync(semInstanteRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, semInstante.StatusCode);
+        Assert.Equal("vigencia-invalida", (await semInstante.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("codigo").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Put(Virada, new { camada = "unidade", valor = "25:99", vigenteAPartirDe = amanha }, dono.Token)));
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Put(Virada, new { camada = "sistema", valor = "04:00", vigenteAPartirDe = amanha }, dono.Token)));
+        Assert.Equal(HttpStatusCode.NotFound, await Status(client, () => Put("/configuracoes/nao.existe", new { camada = "organizacao", valor = "1" }, dono.Token)));
+        Assert.Equal(HttpStatusCode.BadRequest, await Status(client, () => Put("/configuracoes/bloqueio.falhas-email", new { camada = "organizacao", valor = "9" }, dono.Token))); // system-only option
+
+        Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Put(Virada, new { camada = "organizacao", valor = "04:30", travado = true, vigenteAPartirDe = amanha, motivo = "padrao da rede" }, dono.Token)));
+        Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Put(Virada, new { camada = "organizacao", valor = "06:00", vigenteAPartirDe = amanha.AddDays(1) }, dono.Token)));
+        using var historicoRequest = Get($"{Virada}/historico?camada=organizacao", dono.Token);
+        using var historico = await client.SendAsync(historicoRequest);
+        var linhas = (await historico.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().ToList();
+        Assert.Equal([2, 1], linhas.Select(l => l.GetProperty("versao").GetInt32()));
+        Assert.Equal(["06:00", "04:30"], linhas.Select(l => l.GetProperty("valor").GetString()));
+        Assert.Equal([true, true], linhas.Select(l => l.GetProperty("agendada").GetBoolean())); // both start in the future, one after the other
+        Assert.True(linhas[0].GetProperty("travado").GetBoolean()); // the lock stays when a change says nothing about it
+
+        // The lock is scheduled for tomorrow, so today the unit may still change, and the change is audited with the person who made it.
+        Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Put(Virada, new { camada = "unidade", valor = "03:00", vigenteAPartirDe = amanha.AddDays(-0.5) }, dono.Token)));
+        Assert.Equal(HttpStatusCode.Conflict, await Status(client, () => Put(Virada, new { camada = "unidade", valor = "03:30", vigenteAPartirDe = amanha.AddHours(2) }, dono.Token)));
+
+        Assert.Equal(HttpStatusCode.NoContent, await Status(client, () => Post($"{Virada}/restaurar", new { camada = "organizacao", versao = 1, vigenteAPartirDe = amanha.AddDays(3) }, dono.Token)));
+        Assert.Equal(HttpStatusCode.NotFound, await Status(client, () => Post($"{Virada}/restaurar", new { camada = "organizacao", versao = 77, vigenteAPartirDe = amanha }, dono.Token)));
+
+        using var listaRequest = Get("/configuracoes", dono.Token);
+        using var lista = await client.SendAsync(listaRequest);
+        var item = (await lista.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().Single(i => i.GetProperty("chave").GetString() == "dia-operacional.virada");
+        Assert.Equal("05:00", item.GetProperty("padrao").GetString());
+        Assert.Equal("05:00", item.GetProperty("valor").GetString()); // nothing in force yet: the organization's versions start tomorrow
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("valorDaUnidade").ValueKind); // the unit's version starts in 12 hours
+        Assert.Equal(["sistema", "organizacao", "unidade"], item.GetProperty("camadas").EnumerateArray().Select(c => c.GetString()));
+        Assert.True(item.GetProperty("exigeVigencia").GetBoolean());
+    }
+
     // ---- logout ---------------------------------------------------------------------------------------------------------------------------------------
 
     [Fact]

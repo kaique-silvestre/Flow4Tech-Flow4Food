@@ -112,6 +112,17 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet test backend/tests/Outbox/Flow4Tech.Outbox.Tests.csproj -c Release
 
+  organizacao-tests:
+    name: layered settings (real PostgreSQL)
+    runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend/tests/Organizacao/Flow4Tech.Organizacao.Tests.csproj -c Release
+
   audit-tests:
     name: audit trail + chain verification (real PostgreSQL)
     runs-on: ubuntu-latest # Docker preinstalled: Testcontainers starts postgres:17-alpine
@@ -250,6 +261,7 @@ jobs:
       - architecture-tests
       - isolation-tests
       - outbox-tests
+      - organizacao-tests
       - audit-tests
       - identidade-tests
       - authorization-tests

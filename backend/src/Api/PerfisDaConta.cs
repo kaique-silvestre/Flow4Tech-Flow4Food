@@ -1,5 +1,7 @@
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
+using Flow4Tech.Kernel.Authorization;
+using Flow4Tech.Organizacao.Application;
 using Flow4Tech.Permissoes.Application;
 
 namespace Flow4Tech.Api;
@@ -29,5 +31,19 @@ internal sealed class PerfisDaConta(IUnitOfWork unitOfWork, IContaStore contas, 
                 return keys;
             },
             cancellationToken);
+    }
+}
+
+/// <summary>Adapts the one authorization engine to the question the Organizacao module asks (<c>organizacao:configurar</c>), so that module reads no profile and references no other module.</summary>
+internal sealed class PermissaoDoChamador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IPermissaoDoChamador
+{
+    public async Task<bool> PodeAsync(IRequestContext request, string permission, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var organization = request.Organization;
+        var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
+        var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
+        var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), permission, new Scope(organization.OrganizationId, unit), new DecisionContext(), cancellationToken);
+        return decision.IsAllowed;
     }
 }

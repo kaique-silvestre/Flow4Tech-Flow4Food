@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using Flow4Tech.Kernel.Authorization;
+using Flow4Tech.Kernel.Settings;
 
 namespace Flow4Tech.Api;
 
@@ -131,7 +132,12 @@ internal static class ModuleCatalog
 {
     private static readonly string[] Layers = ["Domain", "Application", "Infrastructure", "Interface"];
 
-    public static IReadOnlyList<string> Load(string directory)
+    public static IReadOnlyList<string> Load(string directory) => PermissionCatalog.Collect(ModuleAssemblies(directory));
+
+    /// <summary>The option catalog (ticket 10) declared by the modules in <c>[SettingsCatalog]</c> classes.</summary>
+    public static IReadOnlyList<SettingDefinition> LoadSettings(string directory) => SettingsCatalog.Collect(ModuleAssemblies(directory));
+
+    private static List<Assembly> ModuleAssemblies(string directory)
     {
         var assemblies = new List<Assembly>();
         foreach (var path in Directory.EnumerateFiles(directory, "Flow4Tech.*.dll"))
@@ -147,6 +153,6 @@ internal static class ModuleCatalog
                 ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(path));
         }
 
-        return PermissionCatalog.Collect(assemblies);
+        return assemblies;
     }
 }

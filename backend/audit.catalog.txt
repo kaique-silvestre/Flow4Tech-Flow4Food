@@ -1,6 +1,8 @@
 acesso:negar
 autenticacao:bloquear
 autenticacao:falhar
+configuracao:alterar
+configuracao:restaurar
 conta:criar
 conta:definir-dono
 conta:desativar

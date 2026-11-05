@@ -340,6 +340,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/configuracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listConfiguracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuracoes/{chave}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["alterarConfiguracao"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuracoes/{chave}/historico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["historicoConfiguracao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuracoes/{chave}/restaurar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restaurarConfiguracao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -351,6 +415,30 @@ export interface components {
         AcessoErro: {
             codigo: string;
             problemas: string[];
+        };
+        AlterarConfiguracaoRequest: {
+            camada: null | string;
+            valor: null | string;
+            travado: null | boolean;
+            /** Format: date-time */
+            vigenteAPartirDe: null | string;
+            motivo: null | string;
+        };
+        ConfiguracaoErro: {
+            codigo: string;
+        };
+        ConfiguracaoItem: {
+            chave: string;
+            tipo: string;
+            descricao: string;
+            camadas: string[];
+            exigeVigencia: boolean;
+            padrao: string;
+            valor: string;
+            origem: string;
+            travadaPelaOrganizacao: boolean;
+            valorDaOrganizacao: null | string;
+            valorDaUnidade: null | string;
         };
         ConviteRequest: {
             email: null | string;
@@ -390,6 +478,14 @@ export interface components {
         RedefinirSenhaRequest: {
             token: null | string;
             novaSenha: null | string;
+        };
+        RestaurarConfiguracaoRequest: {
+            camada: null | string;
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: date-time */
+            vigenteAPartirDe: null | string;
+            motivo: null | string;
         };
         SessaoItem: {
             /** Format: uuid */
@@ -444,6 +540,24 @@ export interface components {
             /** Format: uuid */
             id: string;
             nome: string;
+        };
+        VersaoDaConfiguracao: {
+            /** Format: int32 */
+            versao: number | string;
+            valor: null | string;
+            travado: boolean;
+            /** Format: date-time */
+            vigenteAPartirDe: string;
+            /** Format: date-time */
+            criadoEm: string;
+            /** Format: uuid */
+            criadoPor: null | string;
+            motivo: null | string;
+            /** Format: int32 */
+            restauraVersao: null | number | string;
+            emVigor: boolean;
+            agendada: boolean;
+            substituida: boolean;
         };
         VersionInfo: {
             version: string;
@@ -1403,6 +1517,226 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listConfiguracoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoItem"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    alterarConfiguracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chave: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlterarConfiguracaoRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+        };
+    };
+    historicoConfiguracao: {
+        parameters: {
+            query?: {
+                camada?: string;
+            };
+            header?: never;
+            path: {
+                chave: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersaoDaConfiguracao"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+        };
+    };
+    restaurarConfiguracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chave: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestaurarConfiguracaoRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
             };
         };
     };

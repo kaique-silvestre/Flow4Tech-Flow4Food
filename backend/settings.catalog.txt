@@ -1,0 +1,12 @@
+bloqueio.base-segundos|Numero|SomenteSistema|30
+bloqueio.contas-por-ip|Inteiro|SomenteSistema|10
+bloqueio.falhas-email|Inteiro|SomenteSistema|5
+bloqueio.falhas-operacional|Inteiro|SomenteSistema|8
+bloqueio.falhas-por-ip|Inteiro|SomenteSistema|30
+bloqueio.ips-por-conta|Inteiro|SomenteSistema|5
+bloqueio.maximo-minutos|Numero|SomenteSistema|15
+dia-operacional.fuso|Texto|OrganizacaoEUnidade|America/Sao_Paulo
+dia-operacional.virada|Hora|OrganizacaoEUnidade|05:00
+sessao.absoluta-dias|Numero|Organizacao|14
+sessao.inatividade-horas|Numero|Organizacao|12
+sessao.intervalo-atividade-segundos|Inteiro|SomenteSistema|60
