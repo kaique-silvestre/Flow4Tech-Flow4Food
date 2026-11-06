@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** HTTP with real PostgreSQL; Pure domain; Architecture gates
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration adds `comandas` and `comanda_numeracao` (tenant tables, RLS): unit, display number unique per unit and operating day, identification, optional `mesa_id`, channel default `salao`, responsible waiter, optional people count, state, opened_at, frozen `taxa_servico_percentual`, `versao`.
 - [ ] Two simultaneous opens in the same unit and operating day get distinct, gap-free numbers (real PostgreSQL concurrency test); on the next operating day the number restarts at 1 (injected clock).
