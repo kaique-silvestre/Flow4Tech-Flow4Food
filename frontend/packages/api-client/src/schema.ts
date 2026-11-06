@@ -580,6 +580,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/itens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listItensDaComanda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/rodadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["lancarRodada"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/rodadas/{rodadaId}/desfazer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["desfazerRodada"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/itens/{itemId}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelarItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -646,6 +710,12 @@ export interface components {
         };
         CaixaErro: {
             codigo: string;
+        };
+        CancelarItemRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            motivo: string;
+            texto: null | string;
         };
         CardapioErro: {
             codigo: string;
@@ -742,6 +812,10 @@ export interface components {
             /** @default true */
             ativo: boolean;
         };
+        DesfazerRodadaRequest: {
+            /** Format: int32 */
+            versao: number | string;
+        };
         FecharTurnoRequest: {
             /** Format: int64 */
             contadoCentavos: number | string;
@@ -752,6 +826,52 @@ export interface components {
         };
         IniciarGoogleResponse: {
             url: string;
+        };
+        ItemCanceladoDto: {
+            item: components["schemas"]["ItemDto"];
+            /** Format: int32 */
+            comandaVersao: number | string;
+        };
+        ItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rodadaId: string;
+            /** Format: int32 */
+            posicao: number | string;
+            /** Format: uuid */
+            produtoId: string;
+            produtoNome: string;
+            /** Format: int64 */
+            precoCentavos: number | string;
+            /** Format: int32 */
+            quantidade: number | string;
+            observacao: null | string;
+            estado: string;
+            motivoCancelamento: null | string;
+            /** Format: uuid */
+            canceladoPor: null | string;
+            /** Format: date-time */
+            canceladoEm: null | string;
+        };
+        ItensDaComandaDto: {
+            itens: components["schemas"]["ItemDto"][];
+            /** Format: int64 */
+            consumoCentavos: number | string;
+        };
+        LancarItemRequest: {
+            /** Format: uuid */
+            produtoId: string;
+            /** Format: int32 */
+            quantidade: number | string;
+            observacao: null | string;
+        };
+        LancarRodadaRequest: {
+            /** Format: uuid */
+            rodadaId: string;
+            /** Format: int32 */
+            versao: number | string;
+            itens: components["schemas"]["LancarItemRequest"][];
         };
         LoginRequest: {
             /** Format: uuid */
@@ -800,6 +920,19 @@ export interface components {
             /** Format: date-time */
             vigenteAPartirDe: null | string;
             motivo: null | string;
+        };
+        RodadaDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            comandaId: string;
+            /** Format: date-time */
+            enviadaEm: string;
+            /** Format: date-time */
+            desfeitaEm: null | string;
+            /** Format: int32 */
+            comandaVersao: number | string;
+            itens: components["schemas"]["ItemDto"][];
         };
         SessaoItem: {
             /** Format: uuid */
@@ -2778,6 +2911,263 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    listItensDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItensDaComandaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    lancarRodada: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LancarRodadaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RodadaDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RodadaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    desfazerRodada: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+                rodadaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesfazerRodadaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RodadaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    cancelarItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCanceladoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
             };
             /** @description Conflict */
             409: {

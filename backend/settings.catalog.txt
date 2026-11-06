@@ -6,6 +6,7 @@ bloqueio.falhas-por-ip|Inteiro|SomenteSistema|30
 bloqueio.ips-por-conta|Inteiro|SomenteSistema|5
 bloqueio.maximo-minutos|Numero|SomenteSistema|15
 caixa.exigir-caixa-aberto|Booleano|OrganizacaoEUnidade|true
+comanda.janela-desfazer-segundos|Inteiro|SomenteSistema|8
 dia-operacional.fuso|Texto|OrganizacaoEUnidade|America/Sao_Paulo
 dia-operacional.virada|Hora|OrganizacaoEUnidade|05:00
 operacao.usar-mesas|Booleano|OrganizacaoEUnidade|true

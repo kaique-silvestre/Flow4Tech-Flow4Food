@@ -32,7 +32,7 @@ namespace Flow4Tech.Tests;
 /// number (gap-free under a race, restarting each operating day with an injected clock), tables and the use-tables option, visibility of other people's comandas, denial (403 without
 /// reason, 401), two organizations, rollback of state + audit + outbox together, and the EF model and critical SQL.
 /// </summary>
-public sealed class ComandasEndpointsTests : IAsyncLifetime
+public sealed partial class ComandasEndpointsTests : IAsyncLifetime
 {
     private const string Key = "chave-de-teste-nao-usar-em-producao-0123456789";
 
@@ -179,7 +179,7 @@ public sealed class ComandasEndpointsTests : IAsyncLifetime
     {
         var perfis = api.Services.GetRequiredService<GestaoDePerfis>();
         var request = new FakeRequest(DonoA, new OrganizationContext(OrgA, UnitA));
-        var waiter = await perfis.CriarAsync(request, "Garcom", [new RegraDeAcesso(RuleEffect.Allow, "comanda:abrir"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "mesa:ver")]);
+        var waiter = await perfis.CriarAsync(request, "Garcom", [new RegraDeAcesso(RuleEffect.Allow, "comanda:abrir"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "mesa:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:lancar-item"), new RegraDeAcesso(RuleEffect.Allow, "comanda:cancelar-item"), new RegraDeAcesso(RuleEffect.Allow, "comanda:desfazer-rodada")]);
         var chief = await perfis.CriarAsync(request, "Supervisor", [new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver-comandas-de-outros")]);
         Assert.Equal(ResultadoGestao.Ok, waiter.Resultado);
         Assert.Equal(ResultadoGestao.Ok, chief.Resultado);

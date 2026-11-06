@@ -1769,6 +1769,316 @@
         "x-permission": "comanda:abrir"
       }
     },
+    "/comandas/{comandaId}/itens": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listItensDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItensDaComandaDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/rodadas": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "lancarRodada",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LancarRodadaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RodadaDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RodadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:lancar-item"
+      }
+    },
+    "/comandas/{comandaId}/rodadas/{rodadaId}/desfazer": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "desfazerRodada",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "rodadaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesfazerRodadaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RodadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:desfazer-rodada"
+      }
+    },
+    "/comandas/{comandaId}/itens/{itemId}/cancelar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "cancelarItem",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemCanceladoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:cancelar-item"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [
@@ -2070,6 +2380,33 @@
         "properties": {
           "codigo": {
             "type": "string"
+          }
+        }
+      },
+      "CancelarItemRequest": {
+        "required": [
+          "versao",
+          "motivo",
+          "texto"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "texto": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2447,6 +2784,22 @@
           }
         }
       },
+      "DesfazerRodadaRequest": {
+        "required": [
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "FecharTurnoRequest": {
         "required": [
           "contadoCentavos"
@@ -2488,6 +2841,192 @@
         "properties": {
           "url": {
             "type": "string"
+          }
+        }
+      },
+      "ItemCanceladoDto": {
+        "required": [
+          "item",
+          "comandaVersao"
+        ],
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemDto"
+          },
+          "comandaVersao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ItemDto": {
+        "required": [
+          "id",
+          "rodadaId",
+          "posicao",
+          "produtoId",
+          "produtoNome",
+          "precoCentavos",
+          "quantidade",
+          "observacao",
+          "estado",
+          "motivoCancelamento",
+          "canceladoPor",
+          "canceladoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rodadaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "posicao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "produtoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "produtoNome": {
+            "type": "string"
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "quantidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": "string"
+          },
+          "motivoCancelamento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "canceladoPor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "canceladoEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ItensDaComandaDto": {
+        "required": [
+          "itens",
+          "consumoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDto"
+            }
+          },
+          "consumoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "LancarItemRequest": {
+        "required": [
+          "produtoId",
+          "quantidade",
+          "observacao"
+        ],
+        "type": "object",
+        "properties": {
+          "produtoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LancarRodadaRequest": {
+        "required": [
+          "rodadaId",
+          "versao",
+          "itens"
+        ],
+        "type": "object",
+        "properties": {
+          "rodadaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LancarItemRequest"
+            }
           }
         }
       },
@@ -2690,6 +3229,52 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RodadaDto": {
+        "required": [
+          "id",
+          "comandaId",
+          "enviadaEm",
+          "desfeitaEm",
+          "comandaVersao",
+          "itens"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comandaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enviadaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "desfeitaEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "comandaVersao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDto"
+            }
           }
         }
       },

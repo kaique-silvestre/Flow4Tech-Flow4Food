@@ -6,6 +6,9 @@ caixa:fechar
 categoria:alterar
 categoria:criar
 comanda:abrir
+comanda:cancelar-item
+comanda:desfazer-rodada
+comanda:lancar-rodada
 configuracao:alterar
 configuracao:restaurar
 conta:criar

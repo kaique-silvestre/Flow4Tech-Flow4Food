@@ -17,6 +17,31 @@ public static class ComandaPermissions
 
     /// <summary>See the comandas other waiters opened (without it the list holds only the caller's own).</summary>
     public const string VerComandasDeOutros = "comanda:ver-comandas-de-outros";
+
+    /// <summary>Launch a round of items into a comanda.</summary>
+    public const string LancarItem = "comanda:lancar-item";
+
+    /// <summary>Cancel one item of a comanda (with a reason). Sensitive: a denial is audited.</summary>
+    public const string CancelarItem = "comanda:cancelar-item";
+
+    /// <summary>Undo a whole round inside the undo window. Sensitive: a denial is audited.</summary>
+    public const string DesfazerRodada = "comanda:desfazer-rodada";
+}
+
+[SettingsCatalog]
+public static class ComandaSettings
+{
+    /// <summary>How long after sending, in seconds, the waiter who sent a round may undo it. Measured on the server clock; system layer only.</summary>
+    public static readonly SettingDefinition JanelaDesfazerSegundos = new(
+        "comanda.janela-desfazer-segundos",
+        SettingType.Inteiro,
+        "8",
+        SettingLayers.SomenteSistema,
+        "Janela, em segundos, para desfazer uma rodada logo apos o envio.")
+    {
+        Minimum = 1,
+        Maximum = 60,
+    };
 }
 
 [SettingsCatalog]
@@ -50,8 +75,58 @@ public interface IComandasStore
 
     Task InserirAsync(Guid organizationId, Comanda comanda, CancellationToken cancellationToken);
 
+    /// <summary>The comanda of the unit by id, any state; null when there is none in the unit.</summary>
+    Task<Comanda?> AcharAsync(Guid organizationId, Guid unitId, Guid comandaId, CancellationToken cancellationToken);
+
+    /// <summary>Optimistic write: bumps the version of an OPEN comanda only if it is still <paramref name="versaoEsperada"/>; false otherwise (and nothing changes). The row stays locked until the unit of work ends.</summary>
+    Task<bool> AvancarVersaoAsync(Guid organizationId, Guid comandaId, int versaoEsperada, CancellationToken cancellationToken);
+
     /// <summary>Open comandas of the unit, newest first; only <paramref name="garcomId"/>'s when given.</summary>
     Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken);
+}
+
+public sealed record RodadaEnviada(Guid EventId, Guid ComandaId, Guid RodadaId, Guid UnidadeId, int Itens, long ValorCentavos, Guid EnviadaPor) : IDomainEvent
+{
+    public const string Type = "comanda.rodada-enviada";
+
+    public string EventType => Type;
+}
+
+public sealed record RodadaDesfeita(Guid EventId, Guid ComandaId, Guid RodadaId, Guid UnidadeId, Guid DesfeitaPor) : IDomainEvent
+{
+    public const string Type = "comanda.rodada-desfeita";
+
+    public string EventType => Type;
+}
+
+public sealed record ItemCancelado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, string Motivo, Guid CanceladoPor) : IDomainEvent
+{
+    public const string Type = "comanda.item-cancelado";
+
+    public string EventType => Type;
+}
+
+/// <summary>Port: the rounds and items of the current organization. Runs inside a unit of work (RLS filters; nothing here names the organization in a filter).</summary>
+public interface IRodadasStore
+{
+    /// <summary>The round with its items, by the id the client generated; null when there is none.</summary>
+    Task<RodadaComItens?> AcharRodadaAsync(Guid organizationId, Guid rodadaId, CancellationToken cancellationToken);
+
+    /// <summary>Items of one comanda (all states), in launch order.</summary>
+    Task<IReadOnlyList<ItemDaComanda>> ListarItensAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
+
+    Task<ItemDaComanda?> AcharItemAsync(Guid organizationId, Guid itemId, CancellationToken cancellationToken);
+
+    Task InserirRodadaAsync(Guid organizationId, RodadaComItens rodada, CancellationToken cancellationToken);
+
+    /// <summary>Counts the launch of each product in the unit (feeds the frequent items).</summary>
+    Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken);
+
+    /// <summary>Cancels one item; false when it was no longer launched.</summary>
+    Task<bool> CancelarItemAsync(Guid organizationId, Guid itemId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
+    /// <summary>Marks the round undone and cancels its items with the fixed reason; false when it was already undone.</summary>
+    Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 }
 
 /// <summary>Port: domain events of the comandas, written to the outbox on the unit of work in progress.</summary>

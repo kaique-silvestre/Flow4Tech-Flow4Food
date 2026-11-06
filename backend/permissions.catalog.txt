@@ -3,6 +3,9 @@ caixa:fechar
 caixa:ver
 caixa:ver-todos
 comanda:abrir
+comanda:cancelar-item
+comanda:desfazer-rodada
+comanda:lancar-item
 comanda:ver
 comanda:ver-comandas-de-outros
 conta:gerir-google

@@ -21,6 +21,12 @@ public static class ComandasAuditActions
     public const string CriarMesa = "mesa:criar";
 
     public const string AbrirComanda = "comanda:abrir";
+
+    public const string LancarRodada = "comanda:lancar-rodada";
+
+    public const string DesfazerRodada = "comanda:desfazer-rodada";
+
+    public const string CancelarItem = "comanda:cancelar-item";
 }
 
 [SettingsCatalog]
