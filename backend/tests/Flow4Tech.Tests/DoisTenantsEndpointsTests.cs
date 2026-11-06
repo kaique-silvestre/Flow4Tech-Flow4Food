@@ -174,6 +174,9 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         var tokenA = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
         _ = await LoginAsync(client, b.OwnerEmail, DonoSenha);
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/configuracoes/{Inatividade}", tokenA, new { camada = "organizacao", valor = "5" }));
+        // The salão tables hold rows of both organizations before the sweep, so the sweep is not vacuous for them.
+        _ = await RunSalaoAsync(client, a);
+        _ = await RunSalaoAsync(client, b);
         _ = await api.Services.GetRequiredService<GestaoDePerfis>().CriarAsync(a.RequestOfOwner(), "Qualquer", [new RegraDeAcesso(RuleEffect.Allow, "organizacao:ver-unidades")]);
 
         // Tables are discovered, not listed: a new tenant table is swept without editing this test.
@@ -183,6 +186,10 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("auditoria_registros", tables);
         Assert.Contains("convites", tables);
         Assert.Contains("perfis", tables);
+        Assert.Contains("comandas", tables);
+        Assert.Contains("rodadas", tables);
+        Assert.Contains("pagamentos", tables);
+        Assert.Contains("turnos_caixa", tables);
         foreach (var tenant in new[] { a, b })
         {
             foreach (var table in tables)
@@ -194,6 +201,8 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             // The sweep is not vacuous: the tenant does see its own rows.
             Assert.Equal(2L, (await QueryAsync(tenant, "SELECT count(*) FROM contas", r => r.GetInt64(0))).Single());
             Assert.True((await QueryAsync(tenant, "SELECT count(*) FROM sessoes", r => r.GetInt64(0))).Single() >= 1);
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(0L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes WHERE id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes", r => r.GetInt64(0))).Single());
         }
@@ -205,6 +214,36 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             await using var command = source.CreateCommand($"SELECT count(*) FROM {table}");
             Assert.True((long)(await command.ExecuteScalarAsync())! == 0, $"{table} returned rows without an organization context");
         }
+    }
+
+    [Fact]
+    public async Task The_salao_flow_runs_in_each_organization_and_one_cannot_see_or_touch_the_others_menu_comandas_or_payments()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+
+        // The whole flow in each organization: shift, menu, comanda, round, cash payment with change, close the comanda, close the shift.
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        // The other organization neither lists nor reads nor pays what is not its own: every answer is "not found", never the data.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{salaoA.ComandaId}/conta", salaoB.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{salaoA.ComandaId}/itens", salaoB.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{salaoA.ComandaId}/pagamentos", salaoB.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{salaoA.ComandaId}/pagamentos", salaoB.Token, new { pagamentoId = Guid.CreateVersion7(), recebidoCentavos = 100, versao = 1 }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{salaoA.ComandaId}/rodadas", salaoB.Token, new { rodadaId = Guid.CreateVersion7(), versao = 1, itens = new[] { new { produtoId = salaoB.ProdutoId, quantidade = 1 } } }));
+        using (var produtos = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos", salaoB.Token))
+        {
+            var lista = (await produtos.Content.ReadFromJsonAsync<List<ProdutoDto>>())!;
+            Assert.Equal([salaoB.ProdutoId], lista.Select(p => p.Id));
+        }
+
+        // Each organization's cash is its own: each shift held its float plus its own cash only, and A's shift is closed (no open shift answers 404).
+        Assert.Equal(10_000 + 2_750, salaoA.EsperadoCentavos);
+        Assert.Equal(10_000 + 2_750, salaoB.EsperadoCentavos);
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, "/caixa/turnos/atual", salaoA.Token));
     }
 
     // ---- fixtures ---------------------------------------------------------------------------------------------------------------------------------
@@ -235,6 +274,54 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         public Guid SessionId => session;
 
         public OrganizationContext Organization => organization;
+    }
+
+    private sealed record ProdutoDto(Guid Id, string Nome, long PrecoCentavos);
+
+    private sealed record ComandaCriadaDto(Guid Id, int Versao);
+
+    private sealed record Salao(string Token, Guid ComandaId, Guid ProdutoId, long EsperadoCentavos);
+
+    /// <summary>The salão flow of one organization through real HTTP as its founder: R$ 100,00 float, 2 x R$ 12,50 (R$ 27,50 with the 10% fee), R$ 30,00 in cash (R$ 2,50 of change), comanda closed, shift counted exactly.</summary>
+    private static async Task<Salao> RunSalaoAsync(HttpClient client, Tenant tenant)
+    {
+        var token = (await LoginAsync(client, tenant.OwnerEmail, DonoSenha)).AccessToken;
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", token, new { fundoCentavos = 10_000 }));
+        using var categoria = await SendAsync(client, HttpMethod.Post, "/cardapio/categorias", token, new { nome = "Bebidas" });
+        Assert.Equal(HttpStatusCode.Created, categoria.StatusCode);
+        var categoriaId = (await categoria.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var produto = await SendAsync(client, HttpMethod.Post, "/cardapio/produtos", token, new { codigo = "CHOPP", nome = "Chopp 300ml", precoCentavos = 1250, categoriaId });
+        Assert.Equal(HttpStatusCode.Created, produto.StatusCode);
+        var produtoId = (await produto.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", token, new { identificacao = "Ana e Beto", mesaId = (Guid?)null, pessoas = (int?)null });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        using var rodada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId, quantidade = 2 } } });
+        Assert.Equal(HttpStatusCode.Created, rodada.StatusCode);
+        var versao = (await rodada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("comandaVersao").GetInt32();
+
+        using var conta = await SendAsync(client, HttpMethod.Get, $"/comandas/{comanda.Id}/conta", token);
+        var contaJson = await conta.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(2_750, contaJson.GetProperty("totalCentavos").GetInt64());
+
+        var pagamentoId = Guid.CreateVersion7();
+        using var pago = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/pagamentos", token, new { pagamentoId, recebidoCentavos = 3_000, versao });
+        Assert.Equal(HttpStatusCode.Created, pago.StatusCode);
+        var pagoJson = await pago.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(250, pagoJson.GetProperty("trocoCentavos").GetInt64());
+        Assert.Equal(0, pagoJson.GetProperty("saldoRestanteCentavos").GetInt64());
+
+        // The same payment id again is the same payment (200, no second charge).
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/pagamentos", token, new { pagamentoId, recebidoCentavos = 3_000, versao }));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/fechar", token, new { versao = pagoJson.GetProperty("comandaVersao").GetInt32() }));
+
+        using var turno = await SendAsync(client, HttpMethod.Get, "/caixa/turnos/atual", token);
+        var esperado = (await turno.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("recebidoDinheiroCentavos").GetInt64() + 10_000;
+        using var fechado = await SendAsync(client, HttpMethod.Post, "/caixa/turnos/atual/fechar", token, new { contadoCentavos = esperado });
+        Assert.Equal(HttpStatusCode.OK, fechado.StatusCode);
+        Assert.Equal(0, (await fechado.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("diferencaCentavos").GetInt64());
+        return new Salao(token, comanda.Id, produtoId, esperado);
     }
 
     private ApiFactory Api() => new(_db.AppConnection);

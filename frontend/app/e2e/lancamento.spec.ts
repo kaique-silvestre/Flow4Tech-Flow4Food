@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { lerSeed, SENHA } from "./seed";
 
@@ -61,6 +61,9 @@ test("from the signed-in list to the first item launched in under ten seconds, e
   await expect(page.getByText("Rodada enviada", { exact: false })).toBeVisible();
   const gasto = Date.now() - inicio;
   expect(gasto).toBeLessThan(10_000);
+  // The measured target of the story (spec 21): scripted time from the signed-in list to the first item sent, and taps for the next unit (one).
+  const tela = page.viewportSize();
+  appendFileSync(join(shots, "..", "metas.txt"), `${new Date().toISOString()} ${tela?.width}x${tela?.height} primeiro item enviado em ${gasto} ms (limite 10000); proxima unidade do mesmo produto: 1 toque\n`);
 
   // The next unit of the same product is a single tap.
   await mais(page, "Chopp 300ml").click();
