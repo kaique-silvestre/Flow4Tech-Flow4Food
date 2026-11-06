@@ -28,6 +28,9 @@ public sealed record Comanda(
     bool TaxaServicoRemovida,
     int Versao);
 
+/// <summary>The bill of a comanda in cents: consumption of the launched items, service fee, total, what the payments applied and what remains.</summary>
+public sealed record ContaDaComanda(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual);
+
 /// <summary>Pure rules of the comanda (no I/O, no clock). Return null / false when the input is not acceptable; the caller never stores what these refuse.</summary>
 public static class RegrasDeComanda
 {
@@ -73,6 +76,21 @@ public static class RegrasDeComanda
     public static bool PessoasValidas(int? pessoas) => pessoas is null or (>= 1 and <= PessoasMaximo);
 
     public static bool TaxaValida(decimal percentual) => percentual is >= 0m and <= TaxaMaxima;
+
+    /// <summary>The service fee in cents: <paramref name="percentual"/> of the consumption, rounded half up (0.5 cent goes up) in this one function.</summary>
+    public static long TaxaDeServico(long consumoCentavos, decimal percentual) =>
+        (long)Math.Round(Math.Max(0, consumoCentavos) * percentual / 100m, 0, MidpointRounding.AwayFromZero);
+
+    /// <summary>The bill: fee included unless it was removed; balance = total minus what was applied (never hidden when negative, so the caller can refuse to close).</summary>
+    public static ContaDaComanda Conta(long consumoCentavos, decimal percentual, bool taxaRemovida, long pagoCentavos)
+    {
+        var taxa = taxaRemovida ? 0 : TaxaDeServico(consumoCentavos, percentual);
+        var total = consumoCentavos + taxa;
+        return new ContaDaComanda(consumoCentavos, taxa, total, pagoCentavos, total - pagoCentavos, taxaRemovida, percentual);
+    }
+
+    /// <summary>A comanda closes only at balance zero.</summary>
+    public static bool PodeFechar(ContaDaComanda conta) => conta is not null && conta.SaldoCentavos == 0;
 
     /// <summary>Optimistic concurrency: a write is accepted only against the version the caller last saw.</summary>
     public static bool VersaoConfere(int enviada, int atual) => enviada == atual;

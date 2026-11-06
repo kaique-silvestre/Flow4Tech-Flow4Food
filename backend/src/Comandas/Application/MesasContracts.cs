@@ -27,6 +27,10 @@ public static class ComandasAuditActions
     public const string DesfazerRodada = "comanda:desfazer-rodada";
 
     public const string CancelarItem = "comanda:cancelar-item";
+
+    public const string FecharComanda = "comanda:fechar";
+
+    public const string RemoverTaxaServico = "comanda:remover-taxa-servico";
 }
 
 [SettingsCatalog]

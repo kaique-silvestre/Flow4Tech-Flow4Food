@@ -34,7 +34,7 @@ public static class CaixaAuditActions
 [SettingsCatalog]
 public static class CaixaSettings
 {
-    /// <summary>When on, cash is received only while the operator has an open shift. Read by the payment flow (a later ticket); declared here with the shift.</summary>
+    /// <summary>When on, cash is received only while the operator has an open shift. Read by the payment flow (Pagamentos); declared here with the shift.</summary>
     public static readonly SettingDefinition ExigirCaixaAberto = new(
         "caixa.exigir-caixa-aberto",
         SettingType.Booleano,
@@ -65,11 +65,29 @@ public interface ICaixaStore
 
     Task<Turno?> AcharAbertoAsync(Guid organizationId, Guid unitId, Guid operadorId, CancellationToken cancellationToken);
 
-    /// <summary>Closes an open shift; false when it was no longer open.</summary>
-    Task<bool> FecharAsync(Guid organizationId, Turno fechado, CancellationToken cancellationToken);
+    /// <summary>The shift by id (any state); null when there is none in the organization.</summary>
+    Task<Turno?> AcharAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Closes an open shift with the counted cash; false when it was no longer open. The expected cash (<c>fundo + recebido em dinheiro</c>) and the difference are computed by the database in the
+    /// same statement, so a cash payment committed an instant earlier is always counted.
+    /// </summary>
+    Task<bool> FecharAsync(Guid organizationId, Guid turnoId, DateTimeOffset fechadoEm, long contadoCentavos, CancellationToken cancellationToken);
 
     /// <summary>Shifts of the unit, most recently opened first; only <paramref name="operadorId"/>'s when given.</summary>
     Task<IReadOnlyList<Turno>> ListarAsync(Guid organizationId, Guid unitId, Guid? operadorId, int limite, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Public contract of the register for other modules (Pagamentos): which shift the operator has open, and recording cash received in it. Both run inside the caller's unit of work.
+/// </summary>
+public interface IMovimentosDoCaixa
+{
+    /// <summary>The id of the operator's open shift in the unit, or null.</summary>
+    Task<Guid?> TurnoAbertoAsync(Guid organizationId, Guid unitId, Guid operadorId, CancellationToken cancellationToken);
+
+    /// <summary>Adds cash applied to a comanda to the expected amount of an OPEN shift; false (nothing written) when the shift is no longer open.</summary>
+    Task<bool> RegistrarRecebimentoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken);
 }
 
 /// <summary>Port: domain events of the register, written to the outbox on the unit of work in progress.</summary>

@@ -644,6 +644,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/conta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getContaDaComanda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/pagamentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPagamentosDaComanda"];
+        put?: never;
+        post: operations["receberPagamento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/fechar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fecharComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/taxa-servico/remover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["removerTaxaServico"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -673,7 +737,7 @@ export interface components {
         };
         AbrirTurnoRequest: {
             /** Format: int64 */
-            fundoCentavos: number | string;
+            fundoCentavos: null | number | string;
         };
         AceitarConviteRequest: {
             token: null | string;
@@ -774,6 +838,24 @@ export interface components {
             valorDaOrganizacao: null | string;
             valorDaUnidade: null | string;
         };
+        ContaDto: {
+            /** Format: int64 */
+            consumoCentavos: number | string;
+            /** Format: int64 */
+            taxaServicoCentavos: number | string;
+            /** Format: int64 */
+            totalCentavos: number | string;
+            /** Format: int64 */
+            pagoCentavos: number | string;
+            /** Format: int64 */
+            saldoCentavos: number | string;
+            taxaServicoRemovida: boolean;
+            /** Format: double */
+            taxaServicoPercentual: number | string;
+            /** Format: int32 */
+            versao: number | string;
+            estado: string;
+        };
         ConviteRequest: {
             email: null | string;
             nome: null | string;
@@ -818,7 +900,7 @@ export interface components {
         };
         FecharTurnoRequest: {
             /** Format: int64 */
-            contadoCentavos: number | string;
+            contadoCentavos: null | number | string;
         };
         HealthStatus: {
             status: string;
@@ -895,6 +977,29 @@ export interface components {
         MesaErro: {
             codigo: string;
         };
+        PagamentoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            comandaId: string;
+            /** Format: uuid */
+            turnoId: null | string;
+            metodo: string;
+            /** Format: int64 */
+            recebidoCentavos: number | string;
+            /** Format: int64 */
+            aplicadoCentavos: number | string;
+            /** Format: int64 */
+            trocoCentavos: number | string;
+            /** Format: int64 */
+            saldoRestanteCentavos: number | string;
+            /** Format: int32 */
+            comandaVersao: number | string;
+            /** Format: date-time */
+            registradoEm: string;
+            /** Format: uuid */
+            operadorId: string;
+        };
         ProdutoDto: {
             /** Format: uuid */
             id: string;
@@ -906,6 +1011,14 @@ export interface components {
             precoCentavos: number | string;
             moeda: string;
             ativo: boolean;
+            /** Format: int32 */
+            versao: number | string;
+        };
+        ReceberPagamentoRequest: {
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: int64 */
+            recebidoCentavos: number | string;
             /** Format: int32 */
             versao: number | string;
         };
@@ -999,6 +1112,8 @@ export interface components {
             /** Format: int64 */
             diferencaCentavos: null | number | string;
             diferencaTexto: null | string;
+            /** Format: int64 */
+            recebidoDinheiroCentavos: number | string;
         };
         UnidadeAtivaResponse: {
             /** Format: uuid */
@@ -1026,6 +1141,10 @@ export interface components {
             emVigor: boolean;
             agendada: boolean;
             substituida: boolean;
+        };
+        VersaoRequest: {
+            /** Format: int32 */
+            versao: number | string;
         };
         VersionInfo: {
             version: string;
@@ -3135,6 +3254,306 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemCanceladoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    getContaDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    listPagamentosDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagamentoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    receberPagamento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceberPagamentoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagamentoDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagamentoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    fecharComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    removerTaxaServico: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDto"];
                 };
             };
             /** @description Bad Request */

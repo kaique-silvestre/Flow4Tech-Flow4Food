@@ -180,7 +180,7 @@ public sealed partial class ComandasEndpointsTests : IAsyncLifetime
         var perfis = api.Services.GetRequiredService<GestaoDePerfis>();
         var request = new FakeRequest(DonoA, new OrganizationContext(OrgA, UnitA));
         var waiter = await perfis.CriarAsync(request, "Garcom", [new RegraDeAcesso(RuleEffect.Allow, "comanda:abrir"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "mesa:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:lancar-item"), new RegraDeAcesso(RuleEffect.Allow, "comanda:cancelar-item"), new RegraDeAcesso(RuleEffect.Allow, "comanda:desfazer-rodada")]);
-        var chief = await perfis.CriarAsync(request, "Supervisor", [new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver-comandas-de-outros")]);
+        var chief = await perfis.CriarAsync(request, "Supervisor", [new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:ver-comandas-de-outros"), new RegraDeAcesso(RuleEffect.Allow, "comanda:receber-pagamento")]);
         Assert.Equal(ResultadoGestao.Ok, waiter.Resultado);
         Assert.Equal(ResultadoGestao.Ok, chief.Resultado);
         Assert.Equal(ResultadoGestao.Ok, await perfis.AtribuirAsync(request, Garcom, waiter.Id!.Value));

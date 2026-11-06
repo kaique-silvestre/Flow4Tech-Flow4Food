@@ -13,11 +13,14 @@ internal sealed record TurnoDto(
     long? ContadoCentavos,
     long? EsperadoCentavos,
     long? DiferencaCentavos,
-    string? DiferencaTexto);
+    string? DiferencaTexto,
+    long RecebidoDinheiroCentavos);
 
-internal sealed record AbrirTurnoRequest(long FundoCentavos);
+/// <summary>The float is required: an absent field is a 400, never read as zero.</summary>
+internal sealed record AbrirTurnoRequest(long? FundoCentavos);
 
-internal sealed record FecharTurnoRequest(long ContadoCentavos);
+/// <summary>The counted cash is required: an absent field is a 400, never read as zero (a zero count is a real, valid count).</summary>
+internal sealed record FecharTurnoRequest(long? ContadoCentavos);
 
 internal sealed record CaixaErro(string Codigo);
 
@@ -50,7 +53,7 @@ internal static class CaixaEndpoints
 
         app.MapPost("/caixa/turnos", async (AbrirTurnoRequest body, RequestContextAccessor request, GestaoDoCaixa caixa, CancellationToken cancellationToken) =>
             {
-                var r = await caixa.AbrirAsync(request, body.FundoCentavos, cancellationToken);
+                var r = body.FundoCentavos is { } fundo ? await caixa.AbrirAsync(request, fundo, cancellationToken) : new ResultadoDoTurno(ResultadoDoCaixa.Invalido);
                 return r.Resultado == ResultadoDoCaixa.Ok ? Results.Json(Dto(r.Turno!), statusCode: StatusCodes.Status201Created) : Erro(r.Resultado);
             })
             .WithName("abrirTurno")
@@ -65,7 +68,7 @@ internal static class CaixaEndpoints
 
         app.MapPost("/caixa/turnos/atual/fechar", async (FecharTurnoRequest body, RequestContextAccessor request, GestaoDoCaixa caixa, CancellationToken cancellationToken) =>
             {
-                var r = await caixa.FecharAsync(request, body.ContadoCentavos, cancellationToken);
+                var r = body.ContadoCentavos is { } contado ? await caixa.FecharAsync(request, contado, cancellationToken) : new ResultadoDoTurno(ResultadoDoCaixa.Invalido);
                 return r.Resultado == ResultadoDoCaixa.Ok ? Results.Ok(Dto(r.Turno!)) : Erro(r.Resultado);
             })
             .WithName("fecharTurno")
@@ -80,7 +83,7 @@ internal static class CaixaEndpoints
     }
 
     private static TurnoDto Dto(Turno t) =>
-        new(t.Id, t.UnidadeId, t.OperadorId, t.AbertoEm, t.FundoCentavos, t.FechadoEm, t.ContadoCentavos, t.EsperadoCentavos, t.DiferencaCentavos, t.DiferencaCentavos is { } d ? RegrasDoCaixa.Palavra(d) : null);
+        new(t.Id, t.UnidadeId, t.OperadorId, t.AbertoEm, t.FundoCentavos, t.FechadoEm, t.ContadoCentavos, t.EsperadoCentavos, t.DiferencaCentavos, t.DiferencaCentavos is { } d ? RegrasDoCaixa.Palavra(d) : null, t.RecebidoDinheiroCentavos);
 
     private static IResult Erro(ResultadoDoCaixa resultado) => resultado switch
     {

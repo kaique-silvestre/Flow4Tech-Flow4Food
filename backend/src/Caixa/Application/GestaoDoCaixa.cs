@@ -73,19 +73,19 @@ public sealed class GestaoDoCaixa(IUnitOfWork unitOfWork, ICaixaStore store, IAu
                     return new ResultadoDoTurno(ResultadoDoCaixa.SemTurnoAberto);
                 }
 
-                // No cash payment exists yet (payments arrive in a later ticket): the expected cash is the float alone.
-                var esperado = RegrasDoCaixa.Esperado(aberto.FundoCentavos, 0);
-                var diferenca = RegrasDoCaixa.Diferenca(contadoCentavos, esperado);
-                var fechado = aberto with { FechadoEm = clock.UtcNow, ContadoCentavos = contadoCentavos, EsperadoCentavos = esperado, DiferencaCentavos = diferenca };
-                if (!await store.FecharAsync(org.OrganizationId, fechado, ct))
+                // The database computes the expected cash (float + cash received in the shift) in the closing statement itself.
+                if (!await store.FecharAsync(org.OrganizationId, aberto.Id, clock.UtcNow, contadoCentavos, ct) || await store.AcharAsync(org.OrganizationId, aberto.Id, ct) is not { } fechado)
                 {
                     return new ResultadoDoTurno(ResultadoDoCaixa.SemTurnoAberto);
                 }
 
+                var esperado = fechado.EsperadoCentavos!.Value;
+                var diferenca = fechado.DiferencaCentavos!.Value;
                 var depois = new JsonObject
                 {
                     ["fundoCentavos"] = aberto.FundoCentavos,
                     ["contadoCentavos"] = contadoCentavos,
+                    ["recebidoDinheiroCentavos"] = fechado.RecebidoDinheiroCentavos,
                     ["esperadoCentavos"] = esperado,
                     ["diferencaCentavos"] = diferenca,
                 };

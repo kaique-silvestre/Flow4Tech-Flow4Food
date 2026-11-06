@@ -15,7 +15,8 @@ public sealed record Turno(
     DateTimeOffset? FechadoEm,
     long? ContadoCentavos,
     long? EsperadoCentavos,
-    long? DiferencaCentavos);
+    long? DiferencaCentavos,
+    long RecebidoDinheiroCentavos = 0);
 
 /// <summary>Pure rules of the shift. The float is change money, not a sale; it only enters the expected cash at closing.</summary>
 public static class RegrasDoCaixa

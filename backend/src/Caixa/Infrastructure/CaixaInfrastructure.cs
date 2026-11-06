@@ -31,6 +31,8 @@ internal sealed class TurnoRow
     public long? EsperadoCentavos { get; set; }
 
     public long? DiferencaCentavos { get; set; }
+
+    public long RecebidoDinheiroCentavos { get; set; }
 }
 
 /// <summary>EF mapping of the shifts (schema owned by <c>0016_caixa.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
@@ -55,6 +57,7 @@ internal sealed class CaixaDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.ContadoCentavos).HasColumnName("contado_centavos");
             e.Property(x => x.EsperadoCentavos).HasColumnName("esperado_centavos");
             e.Property(x => x.DiferencaCentavos).HasColumnName("diferenca_centavos");
+            e.Property(x => x.RecebidoDinheiroCentavos).HasColumnName("recebido_dinheiro_centavos");
         });
     }
 }
@@ -63,7 +66,7 @@ internal sealed class CaixaDbContext(TenantTransaction transaction) : TenantDbCo
 /// The shifts on PostgreSQL. Joins the caller's unit of work (<see cref="TenantUnitOfWork.Require"/>); never filters on <c>organizacao_id</c> (RLS does). Opening is one
 /// <c>INSERT ... ON CONFLICT DO NOTHING</c> against the partial unique index, so two simultaneous opens cannot abort the transaction: the loser just gets zero rows.
 /// </summary>
-public sealed class PostgresCaixaStore : ICaixaStore
+public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
 {
     public async Task<bool> TentarAbrirAsync(Guid organizationId, Turno turno, CancellationToken cancellationToken)
     {
@@ -85,16 +88,37 @@ public sealed class PostgresCaixaStore : ICaixaStore
         return await context.Turnos.AsNoTracking().Where(t => t.UnidadeId == unitId && t.OperadorId == operadorId && t.FechadoEm == null).Select(Mapa).FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<bool> FecharAsync(Guid organizationId, Turno fechado, CancellationToken cancellationToken)
+    public async Task<Turno?> AcharAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(fechado);
         await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
-        var rows = await context.Turnos
-            .Where(t => t.Id == fechado.Id && t.FechadoEm == null)
-            .ExecuteUpdateAsync(
-                s => s.SetProperty(t => t.FechadoEm, fechado.FechadoEm).SetProperty(t => t.ContadoCentavos, fechado.ContadoCentavos)
-                    .SetProperty(t => t.EsperadoCentavos, fechado.EsperadoCentavos).SetProperty(t => t.DiferencaCentavos, fechado.DiferencaCentavos),
-                cancellationToken);
+        return await context.Turnos.AsNoTracking().Where(t => t.Id == turnoId).Select(Mapa).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<bool> FecharAsync(Guid organizationId, Guid turnoId, DateTimeOffset fechadoEm, long contadoCentavos, CancellationToken cancellationToken)
+    {
+        await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE turnos_caixa
+            SET fechado_em = {fechadoEm},
+                contado_centavos = {contadoCentavos},
+                esperado_centavos = fundo_centavos + recebido_dinheiro_centavos,
+                diferenca_centavos = {contadoCentavos} - (fundo_centavos + recebido_dinheiro_centavos)
+            WHERE id = {turnoId} AND fechado_em IS NULL
+            """,
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<Guid?> TurnoAbertoAsync(Guid organizationId, Guid unitId, Guid operadorId, CancellationToken cancellationToken) =>
+        (await AcharAbertoAsync(organizationId, unitId, operadorId, cancellationToken))?.Id;
+
+    public async Task<bool> RegistrarRecebimentoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken)
+    {
+        await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE turnos_caixa SET recebido_dinheiro_centavos = recebido_dinheiro_centavos + {centavos} WHERE id = {turnoId} AND fechado_em IS NULL",
+            cancellationToken);
         return rows == 1;
     }
 
@@ -110,7 +134,7 @@ public sealed class PostgresCaixaStore : ICaixaStore
     }
 
     private static readonly System.Linq.Expressions.Expression<Func<TurnoRow, Turno>> Mapa =
-        t => new Turno(t.Id, t.UnidadeId, t.OperadorId, t.AbertoEm, t.FundoCentavos, t.FechadoEm, t.ContadoCentavos, t.EsperadoCentavos, t.DiferencaCentavos);
+        t => new Turno(t.Id, t.UnidadeId, t.OperadorId, t.AbertoEm, t.FundoCentavos, t.FechadoEm, t.ContadoCentavos, t.EsperadoCentavos, t.DiferencaCentavos, t.RecebidoDinheiroCentavos);
 }
 
 /// <summary>Register events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
@@ -130,7 +154,9 @@ public static class CaixaServices
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<OutboxWriter>();
-        services.AddSingleton<ICaixaStore, PostgresCaixaStore>();
+        services.AddSingleton<PostgresCaixaStore>();
+        services.AddSingleton<ICaixaStore>(p => p.GetRequiredService<PostgresCaixaStore>());
+        services.AddSingleton<IMovimentosDoCaixa>(p => p.GetRequiredService<PostgresCaixaStore>());
         services.AddSingleton<IEventosDoCaixa, OutboxEventosDoCaixa>();
         services.AddSingleton<GestaoDoCaixa>();
         return services;

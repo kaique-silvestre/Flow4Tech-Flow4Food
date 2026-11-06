@@ -314,6 +314,24 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
+    public async Task<bool> FecharAsync(Guid organizationId, Guid comandaId, DateTimeOffset fechadaEm, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET estado = 'fechada', fechada_em = {fechadaEm} WHERE id = {comandaId} AND estado = 'aberta'",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET taxa_servico_removida = true WHERE id = {comandaId} AND estado = 'aberta' AND NOT taxa_servico_removida",
+            cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -473,6 +491,7 @@ public static class ComandasServices
         services.AddSingleton<GestaoDeComandas>();
         services.AddSingleton<IRodadasStore, PostgresRodadasStore>();
         services.AddSingleton<GestaoDeRodadas>();
+        services.AddSingleton<GestaoDoRecebimento>();
         return services;
     }
 }

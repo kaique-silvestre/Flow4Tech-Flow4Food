@@ -4,6 +4,7 @@ using Flow4Tech.Comandas.Domain;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
 using Flow4Tech.Kernel.Settings;
+using Flow4Tech.Pagamentos.Application;
 
 namespace Flow4Tech.Comandas.Application;
 
@@ -38,6 +39,9 @@ public enum ResultadoDeRodada
     ItemNaoEncontrado,
 
     ItemJaCancelado,
+
+    /// <summary>Taking this away would put the bill below what was already received.</summary>
+    ValorJaRecebido,
 }
 
 /// <summary><c>Versao</c> is the comanda version after the write (or the one the round produced, on a repeat); <c>VersaoAtual</c> is set on a stale version.</summary>
@@ -53,10 +57,11 @@ public sealed class GestaoDeRodadas(
     IUnitOfWork unitOfWork,
     IComandasStore comandas,
     IRodadasStore rodadas,
-    Cardapio.Application.ICardapioStore cardapio,
+    ICardapioStore cardapio,
     IAuditLog audit,
     IEventosDeComandas eventos,
     IPermissaoDaComanda permissoes,
+    GestaoDePagamentos pagamentos,
     ISettings settings,
     IClock clock)
 {
@@ -100,7 +105,7 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
-                var produtos = new Dictionary<Guid, Cardapio.Domain.Produto>();
+                var produtos = new Dictionary<Guid, (Guid Id, string Nome, long PrecoCentavos)>();
                 foreach (var produtoId in itens.Select(i => i.ProdutoId).Distinct())
                 {
                     var produto = await cardapio.AcharProdutoAsync(org.OrganizationId, produtoId, ct);
@@ -114,7 +119,7 @@ public sealed class GestaoDeRodadas(
                         return new ResultadoDeEscrita(ResultadoDeRodada.ProdutoInativo);
                     }
 
-                    produtos[produtoId] = produto;
+                    produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoCentavos);
                 }
 
                 if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
@@ -200,6 +205,11 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
+                if (await DeixariaAbaixoDoRecebidoAsync(request, comanda, rodada.Itens, ct))
+                {
+                    return new ResultadoDeEscrita(ResultadoDeRodada.ValorJaRecebido);
+                }
+
                 if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
                 {
                     return await FalhaDeVersaoAsync(org, comandaId, ct);
@@ -256,6 +266,11 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
+                if (await DeixariaAbaixoDoRecebidoAsync(request, comanda, [item], ct))
+                {
+                    return new ResultadoDeEscrita(ResultadoDeRodada.ValorJaRecebido);
+                }
+
                 if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
                 {
                     return await FalhaDeVersaoAsync(org, comandaId, ct);
@@ -284,6 +299,21 @@ public sealed class GestaoDeRodadas(
             request,
             async ct => await AcharVisivelAsync(request, comandaId, ct) is null ? null : await rodadas.ListarItensAsync(request.Organization.OrganizationId, comandaId, ct),
             cancellationToken);
+    }
+
+    /// <summary>True when cancelling <paramref name="retirados"/> would leave the bill below what the payments already applied (the balance would go negative and the comanda could never close).</summary>
+    private async Task<bool> DeixariaAbaixoDoRecebidoAsync(IRequestContext request, Comanda comanda, IReadOnlyList<ItemDaComanda> retirados, CancellationToken ct)
+    {
+        var pago = await pagamentos.SomaAplicadaAsync(request, comanda.Id, ct);
+        if (pago == 0)
+        {
+            return false;
+        }
+
+        var itens = await rodadas.ListarItensAsync(request.Organization.OrganizationId, comanda.Id, ct);
+        var ids = retirados.Select(i => i.Id).ToHashSet();
+        var depois = RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens.Where(i => !ids.Contains(i.Id))), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago);
+        return depois.SaldoCentavos < 0;
     }
 
     private static ResultadoDeEscrita Repetida(RodadaComItens existente, Guid comandaId) =>

@@ -26,6 +26,15 @@ public static class ComandaPermissions
 
     /// <summary>Undo a whole round inside the undo window. Sensitive: a denial is audited.</summary>
     public const string DesfazerRodada = "comanda:desfazer-rodada";
+
+    /// <summary>Receive a cash payment for a comanda (the cashier). The payment itself is also gated by <c>pagamento:registrar</c>.</summary>
+    public const string ReceberPagamento = "comanda:receber-pagamento";
+
+    /// <summary>Close a comanda whose balance is zero.</summary>
+    public const string Fechar = "comanda:fechar";
+
+    /// <summary>Remove the service fee of an open comanda. Sensitive: a denial is audited, and so is the removal.</summary>
+    public const string RemoverTaxaServico = "comanda:remover-taxa-servico";
 }
 
 [SettingsCatalog]
@@ -78,6 +87,12 @@ public interface IComandasStore
     /// <summary>The comanda of the unit by id, any state; null when there is none in the unit.</summary>
     Task<Comanda?> AcharAsync(Guid organizationId, Guid unitId, Guid comandaId, CancellationToken cancellationToken);
 
+    /// <summary>Closes an OPEN comanda; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> FecharAsync(Guid organizationId, Guid comandaId, DateTimeOffset fechadaEm, CancellationToken cancellationToken);
+
+    /// <summary>Marks the service fee of an OPEN comanda as removed; false when it was already removed or the comanda is not open.</summary>
+    Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
+
     /// <summary>Optimistic write: bumps the version of an OPEN comanda only if it is still <paramref name="versaoEsperada"/>; false otherwise (and nothing changes). The row stays locked until the unit of work ends.</summary>
     Task<bool> AvancarVersaoAsync(Guid organizationId, Guid comandaId, int versaoEsperada, CancellationToken cancellationToken);
 
@@ -102,6 +117,13 @@ public sealed record RodadaDesfeita(Guid EventId, Guid ComandaId, Guid RodadaId,
 public sealed record ItemCancelado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, string Motivo, Guid CanceladoPor) : IDomainEvent
 {
     public const string Type = "comanda.item-cancelado";
+
+    public string EventType => Type;
+}
+
+public sealed record ComandaFechada(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, long TotalCentavos, Guid FechadaPor) : IDomainEvent
+{
+    public const string Type = "comanda.fechada";
 
     public string EventType => Type;
 }

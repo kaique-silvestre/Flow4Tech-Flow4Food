@@ -5,6 +5,7 @@ using Flow4Tech.Infrastructure.Audit;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Caixa.Application;
 using Flow4Tech.Caixa.Infrastructure;
+using Flow4Tech.Pagamentos.Infrastructure;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Comandas.Infrastructure;
 using Flow4Tech.Cardapio.Infrastructure;
@@ -68,6 +69,7 @@ builder.Services.AddOrganizacao(
     provider => definition => provider.GetRequiredService<IConfiguration>()[definition.SystemConfigPath]);
 builder.Services.AddCardapio();
 builder.Services.AddCaixa();
+builder.Services.AddPagamentos();
 builder.Services.AddComandas();
 builder.Services.AddSingleton<IPermissaoDoOperador, PermissaoDoOperador>();
 builder.Services.AddSingleton<IPermissaoDaComanda, PermissaoDoOperador>();

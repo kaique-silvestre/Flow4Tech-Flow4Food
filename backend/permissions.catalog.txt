@@ -5,7 +5,10 @@ caixa:ver-todos
 comanda:abrir
 comanda:cancelar-item
 comanda:desfazer-rodada
+comanda:fechar
 comanda:lancar-item
+comanda:receber-pagamento
+comanda:remover-taxa-servico
 comanda:ver
 comanda:ver-comandas-de-outros
 conta:gerir-google
@@ -15,6 +18,8 @@ mesa:ver
 organizacao:configurar
 organizacao:trocar-unidade
 organizacao:ver-unidades
+pagamento:registrar
+pagamento:ver
 perfil:gerir
 perfil:ver
 permissao:atribuir
