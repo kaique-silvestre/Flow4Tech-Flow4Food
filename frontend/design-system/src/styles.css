@@ -738,3 +738,112 @@ body {
   font-size: var(--f4-text-sheet-title);
   font-weight: 600;
 }
+
+/* Round bar */
+.f4-roundbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-3) var(--f4-space-4);
+  background: var(--f4-surface);
+  border-top: 1px solid var(--f4-border-strong);
+  border-radius: var(--f4-radius-lg) var(--f4-radius-lg) 0 0;
+}
+
+.f4-roundbar-text {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--f4-text-secondary);
+}
+
+.f4-roundbar-note {
+  display: block;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+}
+
+.f4-roundbar-action {
+  flex: none;
+}
+
+/* Undo toast */
+.f4-toast {
+  position: fixed;
+  left: var(--f4-space-4);
+  right: var(--f4-space-4);
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  z-index: 10;
+  max-width: 448px;
+  margin: 0 auto;
+  background: var(--f4-ink);
+  color: var(--f4-bg);
+  border-radius: var(--f4-radius-lg);
+  overflow: hidden;
+}
+
+.f4-toast-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-2) var(--f4-space-2) var(--f4-space-2) var(--f4-space-4);
+}
+
+.f4-toast-sec {
+  opacity: 0.8;
+}
+
+.f4-toast-undo {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--f4-space-4);
+  border: 0;
+  border-radius: var(--f4-radius-sm);
+  background: transparent;
+  color: var(--f4-bg);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.f4-toast-undo:focus-visible {
+  outline: 3px solid var(--f4-bg);
+  outline-offset: -3px;
+}
+
+.f4-toast-undo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.f4-toast-track {
+  height: 4px;
+  background: color-mix(in oklch, var(--f4-bg) 25%, transparent);
+}
+
+.f4-toast-bar {
+  height: 100%;
+  background: var(--f4-bg);
+  transform-origin: left center;
+  animation-name: f4-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes f4-countdown {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f4-toast-bar {
+    animation: none;
+  }
+}

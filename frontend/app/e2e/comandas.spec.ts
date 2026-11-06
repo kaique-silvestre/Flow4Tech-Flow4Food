@@ -57,7 +57,7 @@ test("from the list to the comanda screen in under ten seconds of scripted inter
   }
 
   await expect(page).toHaveURL(/\/salao\/comanda\//);
-  await expect(page.getByText("Pronta para lançar itens.")).toBeVisible();
+  await expect(page.getByLabel("Total da conta")).toBeVisible();
   expect(Date.now() - inicio).toBeLessThan(10_000);
   await shoot(page, "11-comanda-aberta");
 });

@@ -5,9 +5,11 @@ export { ItemRow, Stepper, type ItemRowProps, type StepperProps } from "./compon
 export { Keypad, type KeypadProps } from "./components/Keypad";
 export { MoneyField, type MoneyFieldProps } from "./components/MoneyField";
 export { Notice, Skeleton, type NoticeProps } from "./components/Notice";
+export { RoundBar, type RoundBarProps } from "./components/RoundBar";
 export { StatusBadge, type ComandaStatus, type StatusBadgeProps } from "./components/StatusBadge";
 export { Tab, TabList, TabPanel, Tabs, type TabProps } from "./components/Tabs";
 export { TextField, type TextFieldProps } from "./components/TextField";
 export { ToneBadge, type Tone } from "./components/ToneBadge";
+export { UndoToast, type UndoToastProps } from "./components/UndoToast";
 export { centsFromDigits, formatBRL } from "./format";
 export { colorTokens, cssVar, motionTokens, radiusTokens, spacePx, spaceTokens, touch, type ColorToken } from "./tokens";

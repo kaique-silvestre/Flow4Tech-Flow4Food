@@ -43,7 +43,9 @@ export function stubRede(informadas: Record<string, Resposta>) {
     const texto = entrada.method === "GET" ? "" : await entrada.clone().text();
     const chamada: Chamada = { method: entrada.method, path: url.pathname, headers: entrada.headers, body: texto ? JSON.parse(texto) : undefined };
     chamadas.push(chamada);
-    const resposta = rotas[`${entrada.method} ${url.pathname}`];
+    const chave = `${entrada.method} ${url.pathname}`;
+    // A key may name a path parameter as ":id" (a round id the test cannot know in advance).
+    const resposta = rotas[chave] ?? Object.entries(rotas).find(([padrao]) => padrao.includes(":") && new RegExp(`^${padrao.replace(/:[a-z]+/gi, "[^/]+")}$`).test(chave))?.[1];
     if (!resposta) {
       throw new Error(`rota sem stub: ${entrada.method} ${url.pathname}`);
     }

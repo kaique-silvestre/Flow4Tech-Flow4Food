@@ -113,13 +113,22 @@ describe("comanda list", () => {
   });
 
   it("opens the comanda screen from a row", async () => {
-    stubRede({ ...base, "GET /comandas": json([comanda(5)]), "GET /mesas": json([]) });
+    stubRede({
+      ...base,
+      "GET /comandas": json([comanda(5)]),
+      "GET /mesas": json([]),
+      "GET /comandas/c5/conta": json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, taxaServicoRemovida: false, taxaServicoPercentual: 10, versao: 1, estado: "aberta" }),
+      "GET /comandas/c5/itens": json({ itens: [], consumoCentavos: 0 }),
+      "GET /cardapio/produtos": json([]),
+      "GET /cardapio/categorias": json([]),
+      "GET /cardapio/produtos/frequentes": json([]),
+    });
     const { router } = await renderEm("/salao");
 
     await userEvent.click(await screen.findByRole("link", { name: /#5/ }));
 
     expect(router.state.location.pathname).toBe("/salao/comanda/c5");
-    expect(await screen.findByRole("heading", { level: 2, name: "#5 · Comanda 5" })).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 2, name: "Comanda 5" })).toBeVisible();
   });
 });
 
