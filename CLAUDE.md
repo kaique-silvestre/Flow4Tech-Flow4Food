@@ -205,6 +205,7 @@ Prova: `DoisTenantsEndpointsTests` faz login real em duas organizações e confe
 - **PR:** só quando o dono pedir. Título igual ao commit principal (`feat(F4-0013): ...`), alvo `dev-v2` (de `dev-v2` para `main-v2` só em entrega revisada), corpo pelo template `.github/pull_request_template.md` com o ID. Merge de feature em `dev-v2` por squash; `dev-v2` -> `main-v2` por merge commit.
 - **Fechar o ticket:** `**Status:** done` no arquivo do ticket e a linha em `docs/tickets.md` com branch, PR e status atualizados. Os 38 tickets anteriores são `F4-0001` a `F4-0038` (mapeados no índice); commits antigos não são reescritos.
 - **Rastrear:** `git log --grep "F4-0013"`, busca de PR por `F4-0013`, `git branch -a | grep F4-0013`, e o índice.
+- **Hooks locais (Husky, `.husky/`, instalados por `pnpm install` na raiz):** `pre-commit` bloqueia commit direto em `main-v2`, `dev-v2`, `main`, `staging`, `development` e `refactor-v2`, roda `dotnet format` nos `.cs` em staging e recusa marcador de conflito; `commit-msg` exige `tipo(F4-NNNN): descrição` (merge/revert/fixup passam); `pre-push` bloqueia push direto nessas branches e roda `dotnet build`, os testes de arquitetura e unitários (sem Docker), `pnpm -r typecheck` e `pnpm -r --if-present test` (suíte completa com Docker: `PRE_PUSH_FULL=1 git push`). Não use `--no-verify`; o CI roda os mesmos gates. O front ainda não tem eslint/prettier (só typecheck e testes).
 
 ## Writing a route the secure way
 1. Resolve the organization/unit from `OrganizationContext` (authenticated session), never from client input.

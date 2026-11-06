@@ -1,0 +1,29 @@
+. "$(dirname "$0")/_protegidas.sh"
+
+# 1. Nenhum commit direto nas branches protegidas (main-v2, dev-v2 e o sistema antigo).
+branch=$(git symbolic-ref --short -q HEAD || echo "")
+if [ -n "$branch" ] && E_protegida "$branch"; then
+  echo "ERRO: commit direto em '$branch' não é permitido (ADR-016)." >&2
+  echo "Crie uma branch de trabalho: git switch -c feat/F4-NNNN-resumo (a partir de dev-v2) e abra um PR." >&2
+  exit 1
+fi
+
+# 2. Formatação rápida dos arquivos C# em staging (só os arquivos do commit).
+cs=$(git diff --cached --name-only --diff-filter=ACM -- '*.cs' | grep '^backend/' || true)
+if [ -n "$cs" ]; then
+  if command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: dotnet format nos .cs em staging"
+    # shellcheck disable=SC2086
+    dotnet format backend/Flow4Tech.sln --include $cs --no-restore --verbosity quiet || { echo "ERRO: dotnet format falhou (veja acima)." >&2; exit 1; }
+    # shellcheck disable=SC2086
+    git add -- $cs
+  else
+    echo "AVISO: dotnet não encontrado; formatação C# pulada (o CI confere)." >&2
+  fi
+fi
+
+# 3. Higiene: marcadores de conflito e arquivos grandes demais em staging.
+if git diff --cached -U0 | grep -qE '^\+(<<<<<<<|>>>>>>>) '; then
+  echo "ERRO: marcador de conflito em staging." >&2
+  exit 1
+fi

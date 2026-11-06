@@ -1,0 +1,11 @@
+{
+  "name": "flow4tech",
+  "private": true,
+  "description": "Raiz do monorepo: só ferramentas de repositório (git hooks). Os pacotes estão em pnpm-workspace.yaml.",
+  "scripts": {
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
