@@ -12,17 +12,17 @@ O repositório tem branches de sessão (`claude/...`), planejamento (`refactor-v
 - `dev-v2`: integração. Toda feature entra aqui por PR. Protegida: PR obrigatório e `gates` verde.
 - `main`, `staging`, `development` e `refactor-v2` ficam como estão (sistema antigo e planejamento); não recebem trabalho novo.
 
-**ID de ticket, único no repositório:** `<ÁREA>-<NNN>`, com área em 3 letras e número de 3 dígitos, nunca reaproveitado. Áreas hoje: `FND` (fundação técnica), `PLT` (plataforma base), `SAL` (salão). Área nova entra na lista deste ADR. Os tickets já feitos ganham o ID retroativamente (salão 13 = `SAL-013`); o arquivo do ticket em `.scratch/<fatia>/issues/` passa a ter as linhas `ID:`, `Branch:` e `PR:`.
+**ID de ticket:** `F4-NNNN`, um número sequencial único no repositório (F4 = Flow4Tech), sem área no nome, nunca reaproveitado. O ID só identifica; ele não carrega fase, PR nem spec, porque isso muda. Tudo o que liga o ticket ao resto vive no índice `docs/tickets.md` (ID, título, fatia, spec, arquivo do ticket, branch, PR, status), atualizado a cada ticket aberto e a cada PR. Os 38 tickets já feitos (fundação, plataforma base, salão) receberam `F4-0001` a `F4-0038` em ordem cronológica.
 
-**Nome de branch de trabalho:** `<tipo>/<ID>-<resumo-em-kebab>`, a partir de `dev-v2`. Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Exemplos: `feat/SAL-013-fila-offline`, `fix/SAL-014-chave-de-cache-do-caixa`. Uma branch por ticket; vida curta (dias, não semanas). Trabalho sem ticket (manutenção) usa `chore/MNT-NNN-...` com ticket de manutenção aberto antes.
+**Nome de branch de trabalho:** `<tipo>/F4-NNNN-<resumo-em-kebab>`, a partir de `dev-v2`. Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Exemplo: `feat/F4-0013-fila-offline`. A barra agrupa branches no Git; parênteses ficam só em commit e título de PR. Uma branch por ticket, vida curta (dias). Manutenção sem ticket de produto abre um ticket antes (mesmo contador).
 
-**Commits e PRs:** commit `tipo(ID): descrição` (Conventional Commits), por exemplo `feat(SAL-013): fila de ações pendentes`. Título do PR igual ao do commit principal, e o corpo cita o ID, o arquivo do ticket e o que foi verificado. Merge de feature em `dev-v2` por squash (um commit por ticket, com o ID no título); `dev-v2` -> `main-v2` por merge commit (preserva a lista de tickets de cada entrega).
+**Commits e PRs:** commit `tipo(F4-NNNN): descrição` (Conventional Commits), por exemplo `feat(F4-0013): fila de ações pendentes`. Título do PR igual ao do commit principal, e o corpo cita o ID, o arquivo do ticket e o que foi verificado. Merge de feature em `dev-v2` por squash (um commit por ticket, com o ID no título); `dev-v2` -> `main-v2` por merge commit (preserva a lista de tickets de cada entrega).
 
-**Rastreio:** `git log --grep "SAL-013"` ou a busca de PRs por `SAL-013` devolve tudo de um ticket; `git branch -a | grep SAL-013` acha a branch. Um check no CI (a decidir) reprova PR cuja branch ou título não tenha ID.
+**Rastreio:** `git log --grep "F4-0013"` ou a busca de PRs por `F4-0013` devolve tudo de um ticket; `git branch -a | grep F4-0013` acha a branch; o índice mostra o resto. Um check no CI (a decidir) reprova PR cuja branch ou título não tenha ID.
 
 **Branches de sessão (`claude/...`):** são temporárias. O trabalho sai delas por PR para `dev-v2` e elas são apagadas depois do merge.
 
 ## Consequences
 - Mais cerimônia por mudança (abrir ticket, nomear a branch), em troca de rastreio completo.
-- Trabalho já feito (plataforma base e salão) entra em `dev-v2` num PR único de legado, listando os IDs retroativos.
+- Trabalho já feito (plataforma base e salão) entra em `dev-v2` num PR único de legado, listando `F4-0001` a `F4-0038`. Commits antigos não são reescritos (mudaria os hashes e quebraria referências); o índice faz o mapeamento, e só os commits novos seguem o padrão.
 - Proteção de branch e o check de nome dependem de configuração no GitHub (Settings > Branches ou rulesets), que é decisão do dono.
