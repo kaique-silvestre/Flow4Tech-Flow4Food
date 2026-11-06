@@ -3,6 +3,15 @@ namespace Flow4Tech.Comandas.Domain;
 /// <summary>A physical table of a unit. Status (free, occupied) is NOT part of it: it is computed from the open comandas.</summary>
 public sealed record Mesa(Guid Id, Guid UnidadeId, string Identificacao, int? Capacidade, bool Ativa);
 
+public enum StatusDaMesa
+{
+    Livre,
+    Ocupada,
+}
+
+/// <summary>A table with its derived status.</summary>
+public sealed record MesaComStatus(Mesa Mesa, StatusDaMesa Status);
+
 /// <summary>Pure input rules of the tables. Return null / false when the input is not acceptable; the caller never stores what these refuse.</summary>
 public static class RegrasDeMesa
 {
@@ -24,4 +33,7 @@ public static class RegrasDeMesa
 
     /// <summary>Optional; when given, 1 to <see cref="CapacidadeMaxima"/>.</summary>
     public static bool CapacidadeValida(int? capacidade) => capacidade is null or (>= 1 and <= CapacidadeMaxima);
+
+    /// <summary>Occupied while at least one comanda holding the table is open; never stored.</summary>
+    public static StatusDaMesa Status(int comandasAbertas) => comandasAbertas > 0 ? StatusDaMesa.Ocupada : StatusDaMesa.Livre;
 }

@@ -1684,6 +1684,91 @@
         "x-permission": "caixa:fechar"
       }
     },
+    "/comandas": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listComandas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ComandaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "abrirComanda",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbrirComandaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:abrir"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [
@@ -1772,6 +1857,38 @@
   },
   "components": {
     "schemas": {
+      "AbrirComandaRequest": {
+        "required": [
+          "identificacao",
+          "mesaId",
+          "pessoas"
+        ],
+        "type": "object",
+        "properties": {
+          "identificacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mesaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "pessoas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "AbrirTurnoRequest": {
         "required": [
           "fundoCentavos"
@@ -1989,6 +2106,118 @@
           "versao": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ComandaDto": {
+        "required": [
+          "id",
+          "unidadeId",
+          "numero",
+          "numeroTexto",
+          "identificacao",
+          "mesaId",
+          "canal",
+          "garcomId",
+          "pessoas",
+          "estado",
+          "taxaServicoPercentual",
+          "taxaServicoRemovida",
+          "versao",
+          "abertaEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unidadeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "numero": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "numeroTexto": {
+            "type": "string"
+          },
+          "identificacao": {
+            "type": "string"
+          },
+          "mesaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "canal": {
+            "type": "string"
+          },
+          "garcomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pessoas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "taxaServicoPercentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "taxaServicoRemovida": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "abertaEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ComandaErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "versaoAtual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -2310,7 +2539,8 @@
           "unidadeId",
           "identificacao",
           "capacidade",
-          "ativa"
+          "ativa",
+          "status"
         ],
         "type": "object",
         "properties": {
@@ -2336,6 +2566,9 @@
           },
           "ativa": {
             "type": "boolean"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },

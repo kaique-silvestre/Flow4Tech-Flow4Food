@@ -64,15 +64,24 @@ public sealed class GestaoDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IAu
             cancellationToken);
     }
 
-    /// <summary>Active tables of the active unit; empty when the unit does not use tables.</summary>
-    public Task<IReadOnlyList<Mesa>> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    /// <summary>Active tables of the active unit with their derived status; empty when the unit does not use tables.</summary>
+    public Task<IReadOnlyList<MesaComStatus>> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         return unitOfWork.ExecuteAsync(
             request,
-            async ct => await UsaMesasAsync(request.Organization, ct)
-                ? await store.ListarAtivasAsync(request.Organization.OrganizationId, request.Organization.UnitId, ct)
-                : [],
+            async ct =>
+            {
+                var org = request.Organization;
+                if (!await UsaMesasAsync(org, ct))
+                {
+                    return [];
+                }
+
+                var mesas = await store.ListarAtivasAsync(org.OrganizationId, org.UnitId, ct);
+                var ocupadas = await store.OcupadasAsync(org.OrganizationId, org.UnitId, ct);
+                return (IReadOnlyList<MesaComStatus>)mesas.Select(m => new MesaComStatus(m, RegrasDeMesa.Status(ocupadas.Contains(m.Id) ? 1 : 0))).ToList();
+            },
             cancellationToken);
     }
 

@@ -1,4 +1,5 @@
 using Flow4Tech.Caixa.Application;
+using Flow4Tech.Comandas.Application;
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Authorization;
@@ -49,8 +50,8 @@ internal sealed class PermissaoDoChamador(IAuthorizationEngine engine, IPerfisDo
     }
 }
 
-/// <summary>Adapts the one authorization engine to the question the Caixa module asks (<c>caixa:ver-todos</c>), so that module reads no profile and references no other module.</summary>
-internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IPermissaoDoOperador
+/// <summary>Adapts the one authorization engine to the questions the Caixa and Comandas modules ask (<c>caixa:ver-todos</c>, <c>comanda:ver-comandas-de-outros</c>), so those modules read no profile and reference no other module.</summary>
+internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IPermissaoDoOperador, IPermissaoDaComanda
 {
     public async Task<bool> PodeAsync(IRequestContext request, string permission, CancellationToken cancellationToken)
     {
@@ -60,5 +61,15 @@ internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDo
         var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
         var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), permission, new Scope(organization.OrganizationId, unit), new DecisionContext(), cancellationToken);
         return decision.IsAllowed;
+    }
+}
+
+/// <summary>Adapts the operating-day resolver (Permissoes) to the port Comandas declares, so display numbers restart with the unit's operating day without Comandas referencing Permissoes.</summary>
+internal sealed class DiaOperacionalDaUnidade(IOperatingDayResolver resolver) : IDiaOperacional
+{
+    public Task<DateOnly> AtualAsync(OrganizationContext organization, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(organization);
+        return resolver.CurrentAsync(organization.OrganizationId, organization.UnitId == Guid.Empty ? null : organization.UnitId, cancellationToken);
     }
 }

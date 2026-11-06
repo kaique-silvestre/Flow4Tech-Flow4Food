@@ -19,6 +19,8 @@ public static class MesaPermissions
 public static class ComandasAuditActions
 {
     public const string CriarMesa = "mesa:criar";
+
+    public const string AbrirComanda = "comanda:abrir";
 }
 
 [SettingsCatalog]
@@ -41,4 +43,10 @@ public interface IMesasStore
 
     /// <summary>Active tables of the unit, ordered by identification.</summary>
     Task<IReadOnlyList<Mesa>> ListarAtivasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
+
+    /// <summary>The active table of the unit with this id, or null (unknown, retired or of another unit).</summary>
+    Task<Mesa?> AcharAtivaAsync(Guid organizationId, Guid unitId, Guid mesaId, CancellationToken cancellationToken);
+
+    /// <summary>Ids of the tables of the unit held by at least one open comanda.</summary>
+    Task<IReadOnlySet<Guid>> OcupadasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
 }

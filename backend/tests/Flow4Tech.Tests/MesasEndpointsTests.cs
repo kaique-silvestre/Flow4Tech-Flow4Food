@@ -253,7 +253,8 @@ public sealed class MesasEndpointsTests : IAsyncLifetime
         var columns = await QueryAsync(OrgA, UnitA, "SELECT column_name FROM information_schema.columns WHERE table_name = 'mesas'", r => r.GetString(0));
         Assert.DoesNotContain(columns, c => c.Contains("status", StringComparison.OrdinalIgnoreCase) || c.Contains("ocupada", StringComparison.OrdinalIgnoreCase));
         using var raw = await SendAsync(client, HttpMethod.Get, "/mesas", t.Garcom);
-        Assert.DoesNotContain("status", await raw.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        // Ticket 05: the list now reports a status, but it is derived from the open comandas (no column), and a table with none is free.
+        Assert.Contains("\"status\":\"livre\"", await raw.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]

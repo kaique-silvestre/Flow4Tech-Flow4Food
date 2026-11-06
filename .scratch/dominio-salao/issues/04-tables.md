@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** HTTP with real PostgreSQL; Architecture gates
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration adds `mesas` (tenant table, RLS, composite FKs): unit, number or name unique per unit, optional capacity, active; no status column.
 - [ ] Setting `operacao.usar-mesas` (boolean, organization and unit, default on) declared and exported; with it off the list route returns no tables and creating one is refused.

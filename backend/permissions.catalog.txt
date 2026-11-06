@@ -2,6 +2,9 @@ caixa:abrir
 caixa:fechar
 caixa:ver
 caixa:ver-todos
+comanda:abrir
+comanda:ver
+comanda:ver-comandas-de-outros
 conta:gerir-google
 convite:aceitar
 mesa:gerenciar

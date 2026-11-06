@@ -5,6 +5,7 @@ caixa:abrir
 caixa:fechar
 categoria:alterar
 categoria:criar
+comanda:abrir
 configuracao:alterar
 configuracao:restaurar
 conta:criar

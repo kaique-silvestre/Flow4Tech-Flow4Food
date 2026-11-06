@@ -7,6 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="../Application/Flow4Tech.Comandas.Application.csproj" />
     <ProjectReference Include="../../Infrastructure/Data/Flow4Tech.Infrastructure.Data.csproj" />
+    <!-- Comanda events go through the transactional outbox, on the unit of work of the action. -->
+    <ProjectReference Include="../../Infrastructure/Outbox/Flow4Tech.Infrastructure.Outbox.csproj" />
   </ItemGroup>
 
   <ItemGroup>

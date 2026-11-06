@@ -3,7 +3,8 @@ using Flow4Tech.Comandas.Domain;
 
 namespace Flow4Tech.Api;
 
-internal sealed record MesaDto(Guid Id, Guid UnidadeId, string Identificacao, int? Capacidade, bool Ativa);
+/// <summary><c>Status</c> is derived from the open comandas: <c>livre</c> or <c>ocupada</c>. A newly created table is always <c>livre</c>.</summary>
+internal sealed record MesaDto(Guid Id, Guid UnidadeId, string Identificacao, int? Capacidade, bool Ativa, string Status);
 
 /// <summary>Both fields nullable on purpose: an absent identification is a 400, never a default.</summary>
 internal sealed record CriarMesaRequest(string? Identificacao, int? Capacidade);
@@ -19,7 +20,7 @@ internal static class MesasEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapGet("/mesas", async (RequestContextAccessor request, GestaoDeMesas mesas, CancellationToken cancellationToken) =>
-                Results.Ok((await mesas.ListarAsync(request, cancellationToken)).Select(Dto).ToList()))
+                Results.Ok((await mesas.ListarAsync(request, cancellationToken)).Select(m => Dto(m.Mesa, m.Status)).ToList()))
             .WithName("listMesas")
             .RequireSession()
             .RequirePermission(MesaPermissions.Ver)
@@ -43,7 +44,8 @@ internal static class MesasEndpoints
             .Produces<MesaErro>(StatusCodes.Status409Conflict);
     }
 
-    private static MesaDto Dto(Mesa m) => new(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa);
+    private static MesaDto Dto(Mesa m, StatusDaMesa status = StatusDaMesa.Livre) =>
+        new(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa, status == StatusDaMesa.Ocupada ? "ocupada" : "livre");
 
     private static IResult Erro(ResultadoDeMesa resultado) => resultado switch
     {
