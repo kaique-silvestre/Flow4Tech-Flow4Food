@@ -116,7 +116,7 @@ describe("unit choice", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Praia" }));
 
-    expect(await screen.findByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    expect(await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
     expect(chamadas.find((c) => c.path === "/sessao/unidade-ativa")?.body).toEqual({ unidadeDestinoId: "u2" });
   });
 
@@ -158,7 +158,7 @@ describe("the app behind the session", () => {
   it("opens the comanda list for a ready session and signs out from the top bar", async () => {
     stubRede({ "POST /refresh": json(sessaoJson()), "GET /comandas": json([]), "POST /logout": new Response(null, { status: 204 }) });
     const { router } = await renderEm("/salao");
-    expect(await screen.findByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    expect(await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
     expect(router.state.location.pathname).toBe("/salao");
 
     await userEvent.click(screen.getByRole("button", { name: "Sair" }));

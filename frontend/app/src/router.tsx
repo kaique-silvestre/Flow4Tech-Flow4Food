@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router";
 import { CaixaPage } from "./features/caixa/CaixaPage";
+import { ComandaPage } from "./features/comandas/ComandaPage";
 import { ComandasPage } from "./features/comandas/ComandasPage";
 import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
 import { UnidadePage } from "./features/conta/UnidadePage";
@@ -37,6 +38,7 @@ const appLayout = createRoute({
 });
 
 const salaoRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao", component: ComandasPage });
+const comandaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/comanda/$comandaId", component: ComandaPage });
 const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPage });
 
 const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
@@ -54,7 +56,7 @@ const entrarRoute = createRoute({ getParentRoute: () => entryLayout, path: "/sal
 const trocarSenhaRoute = createRoute({ getParentRoute: () => entryLayout, path: "/salao/trocar-senha", beforeLoad: exigir("/salao/trocar-senha"), component: TrocarSenhaPage });
 const unidadeRoute = createRoute({ getParentRoute: () => entryLayout, path: "/salao/unidade", beforeLoad: exigir("/salao/unidade"), component: UnidadePage });
 
-const routeTree = rootRoute.addChildren([indexRoute, appLayout.addChildren([salaoRoute, caixaRoute]), entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute])]);
+const routeTree = rootRoute.addChildren([indexRoute, appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute]), entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute])]);
 
 export function createAppRouter(history?: Parameters<typeof createRouter>[0]["history"]) {
   return createRouter({ routeTree, ...(history ? { history } : {}) });

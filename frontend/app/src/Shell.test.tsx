@@ -41,6 +41,8 @@ describe("salão shell (signed in)", () => {
     await userEvent.tab();
     expect(screen.getByRole("button", { name: "Sair" })).toHaveFocus();
     await userEvent.tab();
+    expect(await screen.findByRole("button", { name: "Nova comanda" })).toHaveFocus();
+    await userEvent.tab();
     expect(await screen.findByRole("link", { name: "Comandas" })).toHaveFocus();
     await userEvent.tab();
     expect(screen.getByRole("link", { name: "Caixa" })).toHaveFocus();

@@ -238,3 +238,83 @@ body {
   font-size: var(--f4-text-body);
   min-height: 36px;
 }
+
+/* Comandas list and new comanda */
+.comandas-vazio {
+  margin: 0 0 var(--f4-space-4);
+  color: var(--f4-ink-muted);
+}
+
+.comandas-busca {
+  margin-bottom: var(--f4-space-2);
+}
+
+.comandas-acao {
+  position: sticky;
+  bottom: 0;
+  padding: var(--f4-space-3) 0;
+  background: linear-gradient(to top, var(--f4-bg) 70%, transparent);
+}
+
+a.comanda-row {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.comanda-row:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.comanda-tempo {
+  display: block;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+}
+
+.comanda-voltar {
+  margin: 0 0 var(--f4-space-3);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.comanda-voltar a {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  color: var(--f4-accent);
+}
+
+.nova-entrada {
+  margin: var(--f4-space-2) 0 var(--f4-space-3);
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 600;
+  text-align: center;
+}
+
+.nova-rotulo {
+  font-size: var(--f4-text-sheet-title);
+  font-weight: 500;
+  color: var(--f4-ink-muted);
+}
+
+.nova-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+  margin-bottom: var(--f4-space-3);
+}
+
+.ocupada-lista {
+  display: grid;
+  gap: var(--f4-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocupada-item {
+  width: 100%;
+  justify-content: flex-start;
+}

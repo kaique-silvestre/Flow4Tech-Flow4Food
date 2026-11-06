@@ -70,13 +70,13 @@ test.describe("sign in", () => {
     await entrarComo(page, "garcom", SENHA);
 
     await expect(page).toHaveURL(/\/salao$/);
-    await expect(page.getByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    await expect(page.getByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
     await shoot(page, "09-comandas-vazia");
     await semHorizontal(page);
     expect(await alvosPequenos(page)).toEqual([]);
 
     await page.reload();
-    await expect(page.getByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    await expect(page.getByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
 
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/\/salao\/entrar$/);
@@ -140,7 +140,7 @@ test.describe("temporary password", () => {
     await page.getByRole("button", { name: "Salvar senha" }).click();
 
     await expect(page).toHaveURL(/\/salao$/);
-    await expect(page.getByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    await expect(page.getByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
   });
 
   test("a wrong temporary password is refused on its own field", async ({ page, request, baseURL }) => {
@@ -173,7 +173,7 @@ test.describe("unit", () => {
     await page.getByRole("button", { name: "Praia" }).click();
 
     await expect(page).toHaveURL(/\/salao$/);
-    await expect(page.getByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    await expect(page.getByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
   });
 
   test("a user with no unit sees the explanation and can sign out", async ({ page }) => {

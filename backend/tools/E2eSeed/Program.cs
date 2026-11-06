@@ -76,9 +76,11 @@ internal static class SeedMain
         var caixa = await CreateOperationalAsync(contas, troca, requestA, "caixa", "Caixa da Casa", password);
         var novato = await contas.CriarOperacionalAsync(requestA, "novato", "Novato");
         Expect(novato.Status == StatusCriacao.Criada && novato.ContaId is not null && novato.Credencial is not null, "novato");
+        // A second waiter for the browser tests that open comandas, so the waiter whose empty list other tests assert stays empty.
+        var garcom2 = await CreateOperationalAsync(contas, troca, requestA, "garcom2", "Garcom de Teste", password);
         var gerente = await CreateOperationalAsync(contas, troca, requestA, "gerente", "Gerente das duas unidades", password);
         var semUnidade = await CreateOperationalAsync(contas, troca, requestA, "semunidade", "Sem unidade", password);
-        foreach (var conta in new[] { garcom, caixa, novato.ContaId!.Value, gerente })
+        foreach (var conta in new[] { garcom, garcom2, caixa, novato.ContaId!.Value, gerente })
         {
             await LinkAsync(ownerSource, OrgA, UnitA, conta);
         }
@@ -94,6 +96,7 @@ internal static class SeedMain
         Expect(await perfis.AtribuirAsync(requestA, garcom, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign garcom");
         Expect(await perfis.AtribuirAsync(requestA, caixa, perfilCaixa.Id!.Value) == ResultadoGestao.Ok, "assign caixa");
         Expect(await perfis.AtribuirAsync(requestA, novato.ContaId!.Value, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign novato");
+        Expect(await perfis.AtribuirAsync(requestA, garcom2, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign garcom2");
         Expect(await perfis.AtribuirAsync(requestA, gerente, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign gerente");
         Expect(await perfis.AtribuirAsync(requestA, semUnidade, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign semunidade");
 
@@ -120,7 +123,7 @@ internal static class SeedMain
         var summary = await WriteSummaryAsync(ownerSource);
 
         Console.WriteLine("e2e seed: done.");
-        Console.WriteLine("  organization A (Bar A, units Centro and Praia): dono@bar-a.test (owner); operational users garcom, caixa, gerente (both units), semunidade (no unit), novato (temporary credential); password from E2E_SEED_PASSWORD.");
+        Console.WriteLine("  organization A (Bar A, units Centro and Praia): dono@bar-a.test (owner); operational users garcom, garcom2, caixa, gerente (both units), semunidade (no unit), novato (temporary credential); password from E2E_SEED_PASSWORD.");
         Console.WriteLine($"  'novato' TEMPORARY credential (forces a password change; once): {novato.Credencial!.Valor}");
         Console.WriteLine("  organization B (Bar B, unit Centro): dono@bar-b.test (owner).");
         Console.WriteLine($"  summary of ids: {summary}");

@@ -47,7 +47,7 @@ describe("sign-in screen", () => {
     await preencher("garcom", "uma-senha-longa", ORG);
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByRole("heading", { level: 2, name: "Nenhuma comanda aberta" })).toBeVisible();
+    expect(await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
     expect(window.localStorage.getItem("f4.organizacao")).toBe(ORG);
   });
 
@@ -68,7 +68,7 @@ describe("sign-in screen", () => {
     await preencher("dono@bar.test", "uma-senha-longa");
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    await screen.findByRole("heading", { level: 2, name: "Nenhuma comanda aberta" });
+    await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.");
     expect(chamadas.find((c) => c.path === "/login")?.body).toMatchObject({ email: "dono@bar.test", organizacaoDoLogin: null });
   });
 
@@ -160,7 +160,7 @@ describe("sign-in screen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
     expect(chamadas.filter((c) => c.path === "/login")).toHaveLength(1);
     responder(json(sessaoJson()));
-    await screen.findByRole("heading", { level: 2, name: "Nenhuma comanda aberta" });
+    await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.");
   });
 
   it("shows and hides the password on demand", async () => {

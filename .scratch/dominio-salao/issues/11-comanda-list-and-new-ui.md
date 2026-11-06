@@ -6,10 +6,10 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** UI in the browser
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `/salao` lists open comandas (display #N, identification, status badge with marker and word, elapsed time) with search; the waiter sees only their own unless allowed; `Nova comanda` is the single accent action.
-- [ ] New comanda opens a bottom sheet with the keypad as in `04.png`: huge number entry, free-table chips (when tables are on), Apagar/0/Cancelar, 'Dar um nome', and OK disabled until there is a value; with tables off the field reads 'Comanda 7'.
-- [ ] A table already occupied shows the existing comanda and offers to open another; opening lands on the comanda screen.
-- [ ] States: loading skeleton, empty ('Nenhuma comanda aberta. Toque em Nova comanda.'), error banner with 'Tentar novamente', offline notice; screenshots at both viewports.
-- [ ] Timing: a Playwright script with the waiter signed in and the shift open goes from the list to the comanda screen in under 10 seconds of scripted interaction (keypad: at most 3 taps for a two-digit table).
+- [x] `/salao` lists open comandas (display #N, identification, status badge with marker and word, elapsed time) with search; the waiter sees only their own unless allowed; `Nova comanda` is the single accent action.
+- [x] New comanda opens a bottom sheet with the keypad as in `04.png`: huge number entry, free-table chips (when tables are on), Apagar/0/Cancelar, 'Dar um nome', and OK disabled until there is a value; with tables off the field reads 'Comanda 7'.
+- [x] A table already occupied shows the existing comanda and offers to open another; opening lands on the comanda screen.
+- [x] States: loading skeleton, empty ('Nenhuma comanda aberta. Toque em Nova comanda.'), error banner with 'Tentar novamente', offline notice; screenshots at both viewports.
+- [x] Timing: a Playwright script with the waiter signed in and the shift open goes from the list to the comanda screen in under 10 seconds of scripted interaction (keypad: at most 3 taps for a two-digit table).
