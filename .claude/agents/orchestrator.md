@@ -59,15 +59,15 @@ Round counter starts at 1. Failure-signature counter per fingerprint set.
 
 1. Worktree: `worktree.sh merge <NN>` (serialized by its lock) → then in base: `git add -A -- <files from closeout>` and commit. No worktree: stage the closeout's files, commit. Commit message Conventional Commits, English, one squash per ticket:
    ```
-   feat(<area>): <ticket title>
+   feat(F4-NNNN): <ticket title>
 
-   Ticket NN. <one line of what it proves>
+   Ticket F4-NNNN (slice file NN). <one line of what it proves>
 
    Co-Authored-By: Claude <noreply@anthropic.com>
    ```
 2. On base after commit: lint, typecheck, full test suite from `project.md`. Failure → fix-task to the ticket's implementer (pointing at base), round += 1, rerun; still failing at cap → revert the squash commit, mark blocked.
 3. `worktree.sh remove <NN>`.
-4. Tracker from `docs/agents/issue-tracker.md` is a real tracker → close the issue with the commit sha. Local → set `**Status:** done` in the issue file.
+4. Tracker from `docs/agents/issue-tracker.md` is a real tracker → close the issue with the commit sha. Local → set `**Status:** done` in the issue file and update the row of the ticket in `docs/tickets.md` (branch, PR, status). Every ticket needs its `F4-NNNN` row BEFORE it starts (see "Branches, IDs e PRs" in `CLAUDE.md`); work branches are `<type>/F4-NNNN-<slug>` from `dev-v2`, never commit on `main-v2`/`dev-v2` directly.
 5. Update `state.md`.
 
 ## 5. Finish

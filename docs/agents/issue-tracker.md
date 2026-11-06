@@ -1,3 +1,14 @@
 # Issue tracker
 
 Local. Tickets live in `.scratch/<slug>/issues/NN-*.md`; close a ticket by setting `**Status:** done` in its file.
+
+Every ticket also has a repository-wide ID `F4-NNNN` in `docs/tickets.md` (the index: ID, title, slice, spec, ticket file, branch, PR, status). Add the row with the next free number BEFORE starting work, and update branch, PR and status as they happen. The file number `NN` is only the order inside its slice; the ID is what appears in branch names, commits and PRs.
+
+- **Todo trabalho tem um ID de ticket `F4-NNNN`** (sequencial, único, nunca reaproveitado), registrado em `docs/tickets.md` ANTES de começar: acrescente a linha com o próximo número livre (título, fatia, spec, arquivo do ticket). Sem ID não há branch, commit nem PR. Manutenção também abre ticket.
+- **Branches de longa vida do sistema novo:** `main-v2` (revisado, publicável) e `dev-v2` (integração). Nunca commitar direto nelas; ambas só recebem PR. `main`, `staging`, `development` e `refactor-v2` são o sistema antigo e o planejamento: não tocar.
+- **Branch de trabalho:** `<tipo>/F4-NNNN-<resumo-em-kebab>`, criada a partir de `dev-v2`; tipos `feat|fix|refactor|test|docs|chore`; exemplo `feat/F4-0013-fila-offline`. Uma branch por ticket, vida curta. Se o ambiente impuser outro nome de branch (sessão de nuvem `claude/...`), use-o, mas o ID continua obrigatório nos commits e no PR.
+- **Commit:** Conventional Commits em inglês com o ID como escopo: `feat(F4-0013): offline pending-actions queue`. Corpo curto dizendo o que foi provado. Nunca reescrever commits já publicados.
+- **PR:** só quando o dono pedir. Título igual ao commit principal (`feat(F4-0013): ...`), alvo `dev-v2` (de `dev-v2` para `main-v2` só em entrega revisada), corpo pelo template `.github/pull_request_template.md` com o ID. Merge de feature em `dev-v2` por squash; `dev-v2` -> `main-v2` por merge commit.
+- **Fechar o ticket:** `**Status:** done` no arquivo do ticket e a linha em `docs/tickets.md` com branch, PR e status atualizados. Os 38 tickets anteriores são `F4-0001` a `F4-0038` (mapeados no índice); commits antigos não são reescritos.
+- **Rastrear:** `git log --grep "F4-0013"`, busca de PR por `F4-0013`, `git branch -a | grep F4-0013`, e o índice.
+
