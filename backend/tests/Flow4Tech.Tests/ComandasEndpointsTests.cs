@@ -427,6 +427,22 @@ public sealed class ComandasEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_database_refuses_a_comanda_holding_a_table_of_a_sibling_unit_of_the_same_organization()
+    {
+        var mesaDaOutraUnidade = Guid.NewGuid();
+        await using var source = NpgsqlDataSource.Create(_appConnection);
+        await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(OrgA, UnitA));
+        await Exec(tx, "INSERT INTO mesas (id, organizacao_id, unidade_id, identificacao, ativa, criada_em) VALUES (@m, @o, @u, 'Praia 1', true, now())", ("m", mesaDaOutraUnidade), ("o", OrgA), ("u", UnitA2));
+
+        var erro = await Assert.ThrowsAsync<PostgresException>(() => Exec(
+            tx,
+            "INSERT INTO comandas (id, organizacao_id, unidade_id, dia_operacional, numero, identificacao, mesa_id, garcom_id, aberta_em, taxa_servico_percentual) VALUES (@i, @o, @u, current_date, 1, 'x', @m, @g, now(), 10)",
+            ("i", Guid.NewGuid()), ("o", OrgA), ("u", UnitA), ("m", mesaDaOutraUnidade), ("g", Garcom)));
+
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, erro.SqlState);
+    }
+
+    [Fact]
     public async Task A_table_of_another_organization_cannot_be_used()
     {
         await using var api = new Api(_appConnection);

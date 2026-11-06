@@ -68,7 +68,8 @@ public sealed class GestaoDeComandas(
                     }
                 }
 
-                var taxa = (await settings.ResolveAsync(VendaSettings.TaxaServicoPercentual, org.OrganizationId, org.UnitId, agora, ct)).AsDecimal();
+                // Rounded to the 2 decimals the column stores, so the response always equals what was frozen.
+                var taxa = Math.Round((await settings.ResolveAsync(VendaSettings.TaxaServicoPercentual, org.OrganizationId, org.UnitId, agora, ct)).AsDecimal(), 2, MidpointRounding.AwayFromZero);
                 var dia = await dias.AtualAsync(org, ct);
                 var numero = await store.ProximoNumeroAsync(org.OrganizationId, org.UnitId, dia, ct);
                 var comanda = new Comanda(

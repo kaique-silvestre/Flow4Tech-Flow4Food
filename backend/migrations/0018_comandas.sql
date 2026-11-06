@@ -19,6 +19,9 @@ CREATE POLICY isolamento ON comanda_numeracao
   USING (organizacao_id = (SELECT app_organizacao_id()))
   WITH CHECK (organizacao_id = (SELECT app_organizacao_id()));
 
+-- A comanda may only hold a table of ITS OWN unit: the composite key below lets comandas reference (organizacao_id, unidade_id, id), so the database refuses a table of a sibling unit.
+ALTER TABLE mesas ADD CONSTRAINT mesas_organizacao_unidade_id_key UNIQUE (organizacao_id, unidade_id, id);
+
 CREATE TABLE comandas (
   id                      uuid PRIMARY KEY,
   organizacao_id          uuid        NOT NULL REFERENCES organizacoes (id),
@@ -39,7 +42,7 @@ CREATE TABLE comandas (
   UNIQUE (organizacao_id, id),
   UNIQUE (organizacao_id, unidade_id, dia_operacional, numero),
   FOREIGN KEY (organizacao_id, unidade_id) REFERENCES unidades (organizacao_id, id),
-  FOREIGN KEY (organizacao_id, mesa_id) REFERENCES mesas (organizacao_id, id),
+  FOREIGN KEY (organizacao_id, unidade_id, mesa_id) REFERENCES mesas (organizacao_id, unidade_id, id),
   FOREIGN KEY (organizacao_id, garcom_id) REFERENCES contas (organizacao_id, id),
   CHECK ((estado = 'aberta') = (fechada_em IS NULL))
 );
