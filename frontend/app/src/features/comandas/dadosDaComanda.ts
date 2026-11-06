@@ -18,6 +18,8 @@ export function useConta(comandaId: string, enabled: boolean) {
         totalCentavos: Number(data.totalCentavos),
         pagoCentavos: Number(data.pagoCentavos),
         saldoCentavos: Number(data.saldoCentavos),
+        taxaServicoRemovida: Boolean(data.taxaServicoRemovida),
+        taxaServicoPercentual: Number(data.taxaServicoPercentual),
         versao: Number(data.versao),
         estado: String(data.estado),
       };

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
 import { entrar, reiniciarSessaoParaTestes } from "../sessao/sessao";
-import { enfileirarRodada, iniciarProcessador, lerFila, limparFila, processar, recarregarFilaParaTestes, reiniciarFilaParaTestes, removerAcao, tentarAgora } from "./fila";
+import { enfileirarPagamento, enfileirarRodada, iniciarProcessador, lerFila, limparFila, processar, recarregarFilaParaTestes, reiniciarFilaParaTestes, removerAcao, tentarAgora } from "./fila";
 
 const contaOk = (versao = 4) => json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, versao, estado: "aberta", taxaServicoRemovida: false, taxaServicoPercentual: 10 });
 const rodadaOk = (id: string) => json({ id, comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: null, comandaVersao: 5, itens: [] }, { status: 201 });
@@ -235,5 +235,29 @@ describe("pending-actions queue", () => {
 
     expect(concluidas).toEqual(["r1"]);
     parar();
+  });
+
+  it("sends a queued payment under its own id and closes the bill when nothing is left", async () => {
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(4),
+      "POST /comandas/c1/pagamentos": json({ id: "x", comandaId: "c1", turnoId: "t", metodo: "dinheiro", recebidoCentavos: 3000, aplicadoCentavos: 2750, trocoCentavos: 250, saldoRestanteCentavos: 0, comandaVersao: 5, registradoEm: new Date().toISOString(), operadorId: "o" }, { status: 201 }),
+      "POST /comandas/c1/fechar": json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, versao: 6, estado: "fechada", taxaServicoRemovida: false, taxaServicoPercentual: 10 }),
+    });
+
+    enfileirarPagamento({ pagamentoId: "0197e2e0-0000-7000-8000-000000000099", comandaId: "c1", recebidoCentavos: 3000, titulo: "Recebimento · Ana", detalhe: "Dinheiro R$ 30,00" });
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+
+    expect(chamadas.map((c) => `${c.method} ${c.path}`)).toEqual(["GET /comandas/c1/conta", "POST /comandas/c1/pagamentos", "POST /comandas/c1/fechar"]);
+    expect(chamadas[1]!.body).toEqual({ pagamentoId: "0197e2e0-0000-7000-8000-000000000099", recebidoCentavos: 3000, versao: 4 });
+    expect(chamadas[2]!.body).toEqual({ versao: 5 });
+  });
+
+  it("keeps a payment that met a closed cash register as failed, with the reason", async () => {
+    stubRede({ "GET /comandas/c1/conta": contaOk(4), "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }) });
+
+    enfileirarPagamento({ pagamentoId: "pg1", comandaId: "c1", recebidoCentavos: 1000, titulo: "Recebimento · Ana", detalhe: "Dinheiro R$ 10,00" });
+    await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
+
+    expect(lerFila()[0]?.motivo).toContain("caixa está fechado");
   });
 });

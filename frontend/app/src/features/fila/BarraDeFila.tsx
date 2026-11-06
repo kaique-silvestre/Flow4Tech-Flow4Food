@@ -37,6 +37,7 @@ export function BarraDeFila() {
       iniciarProcessador((acao) => {
         void queryClient.invalidateQueries({ queryKey: ["comanda", acao.comandaId] });
         void queryClient.invalidateQueries({ queryKey: ["comandas"] });
+        void queryClient.invalidateQueries({ queryKey: ["caixa"] });
         void queryClient.invalidateQueries({ queryKey: ["cardapio", "frequentes"] });
       }),
     [queryClient],

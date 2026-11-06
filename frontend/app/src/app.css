@@ -485,3 +485,63 @@ a.comanda-row:focus-visible {
   width: 100%;
   justify-content: space-between;
 }
+
+/* Close the bill in cash */
+.comanda-fechar {
+  margin-top: var(--f4-space-3);
+}
+
+.comanda-fechar .f4-btn {
+  width: 100%;
+}
+
+.fechar-conta {
+  margin: 0 0 var(--f4-space-3);
+}
+
+.fechar-conta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-2) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.fechar-conta dt,
+.fechar-conta dd {
+  margin: 0;
+}
+
+.fechar-conta .fechar-taxa {
+  justify-content: flex-start;
+  border-bottom: 0;
+}
+
+.fechar-total {
+  font-weight: 600;
+}
+
+.fechar-receber {
+  margin: var(--f4-space-3) 0 var(--f4-space-2);
+}
+
+.fechar-troco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: var(--f4-space-3) 0;
+  padding: var(--f4-space-3);
+  border-radius: var(--f4-radius-md, 12px);
+  background: var(--f4-surface-sunken, var(--f4-surface));
+}
+
+.fechar-troco-valor {
+  font-size: 2.5rem;
+  line-height: 1.1;
+}
+
+.fechar-parcial,
+.fechar-resta,
+.fechar-sem-troco {
+  margin: var(--f4-space-3) 0;
+}

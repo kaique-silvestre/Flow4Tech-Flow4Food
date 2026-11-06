@@ -17,6 +17,8 @@ export interface ContaDaComanda {
   totalCentavos: number;
   pagoCentavos: number;
   saldoCentavos: number;
+  taxaServicoRemovida?: boolean;
+  taxaServicoPercentual?: number;
   versao: number;
   estado: string;
 }

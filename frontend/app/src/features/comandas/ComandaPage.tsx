@@ -8,6 +8,7 @@ import { api } from "../sessao/sessao";
 import { useCategorias, useFrequentes, useProdutos, type Produto } from "./cardapio";
 import { useComandas } from "./consultas";
 import { useConta, useItens } from "./dadosDaComanda";
+import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet } from "./Folhas";
 import { Picker } from "./Picker";
 import { adicionar, definirQuantidade, DURACAO_DO_DESFAZER_MS, totalEmPreparo, ultimaRodada, unidades, type CodigoDeMotivo, type ItemDaConta, type ItemEmPreparo } from "./rodada";
@@ -46,6 +47,7 @@ export function ComandaPage() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [desfazer, setDesfazer] = useState<Desfazer | null>(null);
   const [desfazendo, setDesfazendo] = useState(false);
+  const [folhaFechar, setFolhaFechar] = useState(false);
   const [paraCancelar, setParaCancelar] = useState<ItemDaConta | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [erroCancelar, setErroCancelar] = useState<string | undefined>(undefined);
@@ -266,6 +268,7 @@ export function ComandaPage() {
   const lancados = itens.data.filter((i) => i.estado === "lancado");
   const podeCancelar = permissoes.pode("comanda:cancelar-item");
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
+  const podeFechar = permissoes.pode("comanda:fechar") && permissoes.pode("comanda:receber-pagamento");
   const temUltima = ultimaRodada(itens.data) !== null;
   const faltaUnidades = unidades(emPreparo);
 
@@ -353,10 +356,19 @@ export function ComandaPage() {
         </div>
       ) : null}
 
+      {podeFechar && faltaUnidades === 0 ? (
+        <div className="comanda-fechar">
+          <Button variant="secondary" onClick={() => setFolhaFechar(true)}>
+            Fechar conta
+          </Button>
+        </div>
+      ) : null}
+
       {desfazer && podeDesfazer ? (
         <UndoToast key={desfazer.rodadaId} message="Rodada enviada" durationMs={desfazer.duracaoMs} loading={desfazendo} onUndo={() => void desfazerRodada()} onExpire={() => setDesfazer(null)} />
       ) : null}
 
+      {podeFechar ? <FecharContaSheet open={folhaFechar} onOpenChange={setFolhaFechar} comandaId={comandaId} nome={nomeExibido(comanda)} conta={conta.data} versao={versao} onAtualizar={atualizarDados} /> : null}
       <EnviarRodadaSheet open={folhaEnviar} onOpenChange={setFolhaEnviar} itens={emPreparo} enviando={enviando} erro={erroEnviar} onEnviar={() => void enviar()} />
       <CancelarItemSheet
         item={paraCancelar}

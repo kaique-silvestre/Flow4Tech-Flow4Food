@@ -305,11 +305,13 @@ body {
 .f4-scrim {
   position: fixed;
   inset: 0;
+  z-index: 20;
   background: var(--f4-scrim);
 }
 
 .f4-sheet {
   position: fixed;
+  z-index: 21;
   left: 0;
   right: 0;
   bottom: 0;
