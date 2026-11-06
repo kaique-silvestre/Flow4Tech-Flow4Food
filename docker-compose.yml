@@ -52,6 +52,9 @@ services:
       E2E_SEED_OWNER_URL: postgres://flow4tech:flow4tech@db:5432/flow4tech
       E2E_SEED_APP_URL: postgres://flow4tech_app:flow4tech_app_dev@db:5432/flow4tech
       E2E_SEED_PASSWORD: e2e-local-throwaway-password
+      E2E_SEED_OUT: /out/seed.json
+    volumes:
+      - ./frontend/app/e2e-results:/out
     depends_on:
       migrate:
         condition: service_completed_successfully

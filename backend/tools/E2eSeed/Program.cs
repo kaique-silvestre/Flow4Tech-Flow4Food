@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using System.Text.Json;
 
 namespace Flow4Tech.E2eSeed;
 
@@ -24,6 +25,7 @@ internal static class SeedMain
 {
     private static readonly Guid OrgA = Guid.Parse("0197e2e0-0000-7000-8000-00000000000a");
     private static readonly Guid UnitA = Guid.Parse("0197e2e0-0000-7000-8000-0000000000a1");
+    private static readonly Guid UnitA2 = Guid.Parse("0197e2e0-0000-7000-8000-0000000000a2");
     private static readonly Guid OrgB = Guid.Parse("0197e2e0-0000-7000-8000-00000000000b");
     private static readonly Guid UnitB = Guid.Parse("0197e2e0-0000-7000-8000-0000000000b1");
 
@@ -39,6 +41,7 @@ internal static class SeedMain
         if (await ExistsAsync(ownerSource))
         {
             Console.WriteLine("e2e seed: already present, nothing written.");
+            Console.WriteLine($"  summary of ids: {await WriteSummaryAsync(ownerSource)}");
             return 0;
         }
 
@@ -73,10 +76,14 @@ internal static class SeedMain
         var caixa = await CreateOperationalAsync(contas, troca, requestA, "caixa", "Caixa da Casa", password);
         var novato = await contas.CriarOperacionalAsync(requestA, "novato", "Novato");
         Expect(novato.Status == StatusCriacao.Criada && novato.ContaId is not null && novato.Credencial is not null, "novato");
-        foreach (var conta in new[] { garcom, caixa, novato.ContaId!.Value })
+        var gerente = await CreateOperationalAsync(contas, troca, requestA, "gerente", "Gerente das duas unidades", password);
+        var semUnidade = await CreateOperationalAsync(contas, troca, requestA, "semunidade", "Sem unidade", password);
+        foreach (var conta in new[] { garcom, caixa, novato.ContaId!.Value, gerente })
         {
             await LinkAsync(ownerSource, OrgA, UnitA, conta);
         }
+
+        await LinkAsync(ownerSource, OrgA, UnitA2, gerente);
 
         var perfilGarcom = await perfis.CriarAsync(requestA, "Garçom", Rules("comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "mesa:ver", "produto:ver"));
         var perfilCaixa = await perfis.CriarAsync(
@@ -87,6 +94,8 @@ internal static class SeedMain
         Expect(await perfis.AtribuirAsync(requestA, garcom, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign garcom");
         Expect(await perfis.AtribuirAsync(requestA, caixa, perfilCaixa.Id!.Value) == ResultadoGestao.Ok, "assign caixa");
         Expect(await perfis.AtribuirAsync(requestA, novato.ContaId!.Value, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign novato");
+        Expect(await perfis.AtribuirAsync(requestA, gerente, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign gerente");
+        Expect(await perfis.AtribuirAsync(requestA, semUnidade, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign semunidade");
 
         var bebidas = await cardapio.CriarCategoriaAsync(requestA, "Bebidas");
         var porcoes = await cardapio.CriarCategoriaAsync(requestA, "Porções");
@@ -108,11 +117,46 @@ internal static class SeedMain
             Expect((await mesas.CriarAsync(requestA, mesa, null)).Resultado == ResultadoDeMesa.Ok, $"table {mesa}");
         }
 
+        var summary = await WriteSummaryAsync(ownerSource);
+
         Console.WriteLine("e2e seed: done.");
-        Console.WriteLine("  organization A (Bar A, unit Centro): dono@bar-a.test (owner), operational users 'garcom' and 'caixa' (password from E2E_SEED_PASSWORD).");
-        Console.WriteLine($"  operational user 'novato' has a TEMPORARY credential (forces a password change): {novato.Credencial!.Valor}");
+        Console.WriteLine("  organization A (Bar A, units Centro and Praia): dono@bar-a.test (owner); operational users garcom, caixa, gerente (both units), semunidade (no unit), novato (temporary credential); password from E2E_SEED_PASSWORD.");
+        Console.WriteLine($"  'novato' TEMPORARY credential (forces a password change; once): {novato.Credencial!.Valor}");
         Console.WriteLine("  organization B (Bar B, unit Centro): dono@bar-b.test (owner).");
+        Console.WriteLine($"  summary of ids: {summary}");
         return 0;
+    }
+
+    /// <summary>Ids only (never a password), read back from the database so a repeated run can still tell the browser tests who is who. The tests ask the owner for a fresh temporary credential of 'novato' through the real route (POST /contas/{id}/redefinir-acesso).</summary>
+    private static async Task<string> WriteSummaryAsync(NpgsqlDataSource source)
+    {
+        var accounts = new Dictionary<string, Guid>();
+        foreach (var (org, unit) in new[] { (OrgA, UnitA), (OrgB, UnitB) })
+        {
+            await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(org, unit));
+            await using var command = new NpgsqlCommand("SELECT COALESCE(usuario, email), id FROM contas", tx.Connection, tx.Transaction);
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                accounts[reader.GetString(0)] = reader.GetGuid(1);
+            }
+        }
+
+        var summary = JsonSerializer.Serialize(new
+        {
+            organizacaoA = OrgA,
+            unidadeCentroA = UnitA,
+            unidadePraiaA = UnitA2,
+            organizacaoB = OrgB,
+            unidadeCentroB = UnitB,
+            contas = accounts,
+        });
+        if (Environment.GetEnvironmentVariable("E2E_SEED_OUT") is { Length: > 0 } outPath)
+        {
+            await File.WriteAllTextAsync(outPath, summary);
+        }
+
+        return summary;
     }
 
     private static List<RegraDeAcesso> Rules(params string[] permissions) => permissions.Select(p => new RegraDeAcesso(RuleEffect.Allow, p)).ToList();
@@ -148,6 +192,10 @@ internal static class SeedMain
             await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(org, unit));
             await Exec(tx, "INSERT INTO organizacoes (id, nome) VALUES (@o, @n) ON CONFLICT (id) DO NOTHING", ("o", org), ("n", nome));
             await Exec(tx, "INSERT INTO unidades (id, organizacao_id, nome) VALUES (@u, @o, 'Centro') ON CONFLICT (id) DO NOTHING", ("u", unit), ("o", org));
+            if (org == OrgA)
+            {
+                await Exec(tx, "INSERT INTO unidades (id, organizacao_id, nome) VALUES (@u, @o, 'Praia') ON CONFLICT (id) DO NOTHING", ("u", UnitA2), ("o", org));
+            }
             await tx.CommitAsync();
         }
     }

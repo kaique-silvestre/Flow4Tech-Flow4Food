@@ -1,20 +1,19 @@
-import { RouterProvider } from "@tanstack/react-router";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import { createAppRouter } from "./router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { json, renderEm, sessaoJson, stubRede } from "./test-utils";
 
-async function renderAt(path: string) {
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
-  render(<RouterProvider router={router} />);
-  await router.load();
-  return router;
-}
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
-describe("salão shell", () => {
-  it("sends the root to /salao and renders the shell with the title and both tabs", async () => {
-    const router = await renderAt("/");
+const pronta = { "POST /refresh": json(sessaoJson()), "GET /comandas": json([]) };
+
+describe("salão shell (signed in)", () => {
+  it("sends the root to /salao and renders the title and both tabs", async () => {
+    stubRede(pronta);
+
+    const { router } = await renderEm("/");
 
     expect(await screen.findByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
     expect(router.state.location.pathname).toBe("/salao");
@@ -24,7 +23,8 @@ describe("salão shell", () => {
   });
 
   it("switches sections through the tab bar", async () => {
-    const router = await renderAt("/salao");
+    stubRede(pronta);
+    const { router } = await renderEm("/salao");
 
     await userEvent.click(await screen.findByRole("link", { name: "Caixa" }));
 
@@ -34,8 +34,12 @@ describe("salão shell", () => {
   });
 
   it("keeps the tab links reachable with the keyboard", async () => {
-    await renderAt("/salao");
+    stubRede(pronta);
+    await renderEm("/salao");
+    await screen.findByRole("heading", { level: 1, name: "Salão" });
 
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Sair" })).toHaveFocus();
     await userEvent.tab();
     expect(await screen.findByRole("link", { name: "Comandas" })).toHaveFocus();
     await userEvent.tab();

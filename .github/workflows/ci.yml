@@ -87,7 +87,9 @@ jobs:
       - name: Start PostgreSQL, migrate and start the API
         run: docker compose up --build --wait --wait-timeout 300 api
       - name: Seed the local database
-        run: docker compose --profile e2e run --rm seed
+        run: |
+          mkdir -p frontend/app/e2e-results
+          docker compose --profile e2e run --rm seed
       - run: pnpm --filter @flow4tech/app exec playwright install --with-deps chromium
       - name: Playwright
         env:

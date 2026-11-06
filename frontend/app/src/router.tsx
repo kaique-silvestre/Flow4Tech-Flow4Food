@@ -1,16 +1,10 @@
-import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
-import { Shell } from "./Shell";
-
-function ComandasPlaceholder() {
-  return (
-    <section className="app-empty" aria-labelledby="salao-base">
-      <h2 id="salao-base" className="app-empty-title">
-        Base do salão
-      </h2>
-      <p>Entrar, comandas e caixa chegam nas próximas etapas. Esta tela só confirma que o app instala e abre.</p>
-    </section>
-  );
-}
+import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router";
+import { ComandasPage } from "./features/comandas/ComandasPage";
+import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
+import { UnidadePage } from "./features/conta/UnidadePage";
+import { EntrarPage } from "./features/entrar/EntrarPage";
+import { destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
+import { EntryShell, Shell } from "./Shell";
 
 function CaixaPlaceholder() {
   return (
@@ -23,7 +17,13 @@ function CaixaPlaceholder() {
   );
 }
 
-const rootRoute = createRootRoute({ component: () => <Shell title="Salão" /> });
+/** The state of the session is known before any screen renders (one refresh attempt through the cookie, shared). */
+const rootRoute = createRootRoute({
+  beforeLoad: async () => {
+    await restaurar();
+  },
+  component: Outlet,
+});
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -33,10 +33,38 @@ const indexRoute = createRoute({
   },
 });
 
-const salaoRoute = createRoute({ getParentRoute: () => rootRoute, path: "/salao", component: ComandasPlaceholder });
-const caixaRoute = createRoute({ getParentRoute: () => rootRoute, path: "/salao/caixa", component: CaixaPlaceholder });
+/** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */
+const appLayout = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "app",
+  beforeLoad: () => {
+    const destino = destinoDaSessao(lerSessao());
+    if (destino !== "/salao") {
+      throw redirect({ to: destino });
+    }
+  },
+  component: () => <Shell title="Salão" />,
+});
 
-const routeTree = rootRoute.addChildren([indexRoute, salaoRoute, caixaRoute]);
+const salaoRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao", component: ComandasPage });
+const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPlaceholder });
+
+const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
+
+function exigir(destino: "/salao/entrar" | "/salao/trocar-senha" | "/salao/unidade") {
+  return () => {
+    const atual = destinoDaSessao(lerSessao());
+    if (atual !== destino) {
+      throw redirect({ to: atual });
+    }
+  };
+}
+
+const entrarRoute = createRoute({ getParentRoute: () => entryLayout, path: "/salao/entrar", beforeLoad: exigir("/salao/entrar"), component: EntrarPage });
+const trocarSenhaRoute = createRoute({ getParentRoute: () => entryLayout, path: "/salao/trocar-senha", beforeLoad: exigir("/salao/trocar-senha"), component: TrocarSenhaPage });
+const unidadeRoute = createRoute({ getParentRoute: () => entryLayout, path: "/salao/unidade", beforeLoad: exigir("/salao/unidade"), component: UnidadePage });
+
+const routeTree = rootRoute.addChildren([indexRoute, appLayout.addChildren([salaoRoute, caixaRoute]), entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute])]);
 
 export function createAppRouter(history?: Parameters<typeof createRouter>[0]["history"]) {
   return createRouter({ routeTree, ...(history ? { history } : {}) });

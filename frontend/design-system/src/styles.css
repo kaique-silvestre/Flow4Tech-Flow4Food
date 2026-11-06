@@ -579,3 +579,154 @@ body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Text field */
+.f4-field {
+  display: block;
+  margin-bottom: var(--f4-space-4);
+}
+
+.f4-field-label {
+  display: block;
+  margin-bottom: var(--f4-space-1);
+  font-size: var(--f4-text-secondary);
+  font-weight: 500;
+}
+
+.f4-field-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.f4-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--f4-space-4);
+  border: 1px solid var(--f4-border-strong);
+  border-radius: var(--f4-radius-md);
+  background: var(--f4-surface);
+  color: var(--f4-ink);
+  font: inherit;
+  font-size: var(--f4-text-body);
+}
+
+.f4-field-control:has(.f4-field-trailing) .f4-input {
+  padding-right: 88px;
+}
+
+.f4-input::placeholder {
+  color: var(--f4-ink-muted);
+}
+
+@media (hover: hover) {
+  .f4-input:hover:not(:disabled) {
+    border-color: var(--f4-ink-muted);
+  }
+}
+
+.f4-input:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: 2px;
+}
+
+.f4-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.f4-field[data-state="error"] .f4-input {
+  border-color: var(--f4-error);
+}
+
+.f4-field-trailing {
+  position: absolute;
+  right: 2px;
+  display: flex;
+}
+
+.f4-field-trailing button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--f4-space-3);
+  border: 0;
+  border-radius: var(--f4-radius-sm);
+  background: transparent;
+  color: var(--f4-accent);
+  font: inherit;
+  font-size: var(--f4-text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.f4-field-trailing button:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.f4-field-hint {
+  margin: var(--f4-space-1) 0 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+}
+
+/* Notice */
+.f4-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  margin-bottom: var(--f4-space-4);
+  padding: var(--f4-space-3) var(--f4-space-4);
+  border-radius: var(--f4-radius-lg);
+  border: 1px solid var(--f4-border);
+}
+
+.f4-notice[data-tone="info"] {
+  background: var(--f4-surface-2);
+}
+
+.f4-notice[data-tone="warning"] {
+  background: var(--f4-warning-soft);
+  color: var(--f4-warning-ink);
+  border-color: var(--f4-warning);
+}
+
+.f4-notice[data-tone="error"] {
+  background: var(--f4-error-soft);
+  color: var(--f4-error);
+  border-color: var(--f4-error);
+}
+
+.f4-notice-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.f4-notice-text {
+  margin: 0;
+  font-size: var(--f4-text-secondary);
+}
+
+/* Skeleton rows */
+.f4-skeleton {
+  height: 56px;
+  margin-bottom: var(--f4-space-2);
+  border-radius: var(--f4-radius-md);
+  background: linear-gradient(90deg, var(--f4-hover), var(--f4-surface-2), var(--f4-hover));
+  background-size: 200% 100%;
+  animation: f4-shimmer 1.4s linear infinite;
+}
+
+@keyframes f4-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f4-skeleton {
+    animation: none;
+  }
+}
