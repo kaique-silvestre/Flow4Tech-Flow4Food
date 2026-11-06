@@ -724,6 +724,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessao/permissoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPermissoesDoUsuario"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -999,6 +1015,9 @@ export interface components {
             registradoEm: string;
             /** Format: uuid */
             operadorId: string;
+        };
+        PermissoesDoUsuarioResponse: {
+            permissoes: string[];
         };
         ProdutoDto: {
             /** Format: uuid */
@@ -3686,6 +3705,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MesaErro"];
                 };
+            };
+        };
+    };
+    getPermissoesDoUsuario: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissoesDoUsuarioResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

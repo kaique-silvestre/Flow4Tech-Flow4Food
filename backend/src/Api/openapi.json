@@ -2504,6 +2504,33 @@
         },
         "x-permission": "mesa:gerenciar"
       }
+    },
+    "/sessao/permissoes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getPermissoesDoUsuario",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissoesDoUsuarioResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "sessao:ver-proprias"
+      }
     }
   },
   "components": {
@@ -3624,6 +3651,20 @@
           "operadorId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "PermissoesDoUsuarioResponse": {
+        "required": [
+          "permissoes"
+        ],
+        "type": "object",
+        "properties": {
+          "permissoes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

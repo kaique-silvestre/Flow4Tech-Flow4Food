@@ -730,3 +730,9 @@ body {
     animation: none;
   }
 }
+
+.f4-money .f4-input {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--f4-text-sheet-title);
+  font-weight: 600;
+}

@@ -31,8 +31,12 @@ export function sessaoJson(extra: Partial<{ deveTrocarSenha: boolean; requerSele
   };
 }
 
+export const TODAS_AS_PERMISSOES = ["caixa:abrir", "caixa:fechar", "caixa:ver", "comanda:abrir", "comanda:ver"];
+
 /** Stubs the network edge by `METHOD /path`. Anything not listed fails the test loudly (no silent default). Returns the recorded calls. */
-export function stubRede(rotas: Record<string, Resposta>) {
+export function stubRede(informadas: Record<string, Resposta>) {
+  // The caller's permissions are incidental to most tests: everyone may do everything unless a test says otherwise.
+  const rotas: Record<string, Resposta> = { "GET /sessao/permissoes": json({ permissoes: TODAS_AS_PERMISSOES }), ...informadas };
   const chamadas: Chamada[] = [];
   const fetchFalso = vi.fn(async (entrada: Request) => {
     const url = new URL(entrada.url);

@@ -7,7 +7,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const pronta = { "POST /refresh": json(sessaoJson()), "GET /comandas": json([]) };
+const pronta = { "POST /refresh": json(sessaoJson()), "GET /comandas": json([]), "GET /caixa/turnos/atual": new Response(null, { status: 404 }) };
 
 describe("salão shell (signed in)", () => {
   it("sends the root to /salao and renders the title and both tabs", async () => {
@@ -17,7 +17,7 @@ describe("salão shell (signed in)", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
     expect(router.state.location.pathname).toBe("/salao");
-    expect(screen.getByRole("navigation", { name: "Seções do salão" })).toBeVisible();
+    expect(await screen.findByRole("navigation", { name: "Seções do salão" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Comandas" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Caixa" })).not.toHaveAttribute("aria-current");
   });
@@ -29,7 +29,7 @@ describe("salão shell (signed in)", () => {
     await userEvent.click(await screen.findByRole("link", { name: "Caixa" }));
 
     expect(router.state.location.pathname).toBe("/salao/caixa");
-    expect(await screen.findByRole("heading", { level: 2, name: "Caixa" })).toBeVisible();
+    expect(await screen.findByText("Caixa fechado. Abra o caixa para receber.")).toBeVisible();
     expect(screen.getByRole("link", { name: "Caixa" })).toHaveAttribute("aria-current", "page");
   });
 

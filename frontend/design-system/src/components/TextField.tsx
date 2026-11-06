@@ -11,7 +11,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   trailing?: ReactNode;
   /** A request that uses this field is in flight. */
   loading?: boolean;
-  ref?: Ref<HTMLInputElement>;
+  ref?: Ref<HTMLInputElement> | undefined;
 }
 
 /** Label above the input (never a placeholder as the label), 48px high, error and hint linked with aria-describedby. */

@@ -179,3 +179,62 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Caixa */
+.caixa-lead {
+  margin: 0 0 var(--f4-space-4);
+  color: var(--f4-ink-muted);
+}
+
+.caixa-card {
+  margin: 0 0 var(--f4-space-4);
+  padding: var(--f4-space-4);
+  border: 1px solid var(--f4-border);
+  border-radius: var(--f4-radius-lg);
+  background: var(--f4-surface);
+}
+
+.caixa-valores {
+  display: grid;
+  gap: var(--f4-space-3);
+}
+
+.caixa-valores > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+}
+
+.caixa-valores dt {
+  color: var(--f4-ink-muted);
+}
+
+.caixa-valores dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.caixa-total {
+  padding-top: var(--f4-space-3);
+  border-top: 1px solid var(--f4-border);
+  font-size: var(--f4-text-sheet-title);
+}
+
+.caixa-resultado {
+  display: grid;
+  gap: var(--f4-space-2);
+  justify-items: start;
+}
+
+.caixa-resultado-linha {
+  margin: 0;
+  display: flex;
+  gap: var(--f4-space-3);
+  align-items: baseline;
+}
+
+.caixa-resultado .f4-badge {
+  font-size: var(--f4-text-body);
+  min-height: 36px;
+}

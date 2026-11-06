@@ -1,17 +1,20 @@
 import { Button } from "@flow4tech/design-system";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { usePermissoes } from "./features/sessao/permissoes";
 import { sair, useSessao } from "./features/sessao/sessao";
 
 export interface TabItem {
   to: string;
   label: string;
+  /** The tab is absent (not disabled) for a caller who lacks it. */
+  permissao: string;
 }
 
 /** The slice ships Comandas and Caixa only; each later step shows or hides its tab by the caller's permission. */
 export const salaoTabs: readonly TabItem[] = [
-  { to: "/salao", label: "Comandas" },
-  { to: "/salao/caixa", label: "Caixa" },
+  { to: "/salao", label: "Comandas", permissao: "comanda:ver" },
+  { to: "/salao/caixa", label: "Caixa", permissao: "caixa:ver" },
 ];
 
 /** Leaves the screen when the session ends (signed out here, expired, or revoked): the person lands on the sign-in. */
@@ -28,6 +31,8 @@ function useSairQuandoAnonima() {
 export function Shell({ title, children, tabs = salaoTabs }: { title: string; children?: ReactNode; tabs?: readonly TabItem[] }) {
   const navigate = useNavigate();
   useSairQuandoAnonima();
+  const permissoes = usePermissoes();
+  const visiveis = tabs.filter((tab) => permissoes.pode(tab.permissao));
   return (
     <div className="app-shell">
       <header className="app-topbar">
@@ -37,8 +42,8 @@ export function Shell({ title, children, tabs = salaoTabs }: { title: string; ch
         </Button>
       </header>
       <main className="app-content">{children ?? <Outlet />}</main>
-      <nav className="app-tabbar" aria-label="Seções do salão">
-        {tabs.map((tab) => (
+      <nav className="app-tabbar" aria-label="Seções do salão" hidden={visiveis.length === 0}>
+        {visiveis.map((tab) => (
           <Link key={tab.to} to={tab.to} className="app-tab" activeOptions={{ exact: true }} activeProps={{ "aria-current": "page" }}>
             {tab.label}
           </Link>

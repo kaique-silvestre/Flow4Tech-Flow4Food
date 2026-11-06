@@ -1,21 +1,11 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router";
+import { CaixaPage } from "./features/caixa/CaixaPage";
 import { ComandasPage } from "./features/comandas/ComandasPage";
 import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
 import { UnidadePage } from "./features/conta/UnidadePage";
 import { EntrarPage } from "./features/entrar/EntrarPage";
 import { destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
 import { EntryShell, Shell } from "./Shell";
-
-function CaixaPlaceholder() {
-  return (
-    <section className="app-empty" aria-labelledby="caixa-base">
-      <h2 id="caixa-base" className="app-empty-title">
-        Caixa
-      </h2>
-      <p>O caixa chega numa próxima etapa.</p>
-    </section>
-  );
-}
 
 /** The state of the session is known before any screen renders (one refresh attempt through the cookie, shared). */
 const rootRoute = createRootRoute({
@@ -47,7 +37,7 @@ const appLayout = createRoute({
 });
 
 const salaoRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao", component: ComandasPage });
-const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPlaceholder });
+const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPage });
 
 const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
 

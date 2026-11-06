@@ -1,11 +1,14 @@
 import { Button, Notice, Skeleton, StatusBadge } from "@flow4tech/design-system";
 import { useQuery } from "@tanstack/react-query";
+import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 
 /** The landing of /salao. The list itself (open comandas, numbers, filters) is built in its own step; this shows the real states: loading, empty, failed, and the rows. */
 export function ComandasPage() {
+  const permissoes = usePermissoes();
   const comandas = useQuery({
     queryKey: ["comandas"],
+    enabled: permissoes.carregado && permissoes.pode("comanda:ver"),
     queryFn: async () => {
       const { data } = await api.GET("/comandas");
       if (!data) {
@@ -15,6 +18,10 @@ export function ComandasPage() {
       return data;
     },
   });
+
+  if (permissoes.carregado && !permissoes.pode("comanda:ver")) {
+    return <Notice tone="info">Você não tem permissão para ver as comandas.</Notice>;
+  }
 
   if (comandas.isPending) {
     return <Skeleton rows={4} label="Carregando comandas" />;

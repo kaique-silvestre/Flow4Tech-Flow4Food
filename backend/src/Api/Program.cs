@@ -199,6 +199,7 @@ app.MapCardapio();
 app.MapCaixa();
 app.MapComandas();
 app.MapMesas();
+app.MapPermissoesDoUsuario(moduleCatalog);
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.
 RoutePermissions.EnsureValid(

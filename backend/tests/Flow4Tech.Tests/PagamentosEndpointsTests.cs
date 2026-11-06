@@ -499,3 +499,42 @@ public sealed partial class ComandasEndpointsTests
         }
     }
 }
+
+public sealed partial class ComandasEndpointsTests
+{
+    private sealed record PermissoesBody(List<string> Permissoes);
+
+    [Fact]
+    public async Task The_caller_learns_only_their_own_permissions_of_the_salao_so_the_app_can_hide_what_it_would_refuse()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+
+        async Task<List<string>> OfAsync(string token)
+        {
+            using var response = await SendAsync(client, HttpMethod.Get, "/sessao/permissoes", token);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            return (await response.Content.ReadFromJsonAsync<PermissoesBody>())!.Permissoes;
+        }
+
+        var garcom = await OfAsync(t.Garcom);
+        var supervisor = await OfAsync(t.Supervisor);
+        var dono = await OfAsync(t.Dono);
+
+        Assert.Contains("comanda:abrir", garcom);
+        Assert.Contains("comanda:lancar-item", garcom);
+        Assert.DoesNotContain("comanda:receber-pagamento", garcom);
+        Assert.DoesNotContain("caixa:abrir", garcom);
+        Assert.Contains("comanda:ver-comandas-de-outros", supervisor);
+        Assert.DoesNotContain("comanda:lancar-item", supervisor);
+        Assert.Contains("caixa:abrir", dono);
+        Assert.Contains("comanda:remover-taxa-servico", dono);
+        // Only the salão: nothing about settings, profiles or accounts is offered to the phone app.
+        Assert.All(dono, p => Assert.Matches("^(comanda|caixa|mesa|produto|pagamento):", p));
+        Assert.Equal(dono.Order(StringComparer.Ordinal).ToList(), dono);
+
+        using var anonymous = await SendAsync(client, HttpMethod.Get, "/sessao/permissoes", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
+}

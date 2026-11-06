@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
 mkdirSync(shots, { recursive: true });
@@ -10,10 +11,25 @@ async function shoot(page: Page, name: string) {
   await page.screenshot({ path: join(shots, `${name}-${size?.width ?? 0}x${size?.height ?? 0}.png`), fullPage: false });
 }
 
-test.describe("salão shell", () => {
+const seed = lerSeed();
+const comApi = Boolean(process.env["E2E_API"]) && seed !== null;
+
+/** The cashier of the seed holds the comanda and caixa permissions, so both tabs show. */
+async function entrarComoCaixa(page: Page) {
+  await page.goto("/salao/entrar");
+  await page.getByLabel("Usuário ou e-mail").fill("caixa");
+  await page.getByLabel("Código da organização").fill(seed!.organizacaoA);
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
+}
+
+test.describe("salão shell (signed in)", () => {
+  test.skip(!comApi, "needs the API running, the seed and E2E_API=1");
+
   test("opens /salao with the title and the two tabs, in light and dark, and writes screenshots", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto("/salao");
+    await entrarComoCaixa(page);
 
     await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Comandas" })).toHaveAttribute("aria-current", "page");
@@ -25,14 +41,18 @@ test.describe("salão shell", () => {
     await shoot(page, "shell-dark");
   });
 
-  test("sends / to /salao", async ({ page }) => {
+  test("sends / to the sign-in when nobody is signed in, and to /salao when somebody is", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/salao\/entrar$/);
+
+    await entrarComoCaixa(page);
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/salao$/);
   });
 
   test("has no horizontal scroll", async ({ page }) => {
-    await page.goto("/salao");
+    await entrarComoCaixa(page);
     await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
 
     const overflow = await page.evaluate(() => ({
@@ -44,7 +64,7 @@ test.describe("salão shell", () => {
   });
 
   test("keeps every interactive element at least 44px high and wide", async ({ page }) => {
-    await page.goto("/salao");
+    await entrarComoCaixa(page);
     await expect(page.getByRole("link", { name: "Caixa" })).toBeVisible();
 
     const small = await page.evaluate(() =>
@@ -58,13 +78,12 @@ test.describe("salão shell", () => {
   });
 
   test("shows the tab bar sticky at the bottom with the Caixa section reachable", async ({ page }) => {
-    await page.goto("/salao");
+    await entrarComoCaixa(page);
 
     await page.getByRole("link", { name: "Caixa" }).click();
 
     await expect(page).toHaveURL(/\/salao\/caixa$/);
-    await expect(page.getByRole("heading", { level: 2, name: "Caixa" })).toBeVisible();
-    await shoot(page, "shell-caixa");
+    await expect(page.getByText("Caixa fechado. Abra o caixa para receber.").or(page.getByRole("heading", { level: 2, name: "Caixa aberto" }))).toBeVisible();
     const bar = await page.getByRole("navigation", { name: "Seções do salão" }).boundingBox();
     const viewport = page.viewportSize();
     expect(bar && viewport && Math.round(bar.y + bar.height)).toBe(viewport?.height);
@@ -97,7 +116,8 @@ test.describe("installable PWA", () => {
     await context.setOffline(true);
     await page.goto("/salao");
 
-    await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
+    // The shell itself is served from the cache; with no network and no session it opens on the sign-in.
+    await expect(page.getByRole("heading", { level: 1, name: "Entrar" })).toBeVisible();
     await context.setOffline(false);
   });
 });
