@@ -26,6 +26,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Flow4Tech.Tests" />
     <InternalsVisibleTo Include="Flow4Tech.Architecture.Tests" />
+    <InternalsVisibleTo Include="Flow4Tech.E2eSeed" />
   </ItemGroup>
 
   <ItemGroup>

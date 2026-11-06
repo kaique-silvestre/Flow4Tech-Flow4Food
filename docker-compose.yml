@@ -40,3 +40,18 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  # Browser tests (docs/agents/project.md, "e2e"): `docker compose --profile e2e up --build seed` migrates, starts the API and seeds the local database
+  # (two organizations, an owner each, a waiter and a cashier with custom profiles, a few products and tables). Idempotent. The password is a throwaway local value.
+  seed:
+    profiles: ["e2e"]
+    build:
+      context: .
+      target: e2e-seed
+    environment:
+      E2E_SEED_OWNER_URL: postgres://flow4tech:flow4tech@db:5432/flow4tech
+      E2E_SEED_APP_URL: postgres://flow4tech_app:flow4tech_app_dev@db:5432/flow4tech
+      E2E_SEED_PASSWORD: e2e-local-throwaway-password
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

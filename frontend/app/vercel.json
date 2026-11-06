@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @flow4tech/app typecheck && mkdir -p dist && printf '<!doctype html><title>Flow4Tech app</title><p>placeholder until the UI exists</p>' > dist/index.html",
-  "outputDirectory": "dist"
+  "buildCommand": "pnpm --filter @flow4tech/app build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/((?!assets/|sw.js|workbox-|manifest.webmanifest|icon|apple-touch-icon).*)", "destination": "/index.html" }]
 }

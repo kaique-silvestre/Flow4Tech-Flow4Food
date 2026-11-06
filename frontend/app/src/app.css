@@ -1,0 +1,90 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* One phone column, centered once the viewport is wider than 480px (the web management app is not part of this slice). */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: env(safe-area-inset-top);
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 var(--f4-space-4);
+  background: var(--f4-bg);
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.app-content {
+  flex: 1;
+  padding: var(--f4-space-4);
+}
+
+.app-empty {
+  padding: var(--f4-space-6) 0;
+}
+
+.app-empty-title {
+  margin: 0 0 var(--f4-space-2);
+  font-size: var(--f4-text-sheet-title);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.app-empty p {
+  margin: 0;
+  color: var(--f4-ink-muted);
+}
+
+.app-tabbar {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 0 0 env(safe-area-inset-bottom);
+  background: var(--f4-surface);
+  border-top: 1px solid var(--f4-border);
+}
+
+.app-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  color: var(--f4-ink-muted);
+  text-decoration: none;
+  font-size: var(--f4-text-secondary);
+  font-weight: 500;
+}
+
+.app-tab[aria-current="page"] {
+  color: var(--f4-accent);
+  font-weight: 600;
+  box-shadow: inset 0 3px 0 var(--f4-accent);
+}
+
+.app-tab:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}

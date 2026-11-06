@@ -6,10 +6,10 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** UI in the browser
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `frontend/app` is a Vite + React + TypeScript SPA with TanStack Router/Query, route `/salao`, a web manifest and a service worker making it installable; `pnpm -r typecheck` passes under `frontend/tsconfig.base.json` (strict).
-- [ ] `pnpm -r --if-present test` runs vitest + testing-library and passes; a Playwright setup runs at 390x844 and 360x740 against `docker compose` with a documented seed (two organizations, an owner, an operational waiter with a custom profile created through `GestaoDePerfis`, a unit, a few products) and writes screenshots to disk.
-- [ ] `frontend/design-system` exports tokens (colors in OKLCH for light and dark, type, space, radius, motion) from `docs/design/DESIGN.md` and the minimal components used by the slice: button (primary, secondary), chip, tabs, bottom sheet, keypad, item row, status badge; each has default, hover, focus-visible, active, disabled, loading and error states and a vitest test; font files are self-hosted.
-- [ ] A CI job runs the front tests; the commands are added to `docs/agents/project.md` (dev server, vitest, Playwright, e2e).
-- [ ] No horizontal scroll at 360px and touch targets of at least 44px in the shell.
+- [x] `frontend/app` is a Vite + React + TypeScript SPA with TanStack Router/Query, route `/salao`, a web manifest and a service worker making it installable; `pnpm -r typecheck` passes under `frontend/tsconfig.base.json` (strict).
+- [x] `pnpm -r --if-present test` runs vitest + testing-library and passes; a Playwright setup runs at 390x844 and 360x740 against `docker compose` with a documented seed (two organizations, an owner, an operational waiter with a custom profile created through `GestaoDePerfis`, a unit, a few products) and writes screenshots to disk.
+- [x] `frontend/design-system` exports tokens (colors in OKLCH for light and dark, type, space, radius, motion) from `docs/design/DESIGN.md` and the minimal components used by the slice: button (primary, secondary), chip, tabs, bottom sheet, keypad, item row, status badge; each has default, hover, focus-visible, active, disabled, loading and error states and a vitest test; font files are self-hosted.
+- [x] A CI job runs the front tests; the commands are added to `docs/agents/project.md` (dev server, vitest, Playwright, e2e).
+- [x] No horizontal scroll at 360px and touch targets of at least 44px in the shell.

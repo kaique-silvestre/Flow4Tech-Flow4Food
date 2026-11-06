@@ -5,6 +5,15 @@ COPY backend/ backend/
 RUN dotnet publish backend/src/Api/Flow4Tech.Api.csproj -c Release -o /out \
  && dotnet publish backend/src/Infrastructure/Migrator/Flow4Tech.Infrastructure.Migrator.csproj -c Release -o /out
 
+# Local seed for the browser tests (docker compose --profile e2e): a separate target, so it never ships in the image that is deployed.
+FROM build AS e2e-seed-build
+RUN dotnet publish backend/tools/E2eSeed/Flow4Tech.E2eSeed.csproj -c Release -o /seed
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS e2e-seed
+WORKDIR /seed
+COPY --from=e2e-seed-build /seed .
+ENTRYPOINT ["dotnet", "Flow4Tech.E2eSeed.dll"]
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /out .

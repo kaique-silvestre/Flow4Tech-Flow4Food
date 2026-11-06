@@ -1,0 +1,4 @@
+# A console tool for local databases: its output is not localized, and its SQL is fixed text with parameters.
+[*.cs]
+dotnet_diagnostic.CA1303.severity = none
+dotnet_diagnostic.CA2100.severity = none
