@@ -1,3 +1,4 @@
+import { onlineManager } from "@tanstack/react-query";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +11,9 @@ import { uuidv7 } from "./uuid";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+  // The query library keeps its own global notion of being online (it listens to the same events): a test that went offline must not leave later tests paused.
+  onlineManager.setOnline(true);
 });
 
 const PERMISSOES_DO_GARCOM = ["comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "mesa:ver", "produto:ver"];
@@ -158,34 +162,58 @@ describe("sending a round", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("keeps the round staged and says what did not go when the send fails, and a retry repeats the same round id", async () => {
+  it("puts the round in the visible queue when the server fails, and a retry sends the very same round id", async () => {
     let tentativa = 0;
     const { chamadas, folha } = await prepararEnvio({
       "POST /comandas/c1/rodadas": () => {
+        // The screen's own attempt and the queue's first attempt both meet the failing server; the third goes through.
         tentativa += 1;
-        return tentativa === 1 ? new Response(null, { status: 500 }) : rodadaOk();
+        return tentativa <= 2 ? new Response(null, { status: 500 }) : rodadaOk();
       },
     });
 
     await userEvent.click(within(folha).getByRole("button", { name: "Enviar agora" }));
 
-    expect(await within(folha).findByText("Não foi possível enviar. A rodada continua aqui; tente de novo.")).toBeVisible();
-    expect(within(folha).getByRole("list", { name: "Itens da rodada" })).toHaveTextContent("Chopp 300ml");
-    expect(screen.getByRole("region", { name: "Rodada não enviada", hidden: true })).toHaveTextContent("2 itens");
-    await userEvent.click(within(folha).getByRole("button", { name: "Enviar agora" }));
-    await screen.findByText("Rodada enviada", { exact: false });
+    expect(await screen.findByText(/A rodada ficou na fila/)).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Rodada não enviada" })).toBeNull();
+    const resumo = await screen.findByRole("button", { name: "1 ação pendente" });
+    await userEvent.click(resumo);
+    const fila = screen.getByRole("list", { name: "Ações pendentes" });
+    expect(fila).toHaveTextContent("Rodada · #7");
+    expect(fila).toHaveTextContent("2 itens");
+    await userEvent.click(within(fila).getByRole("button", { name: "Tentar agora" }));
+
+    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "1 ação pendente" })).toBeNull());
     const ids = chamadas.filter((c) => c.path === "/comandas/c1/rodadas" && c.method === "POST").map((c) => (c.body as { rodadaId: string }).rodadaId);
-    expect(ids).toHaveLength(2);
-    expect(ids[0]).toBe(ids[1]);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(1);
   });
 
-  it("says the connection failed without losing the round", async () => {
+  it("puts the round in the queue when the request cannot reach the server at all", async () => {
     const { folha } = await prepararEnvio({ "POST /comandas/c1/rodadas": () => Promise.reject(new TypeError("network")) as never });
 
     await userEvent.click(within(folha).getByRole("button", { name: "Enviar agora" }));
 
-    expect(await within(folha).findByText("Sem conexão. A rodada continua aqui; tente de novo.")).toBeVisible();
-    expect(screen.getByRole("region", { name: "Rodada não enviada", hidden: true })).toBeInTheDocument();
+    expect(await screen.findByText(/A rodada ficou na fila/)).toBeVisible();
+    expect(await screen.findByRole("button", { name: "1 ação pendente" })).toBeVisible();
+  });
+
+  it("keeps working offline: the round goes to the queue without calling the server, with the notice that nothing is lost", async () => {
+    const { chamadas } = await abrir();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    await act(async () => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    const antes = chamadas.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar Chopp 300ml" }));
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Enviar agora" }));
+
+    expect(await screen.findByText("Sem conexão. Você pode seguir lançando. Nada se perde.")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "1 ação pendente" })).toBeVisible();
+    expect(chamadas.slice(antes).filter((c) => c.method === "POST")).toHaveLength(0);
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
   });
 
   it("tells a stale version without blocking, refreshes the bill and keeps what is staged", async () => {

@@ -1,6 +1,8 @@
 import { Button } from "@flow4tech/design-system";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { BarraDeFila } from "./features/fila/BarraDeFila";
+import { limparFila } from "./features/fila/fila";
 import { usePermissoes } from "./features/sessao/permissoes";
 import { sair, useSessao } from "./features/sessao/sessao";
 
@@ -37,10 +39,16 @@ export function Shell({ title, children, tabs = salaoTabs }: { title: string; ch
     <div className="app-shell">
       <header className="app-topbar">
         <h1 className="f4-title">{title}</h1>
-        <Button variant="secondary" className="app-signout" onClick={() => void sair().then(() => navigate({ to: "/salao/entrar" }))}>
+        <Button variant="secondary" className="app-signout" onClick={() => {
+            // Signing out forgets what was waiting to be sent: the next person on the device never sends it.
+            limparFila();
+            void sair().then(() => navigate({ to: "/salao/entrar" }));
+          }}
+        >
           Sair
         </Button>
       </header>
+      <BarraDeFila />
       <main className="app-content">{children ?? <Outlet />}</main>
       <nav className="app-tabbar" aria-label="Seções do salão" hidden={visiveis.length === 0}>
         {visiveis.map((tab) => (

@@ -184,6 +184,26 @@ export function definirUnidadeAtiva(unidadeId: string) {
   }
 }
 
+/** The account of the session, read from the access token (the `sub` claim). Only used to keep one person's queued actions from being sent by another; the server decides everything else. */
+export function contaDaSessao(): string | null {
+  if (estado.status !== "ativa") {
+    return null;
+  }
+
+  try {
+    const corpo = estado.accessToken.split(".")[1];
+    if (!corpo) {
+      return null;
+    }
+
+    const json = atob(corpo.replace(/-/g, "+").replace(/_/g, "/"));
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+    return typeof sub === "string" ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export function lerSessao(): EstadoDaSessao {
   return estado;
 }

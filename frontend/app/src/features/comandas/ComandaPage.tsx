@@ -2,6 +2,7 @@ import { Button, formatBRL, ItemRow, Notice, RoundBar, Skeleton, StatusBadge, St
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { enfileirarRodada } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 import { useCategorias, useFrequentes, useProdutos, type Produto } from "./cardapio";
@@ -65,6 +66,22 @@ export function ComandaPage() {
     await Promise.all([queryClient.invalidateQueries({ queryKey: ["comanda", comandaId] }), queryClient.invalidateQueries({ queryKey: ["comandas"] })]);
   }
 
+  /** The round cannot go now (no signal, a server hiccup): it waits in the visible queue under the same id and goes out in order when it can. */
+  function guardarNaFila(rodadaId: string) {
+    const total = totalEmPreparo(emPreparo);
+    enfileirarRodada({
+      rodadaId,
+      comandaId,
+      itens: emPreparo.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade, observacao: null })),
+      titulo: `Rodada · ${comanda?.numeroTexto ?? ""}`.trim(),
+      detalhe: `${unidades(emPreparo)} ${unidades(emPreparo) === 1 ? "item" : "itens"} · ${formatBRL(total)}`,
+    });
+    rodadaEmEnvio.current = null;
+    setEmPreparo([]);
+    setFolhaEnviar(false);
+    setAviso("Sem conexão com o servidor. A rodada ficou na fila e será enviada quando der. Nada se perde.");
+  }
+
   async function enviar() {
     setErroEnviar(undefined);
     setAviso(null);
@@ -72,6 +89,12 @@ export function ComandaPage() {
     // The id of the round is made once and kept until the server accepts it: a retry after a lost answer is a repeat, never a second round.
     const rodadaId = (rodadaEmEnvio.current ??= uuidv7());
     const inicio = Date.now();
+    if (!navigator.onLine) {
+      guardarNaFila(rodadaId);
+      setEnviando(false);
+      return;
+    }
+
     try {
       const { data, response, error } = await api.POST("/comandas/{comandaId}/rodadas", {
         params: { path: { comandaId } },
@@ -100,11 +123,13 @@ export function ComandaPage() {
         setErroEnviar("Esta comanda não está mais aberta. A rodada não foi enviada.");
       } else if (response.status === 403) {
         setErroEnviar("Você não tem permissão para lançar itens.");
+      } else if (response.status >= 500 || response.status === 408 || response.status === 429) {
+        guardarNaFila(rodadaId);
       } else {
-        setErroEnviar("Não foi possível enviar. A rodada continua aqui; tente de novo.");
+        setErroEnviar("Não foi possível enviar. Confira os itens e tente de novo.");
       }
     } catch {
-      setErroEnviar("Sem conexão. A rodada continua aqui; tente de novo.");
+      guardarNaFila(rodadaId);
     } finally {
       setEnviando(false);
     }
@@ -208,11 +233,14 @@ export function ComandaPage() {
     return <Notice tone="info">Você não tem permissão para ver as comandas.</Notice>;
   }
 
-  if (comandas.isPending || conta.isPending || itens.isPending) {
-    return <Skeleton rows={4} label="Carregando a comanda" />;
+  if (comandas.data === undefined || conta.data === undefined || itens.data === undefined) {
+    if (!(comandas.isError || conta.isError || itens.isError)) {
+      return <Skeleton rows={4} label="Carregando a comanda" />;
+    }
   }
 
-  if (comandas.isError || conta.isError || itens.isError) {
+  // Offline the screen keeps what it already loaded: an error is shown only when there is nothing to show.
+  if ((comandas.isError && comandas.data === undefined) || (conta.isError && conta.data === undefined) || (itens.isError && itens.data === undefined)) {
     return (
       <Notice
         tone="error"
@@ -227,7 +255,7 @@ export function ComandaPage() {
     );
   }
 
-  if (!comanda) {
+  if (!comanda || conta.data === undefined || itens.data === undefined) {
     return (
       <Notice tone="info" action={<Link to="/salao">Voltar às comandas</Link>}>
         Esta comanda não está mais aberta ou não é sua.

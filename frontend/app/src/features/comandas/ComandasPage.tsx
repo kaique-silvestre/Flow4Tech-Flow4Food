@@ -1,6 +1,7 @@
 import { Button, Notice, Skeleton, StatusBadge } from "@flow4tech/design-system";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useOnline } from "../fila/conexao";
 import { usePermissoes } from "../sessao/permissoes";
 import { useComandas, useMesas } from "./consultas";
 import { NovaComandaSheet } from "./NovaComandaSheet";
@@ -13,21 +14,6 @@ function useAgora(intervaloMs = 30_000) {
     return () => window.clearInterval(timer);
   }, [intervaloMs]);
   return agora;
-}
-
-function useOnline() {
-  const [online, setOnline] = useState(() => navigator.onLine);
-  useEffect(() => {
-    const ligar = () => setOnline(true);
-    const desligar = () => setOnline(false);
-    window.addEventListener("online", ligar);
-    window.addEventListener("offline", desligar);
-    return () => {
-      window.removeEventListener("online", ligar);
-      window.removeEventListener("offline", desligar);
-    };
-  }, []);
-  return online;
 }
 
 /** The landing of /salao: the open comandas of the waiter (all of the unit for who may see others'), with search, elapsed time and one accent action: Nova comanda. */
@@ -57,7 +43,7 @@ export function ComandasPage() {
 
       {comandas.isPending ? <Skeleton rows={4} label="Carregando comandas" /> : null}
 
-      {comandas.isError ? (
+      {comandas.isError && comandas.data === undefined ? (
         <Notice
           tone="error"
           action={

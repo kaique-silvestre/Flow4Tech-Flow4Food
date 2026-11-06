@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
+import { reiniciarFilaParaTestes } from "./features/fila/fila";
 import { reiniciarSessaoParaTestes } from "./features/sessao/sessao";
 import { createAppRouter } from "./router";
 
@@ -18,9 +19,15 @@ export function json(corpo: unknown, init?: ResponseInit): Response {
   return Response.json(corpo, init);
 }
 
+/** A token shaped like the server's (header.payload.signature) whose `sub` is the account; the client only reads `sub` to keep one person's queue from being sent by another. */
+export function tokenDe(conta: string): string {
+  const parte = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  return `${parte({ alg: "HS256", typ: "JWT" })}.${parte({ sub: conta })}.assinatura`;
+}
+
 export function sessaoJson(extra: Partial<{ deveTrocarSenha: boolean; requerSelecaoDeUnidade: boolean; unidadeAtivaId: string | null; accessToken: string }> = {}) {
   return {
-    accessToken: "token-de-teste",
+    accessToken: tokenDe("conta-1"),
     expiraEmSegundos: 300,
     sessaoId: "0197e2e0-0000-7000-8000-000000000001",
     unidadeAtivaId: "0197e2e0-0000-7000-8000-0000000000a1",
@@ -58,6 +65,7 @@ export function stubRede(informadas: Record<string, Resposta>) {
 
 export async function renderEm(caminho: string) {
   reiniciarSessaoParaTestes();
+  reiniciarFilaParaTestes();
   const router = createAppRouter(createMemoryHistory({ initialEntries: [caminho] }));
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utilitarios = render(

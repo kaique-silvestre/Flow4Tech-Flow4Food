@@ -5,6 +5,7 @@ export { ItemRow, Stepper, type ItemRowProps, type StepperProps } from "./compon
 export { Keypad, type KeypadProps } from "./components/Keypad";
 export { MoneyField, type MoneyFieldProps } from "./components/MoneyField";
 export { Notice, Skeleton, type NoticeProps } from "./components/Notice";
+export { QueueList, type AcaoDaFila, type EstadoDaAcao, type QueueListProps } from "./components/QueueList";
 export { RoundBar, type RoundBarProps } from "./components/RoundBar";
 export { StatusBadge, type ComandaStatus, type StatusBadgeProps } from "./components/StatusBadge";
 export { Tab, TabList, TabPanel, Tabs, type TabProps } from "./components/Tabs";

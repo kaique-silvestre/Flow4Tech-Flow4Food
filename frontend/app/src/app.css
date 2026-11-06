@@ -463,3 +463,25 @@ a.comanda-row:focus-visible {
   gap: var(--f4-space-2);
   margin-bottom: var(--f4-space-3);
 }
+
+/* Offline notice and queue */
+.fila {
+  position: sticky;
+  top: 56px;
+  z-index: 2;
+  padding: var(--f4-space-3) var(--f4-space-4) 0;
+  background: var(--f4-bg);
+}
+
+.fila .f4-notice {
+  margin-bottom: var(--f4-space-2);
+}
+
+.fila-resumo {
+  margin-bottom: var(--f4-space-2);
+}
+
+.fila-resumo > .f4-btn {
+  width: 100%;
+  justify-content: space-between;
+}

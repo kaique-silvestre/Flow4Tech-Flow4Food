@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { json, sessaoJson, stubRede } from "../../test-utils";
+import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
 import { api, destinoDaSessao, entrar, lerSessao, renovar, reiniciarSessaoParaTestes, restaurar, sair } from "./sessao";
 
 beforeEach(() => {
@@ -19,9 +19,9 @@ describe("session in memory", () => {
     expect(r).toEqual({ tipo: "ok" });
     expect(chamadas[0]?.headers.get("X-F4T-Csrf")).toBe("1");
     expect(chamadas[0]?.body).toEqual({ organizacaoDoLogin: "org-1", usuario: "garcom", email: null, senha: "x" });
-    expect(lerSessao()).toMatchObject({ status: "ativa", accessToken: "token-de-teste", deveTrocarSenha: false });
-    expect(JSON.stringify(window.localStorage)).not.toContain("token-de-teste");
-    expect(JSON.stringify(window.sessionStorage)).not.toContain("token-de-teste");
+    expect(lerSessao()).toMatchObject({ status: "ativa", accessToken: tokenDe("conta-1"), deveTrocarSenha: false });
+    expect(JSON.stringify(window.localStorage)).not.toContain(tokenDe("conta-1"));
+    expect(JSON.stringify(window.sessionStorage)).not.toContain(tokenDe("conta-1"));
   });
 
   it("signs in by e-mail without an organization", async () => {
