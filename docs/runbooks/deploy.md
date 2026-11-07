@@ -9,7 +9,7 @@ The new system lives in its own Railway project, `flow4tech-v2` (the old system 
 | Environment | Git branch | When it deploys | Public URL |
 |---|---|---|---|
 | `staging` | `dev-v2` | every push to `dev-v2`, after the GitHub checks (`ci` job `gates`) are green | `https://flow4tech-api-staging.up.railway.app` |
-| `production` | `main-v2` | every merge to `main-v2` (PR only, from `dev-v2`), after the checks are green | not created yet |
+| `production` | `main-v2` | every merge to `main-v2` (PR only, from `dev-v2`), after the checks are green `https://flow4tech-api-production.up.railway.app` |
 | front | per ADR-009 (Vercel) | Vercel Git integration, preview per branch | see `.scratch/governanca/hospedagem-do-front-e-ambientes.md` (open discussion) |
 
 `staging` and `production` never share a database, token or secret. There is no manual approval step in Railway: the protection of production is the PR into `main-v2` plus the required `gates` check (configure branch protection on GitHub, see First-time setup).
@@ -121,7 +121,7 @@ Requires PostgreSQL 15 or newer: the "app cannot create objects" guarantee relie
 ## First-time setup of an environment (checklist, what was done for `staging`)
 
 1. `railway init --name flow4tech-v2` (once), `railway environment new staging` (the project starts with `production`).
-2. In the environment: `railway add --database postgres`, then `railway add --service flow4tech-api` ("Empty Service"; the GitHub source comes from `.railway/railway.ts`).
+2. In the environment: `railway add --database postgres`, then create the service. Service names are unique per PROJECT: the first environment uses `railway add --service flow4tech-api` ("Empty Service"); the next ones get the same service from `railway config apply` (the file defines it). A second PostgreSQL gets another name (production's is `Postgres-10ae`), so its variable references use that name.
 3. Variables (list above). Secrets are generated with `openssl` and piped with `--stdin`; check names and lengths only, never print values.
 4. `railway domain -s flow4tech-api -e <env>` for the public URL.
 5. Connect the GitHub source and apply the file: `railway service source connect --repo kaique-silvestre/Flow4Tech-Flow4Food --branch <dev-v2|main-v2> --service flow4tech-api`, then `railway config plan` and `railway config apply` (see above).

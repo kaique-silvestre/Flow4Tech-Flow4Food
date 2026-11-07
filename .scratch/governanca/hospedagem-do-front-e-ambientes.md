@@ -56,4 +56,5 @@ O ADR-009 nao trata disso; precisa de resposta antes do front falar com a API em
 - Correcao: `.railway/railway.ts` (gerado por `railway config migrate`), `plan` (0 add, 2 change, 0 destroy), `apply`, redeploy. Runbook reescrito.
 - Tropecos de CLI: no zsh `$VAR` com varios argumentos nao e separado (usar array); nao esconder stderr ao gravar variaveis (uma tentativa falhou em silencio); `railway ssh` pede chave registrada e o host aceito uma vez em terminal real.
 - Decisao: deploy pela integracao Git do Railway com "wait for CI" (`dev-v2` -> staging, `main-v2` -> production), sem workflow de deploy. Production sem aprovacao manual: a protecao e o PR em `main-v2` + check `gates` (configurar no GitHub).
-- Pendente: criar o ambiente `production` e aplicar o IaC la; branch `main-v2` no remoto; protecao de branch no GitHub; decisao sobre front/dominio.
+- Production criado (PR #47 mergeado em `main-v2`, depois `railway config apply`, variaveis com segredos novos, dominio, redeploy). `/health/ready` 200 com o commit do merge, com o pre-deploy rodando sozinho. Detalhe: o nome do servico e unico por projeto e o 2o Postgres saiu como `Postgres-10ae` (as referencias de variavel usam esse nome).
+- Pendente: protecao de branch no GitHub (PR e `gates` em `main-v2`); decisao sobre front/dominio.
