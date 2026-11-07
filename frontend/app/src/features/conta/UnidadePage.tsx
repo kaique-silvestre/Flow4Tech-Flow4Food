@@ -1,6 +1,6 @@
 import { Button, Notice, Skeleton } from "@flow4tech/design-system";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { api, definirUnidadeAtiva, destinoDaSessao, lerSessao, sair } from "../sessao/sessao";
 
@@ -78,7 +78,9 @@ export function UnidadePage() {
     return (
       <section className="entry-form">
         <h1 className="f4-title">Sem unidade</h1>
-        <p className="entry-lead">Você não está vinculado a nenhuma unidade. Fale com o responsável para liberar o seu acesso.</p>
+        <p className="entry-lead">
+          Você não está vinculado a nenhuma unidade. Fale com o responsável para liberar o seu acesso.
+        </p>
         <Button variant="secondary" className="entry-secondary" onClick={() => void aoSair()}>
           Sair
         </Button>
@@ -94,7 +96,13 @@ export function UnidadePage() {
       <ul className="unit-list">
         {unidades.data.map((unidade) => (
           <li key={unidade.id}>
-            <Button variant="secondary" className="unit-option" loading={escolhendo === unidade.id} disabled={escolhendo !== null} onClick={() => void escolher(unidade.id)}>
+            <Button
+              variant="secondary"
+              className="unit-option"
+              loading={escolhendo === unidade.id}
+              disabled={escolhendo !== null}
+              onClick={() => void escolher(unidade.id)}
+            >
               {unidade.nome}
             </Button>
           </li>

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../sessao/sessao";
-import { paraComanda, paraMesa, type Comanda, type Mesa } from "./tipos";
+import { type Comanda, type Mesa, paraComanda, paraMesa } from "./tipos";
 
 export function useComandas(enabled: boolean) {
   return useQuery<Comanda[]>({

@@ -1,17 +1,37 @@
-import { Button, formatBRL, ItemRow, Notice, RoundBar, Skeleton, StatusBadge, Stepper, UndoToast } from "@flow4tech/design-system";
+import {
+  Button,
+  formatBRL,
+  ItemRow,
+  Notice,
+  RoundBar,
+  Skeleton,
+  StatusBadge,
+  Stepper,
+  UndoToast,
+} from "@flow4tech/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { enfileirarRodada } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-import { useCategorias, useFrequentes, useProdutos, type Produto } from "./cardapio";
+import { type Produto, useCategorias, useFrequentes, useProdutos } from "./cardapio";
 import { useComandas } from "./consultas";
 import { useConta, useItens } from "./dadosDaComanda";
 import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet } from "./Folhas";
 import { Picker } from "./Picker";
-import { adicionar, definirQuantidade, DURACAO_DO_DESFAZER_MS, totalEmPreparo, ultimaRodada, unidades, type CodigoDeMotivo, type ItemDaConta, type ItemEmPreparo } from "./rodada";
+import {
+  adicionar,
+  type CodigoDeMotivo,
+  DURACAO_DO_DESFAZER_MS,
+  definirQuantidade,
+  type ItemDaConta,
+  type ItemEmPreparo,
+  totalEmPreparo,
+  ultimaRodada,
+  unidades,
+} from "./rodada";
 import { nomeExibido, tempoDecorrido } from "./tipos";
 import { uuidv7 } from "./uuid";
 
@@ -65,7 +85,10 @@ export function ComandaPage() {
   const comanda = comandas.data?.find((c) => c.id === comandaId);
 
   async function atualizarDados() {
-    await Promise.all([queryClient.invalidateQueries({ queryKey: ["comanda", comandaId] }), queryClient.invalidateQueries({ queryKey: ["comandas"] })]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["comanda", comandaId] }),
+      queryClient.invalidateQueries({ queryKey: ["comandas"] }),
+    ]);
   }
 
   /** The round cannot go now (no signal, a server hiccup): it waits in the visible queue under the same id and goes out in order when it can. */
@@ -89,7 +112,8 @@ export function ComandaPage() {
     setAviso(null);
     setEnviando(true);
     // The id of the round is made once and kept until the server accepts it: a retry after a lost answer is a repeat, never a second round.
-    const rodadaId = (rodadaEmEnvio.current ??= uuidv7());
+    rodadaEmEnvio.current ??= uuidv7();
+    const rodadaId = rodadaEmEnvio.current;
     const inicio = Date.now();
     if (!navigator.onLine) {
       guardarNaFila(rodadaId);
@@ -100,7 +124,11 @@ export function ComandaPage() {
     try {
       const { data, response, error } = await api.POST("/comandas/{comandaId}/rodadas", {
         params: { path: { comandaId } },
-        body: { rodadaId, versao: versao.current, itens: emPreparo.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade, observacao: null })) },
+        body: {
+          rodadaId,
+          versao: versao.current,
+          itens: emPreparo.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade, observacao: null })),
+        },
       });
       if (data) {
         versao.current = Number(data.comandaVersao);
@@ -118,7 +146,9 @@ export function ComandaPage() {
         // Another device changed the comanda: the screen refreshes and the staged round stays; nothing was written.
         setFolhaEnviar(false);
         await atualizarDados();
-        setAviso("Esta comanda foi alterada em outro aparelho. Atualizamos a conta; confira e toque em Enviar de novo.");
+        setAviso(
+          "Esta comanda foi alterada em outro aparelho. Atualizamos a conta; confira e toque em Enviar de novo.",
+        );
       } else if (response.status === 409 && codigo === "produto-inativo") {
         setErroEnviar("Um dos itens não está mais disponível. Volte e retire-o da rodada.");
       } else if (response.status === 409 && codigo === "comanda-nao-aberta") {
@@ -168,7 +198,9 @@ export function ComandaPage() {
       }
 
       setDesfazer(null);
-      setAviso(codigo === "janela-expirada" ? "Passou o prazo para desfazer a rodada." : "Não foi possível desfazer a rodada.");
+      setAviso(
+        codigo === "janela-expirada" ? "Passou o prazo para desfazer a rodada." : "Não foi possível desfazer a rodada.",
+      );
     } catch {
       setAviso("Sem conexão. Não foi possível desfazer a rodada.");
     } finally {
@@ -242,7 +274,11 @@ export function ComandaPage() {
   }
 
   // Offline the screen keeps what it already loaded: an error is shown only when there is nothing to show.
-  if ((comandas.isError && comandas.data === undefined) || (conta.isError && conta.data === undefined) || (itens.isError && itens.data === undefined)) {
+  if (
+    (comandas.isError && comandas.data === undefined) ||
+    (conta.isError && conta.data === undefined) ||
+    (itens.isError && itens.data === undefined)
+  ) {
     return (
       <Notice
         tone="error"
@@ -292,7 +328,9 @@ export function ComandaPage() {
       {aviso ? <Notice tone="info">{aviso}</Notice> : null}
 
       <div className="comanda-conta">
-        {lancados.length === 0 && emPreparo.length === 0 ? <p className="comandas-vazio">Nenhum item ainda. Escolha abaixo.</p> : null}
+        {lancados.length === 0 && emPreparo.length === 0 ? (
+          <p className="comandas-vazio">Nenhum item ainda. Escolha abaixo.</p>
+        ) : null}
         <ul className="conta-itens" aria-label="Itens da conta">
           {lancados.map((i) => (
             <ItemRow
@@ -303,7 +341,12 @@ export function ComandaPage() {
               priceCents={i.precoCentavos}
               action={
                 podeCancelar ? (
-                  <button type="button" className="f4-row-action" aria-label={`Cancelar ${i.produtoNome}`} onClick={() => setParaCancelar(i)}>
+                  <button
+                    type="button"
+                    className="f4-row-action"
+                    aria-label={`Cancelar ${i.produtoNome}`}
+                    onClick={() => setParaCancelar(i)}
+                  >
                     Cancelar
                   </button>
                 ) : undefined
@@ -317,7 +360,14 @@ export function ComandaPage() {
               name={i.produto.nome}
               modifier="Não enviado"
               priceCents={i.produto.precoCentavos}
-              action={<Stepper label={i.produto.nome} value={i.quantidade} min={0} onChange={(q) => setEmPreparo((atual) => definirQuantidade(atual, i.produto.id, q))} />}
+              action={
+                <Stepper
+                  label={i.produto.nome}
+                  value={i.quantidade}
+                  min={0}
+                  onChange={(q) => setEmPreparo((atual) => definirQuantidade(atual, i.produto.id, q))}
+                />
+              }
             />
           ))}
         </ul>
@@ -347,7 +397,11 @@ export function ComandaPage() {
       {lancar ? (
         <div className="comanda-barra">
           {faltaUnidades > 0 ? (
-            <RoundBar itens={faltaUnidades} totalCentavos={totalEmPreparo(emPreparo)} action={<Button onClick={() => setFolhaEnviar(true)}>Enviar</Button>} />
+            <RoundBar
+              itens={faltaUnidades}
+              totalCentavos={totalEmPreparo(emPreparo)}
+              action={<Button onClick={() => setFolhaEnviar(true)}>Enviar</Button>}
+            />
           ) : temUltima ? (
             <Button className="entry-submit" onClick={repetirRodada} disabled={!produtos.data}>
               Repetir rodada
@@ -365,11 +419,35 @@ export function ComandaPage() {
       ) : null}
 
       {desfazer && podeDesfazer ? (
-        <UndoToast key={desfazer.rodadaId} message="Rodada enviada" durationMs={desfazer.duracaoMs} loading={desfazendo} onUndo={() => void desfazerRodada()} onExpire={() => setDesfazer(null)} />
+        <UndoToast
+          key={desfazer.rodadaId}
+          message="Rodada enviada"
+          durationMs={desfazer.duracaoMs}
+          loading={desfazendo}
+          onUndo={() => void desfazerRodada()}
+          onExpire={() => setDesfazer(null)}
+        />
       ) : null}
 
-      {podeFechar ? <FecharContaSheet open={folhaFechar} onOpenChange={setFolhaFechar} comandaId={comandaId} nome={nomeExibido(comanda)} conta={conta.data} versao={versao} onAtualizar={atualizarDados} /> : null}
-      <EnviarRodadaSheet open={folhaEnviar} onOpenChange={setFolhaEnviar} itens={emPreparo} enviando={enviando} erro={erroEnviar} onEnviar={() => void enviar()} />
+      {podeFechar ? (
+        <FecharContaSheet
+          open={folhaFechar}
+          onOpenChange={setFolhaFechar}
+          comandaId={comandaId}
+          nome={nomeExibido(comanda)}
+          conta={conta.data}
+          versao={versao}
+          onAtualizar={atualizarDados}
+        />
+      ) : null}
+      <EnviarRodadaSheet
+        open={folhaEnviar}
+        onOpenChange={setFolhaEnviar}
+        itens={emPreparo}
+        enviando={enviando}
+        erro={erroEnviar}
+        onEnviar={() => void enviar()}
+      />
       <CancelarItemSheet
         item={paraCancelar}
         onOpenChange={(aberto) => {

@@ -45,7 +45,12 @@ export function QueueList({ acoes, onTentar, onRemover }: QueueListProps) {
               </button>
             ) : null}
             {a.estado !== "enviando" ? (
-              <button type="button" className="f4-row-action" aria-label={`Remover ${a.titulo}`} onClick={() => onRemover(a.id)}>
+              <button
+                type="button"
+                className="f4-row-action"
+                aria-label={`Remover ${a.titulo}`}
+                onClick={() => onRemover(a.id)}
+              >
                 Remover
               </button>
             ) : null}

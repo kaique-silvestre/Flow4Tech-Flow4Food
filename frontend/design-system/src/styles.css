@@ -150,7 +150,9 @@ body {
   font-size: var(--f4-text-row);
   font-weight: 600;
   cursor: pointer;
-  transition: transform var(--f4-motion-fast) var(--f4-motion-ease), background-color var(--f4-motion-fast) var(--f4-motion-ease);
+  transition:
+    transform var(--f4-motion-fast) var(--f4-motion-ease),
+    background-color var(--f4-motion-fast) var(--f4-motion-ease);
 }
 
 .f4-btn[data-variant="primary"] {

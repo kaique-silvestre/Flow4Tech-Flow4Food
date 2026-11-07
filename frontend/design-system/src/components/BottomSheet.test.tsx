@@ -7,7 +7,13 @@ import { Button } from "./Button";
 describe("BottomSheet", () => {
   it("is a labelled dialog with title, description, content and footer", () => {
     render(
-      <BottomSheet open onOpenChange={() => undefined} title="Enviar rodada" description="Vai para a cozinha. Dá para desfazer por 8 segundos." footer={<Button>Enviar agora</Button>}>
+      <BottomSheet
+        open
+        onOpenChange={() => undefined}
+        title="Enviar rodada"
+        description="Vai para a cozinha. Dá para desfazer por 8 segundos."
+        footer={<Button>Enviar agora</Button>}
+      >
         <p>3 itens</p>
       </BottomSheet>,
     );
@@ -40,7 +46,9 @@ describe("BottomSheet", () => {
   });
 
   it("shows a failed request inline without closing, and announces busy while loading", () => {
-    const { rerender } = render(<BottomSheet open onOpenChange={() => undefined} title="Fechar conta" error="Sem conexão. Tente de novo." />);
+    const { rerender } = render(
+      <BottomSheet open onOpenChange={() => undefined} title="Fechar conta" error="Sem conexão. Tente de novo." />,
+    );
     expect(screen.getByRole("alert")).toHaveTextContent("Sem conexão. Tente de novo.");
     expect(screen.getByRole("dialog")).toBeVisible();
 

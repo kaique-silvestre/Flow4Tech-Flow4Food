@@ -19,7 +19,17 @@ export interface ItemRowProps {
   action?: ReactNode;
 }
 
-export function ItemRow({ quantity, name, modifier, priceCents, state = "lancado", loading = false, error, onRetry, action }: ItemRowProps) {
+export function ItemRow({
+  quantity,
+  name,
+  modifier,
+  priceCents,
+  state = "lancado",
+  loading = false,
+  error,
+  onRetry,
+  action,
+}: ItemRowProps) {
   const rowState = error ? "error" : loading ? "loading" : state;
   return (
     <li className="f4-row" data-state={rowState} aria-busy={loading || undefined}>
@@ -65,13 +75,23 @@ export interface StepperProps {
 export function Stepper({ value, onChange, min = 1, max = 999, label }: StepperProps) {
   return (
     <span className="f4-stepper" role="group" aria-label={label}>
-      <button type="button" aria-label={`Diminuir ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)}>
+      <button
+        type="button"
+        aria-label={`Diminuir ${label}`}
+        disabled={value <= min}
+        onClick={() => onChange(value - 1)}
+      >
         −
       </button>
       <span className="f4-num" aria-live="polite">
         {value}
       </span>
-      <button type="button" aria-label={`Aumentar ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)}>
+      <button
+        type="button"
+        aria-label={`Aumentar ${label}`}
+        disabled={value >= max}
+        onClick={() => onChange(value + 1)}
+      >
         +
       </button>
     </span>

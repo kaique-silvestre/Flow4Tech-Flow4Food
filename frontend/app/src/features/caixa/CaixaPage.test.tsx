@@ -1,7 +1,7 @@
+import { formatBRL } from "@flow4tech/design-system";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatBRL } from "@flow4tech/design-system";
 import { json, renderEm, sessaoJson, stubRede, TODAS_AS_PERMISSOES } from "../../test-utils";
 import { tomDaDiferenca } from "./CaixaPage";
 
@@ -55,21 +55,35 @@ describe("caixa screen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Abrir caixa" }));
 
     expect(await screen.findByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
-    expect(chamadas.find((c) => c.path === "/caixa/turnos" && c.method === "POST")?.body).toEqual({ fundoCentavos: 10_000 });
+    expect(chamadas.find((c) => c.path === "/caixa/turnos" && c.method === "POST")?.body).toEqual({
+      fundoCentavos: 10_000,
+    });
   });
 
   it("lets a zero float open the shift", async () => {
-    const chamadas = stubRede({ ...pronta, "GET /caixa/turnos/atual": semTurno, "POST /caixa/turnos": json(turno(), { status: 201 }) });
+    const chamadas = stubRede({
+      ...pronta,
+      "GET /caixa/turnos/atual": semTurno,
+      "POST /caixa/turnos": json(turno(), { status: 201 }),
+    });
     await renderEm("/salao/caixa");
 
     await userEvent.type(await screen.findByLabelText("Fundo de troco"), "0");
     await userEvent.click(screen.getByRole("button", { name: "Abrir caixa" }));
 
-    await vi.waitFor(() => expect(chamadas.find((c) => c.path === "/caixa/turnos" && c.method === "POST")?.body).toEqual({ fundoCentavos: 0 }));
+    await vi.waitFor(() =>
+      expect(chamadas.find((c) => c.path === "/caixa/turnos" && c.method === "POST")?.body).toEqual({
+        fundoCentavos: 0,
+      }),
+    );
   });
 
   it("shows a second open as an error the user can act on", async () => {
-    stubRede({ ...pronta, "GET /caixa/turnos/atual": semTurno, "POST /caixa/turnos": json({ codigo: "turno-ja-aberto" }, { status: 409 }) });
+    stubRede({
+      ...pronta,
+      "GET /caixa/turnos/atual": semTurno,
+      "POST /caixa/turnos": json({ codigo: "turno-ja-aberto" }, { status: 409 }),
+    });
     await renderEm("/salao/caixa");
     await userEvent.type(await screen.findByLabelText("Fundo de troco"), "5000");
 
@@ -103,7 +117,16 @@ describe("caixa screen", () => {
       ...pronta,
       "GET /caixa/turnos/atual": json(turno()),
       "POST /caixa/turnos/atual/fechar": (c) =>
-        json(turno({ fechadoEm: "2026-11-06T22:00:00Z", contadoCentavos: (c.body as { contadoCentavos: number }).contadoCentavos, esperadoCentavos: 12_750, diferencaCentavos: diferenca, diferencaTexto: palavra }), { status: 200 }),
+        json(
+          turno({
+            fechadoEm: "2026-11-06T22:00:00Z",
+            contadoCentavos: (c.body as { contadoCentavos: number }).contadoCentavos,
+            esperadoCentavos: 12_750,
+            diferencaCentavos: diferenca,
+            diferencaTexto: palavra,
+          }),
+          { status: 200 },
+        ),
     });
     await renderEm("/salao/caixa");
     await userEvent.click(await screen.findByRole("button", { name: "Fechar caixa" }));
@@ -123,7 +146,14 @@ describe("caixa screen", () => {
     const chamadas = stubRede({
       ...pronta,
       "GET /caixa/turnos/atual": json(turno({ recebidoDinheiroCentavos: 0 })),
-      "POST /caixa/turnos/atual/fechar": json(turno({ contadoCentavos: 0, esperadoCentavos: 10_000, diferencaCentavos: -10_000, diferencaTexto: "Falta R$ 100,00" })),
+      "POST /caixa/turnos/atual/fechar": json(
+        turno({
+          contadoCentavos: 0,
+          esperadoCentavos: 10_000,
+          diferencaCentavos: -10_000,
+          diferencaTexto: "Falta R$ 100,00",
+        }),
+      ),
     });
     await renderEm("/salao/caixa");
     await userEvent.click(await screen.findByRole("button", { name: "Fechar caixa" }));
@@ -143,7 +173,9 @@ describe("caixa screen", () => {
       "GET /caixa/turnos/atual": () => (fechado ? semTurno.clone() : json(turno())),
       "POST /caixa/turnos/atual/fechar": () => {
         fechado = true;
-        return json(turno({ contadoCentavos: 12_750, esperadoCentavos: 12_750, diferencaCentavos: 0, diferencaTexto: "Confere" }));
+        return json(
+          turno({ contadoCentavos: 12_750, esperadoCentavos: 12_750, diferencaCentavos: 0, diferencaTexto: "Confere" }),
+        );
       },
     });
     await renderEm("/salao/caixa");
@@ -158,7 +190,10 @@ describe("caixa screen", () => {
 
   it("shows a skeleton while loading and a retry when the load fails", async () => {
     let falhar = true;
-    stubRede({ ...pronta, "GET /caixa/turnos/atual": () => (falhar ? new Response(null, { status: 500 }) : json(turno())) });
+    stubRede({
+      ...pronta,
+      "GET /caixa/turnos/atual": () => (falhar ? new Response(null, { status: 500 }) : json(turno())),
+    });
     await renderEm("/salao/caixa");
 
     expect(await screen.findByText("Não foi possível carregar o caixa.")).toBeVisible();
@@ -169,14 +204,22 @@ describe("caixa screen", () => {
   });
 
   it("hides, not disables, the actions the caller lacks", async () => {
-    stubRede({ ...pronta, "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }), "GET /caixa/turnos/atual": semTurno });
+    stubRede({
+      ...pronta,
+      "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }),
+      "GET /caixa/turnos/atual": semTurno,
+    });
     await renderEm("/salao/caixa");
 
     expect(await screen.findByText("Caixa fechado. Abra o caixa para receber.")).toBeVisible();
     expect(screen.queryByLabelText("Fundo de troco")).toBeNull();
     expect(screen.queryByRole("button", { name: "Abrir caixa" })).toBeNull();
 
-    stubRede({ ...pronta, "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }), "GET /caixa/turnos/atual": json(turno()) });
+    stubRede({
+      ...pronta,
+      "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }),
+      "GET /caixa/turnos/atual": json(turno()),
+    });
     await renderEm("/salao/caixa");
     expect(await screen.findByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Fechar caixa" })).toBeNull();

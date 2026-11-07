@@ -45,7 +45,11 @@ describe("comanda list", () => {
   });
 
   it("lists the open comandas with number, name, status badge and elapsed time", async () => {
-    stubRede({ ...base, "GET /comandas": json([comanda(7, { identificacao: "Aniversário da Ana" })]), "GET /mesas": json([]) });
+    stubRede({
+      ...base,
+      "GET /comandas": json([comanda(7, { identificacao: "Aniversário da Ana" })]),
+      "GET /mesas": json([]),
+    });
 
     await renderEm("/salao");
 
@@ -57,7 +61,11 @@ describe("comanda list", () => {
   });
 
   it("calls it Comandas abertas for who may see the others'", async () => {
-    stubRede({ ...base, "GET /sessao/permissoes": json({ permissoes: ["comanda:ver", "comanda:ver-comandas-de-outros"] }), "GET /comandas": json([comanda(1)]) });
+    stubRede({
+      ...base,
+      "GET /sessao/permissoes": json({ permissoes: ["comanda:ver", "comanda:ver-comandas-de-outros"] }),
+      "GET /comandas": json([comanda(1)]),
+    });
 
     await renderEm("/salao");
 
@@ -66,7 +74,14 @@ describe("comanda list", () => {
   });
 
   it("searches by number and by name, ignoring accents, and says so when nothing matches", async () => {
-    stubRede({ ...base, "GET /comandas": json([comanda(7, { identificacao: "Aniversário" }), comanda(12, { identificacao: "Mesa dos primos" })]), "GET /mesas": json([]) });
+    stubRede({
+      ...base,
+      "GET /comandas": json([
+        comanda(7, { identificacao: "Aniversário" }),
+        comanda(12, { identificacao: "Mesa dos primos" }),
+      ]),
+      "GET /mesas": json([]),
+    });
     await renderEm("/salao");
     const busca = await screen.findByLabelText("Buscar comanda");
 
@@ -102,7 +117,11 @@ describe("comanda list", () => {
 
   it("shows a skeleton while loading and the error banner with retry", async () => {
     let falhar = true;
-    stubRede({ ...base, "GET /comandas": () => (falhar ? new Response(null, { status: 500 }) : json([comanda(1)])), "GET /mesas": json([]) });
+    stubRede({
+      ...base,
+      "GET /comandas": () => (falhar ? new Response(null, { status: 500 }) : json([comanda(1)])),
+      "GET /mesas": json([]),
+    });
     await renderEm("/salao");
 
     expect(await screen.findByText("Não foi possível carregar as comandas.")).toBeVisible();
@@ -117,7 +136,17 @@ describe("comanda list", () => {
       ...base,
       "GET /comandas": json([comanda(5)]),
       "GET /mesas": json([]),
-      "GET /comandas/c5/conta": json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, taxaServicoRemovida: false, taxaServicoPercentual: 10, versao: 1, estado: "aberta" }),
+      "GET /comandas/c5/conta": json({
+        consumoCentavos: 0,
+        taxaServicoCentavos: 0,
+        totalCentavos: 0,
+        pagoCentavos: 0,
+        saldoCentavos: 0,
+        taxaServicoRemovida: false,
+        taxaServicoPercentual: 10,
+        versao: 1,
+        estado: "aberta",
+      }),
       "GET /comandas/c5/itens": json({ itens: [], consumoCentavos: 0 }),
       "GET /cardapio/produtos": json([]),
       "GET /cardapio/categorias": json([]),
@@ -157,21 +186,36 @@ describe("new comanda", () => {
     await userEvent.click(within(folha).getByRole("button", { name: "OK" }));
 
     await vi.waitFor(() => expect(router.state.location.pathname).toBe("/salao/comanda/novo"));
-    expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({ identificacao: null, mesaId: "m4", pessoas: null });
+    expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({
+      identificacao: null,
+      mesaId: "m4",
+      pessoas: null,
+    });
   });
 
   it("offers the free tables as chips and opens the chosen one", async () => {
-    const chamadas = stubRede({ ...base, "GET /comandas": json([]), "GET /mesas": json(mesas), "POST /comandas": json(comanda(1, { id: "novo" }), { status: 201 }) });
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json(mesas),
+      "POST /comandas": json(comanda(1, { id: "novo" }), { status: 201 }),
+    });
     await renderEm("/salao");
     const folha = await abrirFolha();
 
     const chips = within(folha).getByRole("group", { name: "Mesas livres" });
-    expect(within(chips).getAllByRole("button").map((b) => b.textContent)).toEqual(["1", "4"]);
+    expect(
+      within(chips)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["1", "4"]);
     await userEvent.click(within(chips).getByRole("button", { name: "1" }));
     expect(within(chips).getByRole("button", { name: "1" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(within(folha).getByRole("button", { name: "OK" }));
 
-    await vi.waitFor(() => expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toMatchObject({ mesaId: "m1" }));
+    await vi.waitFor(() =>
+      expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toMatchObject({ mesaId: "m1" }),
+    );
   });
 
   it("says a table does not exist without calling the server", async () => {
@@ -210,7 +254,11 @@ describe("new comanda", () => {
   });
 
   it("goes to the existing comanda of an occupied table", async () => {
-    stubRede({ ...base, "GET /comandas": json([comanda(3, { id: "c3", mesaId: "m12", identificacao: "12" })]), "GET /mesas": json(mesas) });
+    stubRede({
+      ...base,
+      "GET /comandas": json([comanda(3, { id: "c3", mesaId: "m12", identificacao: "12" })]),
+      "GET /mesas": json(mesas),
+    });
     const { router } = await renderEm("/salao");
     const folha = await abrirFolha();
     await userEvent.click(teclado(folha).getByRole("button", { name: "1" }));
@@ -223,7 +271,12 @@ describe("new comanda", () => {
   });
 
   it("names the comanda by number when the unit works without tables", async () => {
-    const chamadas = stubRede({ ...base, "GET /comandas": json([]), "GET /mesas": json([]), "POST /comandas": json(comanda(1, { id: "novo", identificacao: "Comanda 7" }), { status: 201 }) });
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json([]),
+      "POST /comandas": json(comanda(1, { id: "novo", identificacao: "Comanda 7" }), { status: 201 }),
+    });
     await renderEm("/salao");
     const folha = await abrirFolha();
     expect(within(folha).getByLabelText("Comanda em branco")).toBeVisible();
@@ -233,11 +286,22 @@ describe("new comanda", () => {
     expect(within(folha).getByLabelText("Comanda 7")).toBeVisible();
     await userEvent.click(within(folha).getByRole("button", { name: "OK" }));
 
-    await vi.waitFor(() => expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({ identificacao: "Comanda 7", mesaId: null, pessoas: null }));
+    await vi.waitFor(() =>
+      expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({
+        identificacao: "Comanda 7",
+        mesaId: null,
+        pessoas: null,
+      }),
+    );
   });
 
   it("gives the comanda a free name", async () => {
-    const chamadas = stubRede({ ...base, "GET /comandas": json([]), "GET /mesas": json(mesas), "POST /comandas": json(comanda(1, { id: "novo", identificacao: "Ana" }), { status: 201 }) });
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json(mesas),
+      "POST /comandas": json(comanda(1, { id: "novo", identificacao: "Ana" }), { status: 201 }),
+    });
     await renderEm("/salao");
     const folha = await abrirFolha();
 
@@ -247,7 +311,13 @@ describe("new comanda", () => {
     await userEvent.type(within(nome).getByLabelText("Nome da comanda"), "  Ana ");
     await userEvent.click(within(nome).getByRole("button", { name: "OK" }));
 
-    await vi.waitFor(() => expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({ identificacao: "Ana", mesaId: null, pessoas: null }));
+    await vi.waitFor(() =>
+      expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({
+        identificacao: "Ana",
+        mesaId: null,
+        pessoas: null,
+      }),
+    );
   });
 
   it("erases digits, ignores a leading zero and stops at three digits", async () => {
@@ -267,7 +337,12 @@ describe("new comanda", () => {
   });
 
   it("closes with Cancelar and keeps the sheet open with an error when the server refuses", async () => {
-    stubRede({ ...base, "GET /comandas": json([]), "GET /mesas": json([]), "POST /comandas": new Response(null, { status: 403 }) });
+    stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json([]),
+      "POST /comandas": new Response(null, { status: 403 }),
+    });
     await renderEm("/salao");
     let folha = await abrirFolha();
     await userEvent.click(within(folha).getByRole("button", { name: "5" }));
@@ -300,8 +375,12 @@ describe("list rules", () => {
   });
 
   it("names a comanda by its table or by the name it was given", () => {
-    expect(nomeExibido(paraComanda({ id: "1", numero: 1, numeroTexto: "#1", identificacao: "6", mesaId: "m6" }))).toBe("Mesa 6");
-    expect(nomeExibido(paraComanda({ id: "2", numero: 2, numeroTexto: "#2", identificacao: "Ana", mesaId: null }))).toBe("Ana");
+    expect(nomeExibido(paraComanda({ id: "1", numero: 1, numeroTexto: "#1", identificacao: "6", mesaId: "m6" }))).toBe(
+      "Mesa 6",
+    );
+    expect(
+      nomeExibido(paraComanda({ id: "2", numero: 2, numeroTexto: "#2", identificacao: "Ana", mesaId: null })),
+    ).toBe("Ana");
   });
 
   it("finds the table an entered number refers to", () => {

@@ -1,6 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -36,7 +36,10 @@ const mais = (page: Page, produto: string) => page.getByRole("button", { name: `
 /** Another device: the same person signs in straight through the API (no page involved). */
 async function apiComoGarcom2(request: APIRequestContext, baseURL: string) {
   const headers = { "X-F4T-Csrf": "1", Origin: baseURL };
-  const login = await request.post("/login", { headers, data: { organizacaoDoLogin: seed!.organizacaoA, usuario: "garcom2", senha: SENHA } });
+  const login = await request.post("/login", {
+    headers,
+    data: { organizacaoDoLogin: seed!.organizacaoA, usuario: "garcom2", senha: SENHA },
+  });
   expect(login.ok()).toBeTruthy();
   const { accessToken } = (await login.json()) as { accessToken: string };
   return { Authorization: `Bearer ${accessToken}`, ...headers };
@@ -55,7 +58,12 @@ async function itensDaComanda(request: APIRequestContext, auth: Record<string, s
   return ((await r.json()) as { itens: ItemApi[] }).itens;
 }
 
-test("rounds sent without a connection wait in the queue and arrive once, in order, when the connection returns", async ({ page, context, request, baseURL }) => {
+test("rounds sent without a connection wait in the queue and arrive once, in order, when the connection returns", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await entrarComoGarcom2(page);
   await novaComanda(page, `Offline ${Date.now() % 100000}`);
@@ -75,7 +83,10 @@ test("rounds sent without a connection wait in the queue and arrive once, in ord
   await expect(page.getByRole("button", { name: "1 ação pendente" })).toBeVisible();
 
   // Second round: one soda.
-  await page.getByRole("tab", { name: "Bebidas" }).click().catch(() => undefined);
+  await page
+    .getByRole("tab", { name: "Bebidas" })
+    .click()
+    .catch(() => undefined);
   await mais(page, "Refrigerante").first().click();
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await page.getByRole("dialog", { name: "Enviar rodada" }).getByRole("button", { name: "Enviar agora" }).click();
@@ -104,7 +115,12 @@ test("rounds sent without a connection wait in the queue and arrive once, in ord
   ]);
 });
 
-test("a comanda changed on another device while offline is adopted and the queued round still goes through once", async ({ page, context, request, baseURL }) => {
+test("a comanda changed on another device while offline is adopted and the queued round still goes through once", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
   await entrarComoGarcom2(page);
   await novaComanda(page, `Conflito ${Date.now() % 100000}`);
   const comandaId = /\/salao\/comanda\/([^/?#]+)/.exec(page.url())?.[1] ?? "";
@@ -121,7 +137,9 @@ test("a comanda changed on another device while offline is adopted and the queue
   const conta = await request.get(`/comandas/${comandaId}/conta`, { headers: auth });
   const { versao } = (await conta.json()) as { versao: number };
   const cardapio = await request.get("/cardapio/produtos", { headers: auth });
-  const produtos = (await cardapio.json()) as { id: string; nome: string }[] | { itens: { id: string; nome: string }[] };
+  const produtos = (await cardapio.json()) as
+    | { id: string; nome: string }[]
+    | { itens: { id: string; nome: string }[] };
   const lista = Array.isArray(produtos) ? produtos : produtos.itens;
   const agua = lista.find((p) => /gua/.test(p.nome)) ?? lista[0]!;
   const outra = await request.post(`/comandas/${comandaId}/rodadas`, {

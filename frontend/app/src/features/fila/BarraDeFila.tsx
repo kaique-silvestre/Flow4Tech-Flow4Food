@@ -1,8 +1,8 @@
-import { Button, Notice, QueueList, type AcaoDaFila } from "@flow4tech/design-system";
+import { type AcaoDaFila, Button, Notice, QueueList } from "@flow4tech/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useOnline } from "./conexao";
-import { iniciarProcessador, removerAcao, tentarAgora, useFila, type AcaoDaFilaDeRodada } from "./fila";
+import { type AcaoDaFilaDeRodada, iniciarProcessador, removerAcao, tentarAgora, useFila } from "./fila";
 
 function situacao(a: AcaoDaFilaDeRodada, online: boolean, agora: number): string {
   if (a.estado === "enviando") {
@@ -52,7 +52,13 @@ export function BarraDeFila() {
     return () => window.clearInterval(timer);
   }, [acoes.length]);
 
-  const itens: AcaoDaFila[] = acoes.map((a) => ({ id: a.id, titulo: a.titulo, detalhe: a.detalhe, estado: a.estado, situacao: situacao(a, online, agora) }));
+  const itens: AcaoDaFila[] = acoes.map((a) => ({
+    id: a.id,
+    titulo: a.titulo,
+    detalhe: a.detalhe,
+    estado: a.estado,
+    situacao: situacao(a, online, agora),
+  }));
   if (online && acoes.length === 0 && !mensagem) {
     return null;
   }

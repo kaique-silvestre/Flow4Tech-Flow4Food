@@ -64,6 +64,7 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
   const caixaFechado = semCaixa || turno.data === false;
 
   // Each time the sheet opens it starts from the balance: the exact amount is one tap (the field is prefilled), and a new payment id is made.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the sheet opens; `saldo` is read at that moment on purpose, a later change is handled by `removerTaxa`.
   useEffect(() => {
     if (open) {
       setDigitos(saldo > 0 ? String(saldo) : "");
@@ -73,17 +74,21 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
       pagamentoId.current = null;
     }
     // Only when it opens: the balance changing under an open sheet (the fee removed) is handled by `removerTaxa`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const recebido = digitos === "" ? 0 : centsFromDigits(digitos);
   const troco = Math.max(0, recebido - saldo);
   const resta = Math.max(0, saldo - recebido);
   const tudoPago = saldo === 0;
-  const podeRemoverTaxa = permissoes.pode("comanda:remover-taxa-servico") && !conta.taxaServicoRemovida && conta.taxaServicoCentavos > 0;
+  const podeRemoverTaxa =
+    permissoes.pode("comanda:remover-taxa-servico") && !conta.taxaServicoRemovida && conta.taxaServicoCentavos > 0;
   const percentual = conta.taxaServicoPercentual ?? 0;
 
-  async function tentarComVersao<T>(escrever: (v: number) => Promise<{ ok: T | null; status: number; codigo: string | undefined; atual: number | null | undefined }>): Promise<{ ok: T | null; status: number; codigo: string | undefined }> {
+  async function tentarComVersao<T>(
+    escrever: (
+      v: number,
+    ) => Promise<{ ok: T | null; status: number; codigo: string | undefined; atual: number | null | undefined }>,
+  ): Promise<{ ok: T | null; status: number; codigo: string | undefined }> {
     let r = await escrever(versao.current);
     if (r.ok === null && r.status === 409 && r.codigo === "versao-desatualizada" && typeof r.atual === "number") {
       versao.current = Math.max(versao.current, r.atual);
@@ -98,8 +103,16 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
     setEnviando(true);
     try {
       const r = await tentarComVersao(async (v) => {
-        const { data, response, error } = await api.POST("/comandas/{comandaId}/taxa-servico/remover", { params: { path: { comandaId } }, body: { versao: v } });
-        return { ok: data ?? null, status: response.status, codigo: (error as ErroDeApi)?.codigo, atual: (error as ErroDeApi)?.versaoAtual };
+        const { data, response, error } = await api.POST("/comandas/{comandaId}/taxa-servico/remover", {
+          params: { path: { comandaId } },
+          body: { versao: v },
+        });
+        return {
+          ok: data ?? null,
+          status: response.status,
+          codigo: (error as ErroDeApi)?.codigo,
+          atual: (error as ErroDeApi)?.versaoAtual,
+        };
       });
       if (r.ok) {
         versao.current = Math.max(versao.current, Number(r.ok.versao));
@@ -109,7 +122,13 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
         return;
       }
 
-      setErro(r.status === 403 ? "Você não tem permissão para tirar o serviço." : r.codigo === "valor-ja-recebido" ? "Já há valor recebido acima do novo total." : "Não foi possível tirar o serviço. Tente de novo.");
+      setErro(
+        r.status === 403
+          ? "Você não tem permissão para tirar o serviço."
+          : r.codigo === "valor-ja-recebido"
+            ? "Já há valor recebido acima do novo total."
+            : "Não foi possível tirar o serviço. Tente de novo.",
+      );
     } catch {
       setErro("Sem conexão. Tente de novo.");
     } finally {
@@ -119,25 +138,45 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
 
   function aoReceber(pago: { trocoCentavos: number; restaCentavos: number; versao: number }) {
     versao.current = Math.max(versao.current, pago.versao);
-    setFase(pago.restaCentavos > 0 ? { tipo: "parcial", trocoCentavos: pago.trocoCentavos, restaCentavos: pago.restaCentavos } : { tipo: "fechada", trocoCentavos: pago.trocoCentavos });
+    setFase(
+      pago.restaCentavos > 0
+        ? { tipo: "parcial", trocoCentavos: pago.trocoCentavos, restaCentavos: pago.restaCentavos }
+        : { tipo: "fechada", trocoCentavos: pago.trocoCentavos },
+    );
   }
 
   /** Closes the bill once nothing is left to pay. */
   async function fechar(): Promise<boolean> {
     const r = await tentarComVersao(async (v) => {
-      const { data, response, error } = await api.POST("/comandas/{comandaId}/fechar", { params: { path: { comandaId } }, body: { versao: v } });
-      return { ok: data ?? null, status: response.status, codigo: (error as ErroDeApi)?.codigo, atual: (error as ErroDeApi)?.versaoAtual };
+      const { data, response, error } = await api.POST("/comandas/{comandaId}/fechar", {
+        params: { path: { comandaId } },
+        body: { versao: v },
+      });
+      return {
+        ok: data ?? null,
+        status: response.status,
+        codigo: (error as ErroDeApi)?.codigo,
+        atual: (error as ErroDeApi)?.versaoAtual,
+      };
     });
     if (r.ok || (r.status === 409 && r.codigo === "comanda-nao-aberta")) {
       return true;
     }
 
-    setErro(r.codigo === "saldo-pendente" ? "Ainda há saldo a receber." : "Não foi possível fechar a conta. Tente de novo.");
+    setErro(
+      r.codigo === "saldo-pendente" ? "Ainda há saldo a receber." : "Não foi possível fechar a conta. Tente de novo.",
+    );
     return false;
   }
 
   function guardarNaFila(id: string) {
-    enfileirarPagamento({ pagamentoId: id, comandaId, recebidoCentavos: recebido, titulo: `Recebimento · ${nome}`, detalhe: `Dinheiro ${formatBRL(recebido)}` });
+    enfileirarPagamento({
+      pagamentoId: id,
+      comandaId,
+      recebidoCentavos: recebido,
+      titulo: `Recebimento · ${nome}`,
+      detalhe: `Dinheiro ${formatBRL(recebido)}`,
+    });
     setFase({ tipo: "naFila", recebidoCentavos: recebido });
   }
 
@@ -153,7 +192,8 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
         return;
       }
 
-      const id = (pagamentoId.current ??= uuidv7());
+      pagamentoId.current ??= uuidv7();
+      const id = pagamentoId.current;
       if (!navigator.onLine) {
         guardarNaFila(id);
         return;
@@ -161,12 +201,24 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
 
       try {
         const r = await tentarComVersao(async (v) => {
-          const { data, response, error } = await api.POST("/comandas/{comandaId}/pagamentos", { params: { path: { comandaId } }, body: { pagamentoId: id, recebidoCentavos: recebido, versao: v } });
-          return { ok: data ?? null, status: response.status, codigo: (error as ErroDeApi)?.codigo, atual: (error as ErroDeApi)?.versaoAtual };
+          const { data, response, error } = await api.POST("/comandas/{comandaId}/pagamentos", {
+            params: { path: { comandaId } },
+            body: { pagamentoId: id, recebidoCentavos: recebido, versao: v },
+          });
+          return {
+            ok: data ?? null,
+            status: response.status,
+            codigo: (error as ErroDeApi)?.codigo,
+            atual: (error as ErroDeApi)?.versaoAtual,
+          };
         });
         if (r.ok) {
           const pago = r.ok;
-          aoReceber({ trocoCentavos: Number(pago.trocoCentavos), restaCentavos: Number(pago.saldoRestanteCentavos), versao: Number(pago.comandaVersao) });
+          aoReceber({
+            trocoCentavos: Number(pago.trocoCentavos),
+            restaCentavos: Number(pago.saldoRestanteCentavos),
+            versao: Number(pago.comandaVersao),
+          });
           pagamentoId.current = null;
           if (Number(pago.saldoRestanteCentavos) === 0) {
             if (!(await fechar())) {
@@ -219,13 +271,20 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
       <BottomSheet
         open={open}
         onOpenChange={onOpenChange}
-        title={fase.tipo === "fechada" ? "Conta fechada" : fase.tipo === "parcial" ? "Recebimento registrado" : "Recebimento na fila"}
+        title={
+          fase.tipo === "fechada"
+            ? "Conta fechada"
+            : fase.tipo === "parcial"
+              ? "Recebimento registrado"
+              : "Recebimento na fila"
+        }
         description={nome}
         footer={<Button onClick={concluir}>{fase.tipo === "parcial" ? "Continuar" : "Concluir"}</Button>}
       >
         {fase.tipo === "naFila" ? (
           <Notice tone="info">
-            Sem conexão com o servidor. O recebimento de {formatBRL(fase.recebidoCentavos)} ficou na fila e será registrado quando der. Nada se perde.
+            Sem conexão com o servidor. O recebimento de {formatBRL(fase.recebidoCentavos)} ficou na fila e será
+            registrado quando der. Nada se perde.
           </Notice>
         ) : (
           <>
@@ -281,7 +340,9 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
           <dd className="f4-num">{formatBRL(conta.consumoCentavos)}</dd>
         </div>
         <div>
-          <dt>{conta.taxaServicoRemovida ? "Serviço removido" : percentual > 0 ? `Serviço (${percentual}%)` : "Serviço"}</dt>
+          <dt>
+            {conta.taxaServicoRemovida ? "Serviço removido" : percentual > 0 ? `Serviço (${percentual}%)` : "Serviço"}
+          </dt>
           <dd className="f4-num">{formatBRL(conta.taxaServicoCentavos)}</dd>
         </div>
         {podeRemoverTaxa ? (
@@ -304,7 +365,14 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
       </dl>
 
       {caixaFechado ? (
-        <Notice tone="warning" action={<Link to="/salao/caixa" onClick={() => onOpenChange(false)}>Ir para o caixa</Link>}>
+        <Notice
+          tone="warning"
+          action={
+            <Link to="/salao/caixa" onClick={() => onOpenChange(false)}>
+              Ir para o caixa
+            </Link>
+          }
+        >
           Abra o caixa para receber.
         </Notice>
       ) : null}

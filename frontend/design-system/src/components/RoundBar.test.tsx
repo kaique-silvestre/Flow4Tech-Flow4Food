@@ -1,7 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatBRL } from "../format";
 import { RoundBar } from "./RoundBar";
@@ -13,7 +13,9 @@ afterEach(() => {
 
 describe("RoundBar", () => {
   it("does not exist until something is staged", () => {
-    const { container } = render(<RoundBar itens={0} totalCentavos={0} action={<button type="button">Enviar</button>} />);
+    const { container } = render(
+      <RoundBar itens={0} totalCentavos={0} action={<button type="button">Enviar</button>} />,
+    );
 
     expect(container).toBeEmptyDOMElement();
   });
@@ -49,7 +51,9 @@ describe("RoundBar", () => {
 
 describe("UndoToast", () => {
   it("offers the undo with the seconds left in words and runs a linear bar for the window", () => {
-    const { container } = render(<UndoToast message="Rodada enviada" durationMs={8000} onUndo={() => undefined} onExpire={() => undefined} />);
+    const { container } = render(
+      <UndoToast message="Rodada enviada" durationMs={8000} onUndo={() => undefined} onExpire={() => undefined} />,
+    );
 
     expect(screen.getByRole("status")).toHaveTextContent("Rodada enviada (8 s)");
     expect(screen.getByRole("button", { name: "Desfazer" })).toBeEnabled();
@@ -81,7 +85,15 @@ describe("UndoToast", () => {
   });
 
   it("blocks a second press while the undo request is in flight", () => {
-    render(<UndoToast message="Rodada enviada" durationMs={8000} onUndo={() => undefined} onExpire={() => undefined} loading />);
+    render(
+      <UndoToast
+        message="Rodada enviada"
+        durationMs={8000}
+        onUndo={() => undefined}
+        onExpire={() => undefined}
+        loading
+      />,
+    );
 
     expect(screen.getByRole("button", { name: "Desfazer" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Desfazer" })).toHaveAttribute("aria-busy", "true");

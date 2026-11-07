@@ -69,7 +69,10 @@ describe("sign-in screen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.");
-    expect(chamadas.find((c) => c.path === "/login")?.body).toMatchObject({ email: "dono@bar.test", organizacaoDoLogin: null });
+    expect(chamadas.find((c) => c.path === "/login")?.body).toMatchObject({
+      email: "dono@bar.test",
+      organizacaoDoLogin: null,
+    });
   });
 
   it("shows ONE generic failure and clears the password, whatever was wrong", async () => {
@@ -150,7 +153,14 @@ describe("sign-in screen", () => {
 
   it("shows the spinner in the button and blocks a second send while the request is in flight", async () => {
     let responder: (r: Response) => void = () => undefined;
-    const chamadas = stubRede({ ...semSessao, "POST /login": () => new Promise<Response>((r) => { responder = r; }) as unknown as Response, "GET /comandas": json([]) });
+    const chamadas = stubRede({
+      ...semSessao,
+      "POST /login": () =>
+        new Promise<Response>((r) => {
+          responder = r;
+        }) as unknown as Response,
+      "GET /comandas": json([]),
+    });
     await renderEm("/salao/entrar");
     await preencher("dono@bar.test", "uma-senha-longa");
 

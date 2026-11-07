@@ -1,11 +1,12 @@
 import react from "@vitejs/plugin-react";
 import type { ProxyOptions } from "vite";
-import { defineConfig } from "vitest/config";
 import { VitePWA } from "vite-plugin-pwa";
+import { defineConfig } from "vitest/config";
 
 /** The API routes the SPA calls; in dev and preview they are proxied to the API so the browser sees ONE origin (no CORS, cookies and the CSRF guard keep working). */
 const apiTarget = process.env["API_URL"] ?? "http://127.0.0.1:8080";
-const apiPaths = "^/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)(/|$)";
+const apiPaths =
+  "^/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)(/|$)";
 const proxy: Record<string, ProxyOptions> = { [apiPaths]: { target: apiTarget, changeOrigin: false } };
 
 export default defineConfig({

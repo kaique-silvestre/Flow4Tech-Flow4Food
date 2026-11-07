@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "frontend/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/e2e-results",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!frontend/packages/api-client/src/schema.ts"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
+  "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all" } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      // role="group"/"region" with aria-label are valid ARIA; <fieldset>/<section> would change default styling and behavior.
+      // aria-label on <p>/<div> is ignored by assistive technology but unit and e2e tests locate elements by it: kept as a warning until
+      // the elements get a proper role and the tests move with them (pendencias.md, F4-0100).
+      "a11y": { "preset": "recommended", "useSemanticElements": "off", "useAriaPropsSupportedByRole": "warn" },
+      "correctness": { "useExhaustiveDependencies": "error", "useHookAtTopLevel": "error" },
+      "suspicious": { "noExplicitAny": "error" }
+    }
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

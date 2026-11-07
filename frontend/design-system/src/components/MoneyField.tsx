@@ -23,7 +23,10 @@ export function MoneyField({ digits, onDigitsChange, ref, ...rest }: MoneyFieldP
       value={digits === "" ? "" : formatBRL(centsFromDigits(digits))}
       placeholder={formatBRL(0)}
       onChange={(event) => {
-        const only = event.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, MAX_DIGITS);
+        const only = event.target.value
+          .replace(/\D/g, "")
+          .replace(/^0+(?=\d)/, "")
+          .slice(0, MAX_DIGITS);
         onDigitsChange(only);
       }}
     />

@@ -1,5 +1,8 @@
 /** UUID v7 (time-ordered): the client generates the id of a round, so sending it again is a repeat and never a second round. */
-export function uuidv7(agora: number = Date.now(), aleatorio: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): string {
+export function uuidv7(
+  agora: number = Date.now(),
+  aleatorio: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n)),
+): string {
   const bytes = aleatorio(16);
   const ms = BigInt(agora);
   bytes[0] = Number((ms >> 40n) & 0xffn);

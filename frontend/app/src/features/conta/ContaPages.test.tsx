@@ -30,13 +30,18 @@ describe("temporary password session", () => {
     await userEvent.type(screen.getByLabelText("Repita a nova senha"), "outra");
     await userEvent.click(screen.getByRole("button", { name: "Salvar senha" }));
 
-    expect(await screen.findByText(`Use pelo menos ${SENHA_MINIMO} caracteres.`, { selector: "p[role=alert]" })).toBeVisible();
+    expect(
+      await screen.findByText(`Use pelo menos ${SENHA_MINIMO} caracteres.`, { selector: "p[role=alert]" }),
+    ).toBeVisible();
     expect(screen.getByText("As senhas não são iguais.")).toBeVisible();
     expect(chamadas.some((c) => c.path === "/sessao/trocar-senha")).toBe(false);
   });
 
   it("maps the server refusals to the right field", async () => {
-    stubRede({ ...temporaria, "POST /sessao/trocar-senha": json({ codigo: "senha-atual-invalida", problemas: [] }, { status: 400 }) });
+    stubRede({
+      ...temporaria,
+      "POST /sessao/trocar-senha": json({ codigo: "senha-atual-invalida", problemas: [] }, { status: 400 }),
+    });
     await renderEm("/salao/trocar-senha");
     await userEvent.type(screen.getByLabelText("Senha provisória"), "provisoria");
     await userEvent.type(screen.getByLabelText("Nova senha"), "uma-senha-nova-longa");
@@ -46,24 +51,40 @@ describe("temporary password session", () => {
 
     expect(await screen.findByText("Senha provisória incorreta.")).toBeVisible();
 
-    stubRede({ ...temporaria, "POST /sessao/trocar-senha": json({ codigo: "senha-vazada", problemas: [] }, { status: 400 }) });
+    stubRede({
+      ...temporaria,
+      "POST /sessao/trocar-senha": json({ codigo: "senha-vazada", problemas: [] }, { status: 400 }),
+    });
     await userEvent.click(screen.getByRole("button", { name: "Salvar senha" }));
     expect(await screen.findByText("Essa senha apareceu em vazamentos. Escolha outra.")).toBeVisible();
 
-    stubRede({ ...temporaria, "POST /sessao/trocar-senha": json({ codigo: "senha-invalida", problemas: ["IgualASenhaAtual"] }, { status: 400 }) });
+    stubRede({
+      ...temporaria,
+      "POST /sessao/trocar-senha": json({ codigo: "senha-invalida", problemas: ["IgualASenhaAtual"] }, { status: 400 }),
+    });
     await userEvent.click(screen.getByRole("button", { name: "Salvar senha" }));
     expect(await screen.findByText("A nova senha precisa ser diferente da provisória.")).toBeVisible();
 
-    stubRede({ ...temporaria, "POST /sessao/trocar-senha": json({ codigo: "verificacao-indisponivel", problemas: [] }, { status: 503 }) });
+    stubRede({
+      ...temporaria,
+      "POST /sessao/trocar-senha": json({ codigo: "verificacao-indisponivel", problemas: [] }, { status: 503 }),
+    });
     await userEvent.click(screen.getByRole("button", { name: "Salvar senha" }));
-    expect(await screen.findByText("Não foi possível verificar a senha agora. Tente de novo em instantes.")).toBeVisible();
+    expect(
+      await screen.findByText("Não foi possível verificar a senha agora. Tente de novo em instantes."),
+    ).toBeVisible();
   });
 
   it("takes the new session after the change and goes on to the next screen the session owes", async () => {
     stubRede({
       ...temporaria,
-      "POST /sessao/trocar-senha": json(sessaoJson({ deveTrocarSenha: false, requerSelecaoDeUnidade: true, unidadeAtivaId: null })),
-      "GET /unidades": json([{ id: "u1", nome: "Centro" }, { id: "u2", nome: "Praia" }]),
+      "POST /sessao/trocar-senha": json(
+        sessaoJson({ deveTrocarSenha: false, requerSelecaoDeUnidade: true, unidadeAtivaId: null }),
+      ),
+      "GET /unidades": json([
+        { id: "u1", nome: "Centro" },
+        { id: "u2", nome: "Praia" },
+      ]),
     });
     const { router } = await renderEm("/salao/trocar-senha");
     await userEvent.type(screen.getByLabelText("Senha provisória"), "provisoria");
@@ -91,13 +112,23 @@ describe("password policy", () => {
   const base = { senhaAtual: "provisoria", novaSenha: "uma-senha-nova-longa", confirmacao: "uma-senha-nova-longa" };
 
   it("accepts a ten-character password and refuses a shorter one or a mismatch", () => {
-    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: "1234567890", confirmacao: "1234567890" }).success).toBe(true);
-    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: "123456789", confirmacao: "123456789" }).success).toBe(false);
+    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: "1234567890", confirmacao: "1234567890" }).success).toBe(
+      true,
+    );
+    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: "123456789", confirmacao: "123456789" }).success).toBe(
+      false,
+    );
     expect(trocarSenhaSchema.safeParse({ ...base, confirmacao: "diferente-diferente" }).success).toBe(false);
   });
 
   it("asks for no symbols or capitals", () => {
-    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: "apenas minusculas e espacos", confirmacao: "apenas minusculas e espacos" }).success).toBe(true);
+    expect(
+      trocarSenhaSchema.safeParse({
+        ...base,
+        novaSenha: "apenas minusculas e espacos",
+        confirmacao: "apenas minusculas e espacos",
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -107,7 +138,10 @@ describe("unit choice", () => {
   it("lists the units and lands on the comandas after choosing one", async () => {
     const chamadas = stubRede({
       ...dosUnidades,
-      "GET /unidades": json([{ id: "u1", nome: "Centro" }, { id: "u2", nome: "Praia" }]),
+      "GET /unidades": json([
+        { id: "u1", nome: "Centro" },
+        { id: "u2", nome: "Praia" },
+      ]),
       "POST /sessao/unidade-ativa": json({ unidadeAtivaId: "u2" }),
       "GET /comandas": json([]),
     });
@@ -133,7 +167,10 @@ describe("unit choice", () => {
 
   it("shows a skeleton while loading and a retry when the load fails", async () => {
     let falhar = true;
-    stubRede({ ...dosUnidades, "GET /unidades": () => (falhar ? new Response(null, { status: 500 }) : json([{ id: "u1", nome: "Centro" }])) });
+    stubRede({
+      ...dosUnidades,
+      "GET /unidades": () => (falhar ? new Response(null, { status: 500 }) : json([{ id: "u1", nome: "Centro" }])),
+    });
     await renderEm("/salao/unidade");
 
     expect(await screen.findByText("Não foi possível carregar as unidades.")).toBeVisible();
@@ -144,7 +181,11 @@ describe("unit choice", () => {
   });
 
   it("keeps the choice open and says so when the server refuses the unit", async () => {
-    stubRede({ ...dosUnidades, "GET /unidades": json([{ id: "u1", nome: "Centro" }]), "POST /sessao/unidade-ativa": new Response(null, { status: 403 }) });
+    stubRede({
+      ...dosUnidades,
+      "GET /unidades": json([{ id: "u1", nome: "Centro" }]),
+      "POST /sessao/unidade-ativa": new Response(null, { status: 403 }),
+    });
     await renderEm("/salao/unidade");
 
     await userEvent.click(await screen.findByRole("button", { name: "Centro" }));
@@ -156,7 +197,11 @@ describe("unit choice", () => {
 
 describe("the app behind the session", () => {
   it("opens the comanda list for a ready session and signs out from the top bar", async () => {
-    stubRede({ "POST /refresh": json(sessaoJson()), "GET /comandas": json([]), "POST /logout": new Response(null, { status: 204 }) });
+    stubRede({
+      "POST /refresh": json(sessaoJson()),
+      "GET /comandas": json([]),
+      "POST /logout": new Response(null, { status: 204 }),
+    });
     const { router } = await renderEm("/salao");
     expect(await screen.findByText("Nenhuma comanda aberta. Toque em Nova comanda.")).toBeVisible();
     expect(router.state.location.pathname).toBe("/salao");
@@ -178,7 +223,10 @@ describe("the app behind the session", () => {
     let falhar = true;
     stubRede({
       "POST /refresh": json(sessaoJson()),
-      "GET /comandas": () => (falhar ? new Response(null, { status: 500 }) : json([{ id: "c1", numero: 12, numeroTexto: "#12", identificacao: "Mesa 7" }])),
+      "GET /comandas": () =>
+        falhar
+          ? new Response(null, { status: 500 })
+          : json([{ id: "c1", numero: 12, numeroTexto: "#12", identificacao: "Mesa 7" }]),
     });
     await renderEm("/salao");
     expect(await screen.findByText("Não foi possível carregar as comandas.")).toBeVisible();

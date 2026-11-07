@@ -15,7 +15,13 @@ export interface Categoria {
 }
 
 function paraProduto(p: Record<string, unknown>): Produto {
-  return { id: String(p["id"]), categoriaId: String(p["categoriaId"]), codigo: String(p["codigo"]), nome: String(p["nome"]), precoCentavos: Number(p["precoCentavos"]) };
+  return {
+    id: String(p["id"]),
+    categoriaId: String(p["categoriaId"]),
+    codigo: String(p["codigo"]),
+    nome: String(p["nome"]),
+    precoCentavos: Number(p["precoCentavos"]),
+  };
 }
 
 export function useProdutos(enabled: boolean) {
@@ -45,7 +51,9 @@ export function useCategorias(enabled: boolean) {
         throw new Error("categorias");
       }
 
-      return data.filter((c) => (c as { ativa?: boolean }).ativa !== false).map((c) => ({ id: String(c.id), nome: String(c.nome) }));
+      return data
+        .filter((c) => (c as { ativa?: boolean }).ativa !== false)
+        .map((c) => ({ id: String(c.id), nome: String(c.nome) }));
     },
   });
 }
@@ -67,7 +75,10 @@ export function useFrequentes(enabled: boolean) {
 }
 
 function normalizar(texto: string): string {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 }
 
 /** The picker search: part of the name or of the short code, ignoring case and accents. */

@@ -10,7 +10,16 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   children: ReactNode;
 }
 
-export function Button({ variant = "primary", loading = false, error, disabled, className, children, type = "button", ...rest }: ButtonProps) {
+export function Button({
+  variant = "primary",
+  loading = false,
+  error,
+  disabled,
+  className,
+  children,
+  type = "button",
+  ...rest
+}: ButtonProps) {
   const messageId = useId();
   const classes = ["f4-btn", className].filter(Boolean).join(" ");
   return (

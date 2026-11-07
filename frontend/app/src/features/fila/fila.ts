@@ -60,7 +60,12 @@ function ler(): AcaoDaFilaDeRodada[] {
     const lista = JSON.parse(bruto) as unknown;
     return Array.isArray(lista)
       ? lista
-          .filter((a): a is AcaoDaFilaDeRodada => typeof a === "object" && a !== null && ((a as { tipo?: unknown }).tipo === "rodada" || (a as { tipo?: unknown }).tipo === "pagamento"))
+          .filter(
+            (a): a is AcaoDaFilaDeRodada =>
+              typeof a === "object" &&
+              a !== null &&
+              ((a as { tipo?: unknown }).tipo === "rodada" || (a as { tipo?: unknown }).tipo === "pagamento"),
+          )
           // An action that was in flight when the page closed is simply pending again (the server keeps it idempotent by id).
           .map((a) => ({ ...a, estado: a.estado === "enviando" ? "pendente" : a.estado }))
       : [];
@@ -104,24 +109,69 @@ export function lerFila(): readonly AcaoDaFilaDeRodada[] {
   return acoes;
 }
 
-export function enfileirarRodada(entrada: { rodadaId: string; comandaId: string; itens: ItemDaFila[]; titulo: string; detalhe: string }): void {
+export function enfileirarRodada(entrada: {
+  rodadaId: string;
+  comandaId: string;
+  itens: ItemDaFila[];
+  titulo: string;
+  detalhe: string;
+}): void {
   const contaId = contaDaSessao();
   if (contaId === null || acoes.some((a) => a.id === entrada.rodadaId)) {
     return;
   }
 
-  acoes = [...acoes, { id: entrada.rodadaId, tipo: "rodada", contaId, comandaId: entrada.comandaId, titulo: entrada.titulo, detalhe: entrada.detalhe, itens: entrada.itens, criadoEm: Date.now(), tentativas: 0, proxima: 0, estado: "pendente", motivo: null }];
+  acoes = [
+    ...acoes,
+    {
+      id: entrada.rodadaId,
+      tipo: "rodada",
+      contaId,
+      comandaId: entrada.comandaId,
+      titulo: entrada.titulo,
+      detalhe: entrada.detalhe,
+      itens: entrada.itens,
+      criadoEm: Date.now(),
+      tentativas: 0,
+      proxima: 0,
+      estado: "pendente",
+      motivo: null,
+    },
+  ];
   mudou();
   void processar();
 }
 
-export function enfileirarPagamento(entrada: { pagamentoId: string; comandaId: string; recebidoCentavos: number; titulo: string; detalhe: string }): void {
+export function enfileirarPagamento(entrada: {
+  pagamentoId: string;
+  comandaId: string;
+  recebidoCentavos: number;
+  titulo: string;
+  detalhe: string;
+}): void {
   const contaId = contaDaSessao();
   if (contaId === null || acoes.some((a) => a.id === entrada.pagamentoId)) {
     return;
   }
 
-  acoes = [...acoes, { id: entrada.pagamentoId, tipo: "pagamento", contaId, comandaId: entrada.comandaId, titulo: entrada.titulo, detalhe: entrada.detalhe, itens: [], recebidoCentavos: entrada.recebidoCentavos, criadoEm: Date.now(), tentativas: 0, proxima: 0, estado: "pendente", motivo: null }];
+  acoes = [
+    ...acoes,
+    {
+      id: entrada.pagamentoId,
+      tipo: "pagamento",
+      contaId,
+      comandaId: entrada.comandaId,
+      titulo: entrada.titulo,
+      detalhe: entrada.detalhe,
+      itens: [],
+      recebidoCentavos: entrada.recebidoCentavos,
+      criadoEm: Date.now(),
+      tentativas: 0,
+      proxima: 0,
+      estado: "pendente",
+      motivo: null,
+    },
+  ];
   mudou();
   void processar();
 }
@@ -162,7 +212,11 @@ export function useFila(): { acoes: readonly AcaoDaFilaDeRodada[]; mensagem: Men
   return { acoes: snapshot, mensagem: msg };
 }
 
-type Resultado = { tipo: "ok"; conflito: boolean } | { tipo: "adiar"; motivo: string } | { tipo: "falhou"; motivo: string } | { tipo: "sessao" };
+type Resultado =
+  | { tipo: "ok"; conflito: boolean }
+  | { tipo: "adiar"; motivo: string }
+  | { tipo: "falhou"; motivo: string }
+  | { tipo: "sessao" };
 
 type ErroDaApi = { codigo?: string; versaoAtual?: number | null } | undefined;
 
@@ -170,7 +224,10 @@ type ErroDaApi = { codigo?: string; versaoAtual?: number | null } | undefined;
 async function fecharDepois(comandaId: string, versaoInicial: number): Promise<Resultado | null> {
   let versao = versaoInicial;
   for (let tentativa = 0; tentativa < TENTATIVAS_DE_VERSAO; tentativa += 1) {
-    const { data, response, error } = await api.POST("/comandas/{comandaId}/fechar", { params: { path: { comandaId } }, body: { versao } });
+    const { data, response, error } = await api.POST("/comandas/{comandaId}/fechar", {
+      params: { path: { comandaId } },
+      body: { versao },
+    });
     const codigo = (error as ErroDaApi)?.codigo;
     if (data || (response.status === 409 && codigo === "comanda-nao-aberta")) {
       return null;
@@ -295,7 +352,15 @@ async function enviar(acao: AcaoDaFilaDeRodada): Promise<Resultado> {
     for (let tentativa = 0; tentativa < TENTATIVAS_DE_VERSAO; tentativa += 1) {
       const { data, response, error } = await api.POST("/comandas/{comandaId}/rodadas", {
         params: { path: { comandaId: acao.comandaId } },
-        body: { rodadaId: acao.id, versao, itens: acao.itens.map((i) => ({ produtoId: i.produtoId, quantidade: i.quantidade, observacao: i.observacao })) },
+        body: {
+          rodadaId: acao.id,
+          versao,
+          itens: acao.itens.map((i) => ({
+            produtoId: i.produtoId,
+            quantidade: i.quantidade,
+            observacao: i.observacao,
+          })),
+        },
       });
       if (data) {
         return { tipo: "ok", conflito };
@@ -344,7 +409,10 @@ async function enviar(acao: AcaoDaFilaDeRodada): Promise<Resultado> {
 }
 
 function agendar() {
-  const proxima = acoes.filter((a) => a.estado === "pendente").map((a) => a.proxima).sort((x, y) => x - y)[0];
+  const proxima = acoes
+    .filter((a) => a.estado === "pendente")
+    .map((a) => a.proxima)
+    .sort((x, y) => x - y)[0];
   if (proxima === undefined) {
     return;
   }
@@ -385,7 +453,15 @@ export async function processar(): Promise<void> {
       if (r.tipo === "ok") {
         acoes = acoes.filter((a) => a.id !== alvo.id);
         mudou();
-        dizer({ texto: alvo.tipo === "pagamento" ? `${alvo.titulo} registrado.` : r.conflito ? "Esta comanda foi alterada em outro aparelho. Atualizamos e enviamos a rodada." : `${alvo.titulo} enviada.`, conflito: r.conflito });
+        dizer({
+          texto:
+            alvo.tipo === "pagamento"
+              ? `${alvo.titulo} registrado.`
+              : r.conflito
+                ? "Esta comanda foi alterada em outro aparelho. Atualizamos e enviamos a rodada."
+                : `${alvo.titulo} enviada.`,
+          conflito: r.conflito,
+        });
         aoConcluir(alvo);
       } else if (r.tipo === "falhou") {
         atualizar(alvo.id, { estado: "falhou", motivo: r.motivo });
@@ -394,7 +470,12 @@ export async function processar(): Promise<void> {
         break;
       } else {
         const tentativas = alvo.tentativas + 1;
-        atualizar(alvo.id, { estado: "pendente", tentativas, motivo: r.motivo, proxima: Date.now() + Math.min(ATRASO_MAXIMO_MS, ATRASO_INICIAL_MS * 2 ** (tentativas - 1)) });
+        atualizar(alvo.id, {
+          estado: "pendente",
+          tentativas,
+          motivo: r.motivo,
+          proxima: Date.now() + Math.min(ATRASO_MAXIMO_MS, ATRASO_INICIAL_MS * 2 ** (tentativas - 1)),
+        });
         break;
       }
     }

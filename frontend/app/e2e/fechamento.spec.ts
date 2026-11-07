@@ -1,6 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -26,15 +26,27 @@ async function entrarComo(page: Page, usuario: string) {
 /** The waiter's side, straight through the API (another device): a comanda with 2 chopps (R$ 25,00; with the 10% fee R$ 27,50). */
 async function comandaDoGarcom(request: APIRequestContext, baseURL: string, nome: string) {
   const headers = { "X-F4T-Csrf": "1", Origin: baseURL };
-  const login = await request.post("/login", { headers, data: { organizacaoDoLogin: seed!.organizacaoA, usuario: "garcom2", senha: SENHA } });
+  const login = await request.post("/login", {
+    headers,
+    data: { organizacaoDoLogin: seed!.organizacaoA, usuario: "garcom2", senha: SENHA },
+  });
   expect(login.ok()).toBeTruthy();
   const auth = { ...headers, Authorization: `Bearer ${((await login.json()) as { accessToken: string }).accessToken}` };
-  const aberta = await request.post("/comandas", { headers: auth, data: { identificacao: nome, mesaId: null, pessoas: null } });
+  const aberta = await request.post("/comandas", {
+    headers: auth,
+    data: { identificacao: nome, mesaId: null, pessoas: null },
+  });
   expect(aberta.ok()).toBeTruthy();
   const comanda = (await aberta.json()) as { id: string; versao: number };
-  const produtos = (await (await request.get("/cardapio/produtos", { headers: auth })).json()) as { id: string; codigo: string }[];
+  const produtos = (await (await request.get("/cardapio/produtos", { headers: auth })).json()) as {
+    id: string;
+    codigo: string;
+  }[];
   const chopp = produtos.find((p) => p.codigo === "CHOPP")!;
-  const rodada = await request.post(`/comandas/${comanda.id}/rodadas`, { headers: auth, data: { rodadaId: crypto.randomUUID(), versao: comanda.versao, itens: [{ produtoId: chopp.id, quantidade: 2 }] } });
+  const rodada = await request.post(`/comandas/${comanda.id}/rodadas`, {
+    headers: auth,
+    data: { rodadaId: crypto.randomUUID(), versao: comanda.versao, itens: [{ produtoId: chopp.id, quantidade: 2 }] },
+  });
   expect(rodada.status()).toBe(201);
   return { id: comanda.id, auth };
 }
@@ -63,7 +75,10 @@ async function abrirComanda(page: Page, nome: string) {
 }
 
 async function semHorizontal(page: Page) {
-  const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  const m = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
   expect(m.scroll).toBeLessThanOrEqual(m.client);
 }
 
@@ -71,13 +86,20 @@ async function alvosPequenos(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
       .filter((el) => el.closest("[aria-hidden=true]") === null)
-      .map((el) => ({ nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, r: el.getBoundingClientRect() }))
+      .map((el) => ({
+        nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName,
+        r: el.getBoundingClientRect(),
+      }))
       .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
       .map(({ nome, r }) => `${nome} ${Math.round(r.width)}x${Math.round(r.height)}`),
   );
 }
 
-test("the cashier receives a comanda in cash with change, partial first, then closes the shift and sees the difference in words", async ({ page, request, baseURL }) => {
+test("the cashier receives a comanda in cash with change, partial first, then closes the shift and sees the difference in words", async ({
+  page,
+  request,
+  baseURL,
+}) => {
   const nome = `Conta ${Date.now() % 100000}`;
   await comandaDoGarcom(request, baseURL!, nome);
   await entrarComo(page, "caixa");
@@ -154,7 +176,12 @@ test("the cashier receives a comanda in cash with change, partial first, then cl
   await page.getByRole("button", { name: "Concluir" }).click();
 });
 
-test("a payment taken with the signal cut waits in the queue and is registered once, closing the comanda, when the signal returns", async ({ page, context, request, baseURL }) => {
+test("a payment taken with the signal cut waits in the queue and is registered once, closing the comanda, when the signal returns", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
   const nome = `Fila ${Date.now() % 100000}`;
   const { id, auth } = await comandaDoGarcom(request, baseURL!, nome);
   await entrarComo(page, "caixa");

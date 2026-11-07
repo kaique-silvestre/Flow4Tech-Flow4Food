@@ -1,10 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
 import { entrar, reiniciarSessaoParaTestes } from "../sessao/sessao";
-import { enfileirarPagamento, enfileirarRodada, iniciarProcessador, lerFila, limparFila, processar, recarregarFilaParaTestes, reiniciarFilaParaTestes, removerAcao, tentarAgora } from "./fila";
+import {
+  enfileirarPagamento,
+  enfileirarRodada,
+  iniciarProcessador,
+  lerFila,
+  limparFila,
+  processar,
+  recarregarFilaParaTestes,
+  reiniciarFilaParaTestes,
+  removerAcao,
+  tentarAgora,
+} from "./fila";
 
-const contaOk = (versao = 4) => json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, versao, estado: "aberta", taxaServicoRemovida: false, taxaServicoPercentual: 10 });
-const rodadaOk = (id: string) => json({ id, comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: null, comandaVersao: 5, itens: [] }, { status: 201 });
+const contaOk = (versao = 4) =>
+  json({
+    consumoCentavos: 0,
+    taxaServicoCentavos: 0,
+    totalCentavos: 0,
+    pagoCentavos: 0,
+    saldoCentavos: 0,
+    versao,
+    estado: "aberta",
+    taxaServicoRemovida: false,
+    taxaServicoPercentual: 10,
+  });
+const rodadaOk = (id: string) =>
+  json(
+    { id, comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: null, comandaVersao: 5, itens: [] },
+    { status: 201 },
+  );
 const itens = [{ produtoId: "p1", quantidade: 2, observacao: null }];
 
 async function entrarComo(conta = "conta-1") {
@@ -48,7 +74,10 @@ describe("pending-actions queue", () => {
     await processar();
 
     expect(lerFila()).toEqual([]);
-    expect(chamadas.map((c) => `${c.method} ${c.path}`)).toEqual(["GET /comandas/c1/conta", "POST /comandas/c1/rodadas"]);
+    expect(chamadas.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /comandas/c1/conta",
+      "POST /comandas/c1/rodadas",
+    ]);
   });
 
   it("sends the round under the id the client made, with the version read at send time", async () => {
@@ -68,7 +97,9 @@ describe("pending-actions queue", () => {
       "POST /comandas/c1/rodadas": (c) => {
         const id = (c.body as { rodadaId: string }).rodadaId;
         ordem.push(id);
-        return id === "r1" && ordem.filter((x) => x === "r1").length === 1 ? new Response(null, { status: 503 }) : rodadaOk(id);
+        return id === "r1" && ordem.filter((x) => x === "r1").length === 1
+          ? new Response(null, { status: 503 })
+          : rodadaOk(id);
       },
     });
 
@@ -78,7 +109,10 @@ describe("pending-actions queue", () => {
 
     // r1 failed with a server error and waits its back-off: r2 does not jump the line.
     expect(ordem).toEqual(["r1"]);
-    expect(lerFila().map((a) => [a.id, a.estado])).toEqual([["r1", "pendente"], ["r2", "pendente"]]);
+    expect(lerFila().map((a) => [a.id, a.estado])).toEqual([
+      ["r1", "pendente"],
+      ["r2", "pendente"],
+    ]);
     tentarAgora("r1");
     await vi.waitFor(() => expect(lerFila()).toEqual([]));
     expect(ordem).toEqual(["r1", "r1", "r2"]);
@@ -87,7 +121,10 @@ describe("pending-actions queue", () => {
   it("retries with a growing back-off after a server error and then goes through", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let falhas = 2;
-    stubRede({ "GET /comandas/c1/conta": contaOk(), "POST /comandas/c1/rodadas": () => (falhas-- > 0 ? new Response(null, { status: 500 }) : rodadaOk("r1")) });
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(),
+      "POST /comandas/c1/rodadas": () => (falhas-- > 0 ? new Response(null, { status: 500 }) : rodadaOk("r1")),
+    });
 
     enfileirar("r1");
     await vi.waitFor(() => expect(lerFila()[0]?.tentativas).toBe(1));
@@ -113,7 +150,16 @@ describe("pending-actions queue", () => {
         chamadasDePost += 1;
         ids.push((c.body as { rodadaId: string }).rodadaId);
         // The server stored it the first time; the answer never arrived. The repeat is answered 200 with the stored round.
-        return chamadasDePost === 1 ? (Promise.reject(new TypeError("network")) as never) : json({ id: "r1", comandaId: "c1", enviadaEm: "2026-11-06T20:00:00Z", desfeitaEm: null, comandaVersao: 5, itens: [] });
+        return chamadasDePost === 1
+          ? (Promise.reject(new TypeError("network")) as never)
+          : json({
+              id: "r1",
+              comandaId: "c1",
+              enviadaEm: "2026-11-06T20:00:00Z",
+              desfeitaEm: null,
+              comandaVersao: 5,
+              itens: [],
+            });
       },
     });
 
@@ -133,7 +179,9 @@ describe("pending-actions queue", () => {
       "POST /comandas/c1/rodadas": (c) => {
         versoes.push((c.body as { versao: number }).versao);
         tentativa += 1;
-        return tentativa === 1 ? json({ codigo: "versao-desatualizada", versaoAtual: 7 }, { status: 409 }) : rodadaOk("r1");
+        return tentativa === 1
+          ? json({ codigo: "versao-desatualizada", versaoAtual: 7 }, { status: 409 })
+          : rodadaOk("r1");
       },
     });
 
@@ -149,7 +197,12 @@ describe("pending-actions queue", () => {
     [{ status: 403, corpo: null }, "Você não tem permissão para lançar itens."],
     [{ status: 400, corpo: { codigo: "invalido" } }, "A rodada não foi aceita. Confira os itens."],
   ])("shows an action the server will never accept as failed, without retrying it: %o", async (resposta, motivo) => {
-    const chamadas = stubRede({ "GET /comandas/c1/conta": contaOk(), "POST /comandas/c1/rodadas": resposta.corpo ? json(resposta.corpo, { status: resposta.status }) : new Response(null, { status: resposta.status }) });
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(),
+      "POST /comandas/c1/rodadas": resposta.corpo
+        ? json(resposta.corpo, { status: resposta.status })
+        : new Response(null, { status: resposta.status }),
+    });
 
     enfileirar("r1");
     await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
@@ -163,7 +216,10 @@ describe("pending-actions queue", () => {
   it("does not let a failed action block the ones behind it", async () => {
     stubRede({
       "GET /comandas/c1/conta": contaOk(),
-      "POST /comandas/c1/rodadas": (c) => ((c.body as { rodadaId: string }).rodadaId === "ruim" ? json({ codigo: "produto-inativo" }, { status: 409 }) : rodadaOk("bom")),
+      "POST /comandas/c1/rodadas": (c) =>
+        (c.body as { rodadaId: string }).rodadaId === "ruim"
+          ? json({ codigo: "produto-inativo" }, { status: 409 })
+          : rodadaOk("bom"),
     });
 
     enfileirar("ruim");
@@ -240,22 +296,70 @@ describe("pending-actions queue", () => {
   it("sends a queued payment under its own id and closes the bill when nothing is left", async () => {
     const chamadas = stubRede({
       "GET /comandas/c1/conta": contaOk(4),
-      "POST /comandas/c1/pagamentos": json({ id: "x", comandaId: "c1", turnoId: "t", metodo: "dinheiro", recebidoCentavos: 3000, aplicadoCentavos: 2750, trocoCentavos: 250, saldoRestanteCentavos: 0, comandaVersao: 5, registradoEm: new Date().toISOString(), operadorId: "o" }, { status: 201 }),
-      "POST /comandas/c1/fechar": json({ consumoCentavos: 0, taxaServicoCentavos: 0, totalCentavos: 0, pagoCentavos: 0, saldoCentavos: 0, versao: 6, estado: "fechada", taxaServicoRemovida: false, taxaServicoPercentual: 10 }),
+      "POST /comandas/c1/pagamentos": json(
+        {
+          id: "x",
+          comandaId: "c1",
+          turnoId: "t",
+          metodo: "dinheiro",
+          recebidoCentavos: 3000,
+          aplicadoCentavos: 2750,
+          trocoCentavos: 250,
+          saldoRestanteCentavos: 0,
+          comandaVersao: 5,
+          registradoEm: new Date().toISOString(),
+          operadorId: "o",
+        },
+        { status: 201 },
+      ),
+      "POST /comandas/c1/fechar": json({
+        consumoCentavos: 0,
+        taxaServicoCentavos: 0,
+        totalCentavos: 0,
+        pagoCentavos: 0,
+        saldoCentavos: 0,
+        versao: 6,
+        estado: "fechada",
+        taxaServicoRemovida: false,
+        taxaServicoPercentual: 10,
+      }),
     });
 
-    enfileirarPagamento({ pagamentoId: "0197e2e0-0000-7000-8000-000000000099", comandaId: "c1", recebidoCentavos: 3000, titulo: "Recebimento · Ana", detalhe: "Dinheiro R$ 30,00" });
+    enfileirarPagamento({
+      pagamentoId: "0197e2e0-0000-7000-8000-000000000099",
+      comandaId: "c1",
+      recebidoCentavos: 3000,
+      titulo: "Recebimento · Ana",
+      detalhe: "Dinheiro R$ 30,00",
+    });
     await vi.waitFor(() => expect(lerFila()).toEqual([]));
 
-    expect(chamadas.map((c) => `${c.method} ${c.path}`)).toEqual(["GET /comandas/c1/conta", "POST /comandas/c1/pagamentos", "POST /comandas/c1/fechar"]);
-    expect(chamadas[1]!.body).toEqual({ pagamentoId: "0197e2e0-0000-7000-8000-000000000099", recebidoCentavos: 3000, versao: 4 });
+    expect(chamadas.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /comandas/c1/conta",
+      "POST /comandas/c1/pagamentos",
+      "POST /comandas/c1/fechar",
+    ]);
+    expect(chamadas[1]!.body).toEqual({
+      pagamentoId: "0197e2e0-0000-7000-8000-000000000099",
+      recebidoCentavos: 3000,
+      versao: 4,
+    });
     expect(chamadas[2]!.body).toEqual({ versao: 5 });
   });
 
   it("keeps a payment that met a closed cash register as failed, with the reason", async () => {
-    stubRede({ "GET /comandas/c1/conta": contaOk(4), "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }) });
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(4),
+      "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }),
+    });
 
-    enfileirarPagamento({ pagamentoId: "pg1", comandaId: "c1", recebidoCentavos: 1000, titulo: "Recebimento · Ana", detalhe: "Dinheiro R$ 10,00" });
+    enfileirarPagamento({
+      pagamentoId: "pg1",
+      comandaId: "c1",
+      recebidoCentavos: 1000,
+      titulo: "Recebimento · Ana",
+      detalhe: "Dinheiro R$ 10,00",
+    });
     await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
 
     expect(lerFila()[0]?.motivo).toContain("caixa está fechado");

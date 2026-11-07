@@ -1,11 +1,11 @@
+import { formatBRL } from "@flow4tech/design-system";
 import { onlineManager } from "@tanstack/react-query";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatBRL } from "@flow4tech/design-system";
 import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
-import { adicionar, definirQuantidade, totalEmPreparo, ultimaRodada, unidades, type ItemDaConta } from "./rodada";
 import { buscarProdutos } from "./cardapio";
+import { adicionar, definirQuantidade, type ItemDaConta, totalEmPreparo, ultimaRodada, unidades } from "./rodada";
 import { uuidv7 } from "./uuid";
 
 afterEach(() => {
@@ -16,12 +16,78 @@ afterEach(() => {
   onlineManager.setOnline(true);
 });
 
-const PERMISSOES_DO_GARCOM = ["comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "mesa:ver", "produto:ver"];
-const chopp = { id: "p1", categoriaId: "cat1", codigo: "CHOPP", nome: "Chopp 300ml", precoCentavos: 1250, moeda: "BRL", ativo: true, versao: 1 };
-const batata = { id: "p2", categoriaId: "cat2", codigo: "BATATA", nome: "Porção de batata", precoCentavos: 3490, moeda: "BRL", ativo: true, versao: 1 };
-const item = (id: string, extra: Record<string, unknown> = {}) => ({ id, rodadaId: "r1", posicao: 1, produtoId: "p1", produtoNome: "Chopp 300ml", precoCentavos: 1250, quantidade: 2, observacao: null, estado: "lancado", motivoCancelamento: null, canceladoPor: null, canceladoEm: null, ...extra });
-const comandaJson = { id: "c1", unidadeId: "u1", numero: 7, numeroTexto: "#7", identificacao: "Ana", mesaId: null, canal: "salao", garcomId: "g1", pessoas: null, estado: "aberta", taxaServicoPercentual: 10, taxaServicoRemovida: false, versao: 2, abertaEm: new Date(Date.now() - 5 * 60_000).toISOString() };
-const conta = (extra: Record<string, unknown> = {}) => ({ consumoCentavos: 2500, taxaServicoCentavos: 250, totalCentavos: 2750, pagoCentavos: 0, saldoCentavos: 2750, taxaServicoRemovida: false, taxaServicoPercentual: 10, versao: 2, estado: "aberta", ...extra });
+const PERMISSOES_DO_GARCOM = [
+  "comanda:abrir",
+  "comanda:ver",
+  "comanda:lancar-item",
+  "comanda:cancelar-item",
+  "comanda:desfazer-rodada",
+  "mesa:ver",
+  "produto:ver",
+];
+const chopp = {
+  id: "p1",
+  categoriaId: "cat1",
+  codigo: "CHOPP",
+  nome: "Chopp 300ml",
+  precoCentavos: 1250,
+  moeda: "BRL",
+  ativo: true,
+  versao: 1,
+};
+const batata = {
+  id: "p2",
+  categoriaId: "cat2",
+  codigo: "BATATA",
+  nome: "Porção de batata",
+  precoCentavos: 3490,
+  moeda: "BRL",
+  ativo: true,
+  versao: 1,
+};
+const item = (id: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  rodadaId: "r1",
+  posicao: 1,
+  produtoId: "p1",
+  produtoNome: "Chopp 300ml",
+  precoCentavos: 1250,
+  quantidade: 2,
+  observacao: null,
+  estado: "lancado",
+  motivoCancelamento: null,
+  canceladoPor: null,
+  canceladoEm: null,
+  ...extra,
+});
+const comandaJson = {
+  id: "c1",
+  unidadeId: "u1",
+  numero: 7,
+  numeroTexto: "#7",
+  identificacao: "Ana",
+  mesaId: null,
+  canal: "salao",
+  garcomId: "g1",
+  pessoas: null,
+  estado: "aberta",
+  taxaServicoPercentual: 10,
+  taxaServicoRemovida: false,
+  versao: 2,
+  abertaEm: new Date(Date.now() - 5 * 60_000).toISOString(),
+};
+const conta = (extra: Record<string, unknown> = {}) => ({
+  consumoCentavos: 2500,
+  taxaServicoCentavos: 250,
+  totalCentavos: 2750,
+  pagoCentavos: 0,
+  saldoCentavos: 2750,
+  taxaServicoRemovida: false,
+  taxaServicoPercentual: 10,
+  versao: 2,
+  estado: "aberta",
+  ...extra,
+});
 
 function rotas(extra: Record<string, unknown> = {}, itens: unknown[] = [item("i1")]) {
   return {
@@ -31,7 +97,10 @@ function rotas(extra: Record<string, unknown> = {}, itens: unknown[] = [item("i1
     "GET /comandas/c1/conta": json(conta()),
     "GET /comandas/c1/itens": json({ itens, consumoCentavos: 2500 }),
     "GET /cardapio/produtos": json([chopp, batata]),
-    "GET /cardapio/categorias": json([{ id: "cat1", nome: "Bebidas", ativa: true, versao: 1 }, { id: "cat2", nome: "Porções", ativa: true, versao: 1 }]),
+    "GET /cardapio/categorias": json([
+      { id: "cat1", nome: "Bebidas", ativa: true, versao: 1 },
+      { id: "cat2", nome: "Porções", ativa: true, versao: 1 },
+    ]),
     "GET /cardapio/produtos/frequentes": json([chopp]),
     ...extra,
   } as Record<string, Response | ((c: never) => Response | Promise<Response>)>;
@@ -44,7 +113,18 @@ async function abrir(extra: Record<string, unknown> = {}, itens?: unknown[]) {
   return { chamadas, ...r };
 }
 
-const rodadaOk = (versao = 3) => json({ id: "x", comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: null, comandaVersao: versao, itens: [item("n1", { rodadaId: "x" })] }, { status: 201 });
+const rodadaOk = (versao = 3) =>
+  json(
+    {
+      id: "x",
+      comandaId: "c1",
+      enviadaEm: new Date().toISOString(),
+      desfeitaEm: null,
+      comandaVersao: versao,
+      itens: [item("n1", { rodadaId: "x" })],
+    },
+    { status: 201 },
+  );
 
 describe("comanda screen layout", () => {
   it("shows the bill on top and the picker below: breadcrumb, total, badge, rows, search, tabs with Frequentes first, rows with price and +", async () => {
@@ -73,7 +153,11 @@ describe("comanda screen layout", () => {
 
   it("shows a skeleton while loading and an error with retry", async () => {
     let falhar = true;
-    stubRede(rotas({ "GET /comandas/c1/conta": () => (falhar ? new Response(null, { status: 500 }) : json(conta())) }) as never);
+    stubRede(
+      rotas({
+        "GET /comandas/c1/conta": () => (falhar ? new Response(null, { status: 500 }) : json(conta())),
+      }) as never,
+    );
     await renderEm("/salao/comanda/c1");
 
     expect(await screen.findByText("Não foi possível carregar a comanda.")).toBeVisible();
@@ -157,7 +241,9 @@ describe("sending a round", () => {
     expect(await screen.findByText("Rodada enviada", { exact: false })).toBeVisible();
     const post = chamadas.find((c) => c.path === "/comandas/c1/rodadas" && c.method === "POST")!;
     expect(post.body).toMatchObject({ versao: 2, itens: [{ produtoId: "p1", quantidade: 2, observacao: null }] });
-    expect((post.body as { rodadaId: string }).rodadaId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect((post.body as { rodadaId: string }).rodadaId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
     expect(screen.queryByRole("region", { name: "Rodada não enviada" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -184,13 +270,17 @@ describe("sending a round", () => {
     await userEvent.click(within(fila).getByRole("button", { name: "Tentar agora" }));
 
     await vi.waitFor(() => expect(screen.queryByRole("button", { name: "1 ação pendente" })).toBeNull());
-    const ids = chamadas.filter((c) => c.path === "/comandas/c1/rodadas" && c.method === "POST").map((c) => (c.body as { rodadaId: string }).rodadaId);
+    const ids = chamadas
+      .filter((c) => c.path === "/comandas/c1/rodadas" && c.method === "POST")
+      .map((c) => (c.body as { rodadaId: string }).rodadaId);
     expect(ids).toHaveLength(3);
     expect(new Set(ids).size).toBe(1);
   });
 
   it("puts the round in the queue when the request cannot reach the server at all", async () => {
-    const { folha } = await prepararEnvio({ "POST /comandas/c1/rodadas": () => Promise.reject(new TypeError("network")) as never });
+    const { folha } = await prepararEnvio({
+      "POST /comandas/c1/rodadas": () => Promise.reject(new TypeError("network")) as never,
+    });
 
     await userEvent.click(within(folha).getByRole("button", { name: "Enviar agora" }));
 
@@ -234,7 +324,16 @@ describe("sending a round", () => {
   });
 
   it("repeats the round the waiter sent last", async () => {
-    await abrir({}, [item("i1", { rodadaId: "r1", quantidade: 2 }), item("i2", { rodadaId: "r2", quantidade: 1, produtoId: "p2", produtoNome: "Porção de batata", precoCentavos: 3490 })]);
+    await abrir({}, [
+      item("i1", { rodadaId: "r1", quantidade: 2 }),
+      item("i2", {
+        rodadaId: "r2",
+        quantidade: 1,
+        produtoId: "p2",
+        produtoNome: "Porção de batata",
+        precoCentavos: 3490,
+      }),
+    ]);
 
     await userEvent.click(screen.getByRole("button", { name: "Repetir rodada" }));
 
@@ -252,12 +351,23 @@ describe("undo", () => {
     await userEvent.click(screen.getByRole("button", { name: "Adicionar Chopp 300ml" }));
     await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
     await userEvent.click(await screen.findByRole("button", { name: "Enviar agora" }));
-    const toast = (await screen.findByText("Rodada enviada", { exact: false })).closest('[role="status"]') as HTMLElement;
+    const toast = (await screen.findByText("Rodada enviada", { exact: false })).closest(
+      '[role="status"]',
+    ) as HTMLElement;
     return { chamadas, toast };
   }
 
   it("offers the undo for eight seconds and undoes the round carrying the version the send answered", async () => {
-    const { chamadas, toast } = await enviarUmChopp({ "POST /comandas/c1/rodadas/:id/desfazer": json({ id: "x", comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: new Date().toISOString(), comandaVersao: 4, itens: [] }) });
+    const { chamadas, toast } = await enviarUmChopp({
+      "POST /comandas/c1/rodadas/:id/desfazer": json({
+        id: "x",
+        comandaId: "c1",
+        enviadaEm: new Date().toISOString(),
+        desfeitaEm: new Date().toISOString(),
+        comandaVersao: 4,
+        itens: [],
+      }),
+    });
     expect(toast).toHaveTextContent("(8 s)");
 
     await userEvent.click(within(toast).getByRole("button", { name: "Desfazer" }));
@@ -283,7 +393,9 @@ describe("undo", () => {
   });
 
   it("says the time is over when the server refuses the undo", async () => {
-    const { toast } = await enviarUmChopp({ "POST /comandas/c1/rodadas/:id/desfazer": json({ codigo: "janela-expirada", versaoAtual: null }, { status: 409 }) });
+    const { toast } = await enviarUmChopp({
+      "POST /comandas/c1/rodadas/:id/desfazer": json({ codigo: "janela-expirada", versaoAtual: null }, { status: 409 }),
+    });
 
     await userEvent.click(within(toast).getByRole("button", { name: "Desfazer" }));
 
@@ -291,7 +403,12 @@ describe("undo", () => {
   });
 
   it("has no undo for a caller without the permission", async () => {
-    stubRede(rotas({ "GET /sessao/permissoes": json({ permissoes: ["comanda:ver", "comanda:lancar-item", "produto:ver"] }), "POST /comandas/c1/rodadas": rodadaOk(3) }) as never);
+    stubRede(
+      rotas({
+        "GET /sessao/permissoes": json({ permissoes: ["comanda:ver", "comanda:lancar-item", "produto:ver"] }),
+        "POST /comandas/c1/rodadas": rodadaOk(3),
+      }) as never,
+    );
     await renderEm("/salao/comanda/c1");
     await screen.findByRole("heading", { level: 2, name: "Ana" });
     await userEvent.click(screen.getByRole("button", { name: "Adicionar Chopp 300ml" }));
@@ -313,7 +430,11 @@ describe("cancelling an item", () => {
   it("asks for a reason from the standard list and keeps the button off until there is one", async () => {
     const { folha } = await abrirCancelar();
 
-    expect(within(folha).getAllByRole("button", { pressed: false }).map((b) => b.textContent)).toEqual(["Cliente desistiu", "Erro de lançamento", "Item indisponível", "Outro"]);
+    expect(
+      within(folha)
+        .getAllByRole("button", { pressed: false })
+        .map((b) => b.textContent),
+    ).toEqual(["Cliente desistiu", "Erro de lançamento", "Item indisponível", "Outro"]);
     expect(within(folha).getByRole("button", { name: "Cancelar item" })).toBeDisabled();
     await userEvent.click(within(folha).getByRole("button", { name: "Item indisponível" }));
     expect(within(folha).getByRole("button", { name: "Cancelar item" })).toBeEnabled();
@@ -322,7 +443,8 @@ describe("cancelling an item", () => {
   it("sends the code, the version and the free text of Outro, and the item leaves the bill", async () => {
     let cancelado = false;
     const { chamadas, folha } = await abrirCancelar({
-      "GET /comandas/c1/itens": () => json({ itens: cancelado ? [item("i1", { estado: "cancelado" })] : [item("i1")], consumoCentavos: 0 }),
+      "GET /comandas/c1/itens": () =>
+        json({ itens: cancelado ? [item("i1", { estado: "cancelado" })] : [item("i1")], consumoCentavos: 0 }),
       "POST /comandas/c1/itens/i1/cancelar": () => {
         cancelado = true;
         return json({ item: item("i1", { estado: "cancelado" }), comandaVersao: 3 });
@@ -334,12 +456,18 @@ describe("cancelling an item", () => {
     await userEvent.click(within(folha).getByRole("button", { name: "Cancelar item" }));
 
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(chamadas.find((c) => c.path === "/comandas/c1/itens/i1/cancelar")?.body).toEqual({ versao: 2, motivo: "outro", texto: "cliente trocou de mesa" });
+    expect(chamadas.find((c) => c.path === "/comandas/c1/itens/i1/cancelar")?.body).toEqual({
+      versao: 2,
+      motivo: "outro",
+      texto: "cliente trocou de mesa",
+    });
     await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Cancelar Chopp 300ml" })).toBeNull());
   });
 
   it("keeps the sheet open and says why when the item was already paid", async () => {
-    const { folha } = await abrirCancelar({ "POST /comandas/c1/itens/i1/cancelar": json({ codigo: "valor-ja-recebido", versaoAtual: null }, { status: 409 }) });
+    const { folha } = await abrirCancelar({
+      "POST /comandas/c1/itens/i1/cancelar": json({ codigo: "valor-ja-recebido", versaoAtual: null }, { status: 409 }),
+    });
     await userEvent.click(within(folha).getByRole("button", { name: "Cliente desistiu" }));
 
     await userEvent.click(within(folha).getByRole("button", { name: "Cancelar item" }));
@@ -369,7 +497,10 @@ describe("round rules", () => {
     r = adicionar(r, p);
     r = adicionar(r, q);
 
-    expect(r.map((i) => [i.produto.id, i.quantidade])).toEqual([["p1", 2], ["p2", 1]]);
+    expect(r.map((i) => [i.produto.id, i.quantidade])).toEqual([
+      ["p1", 2],
+      ["p2", 1],
+    ]);
     expect(unidades(r)).toBe(3);
     expect(totalEmPreparo(r)).toBe(2500);
     expect(definirQuantidade(r, "p1", 0).map((i) => i.produto.id)).toEqual(["p2"]);
@@ -385,8 +516,22 @@ describe("round rules", () => {
   });
 
   it("finds the last standing round, ignoring cancelled items", () => {
-    const base: ItemDaConta = { id: "1", rodadaId: "r1", produtoId: "p1", produtoNome: "A", precoCentavos: 1, quantidade: 1, observacao: null, estado: "lancado" };
-    const itens: ItemDaConta[] = [base, { ...base, id: "2", rodadaId: "r2" }, { ...base, id: "3", rodadaId: "r2", produtoId: "p2" }, { ...base, id: "4", rodadaId: "r3", estado: "cancelado" }];
+    const base: ItemDaConta = {
+      id: "1",
+      rodadaId: "r1",
+      produtoId: "p1",
+      produtoNome: "A",
+      precoCentavos: 1,
+      quantidade: 1,
+      observacao: null,
+      estado: "lancado",
+    };
+    const itens: ItemDaConta[] = [
+      base,
+      { ...base, id: "2", rodadaId: "r2" },
+      { ...base, id: "3", rodadaId: "r2", produtoId: "p2" },
+      { ...base, id: "4", rodadaId: "r3", estado: "cancelado" },
+    ];
 
     expect(ultimaRodada(itens)?.map((i) => i.id)).toEqual(["2", "3"]);
     expect(ultimaRodada([])).toBeNull();

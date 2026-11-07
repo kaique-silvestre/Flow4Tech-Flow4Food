@@ -1,13 +1,16 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
 mkdirSync(shots, { recursive: true });
 
 const seed = lerSeed();
-test.skip(!process.env["E2E_API"] || seed === null, "needs the API running, the seed (frontend/app/e2e-results/seed.json) and E2E_API=1");
+test.skip(
+  !process.env["E2E_API"] || seed === null,
+  "needs the API running, the seed (frontend/app/e2e-results/seed.json) and E2E_API=1",
+);
 
 async function shoot(page: Page, name: string) {
   const size = page.viewportSize();
@@ -15,14 +18,20 @@ async function shoot(page: Page, name: string) {
 }
 
 async function semHorizontal(page: Page) {
-  const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  const m = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
   expect(m.scroll).toBeLessThanOrEqual(m.client);
 }
 
 async function alvosPequenos(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
-      .map((el) => ({ nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, r: el.getBoundingClientRect() }))
+      .map((el) => ({
+        nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName,
+        r: el.getBoundingClientRect(),
+      }))
       .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
       .map(({ nome, r }) => `${nome} ${Math.round(r.width)}x${Math.round(r.height)}`),
   );
@@ -42,7 +51,9 @@ async function credencialTemporaria(request: APIRequestContext, baseURL: string)
   const login = await request.post("/login", { headers: cabecalhos, data: { email: "dono@bar-a.test", senha: SENHA } });
   expect(login.status()).toBe(200);
   const { accessToken } = (await login.json()) as { accessToken: string };
-  const r = await request.post(`/contas/${seed!.contas["novato"]}/redefinir-acesso`, { headers: { ...cabecalhos, Authorization: `Bearer ${accessToken}` } });
+  const r = await request.post(`/contas/${seed!.contas["novato"]}/redefinir-acesso`, {
+    headers: { ...cabecalhos, Authorization: `Bearer ${accessToken}` },
+  });
   expect(r.status()).toBe(200);
   return ((await r.json()) as { credencial: string }).credencial;
 }
@@ -94,7 +105,9 @@ test.describe("sign in", () => {
     await expect(page).toHaveURL(/\/salao$/);
   });
 
-  test("shows the blocked and the verification states (answers forced at the network edge: producing them for real would lock the test address)", async ({ page }) => {
+  test("shows the blocked and the verification states (answers forced at the network edge: producing them for real would lock the test address)", async ({
+    page,
+  }) => {
     await page.route("**/login", (route) => route.fulfill({ status: 429, headers: { "Retry-After": "90" } }));
     await entrarComo(page, "garcom", "qualquer-senha-longa");
 
@@ -114,7 +127,11 @@ test.describe("sign in", () => {
 });
 
 test.describe("temporary password", () => {
-  test("goes straight to the password change, shows the policy inline and then lands on the list", async ({ page, request, baseURL }) => {
+  test("goes straight to the password change, shows the policy inline and then lands on the list", async ({
+    page,
+    request,
+    baseURL,
+  }) => {
     const temporaria = await credencialTemporaria(request, baseURL!);
 
     await entrarComo(page, "novato", temporaria);

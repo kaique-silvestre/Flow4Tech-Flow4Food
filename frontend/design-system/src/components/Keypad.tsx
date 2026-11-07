@@ -15,7 +15,13 @@ export function Keypad({ onDigit, onBackspace, onCancel, disabled = false, loadi
   const off = disabled || loading;
   return (
     <div>
-      <div className="f4-keypad" role="group" aria-label="Teclado numérico" aria-busy={loading || undefined} data-state={error ? "error" : "default"}>
+      <div
+        className="f4-keypad"
+        role="group"
+        aria-label="Teclado numérico"
+        aria-busy={loading || undefined}
+        data-state={error ? "error" : "default"}
+      >
         {DIGITS.map((digit) => (
           <button key={digit} type="button" className="f4-key" disabled={off} onClick={() => onDigit(digit)}>
             {digit}

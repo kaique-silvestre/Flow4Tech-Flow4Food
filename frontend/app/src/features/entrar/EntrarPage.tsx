@@ -1,10 +1,10 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Notice, TextField } from "@flow4tech/design-system";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { destinoDaSessao, entrar, lerSessao, type ResultadoDeEntrada } from "../sessao/sessao";
-import { ehEmail, entrarSchema, organizacaoValida, type EntrarValores } from "./schema";
+import { type EntrarValores, ehEmail, entrarSchema, organizacaoValida } from "./schema";
 
 const CHAVE_ORGANIZACAO = "f4.organizacao";
 
@@ -67,7 +67,11 @@ export function EntrarPage() {
     const r = await entrar(
       email
         ? { email: valores.identificador.trim(), senha: valores.senha }
-        : { organizacaoDoLogin: valores.organizacao.trim(), usuario: valores.identificador.trim(), senha: valores.senha },
+        : {
+            organizacaoDoLogin: valores.organizacao.trim(),
+            usuario: valores.identificador.trim(),
+            senha: valores.senha,
+          },
     );
     setEnviando(false);
     if (r.tipo === "ok") {
@@ -94,7 +98,9 @@ export function EntrarPage() {
       <p className="entry-lead">Use o usuário que o responsável criou para você, ou o seu e-mail.</p>
 
       {resultado?.tipo === "invalido" ? <Notice tone="error">Usuário ou senha inválidos.</Notice> : null}
-      {resultado?.tipo === "erro" ? <Notice tone="error">Sem conexão ou servidor fora do ar. Tente de novo.</Notice> : null}
+      {resultado?.tipo === "erro" ? (
+        <Notice tone="error">Sem conexão ou servidor fora do ar. Tente de novo.</Notice>
+      ) : null}
       {resultado?.tipo === "captcha" ? (
         <Notice tone="info" title="Verificação necessária">
           Por segurança, peça ao responsável para liberar o acesso e tente de novo.

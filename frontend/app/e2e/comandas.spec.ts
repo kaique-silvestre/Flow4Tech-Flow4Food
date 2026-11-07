@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -26,14 +26,20 @@ async function entrarComoGarcom2(page: Page) {
 const teclado = (page: Page) => page.getByRole("group", { name: "Teclado numérico" });
 
 async function semHorizontal(page: Page) {
-  const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  const m = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
   expect(m.scroll).toBeLessThanOrEqual(m.client);
 }
 
 async function alvosPequenos(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
-      .map((el) => ({ nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, r: el.getBoundingClientRect() }))
+      .map((el) => ({
+        nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName,
+        r: el.getBoundingClientRect(),
+      }))
       .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
       .map(({ nome, r }) => `${nome} ${Math.round(r.width)}x${Math.round(r.height)}`),
   );
@@ -82,7 +88,9 @@ test("a table that already has a comanda asks before opening another and offers 
 
   const aviso = page.getByRole("dialog", { name: "Mesa 6 já está ocupada" });
   await expect(aviso).toBeVisible();
-  await expect(aviso.getByRole("list", { name: "Comandas já abertas nesta mesa" }).getByRole("button").first()).toBeVisible();
+  await expect(
+    aviso.getByRole("list", { name: "Comandas já abertas nesta mesa" }).getByRole("button").first(),
+  ).toBeVisible();
   await shoot(page, "11-mesa-ocupada");
   await aviso.getByRole("button", { name: "Abrir outra comanda" }).click();
   await expect(page).toHaveURL(/\/salao\/comanda\//);

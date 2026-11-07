@@ -1,4 +1,13 @@
-import { BottomSheet, Button, centsFromDigits, formatBRL, MoneyField, Notice, Skeleton, ToneBadge } from "@flow4tech/design-system";
+import {
+  BottomSheet,
+  Button,
+  centsFromDigits,
+  formatBRL,
+  MoneyField,
+  Notice,
+  Skeleton,
+  ToneBadge,
+} from "@flow4tech/design-system";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { usePermissoes } from "../sessao/permissoes";
@@ -98,7 +107,9 @@ export function CaixaPage() {
     setErroFechar(null);
     setEnviando(true);
     try {
-      const { data, response } = await api.POST("/caixa/turnos/atual/fechar", { body: { contadoCentavos: centsFromDigits(contagem) } });
+      const { data, response } = await api.POST("/caixa/turnos/atual/fechar", {
+        body: { contadoCentavos: centsFromDigits(contagem) },
+      });
       if (data) {
         setResultado(paraTurno(data as unknown as Record<string, unknown>));
       } else if (response.status === 404) {
@@ -160,13 +171,22 @@ export function CaixaPage() {
               void abrir();
             }}
           >
-            <MoneyField label="Fundo de troco" hint="É o dinheiro que já está na gaveta para dar troco. Não é venda." digits={fundo} onDigitsChange={setFundo} disabled={abrindo} />
+            <MoneyField
+              label="Fundo de troco"
+              hint="É o dinheiro que já está na gaveta para dar troco. Não é venda."
+              digits={fundo}
+              onDigitsChange={setFundo}
+              disabled={abrindo}
+            />
             {erroAbrir ? (
               <Notice
                 tone="error"
                 action={
                   erroAbrir.atualizar ? (
-                    <Button variant="secondary" onClick={() => void queryClient.invalidateQueries({ queryKey: ["caixa"] })}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void queryClient.invalidateQueries({ queryKey: ["caixa"] })}
+                    >
                       Atualizar
                     </Button>
                   ) : undefined
@@ -248,7 +268,9 @@ export function CaixaPage() {
             <p className="caixa-resultado-linha">
               Contado <strong className="f4-num">{formatBRL(resultado.contadoCentavos ?? 0)}</strong>
             </p>
-            <ToneBadge tone={tomDaDiferenca(resultado.diferencaCentavos ?? 0)}>{resultado.diferencaTexto ?? "Confere"}</ToneBadge>
+            <ToneBadge tone={tomDaDiferenca(resultado.diferencaCentavos ?? 0)}>
+              {resultado.diferencaTexto ?? "Confere"}
+            </ToneBadge>
           </div>
         ) : (
           <MoneyField label="Dinheiro contado" digits={contagem} onDigitsChange={setContagem} disabled={enviando} />

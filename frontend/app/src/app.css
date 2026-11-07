@@ -106,7 +106,8 @@ body {
   min-height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
-  padding: calc(var(--f4-space-6) + env(safe-area-inset-top)) var(--f4-space-4) calc(var(--f4-space-6) + env(safe-area-inset-bottom));
+  padding: calc(var(--f4-space-6) + env(safe-area-inset-top)) var(--f4-space-4)
+    calc(var(--f4-space-6) + env(safe-area-inset-bottom));
 }
 
 .entry-brand {

@@ -14,7 +14,15 @@ interface Props {
   onTentarDeNovo: () => void;
 }
 
-function LinhaDoProduto({ produto, quantidade, onAdicionar }: { produto: Produto; quantidade: number; onAdicionar: () => void }) {
+function LinhaDoProduto({
+  produto,
+  quantidade,
+  onAdicionar,
+}: {
+  produto: Produto;
+  quantidade: number;
+  onAdicionar: () => void;
+}) {
   return (
     <li className="produto-linha">
       <span className="produto-nome">
@@ -33,7 +41,16 @@ function LinhaDoProduto({ produto, quantidade, onAdicionar }: { produto: Produto
 }
 
 /** Search, category tabs (Frequentes first) and the product rows with ×N and +. Adding is one tap per unit; nothing is sent from here. */
-export function Picker({ produtos, frequentes, categorias, quantidades, onAdicionar, carregando, erro, onTentarDeNovo }: Props) {
+export function Picker({
+  produtos,
+  frequentes,
+  categorias,
+  quantidades,
+  onAdicionar,
+  carregando,
+  erro,
+  onTentarDeNovo,
+}: Props) {
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState<string | null>(null);
 
@@ -63,7 +80,12 @@ export function Picker({ produtos, frequentes, categorias, quantidades, onAdicio
   const lista = (itens: readonly Produto[]) => (
     <ul className="produto-lista">
       {itens.map((p) => (
-        <LinhaDoProduto key={p.id} produto={p} quantidade={quantidades.get(p.id) ?? 0} onAdicionar={() => onAdicionar(p)} />
+        <LinhaDoProduto
+          key={p.id}
+          produto={p}
+          quantidade={quantidades.get(p.id) ?? 0}
+          onAdicionar={() => onAdicionar(p)}
+        />
       ))}
     </ul>
   );
@@ -103,7 +125,11 @@ export function Picker({ produtos, frequentes, categorias, quantidades, onAdicio
             ))}
           </TabList>
           <TabPanel value="frequentes">
-            {frequentes.length === 0 ? <p className="comandas-vazio">Ainda não há itens frequentes. Use a busca ou uma categoria.</p> : lista(frequentes)}
+            {frequentes.length === 0 ? (
+              <p className="comandas-vazio">Ainda não há itens frequentes. Use a busca ou uma categoria.</p>
+            ) : (
+              lista(frequentes)
+            )}
           </TabPanel>
           {categorias.map((c) => (
             <TabPanel key={c.id} value={c.id}>

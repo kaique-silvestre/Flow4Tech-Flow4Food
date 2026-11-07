@@ -1,6 +1,13 @@
 import { BottomSheet, Button, Chip, formatBRL, TextField } from "@flow4tech/design-system";
 import { useEffect, useState } from "react";
-import { DURACAO_DO_DESFAZER_MS, MOTIVOS, totalEmPreparo, type CodigoDeMotivo, type ItemDaConta, type ItemEmPreparo } from "./rodada";
+import {
+  type CodigoDeMotivo,
+  DURACAO_DO_DESFAZER_MS,
+  type ItemDaConta,
+  type ItemEmPreparo,
+  MOTIVOS,
+  totalEmPreparo,
+} from "./rodada";
 
 interface EnviarProps {
   open: boolean;
@@ -61,6 +68,7 @@ interface CancelarProps {
 export function CancelarItemSheet({ item, onOpenChange, enviando, erro, onCancelar }: CancelarProps) {
   const [motivo, setMotivo] = useState<CodigoDeMotivo | null>(null);
   const [texto, setTexto] = useState("");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the form resets when ANOTHER item is opened, so the item id is the trigger even though the body does not read it.
   useEffect(() => {
     setMotivo(null);
     setTexto("");
@@ -93,7 +101,15 @@ export function CancelarItemSheet({ item, onOpenChange, enviando, erro, onCancel
           </Chip>
         ))}
       </div>
-      {motivo === "outro" ? <TextField label="Qual o motivo?" value={texto} maxLength={200} autoComplete="off" onChange={(e) => setTexto(e.target.value)} /> : null}
+      {motivo === "outro" ? (
+        <TextField
+          label="Qual o motivo?"
+          value={texto}
+          maxLength={200}
+          autoComplete="off"
+          onChange={(e) => setTexto(e.target.value)}
+        />
+      ) : null}
     </BottomSheet>
   );
 }

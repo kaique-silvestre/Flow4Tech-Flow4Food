@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -83,7 +83,11 @@ test.describe("salão shell (signed in)", () => {
     await page.getByRole("link", { name: "Caixa" }).click();
 
     await expect(page).toHaveURL(/\/salao\/caixa$/);
-    await expect(page.getByText("Caixa fechado. Abra o caixa para receber.").or(page.getByRole("heading", { level: 2, name: "Caixa aberto" }))).toBeVisible();
+    await expect(
+      page
+        .getByText("Caixa fechado. Abra o caixa para receber.")
+        .or(page.getByRole("heading", { level: 2, name: "Caixa aberto" })),
+    ).toBeVisible();
     const bar = await page.getByRole("navigation", { name: "Seções do salão" }).boundingBox();
     const viewport = page.viewportSize();
     expect(bar && viewport && Math.round(bar.y + bar.height)).toBe(viewport?.height);
@@ -98,7 +102,12 @@ test.describe("installable PWA", () => {
     expect(href).toBeTruthy();
     const manifest = await (await request.get(href ?? "")).json();
 
-    expect(manifest).toMatchObject({ name: "Flow4Tech Salão", short_name: "Salão", start_url: "/salao", display: "standalone" });
+    expect(manifest).toMatchObject({
+      name: "Flow4Tech Salão",
+      short_name: "Salão",
+      start_url: "/salao",
+      display: "standalone",
+    });
     const sizes = (manifest.icons as { sizes: string }[]).map((i) => i.sizes);
     expect(sizes).toEqual(expect.arrayContaining(["192x192", "512x512"]));
     for (const icon of manifest.icons as { src: string }[]) {

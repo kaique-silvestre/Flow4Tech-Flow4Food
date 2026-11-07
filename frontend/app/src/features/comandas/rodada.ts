@@ -35,19 +35,27 @@ export const ITENS_MAXIMOS_POR_RODADA = 50;
 export function adicionar(emPreparo: readonly ItemEmPreparo[], produto: Produto): ItemEmPreparo[] {
   const existente = emPreparo.find((i) => i.produto.id === produto.id);
   if (existente) {
-    return emPreparo.map((i) => (i === existente ? { ...i, quantidade: Math.min(QUANTIDADE_MAXIMA, i.quantidade + 1) } : i));
+    return emPreparo.map((i) =>
+      i === existente ? { ...i, quantidade: Math.min(QUANTIDADE_MAXIMA, i.quantidade + 1) } : i,
+    );
   }
 
   return emPreparo.length >= ITENS_MAXIMOS_POR_RODADA ? [...emPreparo] : [...emPreparo, { produto, quantidade: 1 }];
 }
 
 /** Sets the quantity of a line; zero (or less) removes it. */
-export function definirQuantidade(emPreparo: readonly ItemEmPreparo[], produtoId: string, quantidade: number): ItemEmPreparo[] {
+export function definirQuantidade(
+  emPreparo: readonly ItemEmPreparo[],
+  produtoId: string,
+  quantidade: number,
+): ItemEmPreparo[] {
   if (quantidade <= 0) {
     return emPreparo.filter((i) => i.produto.id !== produtoId);
   }
 
-  return emPreparo.map((i) => (i.produto.id === produtoId ? { ...i, quantidade: Math.min(QUANTIDADE_MAXIMA, quantidade) } : i));
+  return emPreparo.map((i) =>
+    i.produto.id === produtoId ? { ...i, quantidade: Math.min(QUANTIDADE_MAXIMA, quantidade) } : i,
+  );
 }
 
 export function unidades(emPreparo: readonly ItemEmPreparo[]): number {

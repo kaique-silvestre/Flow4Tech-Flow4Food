@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { api } from "../sessao/sessao";
-import { paraComanda, acharMesaPorNumero, type Comanda, type Mesa } from "./tipos";
+import { acharMesaPorNumero, type Comanda, type Mesa, paraComanda } from "./tipos";
 
 const MAXIMO_DIGITOS = 3;
 const CHIPS_VISIVEIS = 6;
@@ -55,10 +55,15 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
     setErro(undefined);
     setEnviando(true);
     try {
-      const { data, response } = await api.POST("/comandas", { body: { identificacao: corpo.identificacao ?? null, mesaId: corpo.mesaId ?? null, pessoas: null } });
+      const { data, response } = await api.POST("/comandas", {
+        body: { identificacao: corpo.identificacao ?? null, mesaId: corpo.mesaId ?? null, pessoas: null },
+      });
       if (data) {
         const comanda = paraComanda(data as unknown as Record<string, unknown>);
-        await Promise.all([queryClient.invalidateQueries({ queryKey: ["comandas"] }), queryClient.invalidateQueries({ queryKey: ["mesas"] })]);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["comandas"] }),
+          queryClient.invalidateQueries({ queryKey: ["mesas"] }),
+        ]);
         onOpenChange(false);
         await navigate({ to: "/salao/comanda/$comandaId", params: { comandaId: comanda.id } });
       } else if (response.status === 409) {
@@ -108,7 +113,11 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
         open={open}
         onOpenChange={onOpenChange}
         title={`Mesa ${mesaAlvo.identificacao} já está ocupada`}
-        description={existentes.length > 0 ? "Já existe comanda aberta nesta mesa. Quer abrir mais uma?" : "A mesa tem uma comanda aberta (de outra pessoa). Quer abrir mais uma?"}
+        description={
+          existentes.length > 0
+            ? "Já existe comanda aberta nesta mesa. Quer abrir mais uma?"
+            : "A mesa tem uma comanda aberta (de outra pessoa). Quer abrir mais uma?"
+        }
         error={erro}
         loading={enviando}
         footer={
@@ -162,7 +171,14 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
           </>
         }
       >
-        <TextField label="Nome da comanda" value={nome} maxLength={40} autoFocus autoComplete="off" onChange={(e) => setNome(e.target.value)} />
+        <TextField
+          label="Nome da comanda"
+          value={nome}
+          maxLength={40}
+          autoFocus
+          autoComplete="off"
+          onChange={(e) => setNome(e.target.value)}
+        />
       </BottomSheet>
     );
   }
@@ -186,7 +202,11 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
         </>
       }
     >
-      <p className="nova-entrada f4-num" aria-live="polite" aria-label={`${rotulo} ${entrada === "" ? "em branco" : entrada}`}>
+      <p
+        className="nova-entrada f4-num"
+        aria-live="polite"
+        aria-label={`${rotulo} ${entrada === "" ? "em branco" : entrada}`}
+      >
         <span className="nova-rotulo">{rotulo}</span> {entrada === "" ? "—" : entrada}
       </p>
       {usaMesas && livres.length > 0 ? (
@@ -211,7 +231,9 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
         onDigit={(d) => {
           setErro(undefined);
           setMesaEscolhida(null);
-          setDigitos((atual) => (atual.length >= MAXIMO_DIGITOS ? atual : atual === "" && d === "0" ? atual : atual + d));
+          setDigitos((atual) =>
+            atual.length >= MAXIMO_DIGITOS ? atual : atual === "" && d === "0" ? atual : atual + d,
+          );
         }}
         onBackspace={() => {
           setMesaEscolhida(null);

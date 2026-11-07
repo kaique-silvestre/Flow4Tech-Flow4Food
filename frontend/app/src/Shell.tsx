@@ -1,6 +1,6 @@
 import { Button } from "@flow4tech/design-system";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { BarraDeFila } from "./features/fila/BarraDeFila";
 import { limparFila } from "./features/fila/fila";
 import { usePermissoes } from "./features/sessao/permissoes";
@@ -30,7 +30,15 @@ function useSairQuandoAnonima() {
   }, [sessao.status, navigate]);
 }
 
-export function Shell({ title, children, tabs = salaoTabs }: { title: string; children?: ReactNode; tabs?: readonly TabItem[] }) {
+export function Shell({
+  title,
+  children,
+  tabs = salaoTabs,
+}: {
+  title: string;
+  children?: ReactNode;
+  tabs?: readonly TabItem[];
+}) {
   const navigate = useNavigate();
   useSairQuandoAnonima();
   const permissoes = usePermissoes();
@@ -39,7 +47,10 @@ export function Shell({ title, children, tabs = salaoTabs }: { title: string; ch
     <div className="app-shell">
       <header className="app-topbar">
         <h1 className="f4-title">{title}</h1>
-        <Button variant="secondary" className="app-signout" onClick={() => {
+        <Button
+          variant="secondary"
+          className="app-signout"
+          onClick={() => {
             // Signing out forgets what was waiting to be sent: the next person on the device never sends it.
             limparFila();
             void sair().then(() => navigate({ to: "/salao/entrar" }));
@@ -52,7 +63,13 @@ export function Shell({ title, children, tabs = salaoTabs }: { title: string; ch
       <main className="app-content">{children ?? <Outlet />}</main>
       <nav className="app-tabbar" aria-label="Seções do salão" hidden={visiveis.length === 0}>
         {visiveis.map((tab) => (
-          <Link key={tab.to} to={tab.to} className="app-tab" activeOptions={{ exact: true }} activeProps={{ "aria-current": "page" }}>
+          <Link
+            key={tab.to}
+            to={tab.to}
+            className="app-tab"
+            activeOptions={{ exact: true }}
+            activeProps={{ "aria-current": "page" }}
+          >
             {tab.label}
           </Link>
         ))}

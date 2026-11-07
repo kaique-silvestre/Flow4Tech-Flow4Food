@@ -15,13 +15,27 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 }
 
 /** Label above the input (never a placeholder as the label), 48px high, error and hint linked with aria-describedby. */
-export function TextField({ label, hint, error, trailing, loading = false, className, disabled, ref, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  hint,
+  error,
+  trailing,
+  loading = false,
+  className,
+  disabled,
+  ref,
+  ...rest
+}: TextFieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
-  const describedBy = [error ? errorId : null, hint ? hintId : null, rest["aria-describedby"]].filter(Boolean).join(" ") || undefined;
+  const describedBy =
+    [error ? errorId : null, hint ? hintId : null, rest["aria-describedby"]].filter(Boolean).join(" ") || undefined;
   return (
-    <div className={["f4-field", className].filter(Boolean).join(" ")} data-state={error ? "error" : loading ? "loading" : "default"}>
+    <div
+      className={["f4-field", className].filter(Boolean).join(" ")}
+      data-state={error ? "error" : loading ? "loading" : "default"}
+    >
       <label htmlFor={id} className="f4-field-label">
         {label}
       </label>

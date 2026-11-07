@@ -8,7 +8,16 @@ export interface ChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
 }
 
 /** A pill the user toggles (a free table, a filter). Selection is announced with `aria-pressed`, never by color alone. */
-export function Chip({ selected = false, loading = false, error = false, disabled, className, children, type = "button", ...rest }: ChipProps) {
+export function Chip({
+  selected = false,
+  loading = false,
+  error = false,
+  disabled,
+  className,
+  children,
+  type = "button",
+  ...rest
+}: ChipProps) {
   return (
     <button
       {...rest}

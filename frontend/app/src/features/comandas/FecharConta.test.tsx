@@ -12,10 +12,57 @@ afterEach(() => {
   reiniciarFilaParaTestes();
 });
 
-const CAIXA = ["comanda:abrir", "comanda:ver", "comanda:fechar", "comanda:receber-pagamento", "caixa:ver", "mesa:ver", "produto:ver"];
-const comandaJson = { id: "c1", unidadeId: "u1", numero: 7, numeroTexto: "#7", identificacao: "Ana", mesaId: null, canal: "salao", garcomId: "g1", pessoas: null, estado: "aberta", taxaServicoPercentual: 10, taxaServicoRemovida: false, versao: 2, abertaEm: new Date().toISOString() };
-const conta = (extra: Record<string, unknown> = {}) => ({ consumoCentavos: 2500, taxaServicoCentavos: 250, totalCentavos: 2750, pagoCentavos: 0, saldoCentavos: 2750, taxaServicoRemovida: false, taxaServicoPercentual: 10, versao: 2, estado: "aberta", ...extra });
-const pagamento = (extra: Record<string, unknown> = {}) => ({ id: "p", comandaId: "c1", turnoId: "t", metodo: "dinheiro", recebidoCentavos: 3000, aplicadoCentavos: 2750, trocoCentavos: 250, saldoRestanteCentavos: 0, comandaVersao: 3, registradoEm: new Date().toISOString(), operadorId: "o", ...extra });
+const CAIXA = [
+  "comanda:abrir",
+  "comanda:ver",
+  "comanda:fechar",
+  "comanda:receber-pagamento",
+  "caixa:ver",
+  "mesa:ver",
+  "produto:ver",
+];
+const comandaJson = {
+  id: "c1",
+  unidadeId: "u1",
+  numero: 7,
+  numeroTexto: "#7",
+  identificacao: "Ana",
+  mesaId: null,
+  canal: "salao",
+  garcomId: "g1",
+  pessoas: null,
+  estado: "aberta",
+  taxaServicoPercentual: 10,
+  taxaServicoRemovida: false,
+  versao: 2,
+  abertaEm: new Date().toISOString(),
+};
+const conta = (extra: Record<string, unknown> = {}) => ({
+  consumoCentavos: 2500,
+  taxaServicoCentavos: 250,
+  totalCentavos: 2750,
+  pagoCentavos: 0,
+  saldoCentavos: 2750,
+  taxaServicoRemovida: false,
+  taxaServicoPercentual: 10,
+  versao: 2,
+  estado: "aberta",
+  ...extra,
+});
+const pagamento = (extra: Record<string, unknown> = {}) => ({
+  id: "p",
+  comandaId: "c1",
+  turnoId: "t",
+  metodo: "dinheiro",
+  recebidoCentavos: 3000,
+  aplicadoCentavos: 2750,
+  trocoCentavos: 250,
+  saldoRestanteCentavos: 0,
+  comandaVersao: 3,
+  registradoEm: new Date().toISOString(),
+  operadorId: "o",
+  ...extra,
+});
 
 function rotas(extra: Record<string, unknown> = {}, permissoes = CAIXA) {
   return {
@@ -49,7 +96,9 @@ describe("close the bill in cash", () => {
     expect(conta_.textContent).toContain("Serviço (10%)");
     expect(n(conta_.textContent)).toContain("R$ 27,50");
     expect(n(within(folha).getByLabelText("Valor a receber").textContent)).toContain("R$ 27,50");
-    const botoes = within(folha).getAllByRole("button").map((b) => b.textContent);
+    const botoes = within(folha)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
     expect(botoes).toEqual(["Voltar", "Dinheiro"]);
     expect(folha.textContent).not.toMatch(/Pix|Crédito|Débito|Voucher|Dividir/i);
   });
@@ -74,7 +123,10 @@ describe("close the bill in cash", () => {
 
   it("turns an amount below the balance into a partial payment that leaves the comanda open", async () => {
     const { chamadas, folha } = await abrirFolha({
-      "POST /comandas/c1/pagamentos": json(pagamento({ recebidoCentavos: 1000, aplicadoCentavos: 1000, trocoCentavos: 0, saldoRestanteCentavos: 1750 }), { status: 201 }),
+      "POST /comandas/c1/pagamentos": json(
+        pagamento({ recebidoCentavos: 1000, aplicadoCentavos: 1000, trocoCentavos: 0, saldoRestanteCentavos: 1750 }),
+        { status: 201 },
+      ),
     });
 
     await userEvent.clear(within(folha).getByLabelText("Dinheiro recebido"));
@@ -97,7 +149,10 @@ describe("close the bill in cash", () => {
   });
 
   it("learns the register is closed from the server when the person cannot see it", async () => {
-    const { folha } = await abrirFolha({ "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }) }, CAIXA.filter((p) => p !== "caixa:ver"));
+    const { folha } = await abrirFolha(
+      { "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }) },
+      CAIXA.filter((p) => p !== "caixa:ver"),
+    );
 
     await userEvent.click(within(folha).getByRole("button", { name: "Dinheiro" }));
 
@@ -108,10 +163,29 @@ describe("close the bill in cash", () => {
     let removida = false;
     const { folha } = await abrirFolha(
       {
-        "GET /comandas/c1/conta": () => json(removida ? conta({ taxaServicoCentavos: 0, totalCentavos: 2500, saldoCentavos: 2500, taxaServicoRemovida: true, versao: 3 }) : conta()),
+        "GET /comandas/c1/conta": () =>
+          json(
+            removida
+              ? conta({
+                  taxaServicoCentavos: 0,
+                  totalCentavos: 2500,
+                  saldoCentavos: 2500,
+                  taxaServicoRemovida: true,
+                  versao: 3,
+                })
+              : conta(),
+          ),
         "POST /comandas/c1/taxa-servico/remover": () => {
           removida = true;
-          return json(conta({ taxaServicoCentavos: 0, totalCentavos: 2500, saldoCentavos: 2500, taxaServicoRemovida: true, versao: 3 }));
+          return json(
+            conta({
+              taxaServicoCentavos: 0,
+              totalCentavos: 2500,
+              saldoCentavos: 2500,
+              taxaServicoRemovida: true,
+              versao: 3,
+            }),
+          );
         },
       },
       [...CAIXA, "comanda:remover-taxa-servico"],
@@ -146,7 +220,11 @@ describe("close the bill in cash", () => {
 
     expect(await screen.findByText("Recebimento na fila")).toBeVisible();
     expect(screen.getByText(/ficou na fila/)).toBeVisible();
-    const guardada = JSON.parse(window.localStorage.getItem("f4.fila.v1") ?? "[]") as { tipo: string; recebidoCentavos: number; id: string }[];
+    const guardada = JSON.parse(window.localStorage.getItem("f4.fila.v1") ?? "[]") as {
+      tipo: string;
+      recebidoCentavos: number;
+      id: string;
+    }[];
     expect(guardada).toHaveLength(1);
     expect(guardada[0]).toMatchObject({ tipo: "pagamento", recebidoCentavos: 2750 });
     expect(guardada[0]!.id).toMatch(/^[0-9a-f-]{36}$/);

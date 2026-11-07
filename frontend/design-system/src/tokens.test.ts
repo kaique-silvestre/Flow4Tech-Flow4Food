@@ -15,13 +15,25 @@ describe("design tokens", () => {
   });
 
   it("redefines the surfaces, ink, accent and statuses for dark mode", () => {
-    for (const name of ["bg", "surface", "ink", "ink-muted", "accent", "accent-ink", "border", "success", "warning", "error", "scrim"]) {
+    for (const name of [
+      "bg",
+      "surface",
+      "ink",
+      "ink-muted",
+      "accent",
+      "accent-ink",
+      "border",
+      "success",
+      "warning",
+      "error",
+      "scrim",
+    ]) {
       expect(dark, `--f4-${name} (dark)`).toMatch(new RegExp(`--f4-${name}: oklch\\(`));
     }
   });
 
   it("follows the system dark theme unless the light theme is forced", () => {
-    expect(css).toContain('@media (prefers-color-scheme: dark)');
+    expect(css).toContain("@media (prefers-color-scheme: dark)");
     expect(css).toContain(':root:not([data-theme="light"])');
   });
 

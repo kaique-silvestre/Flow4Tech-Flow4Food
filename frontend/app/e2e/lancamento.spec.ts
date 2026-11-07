@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -35,7 +35,10 @@ async function novaComanda(page: Page, nome: string) {
 const mais = (page: Page, produto: string) => page.getByRole("button", { name: `Adicionar ${produto}` });
 
 async function semHorizontal(page: Page) {
-  const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  const m = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
   expect(m.scroll).toBeLessThanOrEqual(m.client);
 }
 
@@ -43,13 +46,18 @@ async function alvosPequenos(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
       .filter((el) => el.closest("[aria-hidden=true]") === null)
-      .map((el) => ({ nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, r: el.getBoundingClientRect() }))
+      .map((el) => ({
+        nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName,
+        r: el.getBoundingClientRect(),
+      }))
       .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
       .map(({ nome, r }) => `${nome} ${Math.round(r.width)}x${Math.round(r.height)}`),
   );
 }
 
-test("from the signed-in list to the first item launched in under ten seconds, each next unit in one tap", async ({ page }) => {
+test("from the signed-in list to the first item launched in under ten seconds, each next unit in one tap", async ({
+  page,
+}) => {
   await entrarComoGarcom2(page);
   const nome = `Tempo ${Date.now() % 100000}`;
 
@@ -63,7 +71,10 @@ test("from the signed-in list to the first item launched in under ten seconds, e
   expect(gasto).toBeLessThan(10_000);
   // The measured target of the story (spec 21): scripted time from the signed-in list to the first item sent, and taps for the next unit (one).
   const tela = page.viewportSize();
-  appendFileSync(join(shots, "..", "metas.txt"), `${new Date().toISOString()} ${tela?.width}x${tela?.height} primeiro item enviado em ${gasto} ms (limite 10000); proxima unidade do mesmo produto: 1 toque\n`);
+  appendFileSync(
+    join(shots, "..", "metas.txt"),
+    `${new Date().toISOString()} ${tela?.width}x${tela?.height} primeiro item enviado em ${gasto} ms (limite 10000); proxima unidade do mesmo produto: 1 toque\n`,
+  );
 
   // The next unit of the same product is a single tap.
   await mais(page, "Chopp 300ml").click();
@@ -72,7 +83,9 @@ test("from the signed-in list to the first item launched in under ten seconds, e
   await expect(page.getByRole("region", { name: "Rodada não enviada" })).toContainText("2 itens não enviados");
 });
 
-test("opens a comanda, adds items, sends, undoes within the window, sends again and cancels an item", async ({ page }) => {
+test("opens a comanda, adds items, sends, undoes within the window, sends again and cancels an item", async ({
+  page,
+}) => {
   await entrarComoGarcom2(page);
   const nome = `Fluxo ${Date.now() % 100000}`;
   await novaComanda(page, nome);
@@ -139,7 +152,9 @@ test("opens a comanda, adds items, sends, undoes within the window, sends again 
   await shoot(page, "12-item-cancelado");
 });
 
-test("repeats the last round and finds products by code, with a clear message when nothing matches", async ({ page }) => {
+test("repeats the last round and finds products by code, with a clear message when nothing matches", async ({
+  page,
+}) => {
   await entrarComoGarcom2(page);
   await novaComanda(page, `Repetir ${Date.now() % 100000}`);
   await page.getByRole("tab", { name: "Bebidas" }).click();

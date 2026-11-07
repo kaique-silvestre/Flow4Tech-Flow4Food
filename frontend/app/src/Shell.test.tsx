@@ -7,7 +7,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const pronta = { "POST /refresh": json(sessaoJson()), "GET /comandas": json([]), "GET /caixa/turnos/atual": new Response(null, { status: 404 }) };
+const pronta = {
+  "POST /refresh": json(sessaoJson()),
+  "GET /comandas": json([]),
+  "GET /caixa/turnos/atual": new Response(null, { status: 404 }),
+};
 
 describe("salão shell (signed in)", () => {
   it("sends the root to /salao and renders the title and both tabs", async () => {

@@ -66,12 +66,20 @@ describe("ItemRow", () => {
   });
 });
 
-describe("Stepper", () => {
-  function Example({ min, max }: { min?: number; max?: number }) {
-    const [value, setValue] = useState(2);
-    return <Stepper label="Chopp" value={value} onChange={setValue} {...(min === undefined ? {} : { min })} {...(max === undefined ? {} : { max })} />;
-  }
+function Example({ min, max }: { min?: number; max?: number }) {
+  const [value, setValue] = useState(2);
+  return (
+    <Stepper
+      label="Chopp"
+      value={value}
+      onChange={setValue}
+      {...(min === undefined ? {} : { min })}
+      {...(max === undefined ? {} : { max })}
+    />
+  );
+}
 
+describe("Stepper", () => {
   it("raises and lowers the quantity", async () => {
     render(<Example />);
 

@@ -46,7 +46,13 @@ export function UndoToast({ message, durationMs, onUndo, onExpire, loading = fal
         <span>
           {message} <span className="f4-num f4-toast-sec">({segundos} s)</span>
         </span>
-        <button type="button" className="f4-toast-undo" onClick={onUndo} disabled={loading || restanteMs <= 0} aria-busy={loading || undefined}>
+        <button
+          type="button"
+          className="f4-toast-undo"
+          onClick={onUndo}
+          disabled={loading || restanteMs <= 0}
+          aria-busy={loading || undefined}
+        >
           Desfazer
         </button>
       </div>

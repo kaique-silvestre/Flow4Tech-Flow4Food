@@ -21,8 +21,14 @@ export default defineConfig({
     serviceWorkers: "allow",
   },
   projects: [
-    { name: "phone-390x844", use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
-    { name: "phone-360x740", use: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } },
+    {
+      name: "phone-390x844",
+      use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    },
+    {
+      name: "phone-360x740",
+      use: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    },
   ],
   webServer: {
     command: "pnpm run build && pnpm run preview",

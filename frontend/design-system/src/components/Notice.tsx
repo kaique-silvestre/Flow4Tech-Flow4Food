@@ -26,6 +26,7 @@ export function Skeleton({ rows = 3, label = "Carregando" }: { rows?: number; la
   return (
     <div role="status" aria-label={label} aria-busy="true">
       {Array.from({ length: rows }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed-length list of identical placeholders, it never reorders.
         <div key={i} className="f4-skeleton" aria-hidden="true" />
       ))}
     </div>

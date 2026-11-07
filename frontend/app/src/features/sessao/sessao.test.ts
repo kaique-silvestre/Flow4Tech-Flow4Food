@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
-import { api, destinoDaSessao, entrar, lerSessao, renovar, reiniciarSessaoParaTestes, restaurar, sair } from "./sessao";
+import { api, destinoDaSessao, entrar, lerSessao, reiniciarSessaoParaTestes, renovar, restaurar, sair } from "./sessao";
 
 beforeEach(() => {
   reiniciarSessaoParaTestes();
@@ -66,7 +66,12 @@ describe("session in memory", () => {
 describe("single refresh", () => {
   it("sends ONE refresh for any number of simultaneous callers", async () => {
     let resolver: (r: Response) => void = () => undefined;
-    const chamadas = stubRede({ "POST /refresh": () => new Promise<Response>((r) => { resolver = r; }) as unknown as Response });
+    const chamadas = stubRede({
+      "POST /refresh": () =>
+        new Promise<Response>((r) => {
+          resolver = r;
+        }) as unknown as Response,
+    });
 
     const todas = Promise.all([renovar(), renovar(), renovar()]);
     await vi.waitFor(() => expect(chamadas).toHaveLength(1));
@@ -100,7 +105,9 @@ describe("single refresh", () => {
     const chamadas = stubRede({
       "GET /unidades": (c) => {
         tentativas += 1;
-        return c.headers.get("Authorization") === "Bearer novo" ? json([{ id: "u1", nome: "Centro" }]) : new Response(null, { status: 401 });
+        return c.headers.get("Authorization") === "Bearer novo"
+          ? json([{ id: "u1", nome: "Centro" }])
+          : new Response(null, { status: 401 });
       },
       "POST /refresh": json(sessaoJson({ accessToken: "novo" })),
     });
@@ -115,7 +122,10 @@ describe("single refresh", () => {
   it("ends the session when the refresh is refused", async () => {
     stubRede({ "POST /login": json(sessaoJson()) });
     await entrar({ email: "a@b.test", senha: "x" });
-    stubRede({ "GET /unidades": new Response(null, { status: 401 }), "POST /refresh": new Response(null, { status: 401 }) });
+    stubRede({
+      "GET /unidades": new Response(null, { status: 401 }),
+      "POST /refresh": new Response(null, { status: 401 }),
+    });
 
     const { response } = await api.GET("/unidades");
 

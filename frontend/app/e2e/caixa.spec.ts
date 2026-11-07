@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -46,20 +46,28 @@ async function comecarFechado(page: Page) {
 }
 
 async function semHorizontal(page: Page) {
-  const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  const m = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+  }));
   expect(m.scroll).toBeLessThanOrEqual(m.client);
 }
 
 async function alvosPequenos(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
-      .map((el) => ({ nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName, r: el.getBoundingClientRect() }))
+      .map((el) => ({
+        nome: el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName,
+        r: el.getBoundingClientRect(),
+      }))
       .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
       .map(({ nome, r }) => `${nome} ${Math.round(r.width)}x${Math.round(r.height)}`),
   );
 }
 
-test("the cashier opens the register with a float, sees the shift and closes it with the difference in words", async ({ page }) => {
+test("the cashier opens the register with a float, sees the shift and closes it with the difference in words", async ({
+  page,
+}) => {
   await entrarComo(page, "caixa");
   await comecarFechado(page);
   await shoot(page, "10-caixa-fechado");
@@ -104,7 +112,9 @@ test("the cashier opens the register with a float, sees the shift and closes it 
   await page.getByRole("button", { name: "Concluir" }).click();
 });
 
-test("a second open from a stale screen is refused by the server and shown as an error the user can act on", async ({ page }) => {
+test("a second open from a stale screen is refused by the server and shown as an error the user can act on", async ({
+  page,
+}) => {
   await entrarComo(page, "caixa");
   await comecarFechado(page);
   await page.getByLabel("Fundo de troco").fill("1000");
@@ -112,7 +122,11 @@ test("a second open from a stale screen is refused by the server and shown as an
   await expect(page.getByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
 
   // The screen of another device still shows the register closed: the read answers "no shift" once, the open is real.
-  await page.route("**/caixa/turnos/atual", (route) => route.fulfill({ status: 404, json: { codigo: "sem-turno-aberto" } }), { times: 1 });
+  await page.route(
+    "**/caixa/turnos/atual",
+    (route) => route.fulfill({ status: 404, json: { codigo: "sem-turno-aberto" } }),
+    { times: 1 },
+  );
   await page.getByRole("link", { name: "Comandas" }).click();
   await page.getByRole("link", { name: "Caixa" }).click();
   await expect(page.getByText("Caixa fechado. Abra o caixa para receber.")).toBeVisible();

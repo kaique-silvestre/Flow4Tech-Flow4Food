@@ -25,7 +25,14 @@ export function tokenDe(conta: string): string {
   return `${parte({ alg: "HS256", typ: "JWT" })}.${parte({ sub: conta })}.assinatura`;
 }
 
-export function sessaoJson(extra: Partial<{ deveTrocarSenha: boolean; requerSelecaoDeUnidade: boolean; unidadeAtivaId: string | null; accessToken: string }> = {}) {
+export function sessaoJson(
+  extra: Partial<{
+    deveTrocarSenha: boolean;
+    requerSelecaoDeUnidade: boolean;
+    unidadeAtivaId: string | null;
+    accessToken: string;
+  }> = {},
+) {
   return {
     accessToken: tokenDe("conta-1"),
     expiraEmSegundos: 300,
@@ -43,16 +50,28 @@ export const TODAS_AS_PERMISSOES = ["caixa:abrir", "caixa:fechar", "caixa:ver", 
 /** Stubs the network edge by `METHOD /path`. Anything not listed fails the test loudly (no silent default). Returns the recorded calls. */
 export function stubRede(informadas: Record<string, Resposta>) {
   // The caller's permissions are incidental to most tests: everyone may do everything unless a test says otherwise.
-  const rotas: Record<string, Resposta> = { "GET /sessao/permissoes": json({ permissoes: TODAS_AS_PERMISSOES }), ...informadas };
+  const rotas: Record<string, Resposta> = {
+    "GET /sessao/permissoes": json({ permissoes: TODAS_AS_PERMISSOES }),
+    ...informadas,
+  };
   const chamadas: Chamada[] = [];
   const fetchFalso = vi.fn(async (entrada: Request) => {
     const url = new URL(entrada.url);
     const texto = entrada.method === "GET" ? "" : await entrada.clone().text();
-    const chamada: Chamada = { method: entrada.method, path: url.pathname, headers: entrada.headers, body: texto ? JSON.parse(texto) : undefined };
+    const chamada: Chamada = {
+      method: entrada.method,
+      path: url.pathname,
+      headers: entrada.headers,
+      body: texto ? JSON.parse(texto) : undefined,
+    };
     chamadas.push(chamada);
     const chave = `${entrada.method} ${url.pathname}`;
     // A key may name a path parameter as ":id" (a round id the test cannot know in advance).
-    const resposta = rotas[chave] ?? Object.entries(rotas).find(([padrao]) => padrao.includes(":") && new RegExp(`^${padrao.replace(/:[a-z]+/gi, "[^/]+")}$`).test(chave))?.[1];
+    const resposta =
+      rotas[chave] ??
+      Object.entries(rotas).find(
+        ([padrao]) => padrao.includes(":") && new RegExp(`^${padrao.replace(/:[a-z]+/gi, "[^/]+")}$`).test(chave),
+      )?.[1];
     if (!resposta) {
       throw new Error(`rota sem stub: ${entrada.method} ${url.pathname}`);
     }

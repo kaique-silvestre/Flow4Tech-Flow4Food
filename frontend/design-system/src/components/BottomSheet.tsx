@@ -17,12 +17,25 @@ export interface BottomSheetProps {
 }
 
 /** Short tasks over the list (new comanda, send the round, close the bill). Radix Dialog gives the focus trap, Escape and the labelled dialog role. */
-export function BottomSheet({ open, onOpenChange, title, description, children, footer, error, loading = false }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  footer,
+  error,
+  loading = false,
+}: BottomSheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="f4-scrim" />
-        <Dialog.Content className="f4-sheet" aria-busy={loading || undefined} {...(description ? {} : { "aria-describedby": undefined })}>
+        <Dialog.Content
+          className="f4-sheet"
+          aria-busy={loading || undefined}
+          {...(description ? {} : { "aria-describedby": undefined })}
+        >
           <Dialog.Title className="f4-sheet-title">{title}</Dialog.Title>
           {description ? <Dialog.Description className="f4-sheet-desc">{description}</Dialog.Description> : null}
           {children}

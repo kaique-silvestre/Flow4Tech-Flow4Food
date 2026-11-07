@@ -29,7 +29,11 @@ export function paraComanda(c: Record<string, unknown>): Comanda {
 }
 
 export function paraMesa(m: Record<string, unknown>): Mesa {
-  return { id: String(m["id"]), identificacao: String(m["identificacao"]), status: m["status"] === "ocupada" ? "ocupada" : "livre" };
+  return {
+    id: String(m["id"]),
+    identificacao: String(m["identificacao"]),
+    status: m["status"] === "ocupada" ? "ocupada" : "livre",
+  };
 }
 
 /** "há 12 min", "há 1 h 05 min": elapsed time since the comanda opened, in the words the floor uses. */
@@ -64,7 +68,10 @@ export function combinaBusca(comanda: Comanda, busca: string): boolean {
 }
 
 function normalizar(texto: string): string {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  return texto
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 }
 
 /** The mesa an entered number refers to: its identification equals the digits (the seed and the owners name tables by number). */

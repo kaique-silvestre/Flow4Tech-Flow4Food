@@ -219,7 +219,9 @@ export function useSessao(): EstadoDaSessao {
 }
 
 /** Where the person must be: the screen that matches the session, and nothing else is reachable until it is done. */
-export function destinoDaSessao(e: EstadoDaSessao): "/salao/entrar" | "/salao/trocar-senha" | "/salao/unidade" | "/salao" {
+export function destinoDaSessao(
+  e: EstadoDaSessao,
+): "/salao/entrar" | "/salao/trocar-senha" | "/salao/unidade" | "/salao" {
   if (e.status !== "ativa") {
     return "/salao/entrar";
   }

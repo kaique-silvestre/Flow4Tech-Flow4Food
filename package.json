@@ -1,11 +1,14 @@
 {
   "name": "flow4tech",
   "private": true,
-  "description": "Raiz do monorepo: só ferramentas de repositório (git hooks). Os pacotes estão em pnpm-workspace.yaml.",
+  "description": "Raiz do monorepo: só ferramentas de repositório (git hooks, Biome). Os pacotes estão em pnpm-workspace.yaml.",
   "scripts": {
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "lint": "biome ci .",
+    "lint:fix": "biome check --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.3",
     "husky": "^9.1.7",
     "railway": "^3.16.0"
   }
