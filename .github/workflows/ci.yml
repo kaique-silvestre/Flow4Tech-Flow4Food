@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - name: Build (nullable + analyzers, warnings are errors)
         run: dotnet build backend/Flow4Tech.sln -c Release
       - name: Format check
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       # Integration classes are named *Endpoints* / *Integration*; everything else is unit.
       - run: >
           dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
@@ -129,7 +129,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: >
           dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
           --filter "FullyQualifiedName~Endpoints|FullyQualifiedName~Integration"
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Architecture/Flow4Tech.Architecture.Tests.csproj -c Release
 
   isolation-tests:
@@ -153,7 +153,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Isolation/Flow4Tech.Isolation.Tests.csproj -c Release
 
   outbox-tests:
@@ -164,7 +164,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Outbox/Flow4Tech.Outbox.Tests.csproj -c Release
 
   organizacao-tests:
@@ -175,7 +175,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Organizacao/Flow4Tech.Organizacao.Tests.csproj -c Release
 
   audit-tests:
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Audit/Flow4Tech.Audit.Tests.csproj -c Release
 
   identidade-tests:
@@ -197,7 +197,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Identidade/Flow4Tech.Identidade.Tests.csproj -c Release
 
   authorization-tests:
@@ -208,7 +208,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - run: dotnet test backend/tests/Authorization/Flow4Tech.Authorization.Tests.csproj -c Release
 
   secret-scan:
@@ -236,7 +236,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - uses: pnpm/action-setup@v4
         with:
           version: 11
@@ -261,7 +261,7 @@ jobs:
           fetch-depth: 0 # base revision of the contract is read from history
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
       - uses: pnpm/action-setup@v4
         with:
           version: 11
