@@ -4,7 +4,7 @@
 - Date: 2026-11-02
 
 ## Context
-Toda requisição precisa saber quem é o usuário (spec `plataforma-base`, 5.2). O login tem um problema que o resto do sistema não tem: ele precisa achar a conta **antes** de existir contexto de organização, e todas as tabelas de tenant estão sob RLS forçado (ADR-002), de modo que sem contexto a aplicação enxerga zero linhas. Ao mesmo tempo o login não pode revelar se um usuário, uma organização ou um e-mail existem (5.2.8), e nenhuma senha, hash ou credencial temporária pode aparecer em log, auditoria ou resposta (S6).
+Toda requisição precisa saber quem é o usuário (spec `S-02-plataforma-base`, 5.2). O login tem um problema que o resto do sistema não tem: ele precisa achar a conta **antes** de existir contexto de organização, e todas as tabelas de tenant estão sob RLS forçado (ADR-002), de modo que sem contexto a aplicação enxerga zero linhas. Ao mesmo tempo o login não pode revelar se um usuário, uma organização ou um e-mail existem (5.2.8), e nenhuma senha, hash ou credencial temporária pode aparecer em log, auditoria ou resposta (S6).
 
 ## Decision
 1. **Identidade própria, não terceirizada** (A6). Nada de criptografia inventada: Argon2id para senhas, assinatura de token por biblioteca auditada (ticket 04), OIDC para Google (ticket 09).

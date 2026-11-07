@@ -3,3 +3,5 @@ packages:
   - frontend/control
   - frontend/design-system
   - frontend/packages/api-client
+allowBuilds:
+  esbuild: true
