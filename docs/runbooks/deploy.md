@@ -28,6 +28,27 @@ The new system lives in its own Railway project, `flow4tech-v2` (the old system 
 
 Not used for the new system anymore: `railway up`, a Railway token in GitHub, the `deploy.yml` and `deploy-production.yml` workflows (removed in F4-0080).
 
+## Promoting staging to production
+
+There is no "promote" button: each environment rebuilds from the commit of its own branch.
+
+```
+push to dev-v2 --CI green--> Railway deploys STAGING
+PR dev-v2 -> main-v2 (merge commit) --CI green--> Railway deploys PRODUCTION
+```
+
+1. Work lands on `dev-v2`; CI passes; staging deploys.
+2. Check staging: `curl https://flow4tech-api-staging.up.railway.app/health/ready` must answer 200 with `commit` equal to the SHA you intend to ship; exercise what changed.
+3. Open a PR `dev-v2` -> `main-v2` (template `.github/pull_request_template.md`), merge with a merge commit (ADR-016). Only open it from a SHA that staging already showed healthy: the rule is process, nothing in Railway enforces it.
+4. CI runs again on the merge commit; when green, Railway deploys production (pre-deploy migrator on the production database, then the healthcheck).
+5. Check production: `/health/ready` 200 with `commit` equal to the merge commit.
+
+Facts to keep in mind:
+- The image is rebuilt, not copied from staging: same code, not the same artifact.
+- There is no manual approval in Railway. The control point is the PR into `main-v2` plus the required `gates` check (GitHub branch protection, owner setting; until it is on, nothing technically stops a direct push).
+- Migrations run per environment against that environment's own database; staging never touches production data.
+- Rollback: redeploy the previous deployment in Railway, or revert the commit on `main-v2` (see Rollback).
+
 ## Railway configuration is code: `.railway/railway.ts`
 
 The service settings (GitHub source and branch per environment, wait for CI, Dockerfile build, pre-deploy command, healthcheck) live in `.railway/railway.ts`, not in the dashboard and not in `railway.toml`.
