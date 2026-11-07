@@ -6,6 +6,7 @@
     "prepare": "husky || true"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "railway": "^3.16.0"
   }
 }

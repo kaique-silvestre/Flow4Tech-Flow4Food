@@ -97,3 +97,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0077 | CI em todo push de dev-v2/main-v2 e documentar o fluxo de branches e ambientes | governanca | `docs/adr/016-fluxo-de-branches-e-ids-de-ticket.md` | - | `dev-v2` (commit direto) | - | feito |
 | F4-0078 | Notas: hospedagem do front e ambientes do sistema novo (Railway/Vercel/bucket, cookie) | governanca | `.scratch/governanca/hospedagem-do-front-e-ambientes.md` | - | `dev-v2` (commit direto) | - | feito |
 | F4-0079 | Gitleaks: ignorar 4 fixtures de teste falsas (senha de exemplo e JWT do jwt.io) por fingerprint | governanca | - | - | `dev-v2` (commit direto) | - | feito |
+| F4-0080 | Railway Infrastructure as Code (.railway/railway.ts) no lugar do railway.toml (ignorado em servicos novos) | governanca | `.scratch/governanca/hospedagem-do-front-e-ambientes.md` | - | `dev-v2` (commit direto) | - | feito (staging; falta production e limpar deploy.yml) |

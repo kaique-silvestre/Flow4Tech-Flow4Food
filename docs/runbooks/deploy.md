@@ -18,7 +18,7 @@ Nota (ADR-016, emenda F4-0077): a tabela abaixo descreve o fluxo do sistema anti
 
 1. Pull request: all gates in `.github/workflows/ci.yml` run. `gates` is the only required check. The `build` job also builds the Docker image, so a broken image fails the PR.
 2. Merge to `main`: `ci` runs again; `deploy-staging` (reusable `deploy.yml`, GitHub environment `staging`) starts only if `gates` succeeded.
-3. `deploy.yml`: `railway up --ci` uploads the commit and Railway builds the root `Dockerfile` (`railway.toml`).
+3. `deploy.yml`: `railway up --ci` uploads the commit and Railway builds the root `Dockerfile` (settings in `.railway/railway.ts`).
 4. Railway pre-deploy command `dotnet Flow4Tech.Migrator.dll` (owner credential, private network):
    - applies `backend/migrations` (checksummed, advisory-locked; an edited applied file fails the deploy);
    - sets LOGIN and password of `flow4tech_app` from `APP_DB_PASSWORD` (idempotent);
@@ -78,7 +78,7 @@ Requires PostgreSQL 15 or newer: the "app cannot create objects" guarantee relie
 ## First-time setup (once, by the owner)
 
 1. Railway: create a project; add PostgreSQL; create environments `staging` and `production` (each with its own PostgreSQL service); region US East (Virginia).
-2. In each environment add the API service from this GitHub repo (root `railway.toml` is picked up), set the variables above, generate a public domain.
+2. In each environment add the API service from this GitHub repo (settings come from `.railway/railway.ts` through `railway config apply`; Railway waits for the GitHub checks before deploying), set the variables above, generate a public domain.
 3. Create one Railway project token per environment.
 4. GitHub: Settings, Environments: create `staging` (no reviewers) and `production` (required reviewers); add the secret and variables above in each. Restrict `production` to the `main` branch.
 5. GitHub branch protection on `main`: require the `gates` check only.

@@ -11,7 +11,7 @@ The foundation needs two environments, `staging` and `production`, each with its
 2. **Front (`app`, `control`) on Vercel**, preview per branch (Vercel Git integration default), variables per environment.
 3. **Deploy pipeline**: GitHub Actions. `ci.yml` deploys `staging` automatically from `main` after the `gates` job; `production` is a separate manual workflow behind a GitHub environment with required reviewers. Both use the Railway CLI with an environment-scoped project token and finish with a readiness smoke test.
 4. **Two database credentials** (ADR-002): the owner (migrations) and `flow4tech_app` (running app). Migrations run in Railway's pre-deploy command (`dotnet Flow4Tech.Migrator.dll`, the same image as the API) with `MIGRATION_DATABASE_URL`; the migrator also gives `flow4tech_app` its LOGIN and password from `APP_DB_PASSWORD` and fails the deploy if the application credential is a superuser, has BYPASSRLS, owns tables or can run DDL. The web process never migrates.
-5. **Infrastructure as code**: `railway.toml` only. `.railway/railway.ts` stays evaluated, not adopted (spec section 9, open question 1, A10).
+5. **Infrastructure as code**: `.railway/railway.ts` (adopted, F4-0080). `railway.toml` was dropped: Railway ignores it for services that never used Config as Code (opt-in closed 2026-08-28), which left the new staging without pre-deploy or healthcheck. Variables stay unmanaged by the file (secrets live only in Railway).
 
 ## Consequences
 - One image serves the API and the migrator; rollbacks redeploy a previous image and migrations stay expand-migrate-contract so the previous version still works against the new schema.
