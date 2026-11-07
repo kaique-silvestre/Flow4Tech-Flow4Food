@@ -1,0 +1,5 @@
+# Test fixtures only (a sample password and the public jwt.io example token). Fingerprint = commit:file:rule:line.
+2f877663c668d5a7411a970f74efca2276d06c27:backend/tests/Identidade/RecuperacaoDeAcessoTests.cs:generic-api-key:170
+dfcfdcd60dd804639368f47ad0640f14d9c9331b:backend/tests/Audit/SensitiveDataTests.cs:jwt:45
+dfcfdcd60dd804639368f47ad0640f14d9c9331b:backend/tests/Flow4Tech.Tests/RequestContextEndpointsTests.cs:jwt:435
+dfcfdcd60dd804639368f47ad0640f14d9c9331b:backend/tests/Audit/TechnicalLogTests.cs:jwt:11
