@@ -33,7 +33,7 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - deploy: Railway (API + PostgreSQL) and Vercel (front), see `docs/runbooks/deploy.md` and ADR-009. `main` -> `staging` automatically (`ci.yml` -> `deploy.yml`); `production` is the manual `deploy-production` workflow with required reviewers. Migrations run in Railway's pre-deploy command (`railway.toml`). Local dev (`docker compose up --build`) uses the same two credentials: `migrate` as owner, `api` as `flow4tech_app`.
 
 ## CI gates (`.github/workflows/ci.yml`, GitHub Actions)
-One pipeline on every pull request and on push to `main`. Merge requires the aggregate job `gates` to be green (branch protection); `deploy` runs only on push to `main` after `gates`.
+One pipeline on every pull request and on every push to `dev-v2`, `main-v2` and `main` (a direct push to `dev-v2` is allowed and runs the same gates; `main-v2` only receives PRs and runs them again on the merge commit). Merge requires the aggregate job `gates` to be green (branch protection); `deploy` runs only on push to `main` after `gates`.
 - `build`: `dotnet build -c Release` + `dotnet format --verify-no-changes`
 - `typecheck-frontend`: `pnpm install --frozen-lockfile && pnpm -r typecheck`
 - `unit-tests`: `Flow4Tech.Tests` excluding classes whose name contains `Endpoints` or `Integration`

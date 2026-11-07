@@ -1,11 +1,12 @@
 # Single pipeline. Every job is a mandatory gate; branch protection requires the
-# "gates" job (aggregates all others). Staging deploys only on main after all gates (production: deploy-production.yml).
+# "gates" job (aggregates all others). Runs on every pull request and on every push to dev-v2, main-v2 and main (ADR-016).
+# Staging deploys only on main after all gates (production: deploy-production.yml); the new system has no deploy yet.
 name: ci
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev-v2, main-v2]
 
 permissions:
   contents: read

@@ -4,6 +4,8 @@ Hosting decision: [ADR-009](../adr/009-hospedagem-railway-vercel.md). Everything
 
 ## Environments
 
+Nota (ADR-016, emenda F4-0077): a tabela abaixo descreve o fluxo do sistema antigo (`main`). O sistema novo ainda não tem deploy; o plano é `dev-v2` -> `staging` automático e `main-v2` -> `production` manual, em um projeto Railway próprio. O CI já roda em todo push em `dev-v2` e `main-v2`.
+
 | Environment | Branch / trigger | API + PostgreSQL | Front | Approval |
 |---|---|---|---|---|
 | preview (front only) | any branch / PR | none | Vercel preview URL per branch | none |

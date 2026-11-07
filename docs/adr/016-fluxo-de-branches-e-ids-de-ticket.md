@@ -28,3 +28,10 @@ O repositório tem branches de sessão (`claude/...`), planejamento (`refactor-v
 - Mais cerimônia por mudança (abrir ticket, nomear a branch), em troca de rastreio completo.
 - Trabalho já feito (plataforma base e salão) entra em `dev-v2` num PR único de legado, listando `F4-0001` a `F4-0038`. Commits antigos não são reescritos (mudaria os hashes e quebraria referências); o índice faz o mapeamento, e só os commits novos seguem o padrão.
 - Proteção de branch e o check de nome dependem de configuração no GitHub (Settings > Branches ou rulesets), que é decisão do dono.
+
+## Emenda 2026-11-07 (F4-0077): CI e ambientes
+- Sem branches `release`, `teste` ou `prod`. Ambiente é do Railway, não da branch.
+- O CI (`ci.yml`, job `gates`) roda em todo PR e em todo push em `dev-v2`, `main-v2` e `main`. Push direto em `dev-v2` é permitido, mas não fica sem verificação: quem empurra confere o resultado, e um `gates` vermelho em `dev-v2` é corrigido antes de qualquer outro trabalho.
+- `main-v2` só recebe PR de `dev-v2`; o CI roda no PR e de novo no merge commit.
+- Deploy do sistema novo ainda não existe. Quando existir (projeto Railway próprio, ver `docs/runbooks/deploy.md`): `dev-v2` verde -> `staging` automático; `main-v2` verde -> `production` manual com aprovação. O deploy sai do commit exato que o CI validou.
+- Classes de teste que sobem banco devem ter `Endpoints` ou `Integration` no nome (o CI separa por nome); `ClassificacaoDeTestesTests` falha se não tiverem (F4-0076).
