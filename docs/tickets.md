@@ -76,3 +76,4 @@ Um número `F4-NNNN` por ticket, sequencial, único e nunca reaproveitado (ADR-0
 | F4-0070 | Menu import screen | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/27-menu-import-ui.md` | - | - | pendente |
 | F4-0071 | Fix the e2e seed container (missing libgssapi_krb5) | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/28-seed-docker-fix.md` | - | - | pendente |
 | F4-0072 | Phase 2A closeout: two tenants, measured targets, shadow-pilot script | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/29-phase2a-closeout.md` | - | - | pendente |
+| F4-0073 | Aprovar o script de build do esbuild no pnpm (allowBuilds), destrava o pre-push | governanca | - | - | `chore/F4-0073-allow-esbuild-build` | a abrir (alvo `dev-v2`) | feito |
