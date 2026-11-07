@@ -93,3 +93,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0073 | Aprovar o script de build do esbuild no pnpm (allowBuilds), destrava o pre-push | governanca | - | - | `chore/F4-0073-allow-esbuild-build` | a abrir (alvo `dev-v2`) | feito |
 | F4-0074 | Liberar commit e push direto em dev-v2 (main-v2 segue só PR) | governanca | `docs/adr/016-fluxo-de-branches-e-ids-de-ticket.md` | - | `chore/F4-0074-commit-direto-em-dev-v2` | a abrir (alvo `dev-v2`) | feito |
 | F4-0075 | Fatias com ID `S-NN` sequencial: renomear pastas de `.scratch` e referências | governanca | `docs/adr/016-fluxo-de-branches-e-ids-de-ticket.md` | - | `dev-v2` (commit direto) | - | feito |
+| F4-0076 | Guarda de CI: classe de teste que usa banco precisa de "Endpoints"/"Integration" no nome | governanca | - | - | `dev-v2` (commit direto) | - | feito |
