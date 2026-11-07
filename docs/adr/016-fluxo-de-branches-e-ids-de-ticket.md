@@ -9,7 +9,7 @@ O repositório tem branches de sessão (`claude/...`), planejamento (`refactor-v
 ## Decision (proposta)
 **Branches de longa vida (sistema novo)**
 - `main-v2`: o que foi revisado e pode ser publicado. Protegida: só recebe PR vindo de `dev-v2`, com o job `gates` verde.
-- `dev-v2`: integração. Toda feature entra aqui por PR. Protegida: PR obrigatório e `gates` verde.
+- `dev-v2`: integração. Aceita commit e push direto (emenda de 2026-11-07); feature maior entra por PR com `gates` verde. O CI roda em todo push.
 - `main`, `staging`, `development` e `refactor-v2` ficam como estão (sistema antigo e planejamento); não recebem trabalho novo.
 
 **ID de ticket:** `F4-NNNN`, um número sequencial único no repositório (F4 = Flow4Tech), sem área no nome, nunca reaproveitado. O ID só identifica; ele não carrega fase, PR nem spec, porque isso muda. Tudo o que liga o ticket ao resto vive no índice `docs/tickets.md` (ID, título, fatia, spec, arquivo do ticket, branch, PR, status), atualizado a cada ticket aberto e a cada PR. Os 38 tickets já feitos (fundação, plataforma base, salão) receberam `F4-0001` a `F4-0038` em ordem cronológica.
