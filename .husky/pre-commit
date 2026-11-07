@@ -1,6 +1,6 @@
 . "$(dirname "$0")/_protegidas.sh"
 
-# 1. Nenhum commit direto nas branches protegidas (main-v2, dev-v2 e o sistema antigo).
+# 1. Nenhum commit direto nas branches protegidas (main-v2 e o sistema antigo).
 branch=$(git symbolic-ref --short -q HEAD || echo "")
 if [ -n "$branch" ] && E_protegida "$branch"; then
   echo "ERRO: commit direto em '$branch' não é permitido (ADR-016)." >&2
