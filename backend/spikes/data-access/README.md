@@ -1,7 +1,7 @@
 # DISPOSABLE SPIKE (ticket 07): Dapper vs EF Core vs raw Npgsql, and migration runner comparison
 
 Not part of `Flow4Tech.sln`: no CI gate builds, formats or audits it. Delete the whole directory when Phase 1 starts;
-the decision lives in `docs/adr/002-postgresql-com-rls.md` and the numbers in `.scratch/fundacao-tecnica/findings/data-access.md`.
+the decision lives in `docs/adr/002-postgresql-com-rls.md` and the numbers in `.scratch/S-01-fundacao-tecnica/findings/data-access.md`.
 
 Run (needs Docker):
 

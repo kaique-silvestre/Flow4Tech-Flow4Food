@@ -1,6 +1,6 @@
 # 009. Hosting: Railway (API + PostgreSQL) and Vercel (front), staging and production
 
-- Status: accepted (decision taken in `.scratch/fundacao-tecnica/spec.md`, section 5.2, and 04-arquitetura A10; this record is written from that spec decision, ticket 11)
+- Status: accepted (decision taken in `.scratch/S-01-fundacao-tecnica/spec.md`, section 5.2, and 04-arquitetura A10; this record is written from that spec decision, ticket 11)
 - Date: 2026-11-02
 
 ## Context

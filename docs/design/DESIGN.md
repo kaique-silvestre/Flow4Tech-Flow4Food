@@ -3,9 +3,9 @@
 register: product
 direction: Minimalist (+ Technical touches: tabular figures, controlled density, explicit states)
 intensity: internal (transactional; identity comes from type, contrast, grid, data and states, never from effects)
-stack: React + Vite SPA, TanStack Router/Query, Tailwind over a project design system (`frontend/design-system`), Radix primitives, React Hook Form + Zod; tests: vitest + testing-library (logic, state, components), Playwright (critical flows and screenshots). Source: `.scratch/novo-sistema/04-arquitetura.md` A11 (decided; existing stack wins).
+stack: React + Vite SPA, TanStack Router/Query, Tailwind over a project design system (`frontend/design-system`), Radix primitives, React Hook Form + Zod; tests: vitest + testing-library (logic, state, components), Playwright (critical flows and screenshots). Source: `.scratch/S-00-novo-sistema/04-arquitetura.md` A11 (decided; existing stack wins).
 viewports: 390x844 (primary: waiter phone), 360x740 (smallest supported), 1440x900 (web management, not used by the first slice)
-base source: derived from the approved prototype `.scratch/novo-sistema/prototipos/index.html` (tokens, components, flows), brief mode `--auto` (2026-11-05). Final font and palette stay open until real use on a device (`05-ux-design` U8): treat token VALUES as provisional, token NAMES as stable.
+base source: derived from the approved prototype `.scratch/S-00-novo-sistema/prototipos/index.html` (tokens, components, flows), brief mode `--auto` (2026-11-05). Final font and palette stay open until real use on a device (`05-ux-design` U8): treat token VALUES as provisional, token NAMES as stable.
 
 ## Thesis
 A calm, neutral phone tool that disappears while a waiter works one-handed in a crowded room: big targets, numbers that line up, one blue action per screen, and no decoration between the waiter and the next item.
@@ -103,4 +103,4 @@ conflicts:
 - Prototype caixa on mobile is "Em breve" (`05` U18, point 7) but roadmap 1.12 requires open and close in the slice: **no reference image**; designed from the base tokens and the U18 rules (float is not a sale, blind count hides the expected cash, difference shown in words).
 - No reference for login, unit selection, forced password change, comanda list, empty/skeleton/error states: **authorial mode** for these screens; the user can add refs under `docs/design/refs/salao/` or accept authorial.
 - The prototype's "dar um nome" and number-only entry both exist; with `Usar mesas` off the field reads "Comanda 7", not "Mesa 7" (`05` U4).
-- approved: 2026-11-06 by the owner: follow the approved prototype `.scratch/novo-sistema/prototipos/index.html` as the visual reference; the authored screens in `docs/design/refs/salao/autoral/` stand as the first slice. Token VALUES stay provisional (see base source).
+- approved: 2026-11-06 by the owner: follow the approved prototype `.scratch/S-00-novo-sistema/prototipos/index.html` as the visual reference; the authored screens in `docs/design/refs/salao/autoral/` stand as the first slice. Token VALUES stay provisional (see base source).
