@@ -1,3 +1,8 @@
 # Trivy exceptions (F4-0087). One per line: the ID, then a comment with reason and review date.
 # Format: CVE-XXXX-YYYY or AVD-DS-00NN  (optional: "exp:YYYY-MM-DD" to expire the exception)
 # Never add an entry without a reason; an expired entry fails the scan again on purpose.
+
+# apt / libapt-pkg6.0t64 in the mcr.microsoft.com/dotnet/aspnet:10.0 base (Ubuntu 24.04), fixed upstream in 2.8.4ubuntu0.1 but not yet in the
+# published image (digest checked 2026-11-07). The flaw needs apt to download packages; the runtime container never runs apt (non-root, no install step).
+# Remove this line when Dependabot bumps the Dockerfile digest to an image that carries the fix. The exp date makes the scan fail again if we forget.
+CVE-2026-109518 exp:2026-12-07

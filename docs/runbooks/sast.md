@@ -89,3 +89,6 @@ SAST reads the code; DAST attacks the RUNNING app from outside, like a client wo
 
 **Front** (`frontend/app/vercel.json` and `frontend/control/vercel.json`): `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and a CSP that only has `frame-ancestors 'none'`. Vercel adds HSTS on its own domains. The full CSP (`script-src`, `connect-src`...) waits for the hosting and API origin decision: F4-0095 in `.scratch/governanca/pendencias.md`. If the front moves to another host, copy the same headers to its configuration.
 - ZAP (`dast` job) reads these headers on the API; a regression shows as a warning in the report, the unit test fails earlier.
+
+### Trivy exceptions in force
+- `CVE-2026-109518` (apt in the aspnet base image), until 2026-12-07: first CI run (2026-11-07) failed on it; the pinned digest is the newest MCR had and carries no fix. Not exploitable at runtime (apt never runs). Drop the exception once a bumped digest passes.
