@@ -46,3 +46,33 @@ Um número `F4-NNNN` por ticket, sequencial, único e nunca reaproveitado (ADR-0
 | F4-0040 | Husky: hooks de commit, mensagem e push | governanca | `docs/adr/016-fluxo-de-branches-e-ids-de-ticket.md` | - | `chore/F4-0040-husky-hooks` | a abrir (alvo `dev-v2`) | feito |
 | F4-0041 | Fixar o SDK do .NET em global.json e o CI nele (CA1515 do dotnet format) | governanca | - | - | `chore/F4-0041-pin-sdk` | [#43](https://github.com/kaique-silvestre/Flow4Tech-Flow4Food/pull/43) | feito |
 | F4-0042 | Aprovar o DESIGN.md do salão (segue o protótipo) | governanca | `docs/design/DESIGN.md` | - | `docs/F4-0042-design-approved` | [#44](https://github.com/kaique-silvestre/Flow4Tech-Flow4Food/pull/44) | em revisão |
+| F4-0043 | Spec da Fase 2 (salão rápido) e revisões independentes dos tickets 06 a 14 do salão | governanca | `.scratch/salao-rapido/spec.md` | - | `docs/F4-0043-spec-fase2-e-revisoes` | [#45](https://github.com/kaique-silvestre/Flow4Tech-Flow4Food/pull/45) | em revisão (spec em rascunho, aguarda dono) |
+| F4-0044 | Backend fixes from the independent reviews of tickets 06 and 07 | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/01-review-fixes-backend.md` | - | - | pendente |
+| F4-0045 | Frontend and deploy fixes from the independent reviews of tickets 08 to 14 | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/02-review-fixes-frontend.md` | - | - | pendente |
+| F4-0046 | Model profiles (waiter, cashier, manager) and routes to assign them | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/03-profiles-model-and-routes.md` | - | - | pendente |
+| F4-0047 | Users and profiles screen on the phone | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/04-users-and-profiles-ui.md` | - | - | pendente |
+| F4-0048 | Complete menu: two-level categories, promotional price, price per unit, 'acabou' | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/05-menu-complete.md` | - | - | pendente |
+| F4-0049 | Menu management screen on the phone | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/06-menu-management-ui.md` | - | - | pendente |
+| F4-0050 | Options and add-ons on products | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/07-options-and-addons.md` | - | - | pendente |
+| F4-0051 | Add-ons and per-item note in the launch screen | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/08-addons-in-launch-ui.md` | - | - | pendente |
+| F4-0052 | Quick launch data: favorites, repeat last round, search by name or code, last time at the table | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/09-quick-launch-backend.md` | - | - | pendente |
+| F4-0053 | Quick launch screens: favorites, repeat, search, last-time card | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/10-quick-launch-ui.md` | - | - | pendente |
+| F4-0054 | Areas and the table map derived from comandas | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/11-areas-and-table-map-backend.md` | - | - | pendente |
+| F4-0055 | Table map screen on the phone | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/12-table-map-ui.md` | - | - | pendente |
+| F4-0056 | Complete comanda I: edit items, rename, change waiter, people, history, cancel | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/13-comanda-complete-backend.md` | - | - | pendente |
+| F4-0057 | Comanda edit and history screens | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/14-comanda-complete-ui.md` | - | - | pendente |
+| F4-0058 | Discount, courtesy and gift with limits decided by the engine | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/15-discount-courtesy-gift-backend.md` | - | - | pendente |
+| F4-0059 | Discount, courtesy and gift screens | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/16-discount-courtesy-gift-ui.md` | - | - | pendente |
+| F4-0060 | Transfer items and merge or separate comandas | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/17-transfer-and-merge-backend.md` | - | - | pendente |
+| F4-0061 | Split the bill: five ways with deterministic cents | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/18-split-bill-domain-and-backend.md` | - | - | pendente |
+| F4-0062 | Transfer, merge and split screens | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/19-transfer-merge-split-ui.md` | - | - | pendente |
+| F4-0063 | Payment methods and mixed payment | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/20-payment-methods-and-mixed-payment.md` | - | - | pendente |
+| F4-0064 | Receive with several methods on the phone | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/21-receive-payment-ui.md` | - | - | pendente |
+| F4-0065 | Complete cash register: supply, withdrawal, per-method count, approval | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/22-cash-register-complete-backend.md` | - | - | pendente |
+| F4-0066 | Complete cash register screens | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/23-cash-register-complete-ui.md` | - | - | pendente |
+| F4-0067 | Pre-bill, receipt and 'bill requested' | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/24-pre-bill-and-receipt-backend.md` | - | - | pendente |
+| F4-0068 | Pre-bill and receipt screens | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/25-pre-bill-and-receipt-ui.md` | - | - | pendente |
+| F4-0069 | Menu import from a spreadsheet | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/26-menu-import-backend.md` | - | - | pendente |
+| F4-0070 | Menu import screen | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/27-menu-import-ui.md` | - | - | pendente |
+| F4-0071 | Fix the e2e seed container (missing libgssapi_krb5) | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/28-seed-docker-fix.md` | - | - | pendente |
+| F4-0072 | Phase 2A closeout: two tenants, measured targets, shadow-pilot script | salao-rapido | `.scratch/salao-rapido/spec.md` | `.scratch/salao-rapido/issues/29-phase2a-closeout.md` | - | - | pendente |
