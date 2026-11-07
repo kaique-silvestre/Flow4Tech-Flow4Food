@@ -4,7 +4,7 @@ Um número `F4-NNNN` por ticket, sequencial, único e nunca reaproveitado (ADR-0
 
 ## Fatias
 
-Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado). ID `S-NN` sequencial, único, nunca reaproveitado (ADR-016, emenda F4-0075). Registre a fatia aqui antes de criar a pasta. `governanca` não é pasta: reúne manutenção transversal.
+Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado). ID `S-NN` sequencial, único, nunca reaproveitado (ADR-016, emenda F4-0075). Registre a fatia aqui antes de criar a pasta. `governanca` não é fatia `S-NN`: é um trilho permanente (`.scratch/governanca/`) para manutenção transversal, sem abertura nem fechamento.
 
 | ID | Pasta | Aberta | Fechada | Tickets |
 |---|---|---|---|---|
