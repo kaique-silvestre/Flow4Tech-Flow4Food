@@ -146,6 +146,7 @@ if (proxyConfiavel)
     app.UseForwardedHeaders();
 }
 
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<CorrelationMiddleware>();
 app.UseMiddleware<RouteGuardsMiddleware>();
 app.UseMiddleware<RequestContextMiddleware>();
