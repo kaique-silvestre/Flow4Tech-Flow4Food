@@ -1,6 +1,6 @@
 # Single pipeline. Every job is a mandatory gate; branch protection requires the
 # "gates" job (aggregates all others). Runs on every pull request and on every push to dev-v2, main-v2 and main (ADR-016).
-# Staging deploys only on main after all gates (production: deploy-production.yml); the new system has no deploy yet.
+# Deploys are not done here: Railway deploys staging (dev-v2) and production (main-v2) by itself after these checks pass ("wait for CI"), see docs/runbooks/deploy.md.
 name: ci
 
 on:
@@ -334,14 +334,3 @@ jobs:
         run: |
           echo "results: $RESULTS"
           for r in $RESULTS; do [ "$r" = "success" ] || exit 1; done
-
-  # Staging deploys on its own from green main (the `staging` GitHub environment, no reviewers).
-  # Production is a separate manual workflow with required reviewers: deploy-production.yml.
-  deploy-staging:
-    name: deploy staging (main only)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [gates]
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: staging
-      ref: ${{ github.sha }}

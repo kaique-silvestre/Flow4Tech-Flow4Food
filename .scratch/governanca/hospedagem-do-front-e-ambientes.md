@@ -48,3 +48,12 @@ O ADR-009 nao trata disso; precisa de resposta antes do front falar com a API em
 5. Ticket: `deploy-staging` passa a disparar em push de `dev-v2`; `deploy-production` valida o SHA em `main-v2`.
 6. Primeiro deploy de staging; conferir `/health/ready` com o `commit` certo; ajustar o `preDeployCommand` do `railway.toml` se preciso (marcado UNVERIFIED no runbook).
 7. Depois: migrar `railway.toml` (deprecado, funciona ate 2026-12-01).
+
+## Registro de 2026-11-07: o que aconteceu no primeiro staging (F4-0076 a F4-0080)
+- Primeiro CI em `dev-v2` falhou no gitleaks (4 fixtures de teste falsas): resolvido com `.gitleaksignore` por fingerprint (F4-0079).
+- Staging subiu com 503 em `/health/ready` mas o deploy contou como SUCCESS: o banco estava vazio. Causa: o Railway ignora `railway.toml` em servico que nunca usou Config as Code (opcao fechada em 2026-08-28), entao nao havia pre-deploy nem healthcheck.
+- Diagnostico: o `serviceManifest` do deployment mostrava `preDeployCommand: null`; o painel nao tinha a etapa Pre-deploy. O CLI nao mostra logs de pre-deploy e `railway environment edit` nao grava campos de deploy ("No changes to apply").
+- Correcao: `.railway/railway.ts` (gerado por `railway config migrate`), `plan` (0 add, 2 change, 0 destroy), `apply`, redeploy. Runbook reescrito.
+- Tropecos de CLI: no zsh `$VAR` com varios argumentos nao e separado (usar array); nao esconder stderr ao gravar variaveis (uma tentativa falhou em silencio); `railway ssh` pede chave registrada e o host aceito uma vez em terminal real.
+- Decisao: deploy pela integracao Git do Railway com "wait for CI" (`dev-v2` -> staging, `main-v2` -> production), sem workflow de deploy. Production sem aprovacao manual: a protecao e o PR em `main-v2` + check `gates` (configurar no GitHub).
+- Pendente: criar o ambiente `production` e aplicar o IaC la; branch `main-v2` no remoto; protecao de branch no GitHub; decisao sobre front/dominio.
