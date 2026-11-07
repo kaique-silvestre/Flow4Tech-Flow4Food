@@ -50,7 +50,7 @@ Harder: delivery is at least once with no global ordering, so every consumer is 
 ## Decided, to build before the first production worker
 Owner decisions (2026-11-02); none is built yet. They close F1, F2 and the pruning item below.
 - **Parked events (closes F1): alert plus manual reprocess.** An event with `falhou_em` set raises an alert/metric; an operator requeues it by hand (clear `falhou_em`, reset `tentativas`). The list of parked events will be visible in the Control Tower later. No automatic requeue.
-- **Organization discovery (closes F2, BUILT in plataforma-base ticket 07, migration 0011): a registry table of organization ids, not a BYPASSRLS role.** See "Organization discovery (built)" below. A role that bypasses RLS was rejected: it would be a standing hole in tenant isolation.
+- **Organization discovery (closes F2, BUILT in S-02-plataforma-base ticket 07, migration 0011): a registry table of organization ids, not a BYPASSRLS role.** See "Organization discovery (built)" below. A role that bypasses RLS was rejected: it would be a standing hole in tenant isolation.
 - **Retention job:** a background job prunes delivered outbox rows and inbox rows older than 30 days (per organization, inside its tenant context). Parked events are never pruned automatically.
 - **Quartz** confirmed as the queue/worker library behind `IBackgroundJobs`.
 

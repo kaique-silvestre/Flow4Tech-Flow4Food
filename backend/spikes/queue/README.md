@@ -1,7 +1,7 @@
 # DISPOSABLE SPIKE (ticket 08): Wolverine vs Hangfire vs Quartz behind our `IBackgroundJobs`
 
 Not part of `Flow4Tech.sln`: no CI gate builds, formats or audits it. Delete the directory when Phase 1 starts; the decision lives in
-`docs/adr/003-outbox-e-fila.md` and the numbers in `.scratch/fundacao-tecnica/findings/outbox.md`.
+`docs/adr/003-outbox-e-fila.md` and the numbers in `.scratch/S-01-fundacao-tecnica/findings/outbox.md`.
 
 Each library is adapted to `IBackgroundJobs` (src/Infrastructure/Outbox) and run through the same scenarios against real PostgreSQL 17:
 org context restored by the handler under RLS, retry of a failing handler, pickup latency (paced) and burst throughput.

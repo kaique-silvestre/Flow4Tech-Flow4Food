@@ -31,7 +31,7 @@ Minimum version: PostgreSQL 16 (spike ran on 17). Relied on: `CREATE ROLE` by a 
 8. Background jobs and event handlers must open `TenantDatabase.BeginAsync` with the organization of the job/event; there is no ambient context. Implemented and tested under RLS in ticket 08 (`OutboxDispatcher`, `Job.Organization`; see ADR-003).
 
 ## Data-access choice (ticket 07)
-Spike `backend/spikes/data-access` (disposable, kept as evidence) implemented the same use case (insert and list `amostra_itens` under RLS, per-transaction context) with raw Npgsql, Dapper and EF Core 10 on top of `TenantDatabase`, against real PostgreSQL 17. Full numbers and method: `.scratch/fundacao-tecnica/findings/data-access.md`. Measured on an Intel i7-9750H, 12 threads, Docker Desktop PostgreSQL 17 (loopback port-forward), 1500 iterations after 200 warm-up, 3 runs each:
+Spike `backend/spikes/data-access` (disposable, kept as evidence) implemented the same use case (insert and list `amostra_itens` under RLS, per-transaction context) with raw Npgsql, Dapper and EF Core 10 on top of `TenantDatabase`, against real PostgreSQL 17. Full numbers and method: `.scratch/S-01-fundacao-tecnica/findings/data-access.md`. Measured on an Intel i7-9750H, 12 threads, Docker Desktop PostgreSQL 17 (loopback port-forward), 1500 iterations after 200 warm-up, 3 runs each:
 
 | | Dapper | EF Core | raw Npgsql (baseline) |
 |---|---|---|---|
