@@ -78,8 +78,9 @@ public sealed partial class ModuleCatalogCoverageTests
     {
         var src = Path.Combine(ModuleGraph.BackendRoot(), "src");
         var users = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains(PreSessionSep("obj"), StringComparison.Ordinal) && !f.Contains(PreSessionSep("bin"), StringComparison.Ordinal))
-            .Where(f => PreAuthDatabaseUse().IsMatch(File.ReadAllText(f)))
+            .Where(f => !f.Contains(PreSessionSep("obj"), StringComparison.Ordinal)
+                        && !f.Contains(PreSessionSep("bin"), StringComparison.Ordinal)
+                        && PreAuthDatabaseUse().IsMatch(File.ReadAllText(f)))
             .Select(f => Path.GetRelativePath(src, f).Replace('\\', '/'))
             .ToList();
 

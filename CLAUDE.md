@@ -73,7 +73,7 @@ Duration budget (TARGET, not yet measured; replace with the first real run): who
 - Time: UTC only, via injected `IClock`; do not call `DateTime.UtcNow`/`DateTimeOffset.UtcNow` in domain code.
 - Ids: UUID v7 (`EntityId.New()`).
 - Data: plain Postgres, EF Core with SQL kept visible and testable (schema and RLS are SQL migrations; see Data and tenant isolation). Config by environment variables; standard container.
-- Nullable reference types on; analyzers at `AnalysisMode=All`; warnings are errors. Do not suppress rules to pass.
+- Nullable reference types on; analyzers at `AnalysisMode=All` plus SecurityCodeScan and Roslynator (`backend/Directory.Build.props`, versions pinned; Roslynator only has `RCS1112` and `RCS1186` as warnings, the rest of its catalog was measured and left off, reasons in `backend/.editorconfig`; F4-0101); warnings are errors. Do not suppress rules to pass. `dotnet format --verify-no-changes` also reports analyzer errors (it caught `RCS1139`): run it, not only the build.
 
 ## Data and tenant isolation (ADR-002)
 - Migrations: plain SQL files in `backend/migrations`, named `NNNN_name.sql`, applied in name order, one transaction per file, by `MigrationRunner.ApplyAsync(ownerConnectionString, dir)` with the OWNER credential (needs CREATEROLE). Never edit an applied file; add a new one (the runner stores a SHA-256 per file and throws if an applied file changed). The app credential never runs migrations.

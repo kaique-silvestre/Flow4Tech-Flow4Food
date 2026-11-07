@@ -118,3 +118,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0098 | Backup de producao (adiado por decisao do dono, sem Pro e sem dado real; reavaliar nos gatilhos do runbook) e teste de restauracao automatizado no CI | governanca | `docs/runbooks/backup-e-restauracao.md` | `.scratch/governanca/pendencias.md` | - | - | pendente |
 | F4-0099 | Biome no front: lint, formatacao e organizacao de imports; hook pre-commit (staged) e pre-push, job `lint-frontend` no CI | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0100 | A11y do front: dar papel proprio aos elementos com `aria-label` em `<p>`/`<div>` (4 avisos do Biome) e mover testes unitarios e e2e junto; limpar `!` nao nulos e chaves literais | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
+| F4-0101 | Analyzers extras no back: SecurityCodeScan e Roslynator (so as regras que valem) | governanca | - | - | `dev-v2` (commit direto) | - | feito |

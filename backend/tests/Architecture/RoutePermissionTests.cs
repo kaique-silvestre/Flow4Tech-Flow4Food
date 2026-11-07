@@ -60,8 +60,9 @@ public sealed class RoutePermissionTests
     private static List<string> RoutesWithoutSession(IEnumerable<Endpoint> endpoints) =>
         [.. endpoints.OfType<RouteEndpoint>()
             .Select(e => (Route: e.RoutePattern.RawText ?? e.DisplayName ?? "<unnamed endpoint>", Endpoint: e))
-            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route) && !RoutePermissions.PublicWithoutSession.Contains(KeyOf(x.Endpoint)))
-            .Where(x => x.Endpoint.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
+            .Where(x => !RoutePermissions.Allowlist.Contains(x.Route)
+                        && !RoutePermissions.PublicWithoutSession.Contains(KeyOf(x.Endpoint))
+                        && x.Endpoint.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
             .Select(x => x.Route)
             .Order(StringComparer.Ordinal)];
 

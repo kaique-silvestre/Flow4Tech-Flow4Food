@@ -70,8 +70,9 @@ internal static class RoutePermissions
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         return [.. endpoints.OfType<RouteEndpoint>()
-            .Where(e => !(Allowlist.Contains(e.RoutePattern.RawText ?? "") && IsGetOnly(e)) && !PublicWithoutSession.Contains(KeyOf(e)))
-            .Where(e => e.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
+            .Where(e => !(Allowlist.Contains(e.RoutePattern.RawText ?? "") && IsGetOnly(e))
+                        && !PublicWithoutSession.Contains(KeyOf(e))
+                        && e.Metadata.GetMetadata<SessionRequiredMetadata>() is null)
             .Select(e => $"Route '{KeyOf(e)}' needs .RequireSession(): a declared permission is decided for a signed-in user (or add it to RoutePermissions.PublicWithoutSession after review).")
             .Order(StringComparer.Ordinal)];
     }

@@ -73,6 +73,7 @@ public sealed class Sessoes(
 
     private const string MotivoSenhaTrocada = "senha-trocada";
 
+    /// <summary>Creates the session row and its first refresh token in the caller's unit of work.</summary>
     /// <param name="alertarAcessoNovo">True for a login. The new session after the person's own password change is the same person on the same device: it is neither judged nor learned.</param>
     private async Task<SessaoEmitida> CriarAsync(Guid contaId, Guid organizacaoId, int versaoCredencial, bool deveTrocarSenha, ClienteDaSessao cliente, bool alertarAcessoNovo, CancellationToken ct)
     {

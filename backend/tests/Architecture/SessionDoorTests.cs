@@ -1,8 +1,13 @@
+using System.Text.RegularExpressions;
+
 namespace Flow4Tech.Architecture.Tests;
 
 /// <summary>Ticket 04: there is no test door in the product code. Sessions are real rows with signed tokens issued by the same service as the login.</summary>
-public sealed class SessionDoorTests
+public sealed partial class SessionDoorTests
 {
+    [GeneratedRegex("(AppKey|ControlKey|SigningKey)\\s*=\\s*\"[^\"]{8,}\"")]
+    private static partial Regex KeyLiteral();
+
     private static IEnumerable<string> SourceFiles()
     {
         var src = Path.Combine(ModuleGraph.BackendRoot(), "src");
@@ -27,7 +32,7 @@ public sealed class SessionDoorTests
     {
         // Keys come from configuration (Flow4Tech:Tokens:*); a quoted "chave-" style literal or a long base64 blob next to "Key" would be a committed secret.
         var offenders = SourceFiles()
-            .Where(f => System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(f), "(AppKey|ControlKey|SigningKey)\\s*=\\s*\"[^\"]{8,}\""))
+            .Where(f => KeyLiteral().IsMatch(File.ReadAllText(f)))
             .Select(Path.GetFileName)
             .ToList();
 

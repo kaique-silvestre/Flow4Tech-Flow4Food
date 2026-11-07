@@ -22,3 +22,10 @@ dotnet_diagnostic.CA1848.severity = suggestion
 dotnet_diagnostic.CA2007.severity = none
 # IDE0058: discarding a return value is routine (builder chains, fluent APIs); the rule would force `_ =` everywhere.
 dotnet_diagnostic.IDE0058.severity = none
+
+# Extra analyzers (F4-0101). SecurityCodeScan runs with its defaults (it overlaps the built-in CA5xxx rules; its own SCS rules add taint checks).
+# Roslynator ships most rules hidden; only the ones below are warnings (build errors). The rest of its catalog was measured and left off:
+# most of it is style preference (enum values, doc comments, nested ternaries), `nameof` would tie SQL parameter names to C# variable names (RCS1015),
+# RCS1077 suggests ConvertAll over Select().ToList(), RCS1261 is noise on test fixtures and RCS1163 flags interface implementations.
+dotnet_diagnostic.RCS1112.severity = warning
+dotnet_diagnostic.RCS1186.severity = warning

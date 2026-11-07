@@ -21,8 +21,8 @@ public sealed partial class KernelContractTests
         var kernel = Path.Combine(ModuleGraph.BackendRoot(), "src", "Kernel");
         var offenders = Directory.EnumerateFiles(kernel, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(f => DatabaseTypes().IsMatch(File.ReadAllText(f)))
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && DatabaseTypes().IsMatch(File.ReadAllText(f)))
             .ToList();
 
         Assert.Empty(offenders);

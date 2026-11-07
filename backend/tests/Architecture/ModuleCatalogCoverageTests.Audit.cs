@@ -83,8 +83,8 @@ public sealed partial class ModuleCatalogCoverageTests
         var src = Path.Combine(ModuleGraph.BackendRoot(), "src");
         var offenders = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(f => ActionStringLiteral().IsMatch(File.ReadAllText(f)))
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && ActionStringLiteral().IsMatch(File.ReadAllText(f)))
             .Select(f => Path.GetRelativePath(src, f))
             .ToList();
 
