@@ -1,0 +1,3 @@
+# Trivy exceptions (F4-0087). One per line: the ID, then a comment with reason and review date.
+# Format: CVE-XXXX-YYYY or AVD-DS-00NN  (optional: "exp:YYYY-MM-DD" to expire the exception)
+# Never add an entry without a reason; an expired entry fails the scan again on purpose.

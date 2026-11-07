@@ -22,8 +22,33 @@ if [ -n "$cs" ]; then
   fi
 fi
 
+# 2b. Front: Biome (formatação + lint) só nos arquivos em staging, com correção automática do que é seguro; o que sobrar de erro bloqueia.
+# Roda em milissegundos. A varredura completa (biome ci) fica no pre-push e no CI.
+front=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/*' | grep -E '\.(ts|tsx|js|jsx|json|jsonc|css)$' || true)
+if [ -n "$front" ]; then
+  if [ -x node_modules/.bin/biome ]; then
+    echo "pre-commit: biome nos arquivos do front em staging"
+    node_modules/.bin/biome check --staged --write --no-errors-on-unmatched --colors=off --diagnostic-level=error || { echo "ERRO: biome encontrou erros no front (veja acima). Corrija ou rode: pnpm lint:fix" >&2; exit 1; }
+    # shellcheck disable=SC2086
+    git add -- $front
+  else
+    echo "AVISO: biome não instalado (rode pnpm install); lint do front pulado (o CI confere)." >&2
+  fi
+fi
+
 # 3. Higiene: marcadores de conflito e arquivos grandes demais em staging.
 if git diff --cached -U0 | grep -qE '^\+(<<<<<<<|>>>>>>>) '; then
   echo "ERRO: marcador de conflito em staging." >&2
   exit 1
+fi
+
+# 4. Segredos em staging (gitleaks). Roda só no que vai no commit; o CI (secret-scan) continua sendo a barreira final.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact --no-banner --exit-code 1 || {
+    echo "ERRO: possível segredo em staging (gitleaks). Remova do commit; se já foi exposto em algum lugar, rotacione a chave." >&2
+    echo "Falso positivo de fixture de teste: veja .gitleaksignore (fingerprint) e F4-0079." >&2
+    exit 1
+  }
+else
+  echo "AVISO: gitleaks não encontrado; varredura de segredos pulada (o CI confere). Instale: brew install gitleaks" >&2
 fi

@@ -4,6 +4,7 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 
 ## F4-0082 Actions em versoes com Node 24
 - O CI avisa: `actions/checkout@v4` e `actions/setup-dotnet@v4` (e as demais) usam Node 20, depreciado; hoje sao forcadas a Node 24 e funcionam.
+- Desde F4-0091 as actions estao fixadas por SHA: a troca de versao e feita trocando SHA e comentario juntos (procedimento em `docs/runbooks/sast.md`, "Pinned actions"); inclua o `codeql-action` (v3 -> v4).
 - Fazer: confirmar no GitHub as versoes novas de checkout, setup-dotnet, setup-node, pnpm/action-setup, upload-artifact; trocar no `.github/workflows/ci.yml`; push em `dev-v2` e ver o CI verde antes de levar para `main-v2`.
 - Risco baixo; nao e urgente.
 
@@ -19,6 +20,37 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 ## F4-0085 Alertas de custo em US$ 1 e US$ 3
 - O Railway so aceita alerta de e-mail a partir de US$ 5 (ja criado, alvo workspace). Para US$ 1 e US$ 3: workflow agendado (`cron`) que roda `railway usage projects --json` e abre issue ou falha o job acima do limiar.
 - Precisa de um token do Railway no GitHub, criado pelo dono no painel (o CLI nao cria). Ate la, olhar `railway usage` manualmente.
+
+## F4-0090 SBOM e scan do front (depende de F4-0084)
+- Hoje o SBOM CycloneDX (F4-0089) e o Trivy cobrem so a imagem da API/migrator. O front nao entra: ainda nao sabemos onde sera hospedado (F4-0084).
+- Se for estatico na Vercel/bucket (nao ha imagem): gerar a lista de pacotes do `frontend/pnpm-lock.yaml`/raiz com `trivy fs --format cyclonedx --output sbom-front.cdx.json .` (ou `--scanners vuln` para vulnerabilidades) e guardar como artefato do CI, no job `trivy` ou em um novo.
+- Se for um container (ex.: nginx no Railway): o `Dockerfile` do front passa a ser coberto por `trivy config` e `trivy image` e pelo SBOM da imagem, como a API.
+- Fazer so depois da decisao do F4-0084; `pnpm audit` ja cobre vulnerabilidades de pacotes do front enquanto isso. Detalhes em `docs/runbooks/sast.md`, secao "SBOM".
+
+## F4-0095 CSP completa do front (depende de F4-0084)
+- Hoje o front so manda `Content-Security-Policy: frame-ancestors 'none'` (nao quebra nada). A CSP de verdade (`default-src 'self'`, `script-src 'self'`, `connect-src` com a origem da API, `img-src`, `manifest-src`, `worker-src 'self'` para o service worker do PWA) precisa saber a origem da API, que so existe depois da decisao de hospedagem.
+- Fazer: com a origem definida, subir primeiro como `Content-Security-Policy-Report-Only` em `frontend/{app,control}/vercel.json`, abrir o app (login, comanda, fila offline, instalar PWA) e olhar o console; so entao trocar para `Content-Security-Policy`. Cuidado com o inline que o Vite/PWA injeta (`style-src`).
+- Se o front for servido por outro host (nginx/bucket), os mesmos headers vao na configuracao dele. Detalhes em `docs/runbooks/sast.md`, secao "Security headers".
+
+## F4-0096 Rate limit compartilhado e limite geral (ADIADO de proposito)
+- Decisao do dono (2026-11-07): sem rate limit compartilhado por enquanto. Projeto pequeno, uma instancia da API, custo nao compensa agora. Registrada no ADR-011 ("Decision update").
+- Hoje existe so o limitador de login em memoria (por conta e por endereco, bloqueio progressivo). Nao existe limite geral de requisicoes por IP/rota, nem limite que sobreviva a reinicio ou valha entre instancias.
+- **Reavaliar quando** ocorrer qualquer um: segunda instancia da API (aqui vira obrigatorio), clientes pagantes ou dados reais, ataque ou trafego de login anormal nos logs, cadastro publico, e-mail/CAPTCHA em producao.
+- Fazer entao: trocar a implementacao atras de `ILimitadorDeLogin` (Postgres ou Redis, comparacao no ADR-011) e adicionar o `RateLimiter` do ASP.NET para o limite geral por IP/rota; atrás do Railway exige `Flow4Tech__Rede__ProxyConfiavel=true`. Um teste de carga simples (k6) ajuda a calibrar os numeros.
+
+## F4-0098 Backup de producao (ADIADO de proposito) e teste de restauracao
+- Levantamento feito (F4-0097, `docs/runbooks/backup-e-restauracao.md`): cada ambiente tem UM volume de Postgres (~155 MB de 5 GB) e nada no repositorio configura backup. O CLI do Railway nao mostra backups.
+- CONFIRMADO no painel (2026-11-07): o workspace NAO e Pro; a aba Backups mostra "No Backups". **Producao nao tem backup nenhum hoje.**
+- **Decisao do dono (2026-11-07): opcao C, nada por enquanto** (sem dado real em producao, projeto pequeno). Risco aceito: RPO ilimitado.
+- **Reavaliar quando** ocorrer qualquer um: primeiro cliente ou dado real em producao, migracao destrutiva planejada, segunda instancia da API (gatilho do F4-0096), assinatura de plano pago por outro motivo (ligar os backups do Railway junto), ou revisao trimestral (a cada 3 meses a partir de 2026-11-07, proxima em 2027-02-07).
+- Quando reavaliar: opcoes A (Pro), B (dump logico criptografado para bucket fora do Railway) e C no runbook; B e quase gratis e funciona sem o Pro.
+- Depois: job semanal no CI que faz `pg_dump`/`pg_restore` em dois bancos, roda o migrator e confere `schema_migrations`, RLS e a cadeia de auditoria; decidir copia fora do Railway. Exercicio de restauracao real de producao a cada trimestre.
+
+## F4-0100 A11y do front e avisos do Biome
+- O Biome (F4-0099) deixou como AVISO (nao bloqueia) `a11y/useAriaPropsSupportedByRole`: `aria-label` em `<p>`/`<div>` e ignorado por leitores de tela. Locais: `ComandaPage.tsx` (Total da conta), `FecharConta.tsx` (Valor a receber), `NovaComandaSheet.tsx` (entrada da comanda, com `aria-live`), `BarraDeFila.tsx` (Conexao e acoes pendentes). Testes unitarios (`getByLabelText`) e e2e Playwright (`getByLabel("Total da conta")`, `"Valor a receber"`) localizam por esses rotulos.
+- Fazer: dar a cada um um papel que aceite nome (`role="group"`, ou `role="status"` no que tem `aria-live`), ou `<output>` onde couber, atualizar os testes juntos e rodar o e2e no CI (nao da para rodar o Playwright sem Docker local). Passar o `design-reviewer`/revisao de acessibilidade se mudar a leitura.
+- Regra `useSemanticElements` esta DESLIGADA de proposito (`role="group"`/`region` com `aria-label` sao validos; `<fieldset>`/`<section>` mudariam estilo). Reavaliar so se o design system for refeito.
+- Avisos que sobraram: 31x `!` nao nulo (quase todos em testes), 37 infos `useLiteralKeys`, 1 `noDescendingSpecificity` no CSS do design system. Limpar aos poucos; depois pode-se tornar avisos bloqueantes (`--error-on-warnings`).
 
 ## Sem ticket (lembretes do dono)
 - Acompanhar `railway usage` depois de alguns dias (4 servicos sempre ligados: 2 APIs e 2 bancos).

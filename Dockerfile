@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e AS build
 WORKDIR /src
 COPY backend/ backend/
 # One image, two entrypoints: the API (default) and the deploy-time migrator (dotnet Flow4Tech.Migrator.dll).
@@ -9,12 +9,12 @@ RUN dotnet publish backend/src/Api/Flow4Tech.Api.csproj -c Release -o /out \
 FROM build AS e2e-seed-build
 RUN dotnet publish backend/tools/E2eSeed/Flow4Tech.E2eSeed.csproj -c Release -o /seed
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS e2e-seed
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS e2e-seed
 WORKDIR /seed
 COPY --from=e2e-seed-build /seed .
 ENTRYPOINT ["dotnet", "Flow4Tech.E2eSeed.dll"]
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c
 WORKDIR /app
 COPY --from=build /out .
 # Versioned SQL migrations travel with the image (MIGRATIONS_DIR defaults to /app/migrations).

@@ -22,3 +22,10 @@ O login precisa resistir a tentativa em massa (senha por conta, mesma senha em m
 - **Contador em tabela do banco:** compartilhado e durável, mas põe escrita no caminho de toda falha, antes de existir organização (sem RLS possível) e dá ao atacante um amplificador de escrita.
 - **Bloquear pela conta encontrada:** revela quais contas existem (bloqueio só em nome real); rejeitado.
 - **Atraso fixo sem bloqueio:** não limita taxa; só encarece.
+
+## Decision update: no shared rate limit for now (F4-0096, 2026-11-07)
+- **Decided:** keep the in-memory limiter as is and do NOT build shared state (Postgres table or Redis) and do NOT add general per-IP rate limiting to the API now. The project is small, runs a single API instance, and the cost (extra service or a write per failed login, plus operation) does not pay off yet.
+- **What still protects us today:** the login limiter on this ADR (per account and per address, progressive lock, credential stuffing detection), the response-time floor, Argon2id cost per attempt, and the recovery flow reusing the same limiter. What we do NOT have: a global request rate limit (a flood of any route, expensive routes, signup-like routes) and any limit that survives a restart or spans instances.
+- **Triggers to revisit (any one):** a second API instance (consequence above becomes mandatory), real paying customers or real data, an observed attack or abnormal login traffic in the logs, opening any public signup, or e-mail/CAPTCHA going live (recovery becomes a send amplifier).
+- **When we do it:** swap the implementation behind `ILimitadorDeLogin` (the port stays), choose between a durable store and Redis (see Alternatives), and add ASP.NET `RateLimiter` for the general per-IP/per-route limit at the edge of the host. Pending item: F4-0096 in `.scratch/governanca/pendencias.md`.
+
