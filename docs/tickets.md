@@ -99,3 +99,7 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0079 | Gitleaks: ignorar 4 fixtures de teste falsas (senha de exemplo e JWT do jwt.io) por fingerprint | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0080 | Railway Infrastructure as Code (.railway/railway.ts) no lugar do railway.toml (ignorado em servicos novos) | governanca | `.scratch/governanca/hospedagem-do-front-e-ambientes.md` | - | `dev-v2` (commit direto) | - | feito |
 | F4-0081 | Entrega dev-v2 -> main-v2: governanca, CI em push, IaC do Railway, runbook | governanca | `docs/runbooks/deploy.md` | - | `dev-v2` -> `main-v2` | [#47](https://github.com/kaique-silvestre/Flow4Tech-Flow4Food/pull/47) | feito |
+| F4-0082 | Actions do CI em versoes que rodam em Node 24 (checkout, setup-dotnet, pnpm, setup-node, upload-artifact) | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
+| F4-0083 | Protecao de branch no GitHub: PR e check `gates` obrigatorios em `main-v2` (configuracao do dono) | governanca | `docs/runbooks/deploy.md` | `.scratch/governanca/pendencias.md` | - | - | pendente |
+| F4-0084 | Decidir hospedagem do front e dominio (Vercel x Railway, cookie SameSite=Strict) | governanca | `.scratch/governanca/hospedagem-do-front-e-ambientes.md` | `.scratch/governanca/pendencias.md` | - | - | pendente |
+| F4-0085 | Alertas de custo do Railway em US$ 1 e US$ 3 por workflow agendado (o alerta nativo minimo e US$ 5) | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
