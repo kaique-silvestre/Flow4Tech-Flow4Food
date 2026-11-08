@@ -48,10 +48,32 @@ public enum ResultadoDeRodada
 
     /// <summary>Taking this away would put the bill below what was already received.</summary>
     ValorJaRecebido,
+
+    /// <summary>"Repeat the last round" on a comanda that has no live item to repeat.</summary>
+    SemRodadaAnterior,
+
+    /// <summary>Every item of the previous round is now unavailable: nothing is written, the reasons are reported.</summary>
+    NadaParaRepetir,
 }
 
+/// <summary>Why an item of the previous round was not repeated.</summary>
+public static class MotivoDeItemIgnorado
+{
+    /// <summary>The product is turned off or "acabou".</summary>
+    public const string ProdutoInativo = "produto-inativo";
+
+    /// <summary>One of its add-ons (or its group) is turned off.</summary>
+    public const string OpcaoInativa = "opcao-inativa";
+
+    /// <summary>The add-ons no longer fit the product's groups (for example a new required group).</summary>
+    public const string OpcaoInvalida = "opcao-invalida";
+}
+
+/// <summary>An item of the previous round that was left out of the repeat, with the reason (never dropped silently).</summary>
+public sealed record ItemIgnorado(Guid ProdutoId, string ProdutoNome, int Quantidade, string Motivo);
+
 /// <summary><c>Versao</c> is the comanda version after the write (or the one the round produced, on a repeat); <c>VersaoAtual</c> is set on a stale version.</summary>
-public sealed record ResultadoDeEscrita(ResultadoDeRodada Resultado, RodadaComItens? Rodada = null, ItemDaComanda? Item = null, int? Versao = null, int? VersaoAtual = null);
+public sealed record ResultadoDeEscrita(ResultadoDeRodada Resultado, RodadaComItens? Rodada = null, ItemDaComanda? Item = null, int? Versao = null, int? VersaoAtual = null, IReadOnlyList<ItemIgnorado>? Ignorados = null);
 
 /// <summary><c>OpcaoIds</c> are ids only: name and price come from the menu on the server, never from the client.</summary>
 public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao, IReadOnlyList<Guid>? OpcaoIds = null);
@@ -104,22 +126,24 @@ public sealed class GestaoDeRodadas(
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(itens);
+        return unitOfWork.ExecuteAsync(request, ct => LancarNaUnidadeAsync(request, comandaId, rodadaId, versao, itens, null, ct), cancellationToken);
+    }
+
+    /// <summary>
+    /// "Repeat the last round": a NEW round (id from the client, so a resend is a repeat) with the live items of the comanda's latest round that still has some. Prices are read again now,
+    /// never copied from the old round. Items whose product is off or "acabou", or whose add-ons no longer fit, are not launched and come back in <see cref="ResultadoDeEscrita.Ignorados"/>;
+    /// when nothing is left the answer is <see cref="ResultadoDeRodada.NadaParaRepetir"/> and nothing is written. A resend answers the stored round (the skipped list is not rebuilt).
+    /// </summary>
+    public Task<ResultadoDeEscrita> RepetirUltimaAsync(IRequestContext request, Guid comandaId, Guid rodadaId, int versao, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
         return unitOfWork.ExecuteAsync(
             request,
             async ct =>
             {
-                if (rodadaId == Guid.Empty || versao < 1 || itens.Count is < 1 or > RegrasDeRodada.ItensMaximoPorRodada)
+                if (rodadaId == Guid.Empty || versao < 1)
                 {
                     return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
-                }
-
-                var observacoes = new string?[itens.Count];
-                for (var i = 0; i < itens.Count; i++)
-                {
-                    if (itens[i] is null || !RegrasDeRodada.QuantidadeValida(itens[i].Quantidade) || !RegrasDeRodada.TentarObservacao(itens[i].Observacao, out observacoes[i]))
-                    {
-                        return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
-                    }
                 }
 
                 var org = request.Organization;
@@ -140,77 +164,160 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
-                // The price charged is the one in force for the comanda's unit at this instant (unit override, else promotion while valid, else base), frozen into the item.
-                var precoEm = clock.UtcNow;
-                var produtos = new Dictionary<Guid, (Guid Id, string Nome, long PrecoCentavos)>();
-                foreach (var produtoId in itens.Select(i => i.ProdutoId).Distinct())
+                var vivos = (await rodadas.ListarItensAsync(org.OrganizationId, comandaId, ct)).Where(i => i.Estado == EstadoDoItem.Lancado).ToList();
+                if (vivos.Count == 0)
                 {
-                    var produto = await cardapio.AcharProdutoAsync(org.OrganizationId, comanda.UnidadeId, produtoId, ct);
-                    if (produto is null)
-                    {
-                        return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
-                    }
-
-                    if (!produto.Lancavel)
-                    {
-                        return new ResultadoDeEscrita(ResultadoDeRodada.ProdutoInativo);
-                    }
-
-                    produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoEfetivo(precoEm));
+                    return new ResultadoDeEscrita(ResultadoDeRodada.SemRodadaAnterior);
                 }
 
-                // Options: each item is checked against the groups of ITS product; one bad choice refuses the whole round (nothing is written).
-                var escolhas = new IReadOnlyList<OpcaoParaItem>[itens.Count];
-                for (var i = 0; i < itens.Count; i++)
+                var anterior = vivos[^1].RodadaId;
+                var lancaveis = new List<ItemParaLancar>();
+                var ignorados = new List<ItemIgnorado>();
+                var produtos = new Dictionary<Guid, bool>();
+                foreach (var item in vivos.Where(i => i.RodadaId == anterior))
                 {
-                    var escolha = await OpcoesDoProduto.EscolherAsync(opcoes, org.OrganizationId, itens[i].ProdutoId, itens[i].OpcaoIds ?? [], ct);
+                    if (!produtos.TryGetValue(item.ProdutoId, out var lancavel))
+                    {
+                        lancavel = (await cardapio.AcharProdutoAsync(org.OrganizationId, comanda.UnidadeId, item.ProdutoId, ct))?.Lancavel ?? false;
+                        produtos[item.ProdutoId] = lancavel;
+                    }
+
+                    if (!lancavel)
+                    {
+                        ignorados.Add(new ItemIgnorado(item.ProdutoId, item.ProdutoNome, item.Quantidade, MotivoDeItemIgnorado.ProdutoInativo));
+                        continue;
+                    }
+
+                    var opcaoIds = item.Opcoes.Select(o => o.OpcaoId).ToList();
+                    var escolha = await OpcoesDoProduto.EscolherAsync(opcoes, org.OrganizationId, item.ProdutoId, opcaoIds, ct);
                     if (escolha.Recusa != RecusaDeOpcoes.Nenhuma)
                     {
-                        return new ResultadoDeEscrita(escolha.Recusa == RecusaDeOpcoes.Inativa ? ResultadoDeRodada.OpcaoInativa : ResultadoDeRodada.OpcaoInvalida);
+                        ignorados.Add(new ItemIgnorado(item.ProdutoId, item.ProdutoNome, item.Quantidade, escolha.Recusa == RecusaDeOpcoes.Inativa ? MotivoDeItemIgnorado.OpcaoInativa : MotivoDeItemIgnorado.OpcaoInvalida));
+                        continue;
                     }
 
-                    escolhas[i] = escolha.Opcoes;
+                    lancaveis.Add(new ItemParaLancar(item.ProdutoId, item.Quantidade, item.Observacao, opcaoIds));
                 }
 
-                if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+                if (lancaveis.Count == 0)
                 {
-                    // Lost the race on the row lock (or the caller is stale). A concurrent repeat of THIS round id is not a conflict: it gets the stored result.
-                    var agora = await rodadas.AcharRodadaAsync(org.OrganizationId, rodadaId, ct);
-                    return agora is not null ? Repetida(agora, comandaId) : await FalhaDeVersaoAsync(org, comandaId, ct);
+                    return new ResultadoDeEscrita(ResultadoDeRodada.NadaParaRepetir, Ignorados: ignorados);
                 }
 
-                var enviadaEm = RegrasDeRodada.Microssegundos(clock.UtcNow);
-                var novaVersao = versao + 1;
-                var rodada = new Rodada(rodadaId, comandaId, comanda.UnidadeId, request.UserId, enviadaEm, null, novaVersao);
-                var lista = new List<ItemDaComanda>(itens.Count);
-                for (var i = 0; i < itens.Count; i++)
-                {
-                    var produto = produtos[itens[i].ProdutoId];
-                    lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList()));
-                }
-
-                var resultado = new RodadaComItens(rodada, lista);
-                await rodadas.InserirRodadaAsync(org.OrganizationId, resultado, ct);
-                await rodadas.RegistrarFrequenciaAsync(org.OrganizationId, comanda.UnidadeId, produtos.Keys.Order().ToList(), ct);
-                var usosDeOpcao = lista.SelectMany(i => i.Opcoes.Select(o => (i.ProdutoId, o.OpcaoId))).Distinct().Order().ToList();
-                if (usosDeOpcao.Count > 0)
-                {
-                    await rodadas.RegistrarFrequenciaDeOpcoesAsync(org.OrganizationId, comanda.UnidadeId, usosDeOpcao, ct);
-                }
-
-                var valor = RegrasDeRodada.Consumo(lista);
-                var depois = new JsonObject
-                {
-                    ["comandaNumero"] = comanda.Numero,
-                    ["itens"] = lista.Count,
-                    ["valorCentavos"] = valor,
-                    ["versao"] = novaVersao,
-                };
-                await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.LancarRodada, ObjectType = "rodada", ObjectId = rodadaId.ToString("D"), After = depois }, ct);
-                await eventos.PublicarAsync(org, new RodadaEnviada(EntityId.New().Value, comandaId, rodadaId, comanda.UnidadeId, lista.Count, valor, request.UserId), ct);
-                return new ResultadoDeEscrita(ResultadoDeRodada.Ok, resultado, Versao: novaVersao);
+                var resultado = await LancarNaUnidadeAsync(request, comandaId, rodadaId, versao, lancaveis, anterior, ct);
+                return resultado.Resultado == ResultadoDeRodada.Ok ? resultado with { Ignorados = ignorados } : resultado;
             },
             cancellationToken);
+    }
+
+    private async Task<ResultadoDeEscrita> LancarNaUnidadeAsync(IRequestContext request, Guid comandaId, Guid rodadaId, int versao, IReadOnlyList<ItemParaLancar> itens, Guid? repeticaoDe, CancellationToken ct)
+    {
+        if (rodadaId == Guid.Empty || versao < 1 || itens.Count is < 1 or > RegrasDeRodada.ItensMaximoPorRodada)
+        {
+            return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
+        }
+
+        var observacoes = new string?[itens.Count];
+        for (var i = 0; i < itens.Count; i++)
+        {
+            if (itens[i] is null || !RegrasDeRodada.QuantidadeValida(itens[i].Quantidade) || !RegrasDeRodada.TentarObservacao(itens[i].Observacao, out observacoes[i]))
+            {
+                return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
+            }
+        }
+
+        var org = request.Organization;
+        var comanda = await AcharVisivelAsync(request, comandaId, ct);
+        if (comanda is null)
+        {
+            return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoEncontrada);
+        }
+
+        var existente = await rodadas.AcharRodadaAsync(org.OrganizationId, rodadaId, ct);
+        if (existente is not null)
+        {
+            return Repetida(existente, comandaId);
+        }
+
+        if (comanda.Estado != EstadoDaComanda.Aberta)
+        {
+            return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
+        }
+
+        // The price charged is the one in force for the comanda's unit at this instant (unit override, else promotion while valid, else base), frozen into the item.
+        var precoEm = clock.UtcNow;
+        var produtos = new Dictionary<Guid, (Guid Id, string Nome, long PrecoCentavos)>();
+        foreach (var produtoId in itens.Select(i => i.ProdutoId).Distinct())
+        {
+            var produto = await cardapio.AcharProdutoAsync(org.OrganizationId, comanda.UnidadeId, produtoId, ct);
+            if (produto is null)
+            {
+                return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
+            }
+
+            if (!produto.Lancavel)
+            {
+                return new ResultadoDeEscrita(ResultadoDeRodada.ProdutoInativo);
+            }
+
+            produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoEfetivo(precoEm));
+        }
+
+        // Options: each item is checked against the groups of ITS product; one bad choice refuses the whole round (nothing is written).
+        var escolhas = new IReadOnlyList<OpcaoParaItem>[itens.Count];
+        for (var i = 0; i < itens.Count; i++)
+        {
+            var escolha = await OpcoesDoProduto.EscolherAsync(opcoes, org.OrganizationId, itens[i].ProdutoId, itens[i].OpcaoIds ?? [], ct);
+            if (escolha.Recusa != RecusaDeOpcoes.Nenhuma)
+            {
+                return new ResultadoDeEscrita(escolha.Recusa == RecusaDeOpcoes.Inativa ? ResultadoDeRodada.OpcaoInativa : ResultadoDeRodada.OpcaoInvalida);
+            }
+
+            escolhas[i] = escolha.Opcoes;
+        }
+
+        if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+        {
+            // Lost the race on the row lock (or the caller is stale). A concurrent repeat of THIS round id is not a conflict: it gets the stored result.
+            var agora = await rodadas.AcharRodadaAsync(org.OrganizationId, rodadaId, ct);
+            return agora is not null ? Repetida(agora, comandaId) : await FalhaDeVersaoAsync(org, comandaId, ct);
+        }
+
+        var enviadaEm = RegrasDeRodada.Microssegundos(clock.UtcNow);
+        var novaVersao = versao + 1;
+        var rodada = new Rodada(rodadaId, comandaId, comanda.UnidadeId, request.UserId, enviadaEm, null, novaVersao);
+        var lista = new List<ItemDaComanda>(itens.Count);
+        for (var i = 0; i < itens.Count; i++)
+        {
+            var produto = produtos[itens[i].ProdutoId];
+            lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList()));
+        }
+
+        var resultado = new RodadaComItens(rodada, lista);
+        await rodadas.InserirRodadaAsync(org.OrganizationId, resultado, ct);
+        await rodadas.RegistrarFrequenciaAsync(org.OrganizationId, comanda.UnidadeId, request.UserId, produtos.Keys.Order().ToList(), ct);
+        var usosDeOpcao = lista.SelectMany(i => i.Opcoes.Select(o => (i.ProdutoId, o.OpcaoId))).Distinct().Order().ToList();
+        if (usosDeOpcao.Count > 0)
+        {
+            await rodadas.RegistrarFrequenciaDeOpcoesAsync(org.OrganizationId, comanda.UnidadeId, usosDeOpcao, ct);
+        }
+
+        var valor = RegrasDeRodada.Consumo(lista);
+        var depois = new JsonObject
+        {
+            ["comandaNumero"] = comanda.Numero,
+            ["itens"] = lista.Count,
+            ["valorCentavos"] = valor,
+            ["versao"] = novaVersao,
+        };
+        if (repeticaoDe is { } origem)
+        {
+            depois["repeticaoDe"] = origem.ToString("D");
+        }
+
+        await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.LancarRodada, ObjectType = "rodada", ObjectId = rodadaId.ToString("D"), After = depois }, ct);
+        await eventos.PublicarAsync(org, new RodadaEnviada(EntityId.New().Value, comandaId, rodadaId, comanda.UnidadeId, lista.Count, valor, request.UserId), ct);
+        return new ResultadoDeEscrita(ResultadoDeRodada.Ok, resultado, Versao: novaVersao);
     }
 
     /// <summary><paramref name="versao"/> must still be a valid version (the contract keeps the field) but is not compared with the current one.</summary>

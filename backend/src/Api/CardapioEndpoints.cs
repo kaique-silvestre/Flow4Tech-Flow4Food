@@ -105,7 +105,7 @@ internal static class CardapioEndpoints
 
         // Active products only: what can be launched. The manager's full list (with inactive ones) is /cardapio/produtos/gestao.
         app.MapGet("/cardapio/produtos", async (RequestContextAccessor request, GestaoDoCardapio cardapio, IClock clock, CancellationToken cancellationToken) =>
-                Results.Ok((await cardapio.ListarProdutosAsync(request, null, false, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
+                Results.Ok((await cardapio.ListarProdutosAsync(request, false, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
             .WithName("listProdutos")
             .RequireSession()
             .RequirePermission(CardapioPermissions.Ver)
@@ -113,15 +113,27 @@ internal static class CardapioEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
+        // The launch search: exact short code first, then names that start with the text, then names that contain it (accents and case ignored); at most 20.
         app.MapGet("/cardapio/produtos/busca", async (string? q, RequestContextAccessor request, GestaoDoCardapio cardapio, IClock clock, CancellationToken cancellationToken) =>
-                q is { Length: > 80 }
-                    ? Erro(ResultadoDoCardapio.Invalido)
-                    : Results.Ok((await cardapio.ListarProdutosAsync(request, q, false, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
+            {
+                var achados = await cardapio.BuscarAsync(request, q, cancellationToken);
+                return achados is null ? Erro(ResultadoDoCardapio.Invalido) : Results.Ok(achados.Select(p => Dto(p, clock.UtcNow)).ToList());
+            })
             .WithName("buscarProdutos")
             .RequireSession()
             .RequirePermission(CardapioPermissions.Ver)
             .Produces<List<ProdutoDto>>()
             .Produces<CardapioErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        // The caller's own favorites in the active unit (what THEY launched most), never another waiter's.
+        app.MapGet("/cardapio/produtos/favoritos", async (RequestContextAccessor request, GestaoDoCardapio cardapio, IClock clock, CancellationToken cancellationToken) =>
+                Results.Ok((await cardapio.FavoritosAsync(request, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
+            .WithName("listProdutosFavoritos")
+            .RequireSession()
+            .RequirePermission(CardapioPermissions.Ver)
+            .Produces<List<ProdutoDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
@@ -135,7 +147,7 @@ internal static class CardapioEndpoints
             .Produces(StatusCodes.Status403Forbidden);
 
         app.MapGet("/cardapio/produtos/gestao", async (RequestContextAccessor request, GestaoDoCardapio cardapio, IClock clock, CancellationToken cancellationToken) =>
-                Results.Ok((await cardapio.ListarProdutosAsync(request, null, true, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
+                Results.Ok((await cardapio.ListarProdutosAsync(request, true, cancellationToken)).Select(p => Dto(p, clock.UtcNow)).ToList()))
             .WithName("listProdutosGestao")
             .RequireSession()
             .RequirePermission(CardapioPermissions.Gerenciar)

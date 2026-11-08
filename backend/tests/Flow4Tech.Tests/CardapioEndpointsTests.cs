@@ -11,6 +11,7 @@ using Flow4Tech.Permissoes.Application;
 using Flow4Tech.Permissoes.Domain;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -683,6 +684,156 @@ public sealed class CardapioEndpointsTests : IAsyncLifetime
         }
 
         Assert.Equal(0L, (await QueryAsync(OrgA, UnitA, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+    }
+
+    [Fact]
+    public async Task Search_ignores_accents_and_case_puts_the_exact_code_first_then_names_that_start_with_the_text_and_keeps_acabou_visible()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var categoria = await NewCategoryAsync(client, t.Dono, "Busca");
+        var caldo = await NewProductAsync(client, t.Dono, categoria.Id, "ACAI", "Caldo de açaí", 1000);
+        var tigela = await NewProductAsync(client, t.Dono, categoria.Id, "B1", "Açaí na tigela", 1000);
+        var suco = await NewProductAsync(client, t.Dono, categoria.Id, "C1", "Suco de AÇAÍ", 1000);
+        var pao = await NewProductAsync(client, t.Dono, categoria.Id, "PAO", "Pão de queijo", 800);
+        var antigo = await NewProductAsync(client, t.Dono, categoria.Id, "OLD", "Açaí antigo", 900, ativo: false);
+        using var acabou = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{pao.Id}", t.Dono, new { codigo = "PAO", nome = "Pão de queijo", precoCentavos = 800, categoriaId = categoria.Id, ativo = true, versao = pao.Versao, indisponivel = true });
+        Assert.Equal(HttpStatusCode.OK, acabou.StatusCode);
+
+        // The exact short code beats names, then names that start with the text, then the rest by name; accents and case never matter, on either side.
+        Assert.Equal([caldo.Id, tigela.Id, suco.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=acai", t.Garcom)).Select(p => p.Id));
+        Assert.Equal([tigela.Id, caldo.Id, suco.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=A%C3%87A%C3%8D", t.Garcom)).Select(p => p.Id));
+        Assert.Equal([tigela.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=" + Uri.EscapeDataString("  açaí na "), t.Garcom)).Select(p => p.Id));
+        Assert.Equal([caldo.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=ACAI", t.Garcom)).Select(p => p.Id).Take(1));
+
+        // A code is matched whole, not by prefix: "PA" is not "PAO" by code, but it is the start of "Pão de queijo" by name. "Acabou" stays listed, flagged.
+        var porNome = Assert.Single(await ListAsync(client, "/cardapio/produtos/busca?q=pa", t.Garcom));
+        Assert.Equal((pao.Id, true), (porNome.Id, porNome.Indisponivel));
+        Assert.Equal([pao.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=pao", t.Garcom)).Select(p => p.Id));
+        Assert.Equal([pao.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=PÃO", t.Garcom)).Select(p => p.Id));
+
+        // Inactive never shows; blank finds nothing; wildcards are plain text; too long is a 400.
+        Assert.DoesNotContain(await ListAsync(client, "/cardapio/produtos/busca?q=acai", t.Garcom), p => p.Id == antigo.Id);
+        Assert.Empty(await ListAsync(client, "/cardapio/produtos/busca?q=%20%20", t.Garcom));
+        Assert.Empty(await ListAsync(client, "/cardapio/produtos/busca", t.Garcom));
+        Assert.Empty(await ListAsync(client, "/cardapio/produtos/busca?q=%25", t.Garcom));
+        using var tooLong = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/busca?q=" + new string('a', 81), t.Garcom);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+    }
+
+    [Fact]
+    public async Task Search_is_capped_at_twenty_ordered_by_name_and_never_crosses_organizations_or_sessions()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var categoria = await NewCategoryAsync(client, t.Dono, "Lote");
+        foreach (var n in Enumerable.Range(1, 25).Reverse())
+        {
+            await NewProductAsync(client, t.Dono, categoria.Id, $"L{n:00}", $"Lote {n:00}", 100);
+        }
+
+        var found = await ListAsync(client, "/cardapio/produtos/busca?q=lote", t.Garcom);
+        Assert.Equal(Enumerable.Range(1, 20).Select(n => $"Lote {n:00}"), found.Select(p => p.Nome));
+
+        // Organization B sees none of it, even by exact code; no session and no permission are refused.
+        var categoriaB = await NewCategoryAsync(client, t.DonoB, "Outra");
+        var deB = await NewProductAsync(client, t.DonoB, categoriaB.Id, "L01", "Lote de B", 100);
+        Assert.Equal([deB.Id], (await ListAsync(client, "/cardapio/produtos/busca?q=L01", t.DonoB)).Select(p => p.Id));
+        Assert.Equal(["Lote 01"], (await ListAsync(client, "/cardapio/produtos/busca?q=L01", t.Dono)).Select(p => p.Nome));
+        using var anonymous = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/busca?q=lote", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        using var noSession = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/favoritos", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, noSession.StatusCode);
+    }
+
+    [Fact]
+    public async Task Search_is_one_statement_with_the_unit_price_inside_and_the_normalized_name_in_the_database_equals_the_one_in_code()
+    {
+        await using var source = NpgsqlDataSource.Create(_appConnection);
+        await using var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(OrgA, UnitA));
+        await using var context = new CardapioDbContext(tx);
+
+        var sql = PostgresCardapioStore.Busca(context, UnitA, "ACAI", "ACAI", 20).ToQueryString();
+        Assert.Equal(1, sql.Split("FROM produtos AS", StringSplitOptions.None).Length - 1);
+        Assert.Contains("LIMIT @", sql, StringComparison.Ordinal);
+        Assert.Contains("nome_busca", sql, StringComparison.Ordinal);
+        Assert.Contains("produtos_preco_unidade", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("organizacao_id =", sql, StringComparison.Ordinal);
+
+        // Every letter with a diacritic of Latin-1 and Latin Extended-A: the database and the API fold it to the same text, so the two sides of a comparison always agree.
+        var letters = Enumerable.Range(0x41, 0x180 - 0x41).Select(cp => ((char)cp).ToString()).Where(c => char.IsLetter(c[0])).ToList();
+        foreach (var letter in letters)
+        {
+            await using var command = new NpgsqlCommand("SELECT normaliza_busca(@t)", tx.Connection, tx.Transaction);
+            command.Parameters.AddWithValue("t", letter);
+            var folded = (string)(await command.ExecuteScalarAsync())!;
+            if (letter.Normalize(System.Text.NormalizationForm.FormD).Length > 1 || letter[0] < 0x80)
+            {
+                Assert.True(folded == Flow4Tech.Cardapio.Domain.RegrasDeBusca.Normalizar(letter), $"'{letter}' folds to '{folded}' in the database and '{Flow4Tech.Cardapio.Domain.RegrasDeBusca.Normalizar(letter)}' in code");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Favorites_are_the_callers_own_most_launched_active_products_in_a_stable_order_and_empty_without_history()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var categoria = await NewCategoryAsync(client, t.Dono, "Favoritos");
+        var b = await NewProductAsync(client, t.Dono, categoria.Id, "F2", "Beta", 100);
+        var a = await NewProductAsync(client, t.Dono, categoria.Id, "F1", "Alfa", 100);
+        var c = await NewProductAsync(client, t.Dono, categoria.Id, "F3", "Gama", 100);
+        var inativo = await NewProductAsync(client, t.Dono, categoria.Id, "F4", "Inativo", 100);
+
+        Assert.Empty(await ListAsync(client, "/cardapio/produtos/favoritos", t.Garcom));
+
+        await using var source = NpgsqlDataSource.Create(_appConnection);
+        await using (var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(OrgA, UnitA)))
+        {
+            // The waiter: Gama 9, Alfa 3 and Beta 3 (a tie, broken by name), an inactive one with 20. The owner launched Beta 50 times: not the waiter's favorite.
+            foreach (var (quem, produto, n) in new[] { (Garcom, c, 9L), (Garcom, a, 3L), (Garcom, b, 3L), (Garcom, inativo, 20L), (DonoA, b, 50L) })
+            {
+                await Exec(tx, "INSERT INTO produtos_frequencia_garcom (organizacao_id, unidade_id, garcom_id, produto_id, lancamentos) VALUES (@o, @u, @g, @p, @n)", ("o", OrgA), ("u", UnitA), ("g", quem), ("p", produto.Id), ("n", n));
+            }
+
+            await tx.CommitAsync();
+        }
+
+        using var off = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{inativo.Id}", t.Dono, new { codigo = "F4", nome = "Inativo", precoCentavos = 100, categoriaId = categoria.Id, ativo = false, versao = 1 });
+        Assert.Equal(HttpStatusCode.OK, off.StatusCode);
+
+        Assert.Equal([c.Id, a.Id, b.Id], (await ListAsync(client, "/cardapio/produtos/favoritos", t.Garcom)).Select(p => p.Id));
+        Assert.Equal([b.Id], (await ListAsync(client, "/cardapio/produtos/favoritos", t.Dono)).Select(p => p.Id));
+        Assert.Empty(await ListAsync(client, "/cardapio/produtos/favoritos", t.DonoB));
+    }
+
+    [Fact]
+    public async Task Favorites_and_search_are_denied_to_an_account_without_the_product_permission()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        _ = await SeedAsync(api);
+        var semPerfil = Guid.Parse("0197b000-0000-7000-8000-0000000000c9");
+        await using (var ownerSource = NpgsqlDataSource.Create(_postgres.GetConnectionString()))
+        {
+            await using var tx = await new TenantDatabase(ownerSource).BeginAsync(new OrganizationContext(OrgA, UnitA));
+            await Exec(tx, "INSERT INTO contas (id, organizacao_id, tipo, nome, usuario, criada_em) VALUES (@i, @o, 'operacional', 'Sem perfil', 'semperfil', now())", ("i", semPerfil), ("o", OrgA));
+            await Exec(tx, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @u, @n)", ("o", OrgA), ("u", semPerfil), ("n", UnitA));
+            await tx.CommitAsync();
+        }
+
+        var versao = (await QueryAsync(OrgA, UnitA, $"SELECT versao_credencial FROM contas WHERE id = '{semPerfil:D}'", r => r.GetInt32(0))).Single();
+        var token = (await api.Services.GetRequiredService<Sessoes>().IniciarAsync(semPerfil, OrgA, versao, false, new ClienteDaSessao("127.0.0.1", "testes"))).AccessToken;
+
+        foreach (var path in new[] { "/cardapio/produtos/favoritos", "/cardapio/produtos/busca?q=a" })
+        {
+            using var denied = await SendAsync(client, HttpMethod.Get, path, token);
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+            Assert.Equal(string.Empty, await denied.Content.ReadAsStringAsync());
+        }
     }
 
     [Fact]

@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace Flow4Tech.Cardapio.Domain;
 
 /// <summary>A menu category; <paramref name="CategoriaPaiId"/> is null at the top level (the tree has at most two levels).</summary>
@@ -214,5 +217,33 @@ public static class RegrasDeOpcoes
     {
         var text = value?.Trim();
         return string.IsNullOrEmpty(text) || text.Length > NomeMaximo || text.Any(char.IsControl) ? null : text;
+    }
+}
+
+/// <summary>
+/// The text form product search compares: upper case, no diacritics. The database keeps the same form of every name (<c>produtos.nome_busca</c>, function <c>normaliza_busca</c> in
+/// migration 0023), so a typed "açaí" finds "Acai" and "ACAI" alike.
+/// </summary>
+public static class RegrasDeBusca
+{
+    /// <summary>Most results a search answers.</summary>
+    public const int Limite = 20;
+
+    /// <summary>Longest typed search accepted.</summary>
+    public const int TermoMaximo = 80;
+
+    public static string Normalizar(string? texto)
+    {
+        var limpo = (texto ?? string.Empty).Trim().ToUpperInvariant().Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(limpo.Length);
+        foreach (var c in limpo)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 }

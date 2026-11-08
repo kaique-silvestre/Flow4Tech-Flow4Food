@@ -197,6 +197,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("grupos_opcao", tables);
         Assert.Contains("item_opcoes", tables);
         Assert.Contains("opcoes_frequencia", tables);
+        Assert.Contains("produtos_frequencia_garcom", tables);
         foreach (var tenant in new[] { a, b })
         {
             foreach (var table in tables)
@@ -211,7 +212,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
-            foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia" })
+            foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia", "produtos_frequencia_garcom" })
             {
                 Assert.Equal(1L, (await QueryAsync(tenant, $"SELECT count(*) FROM {optionTable}", r => r.GetInt64(0))).Single());
             }
@@ -266,6 +267,79 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(10_000 + 2_970, salaoA.EsperadoCentavos);
         Assert.Equal(10_000 + 2_970, salaoB.EsperadoCentavos);
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, "/caixa/turnos/atual", salaoA.Token));
+    }
+
+    [Fact]
+    public async Task Quick_launch_data_runs_in_each_organization_and_nothing_of_it_crosses_to_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        // Each organization: a table, a comanda on it, a round, "repeat the last round", the cash payment and the close (a new shift, the first one is closed).
+        var rapidoA = await RunRapidoAsync(client, salaoA);
+        var rapidoB = await RunRapidoAsync(client, salaoB);
+
+        // Favorites (from the launches above), search (same short code in both) and the table card answer each organization's own rows only.
+        foreach (var (salao, rapido) in new[] { (salaoA, rapidoA), (salaoB, rapidoB) })
+        {
+            using var favoritos = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/favoritos", salao.Token);
+            Assert.Equal([salao.ProdutoId], (await favoritos.Content.ReadFromJsonAsync<List<ProdutoDto>>())!.Select(p => p.Id));
+            using var busca = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/busca?q=chopp", salao.Token);
+            Assert.Equal([salao.ProdutoId], (await busca.Content.ReadFromJsonAsync<List<ProdutoDto>>())!.Select(p => p.Id));
+            using var codigo = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos/busca?q=CHOPP", salao.Token);
+            Assert.Equal([salao.ProdutoId], (await codigo.Content.ReadFromJsonAsync<List<ProdutoDto>>())!.Select(p => p.Id));
+            using var ultima = await SendAsync(client, HttpMethod.Get, $"/mesas/{rapido.MesaId}/ultima-vez", salao.Token);
+            var card = await ultima.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            Assert.Equal(rapido.ComandaId, card.GetProperty("comandaId").GetGuid());
+            Assert.Equal(2, card.GetProperty("itens").GetArrayLength());
+        }
+
+        // The other organization cannot read the card of this table, repeat this comanda, or find its product.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/mesas/{rapidoA.MesaId}/ultima-vez", salaoB.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/mesas/{rapidoB.MesaId}/ultima-vez", salaoA.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{rapidoA.ComandaId}/rodadas/repetir", salaoB.Token, new { rodadaId = Guid.CreateVersion7(), versao = 1 }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{rapidoB.ComandaId}/rodadas/repetir", salaoA.Token, new { rodadaId = Guid.CreateVersion7(), versao = 1 }));
+        Assert.NotEqual(salaoA.ProdutoId, salaoB.ProdutoId);
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM produtos_frequencia_garcom", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(a, "SELECT count(*) FROM produtos_frequencia_garcom WHERE produto_id = @p", r => r.GetInt64(0), ("p", salaoB.ProdutoId))).Single());
+        Assert.Equal(3L, (await QueryAsync(a, "SELECT lancamentos FROM produtos_frequencia_garcom", r => r.GetInt64(0))).Single());
+    }
+
+    private sealed record Rapido(Guid MesaId, Guid ComandaId);
+
+    /// <summary>Quick launch in one organization as its founder: table, comanda on it, one round, repeat the last round (two chopps with the add-on, R$ 29,70 with the fee), pay in cash, close.</summary>
+    private static async Task<Rapido> RunRapidoAsync(HttpClient client, Salao salao)
+    {
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", salao.Token, new { fundoCentavos = 0 }));
+        using var mesa = await SendAsync(client, HttpMethod.Post, "/mesas", salao.Token, new { identificacao = "M1" });
+        Assert.Equal(HttpStatusCode.Created, mesa.StatusCode);
+        var mesaId = (await mesa.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { mesaId });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        // The product from RunSalaoAsync has a required add-on group; the option is the one it created.
+        using var primeira = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", salao.Token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 1, opcaoIds = new[] { salao.OpcaoId } } } });
+        Assert.Equal(HttpStatusCode.Created, primeira.StatusCode);
+        var versao = (await primeira.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("comandaVersao").GetInt32();
+
+        var rodadaId = Guid.CreateVersion7();
+        using var repetida = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas/repetir", salao.Token, new { rodadaId, versao });
+        Assert.Equal(HttpStatusCode.Created, repetida.StatusCode);
+        var corpo = await repetida.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(0, corpo.GetProperty("ignorados").GetArrayLength());
+        versao = corpo.GetProperty("rodada").GetProperty("comandaVersao").GetInt32();
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas/repetir", salao.Token, new { rodadaId, versao = 1 }));
+
+        // Two chopps with the add-on: 2 x (12,50 + 1,00) = 27,00 plus 10% = 29,70.
+        using var pago = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/pagamentos", salao.Token, new { pagamentoId = Guid.CreateVersion7(), recebidoCentavos = 2_970, versao });
+        Assert.Equal(HttpStatusCode.Created, pago.StatusCode);
+        var fechada = (await pago.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("comandaVersao").GetInt32();
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/fechar", salao.Token, new { versao = fechada }));
+        return new Rapido(mesaId, comanda.Id);
     }
 
     [Fact]

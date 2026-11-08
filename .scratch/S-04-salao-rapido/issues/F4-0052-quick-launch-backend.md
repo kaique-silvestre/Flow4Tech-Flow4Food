@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Favorites per waiter derived from `produtos_frequencia` (already fed on launch) with a stable order; list route.
 - [ ] 'Repeat last round' creates a new round from the previous one of the same comanda (idempotent by client id, prices re-read, inactive or 'acabou' items reported, not silently dropped).

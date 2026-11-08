@@ -102,7 +102,16 @@ public interface ICardapioStore
 
     Task<bool> NomeEmUsoAsync(Guid organizationId, string nome, Guid? exceto, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<Produto>> ListarProdutosAsync(Guid organizationId, Guid unitId, string? busca, bool incluirInativos, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Produto>> ListarProdutosAsync(Guid organizationId, Guid unitId, bool incluirInativos, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Active products whose normalized name contains <paramref name="termoNormalizado"/> or whose short code is <paramref name="codigo"/>: exact code first, then names that start with the text,
+    /// then the rest, each by name; at most <paramref name="limite"/>, one query (unit prices included).
+    /// </summary>
+    Task<IReadOnlyList<Produto>> BuscarProdutosAsync(Guid organizationId, Guid unitId, string termoNormalizado, string codigo, int limite, CancellationToken cancellationToken);
+
+    /// <summary>The products the waiter launched most in the unit (active ones only): most launched first, then by name and id.</summary>
+    Task<IReadOnlyList<Produto>> FavoritosAsync(Guid organizationId, Guid unitId, Guid garcomId, int limite, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Produto>> FrequentesAsync(Guid organizationId, Guid unitId, int limite, CancellationToken cancellationToken);
 

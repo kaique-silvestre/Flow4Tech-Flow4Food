@@ -11,6 +11,12 @@ internal sealed record CriarMesaRequest(string? Identificacao, int? Capacidade);
 
 internal sealed record MesaErro(string Codigo);
 
+/// <summary>
+/// What the table ordered the last time it closed a comanda: <c>ComandaId</c>, <c>Numero</c>, <c>NumeroTexto</c> and <c>FechadaEm</c> are null and <c>Itens</c> is empty when there is none.
+/// <c>Itens</c> holds the items that stood (cancelled ones left out), prices as they were frozen then.
+/// </summary>
+internal sealed record UltimaVezDaMesaDto(Guid? ComandaId, int? Numero, string? NumeroTexto, DateTimeOffset? FechadaEm, List<ItemDto> Itens);
+
 internal static class MesasEndpoints
 {
     private const long Body = 1024;
@@ -25,6 +31,26 @@ internal static class MesasEndpoints
             .RequireSession()
             .RequirePermission(MesaPermissions.Ver)
             .Produces<List<MesaDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/mesas/{mesaId:guid}/ultima-vez", async (Guid mesaId, RequestContextAccessor request, ConsultaDaUltimaVez consulta, CancellationToken cancellationToken) =>
+            {
+                var r = await consulta.ConsultarAsync(request, mesaId, cancellationToken);
+                if (r is null)
+                {
+                    return Results.Json(new MesaErro("nao-encontrada"), statusCode: StatusCodes.Status404NotFound);
+                }
+
+                return Results.Ok(r.Comanda is null
+                    ? new UltimaVezDaMesaDto(null, null, null, null, [])
+                    : new UltimaVezDaMesaDto(r.Comanda.Id, r.Comanda.Numero, RegrasDeComanda.NumeroDeExibicao(r.Comanda.Numero), r.Comanda.FechadaEm, [.. r.Itens.Select(ComandasEndpoints.ItemParaDto)]));
+            })
+            .WithName("getUltimaVezDaMesa")
+            .RequireSession()
+            .RequirePermission(MesaPermissions.Ver)
+            .Produces<UltimaVezDaMesaDto>()
+            .Produces<MesaErro>(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 

@@ -1367,6 +1367,36 @@
         "x-permission": "produto:ver"
       }
     },
+    "/cardapio/produtos/favoritos": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listProdutosFavoritos",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProdutoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:ver"
+      }
+    },
     "/cardapio/produtos/frequentes": {
       "get": {
         "tags": [
@@ -2353,6 +2383,94 @@
         "x-permission": "comanda:lancar-item"
       }
     },
+    "/comandas/{comandaId}/rodadas/repetir": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "repetirUltimaRodada",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepetirRodadaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RodadaRepetidaDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RodadaRepetidaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepeticaoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:lancar-item"
+      }
+    },
     "/comandas/{comandaId}/rodadas/{rodadaId}/desfazer": {
       "post": {
         "tags": [
@@ -2951,6 +3069,54 @@
           }
         },
         "x-permission": "mesa:gerenciar"
+      }
+    },
+    "/mesas/{mesaId}/ultima-vez": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getUltimaVezDaMesa",
+        "parameters": [
+          {
+            "name": "mesaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UltimaVezDaMesaDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "mesa:ver"
       }
     },
     "/perfis/modelos": {
@@ -4475,6 +4641,35 @@
           }
         }
       },
+      "ItemIgnoradoDto": {
+        "required": [
+          "produtoId",
+          "produtoNome",
+          "quantidade",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "produtoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "produtoNome": {
+            "type": "string"
+          },
+          "quantidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
       "ItensDaComandaDto": {
         "required": [
           "itens",
@@ -5191,6 +5386,55 @@
           }
         }
       },
+      "RepeticaoErro": {
+        "required": [
+          "codigo",
+          "versaoAtual",
+          "ignorados"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "versaoAtual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ignorados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemIgnoradoDto"
+            }
+          }
+        }
+      },
+      "RepetirRodadaRequest": {
+        "required": [
+          "rodadaId",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "rodadaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "RestaurarConfiguracaoRequest": {
         "required": [
           "camada",
@@ -5271,6 +5515,24 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ItemDto"
+            }
+          }
+        }
+      },
+      "RodadaRepetidaDto": {
+        "required": [
+          "rodada",
+          "ignorados"
+        ],
+        "type": "object",
+        "properties": {
+          "rodada": {
+            "$ref": "#/components/schemas/RodadaDto"
+          },
+          "ignorados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemIgnoradoDto"
             }
           }
         }
@@ -5531,6 +5793,53 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "UltimaVezDaMesaDto": {
+        "required": [
+          "comandaId",
+          "numero",
+          "numeroTexto",
+          "fechadaEm",
+          "itens"
+        ],
+        "type": "object",
+        "properties": {
+          "comandaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "numero": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "numeroTexto": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fechadaEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDto"
+            }
           }
         }
       },

@@ -374,6 +374,25 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows.Select(c => new Comanda(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao)).ToList();
     }
 
+    public async Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var c = await UltimaFechadaDaMesa(context, unitId, mesaId, garcomId).FirstOrDefaultAsync(cancellationToken);
+        return c is null ? null : new Comanda(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao);
+    }
+
+    /// <summary>The last-closed query, exposed so a test can assert its SQL text (unit filter explicit, no organization filter: RLS does it).</summary>
+    internal static IQueryable<ComandaRow> UltimaFechadaDaMesa(MesasDbContext context, Guid unitId, Guid mesaId, Guid? garcomId)
+    {
+        var query = context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.MesaId == mesaId && c.Estado == "fechada");
+        if (garcomId is { } own)
+        {
+            query = query.Where(c => c.GarcomId == own);
+        }
+
+        return query.OrderByDescending(c => c.FechadaEm).ThenBy(c => c.Id).Take(1);
+    }
+
     /// <summary>The lookup query, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
     internal static IQueryable<ComandaRow> Achar(MesasDbContext context, Guid unitId, Guid comandaId) =>
         context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.Id == comandaId);
@@ -458,7 +477,7 @@ public sealed class PostgresRodadasStore : IRodadasStore
         }
     }
 
-    public async Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken)
+    public async Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, Guid garcomId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(produtos);
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -469,6 +488,13 @@ public sealed class PostgresRodadasStore : IRodadasStore
                 INSERT INTO produtos_frequencia (organizacao_id, unidade_id, produto_id, lancamentos)
                 VALUES ({organizationId}, {unitId}, {produto}, 1)
                 ON CONFLICT (organizacao_id, unidade_id, produto_id) DO UPDATE SET lancamentos = produtos_frequencia.lancamentos + 1
+                """,
+                cancellationToken);
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO produtos_frequencia_garcom (organizacao_id, unidade_id, garcom_id, produto_id, lancamentos)
+                VALUES ({organizationId}, {unitId}, {garcomId}, {produto}, 1)
+                ON CONFLICT (organizacao_id, unidade_id, garcom_id, produto_id) DO UPDATE SET lancamentos = produtos_frequencia_garcom.lancamentos + 1
                 """,
                 cancellationToken);
         }
@@ -562,6 +588,7 @@ public static class ComandasServices
         services.AddSingleton<IRodadasStore, PostgresRodadasStore>();
         services.AddSingleton<GestaoDeRodadas>();
         services.AddSingleton<GestaoDoRecebimento>();
+        services.AddSingleton<ConsultaDaUltimaVez>();
         return services;
     }
 }

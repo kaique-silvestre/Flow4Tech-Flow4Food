@@ -52,12 +52,39 @@ public sealed class GestaoDoCardapio(IUnitOfWork unitOfWork, ICardapioStore stor
         return unitOfWork.ExecuteAsync(request, ct => store.ListarCategoriasAsync(request.Organization.OrganizationId, ct), cancellationToken);
     }
 
-    /// <summary>Active products, by name; <paramref name="busca"/> keeps those whose name contains it or whose code contains it (case insensitive). <paramref name="incluirInativos"/> is for the manager.</summary>
-    public Task<IReadOnlyList<Produto>> ListarProdutosAsync(IRequestContext request, string? busca, bool incluirInativos, CancellationToken cancellationToken = default)
+    /// <summary>Products by name; <paramref name="incluirInativos"/> is for the manager (the launch list holds the active ones only).</summary>
+    public Task<IReadOnlyList<Produto>> ListarProdutosAsync(IRequestContext request, bool incluirInativos, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var termo = string.IsNullOrWhiteSpace(busca) ? null : busca.Trim();
-        return unitOfWork.ExecuteAsync(request, ct => store.ListarProdutosAsync(request.Organization.OrganizationId, request.Organization.UnitId, termo, incluirInativos, ct), cancellationToken);
+        return unitOfWork.ExecuteAsync(request, ct => store.ListarProdutosAsync(request.Organization.OrganizationId, request.Organization.UnitId, incluirInativos, ct), cancellationToken);
+    }
+
+    /// <summary>
+    /// Search of the launch screen: the exact short code (any case) or part of the name (accents and case ignored), capped at <see cref="RegrasDeBusca.Limite"/>. Blank text finds nothing;
+    /// null when the text is longer than <see cref="RegrasDeBusca.TermoMaximo"/>.
+    /// </summary>
+    public Task<IReadOnlyList<Produto>?> BuscarAsync(IRequestContext request, string? termo, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var limpo = termo?.Trim() ?? string.Empty;
+        if (limpo.Length > RegrasDeBusca.TermoMaximo)
+        {
+            return Task.FromResult<IReadOnlyList<Produto>?>(null);
+        }
+
+        if (limpo.Length == 0)
+        {
+            return Task.FromResult<IReadOnlyList<Produto>?>([]);
+        }
+
+        return unitOfWork.ExecuteAsync<IReadOnlyList<Produto>?>(request, async ct => await store.BuscarProdutosAsync(request.Organization.OrganizationId, request.Organization.UnitId, RegrasDeBusca.Normalizar(limpo), limpo.ToUpperInvariant(), RegrasDeBusca.Limite, ct), cancellationToken);
+    }
+
+    /// <summary>The caller's favorites in the active unit: the products they launched most, most launched first. Empty until they launch something.</summary>
+    public Task<IReadOnlyList<Produto>> FavoritosAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return unitOfWork.ExecuteAsync(request, ct => store.FavoritosAsync(request.Organization.OrganizationId, request.Organization.UnitId, request.UserId, LimiteDeFrequentes, ct), cancellationToken);
     }
 
     /// <summary>The active unit's most launched active products, most launched first. Empty when there is no history.</summary>

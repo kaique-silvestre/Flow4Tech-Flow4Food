@@ -98,4 +98,31 @@ public sealed class CardapioRulesTests
         Assert.Equal(1000, produto.PrecoEfetivo(Fim));
         Assert.Equal(650, (produto with { PrecoDaUnidadeCentavos = 650 }).PrecoEfetivo(Fim));
     }
+
+    [Theory]
+    [InlineData("Açaí", "ACAI")]
+    [InlineData("  pão de QUEIJO ", "PAO DE QUEIJO")]
+    [InlineData("ÇÃO", "CAO")]
+    [InlineData("jalapeño", "JALAPENO")]
+    [InlineData("Crème Brûlée", "CREME BRULEE")]
+    [InlineData("CAF1", "CAF1")]
+    [InlineData("50% casa", "50% CASA")]
+    [InlineData("", "")]
+    [InlineData("   ", "")]
+    public void Search_text_is_compared_upper_case_without_accents_and_trimmed(string typed, string expected) =>
+        Assert.Equal(expected, RegrasDeBusca.Normalizar(typed));
+
+    [Fact]
+    public void Search_text_that_is_missing_normalizes_to_nothing_and_composed_and_decomposed_accents_agree()
+    {
+        Assert.Equal(string.Empty, RegrasDeBusca.Normalizar(null));
+        Assert.Equal(RegrasDeBusca.Normalizar("a\u00e7a\u00ed"), RegrasDeBusca.Normalizar("a\u0063\u0327a\u0069\u0301"));
+    }
+
+    [Fact]
+    public void A_search_answers_at_most_twenty_products_for_text_of_at_most_eighty_characters()
+    {
+        Assert.Equal(20, RegrasDeBusca.Limite);
+        Assert.Equal(80, RegrasDeBusca.TermoMaximo);
+    }
 }

@@ -6,4 +6,5 @@
 - 04:30 · F4-0047 · feito · a992c68 · CI: verde (verificado 06:05)
 - 05:15 · F4-0048 · feito · 81c4081 · CI: verde (verificado 06:05)
 - 06:02 · F4-0049 · feito · 0f89382 · CI: verde (verificado 06:05)
-- 06:44 · F4-0050 · feito · 62bc093 · CI: a verificar
+- 06:44 · F4-0050 · feito · 62bc093 · CI: falha externa (CodeQL 504 ao baixar bundle), rerun disparado
+- 07:32 · F4-0051 · feito · 90a93a1 · CI: a verificar

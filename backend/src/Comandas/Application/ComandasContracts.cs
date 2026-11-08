@@ -99,6 +99,9 @@ public interface IComandasStore
     /// <summary>Bumps the version of an OPEN comanda whatever it is now (taking the row lock until the unit of work ends); false when the comanda is not open. For writes that do not depend on what the caller last saw.</summary>
     Task<bool> AvancarVersaoSemConferirAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
 
+    /// <summary>The most recently CLOSED comanda that held the table in the unit (closed time, then id); only <paramref name="garcomId"/>'s when given. Null when there is none.</summary>
+    Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken);
+
     /// <summary>Open comandas of the unit, newest first; only <paramref name="garcomId"/>'s when given.</summary>
     Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken);
 }
@@ -151,8 +154,8 @@ public interface IRodadasStore
 
     Task InserirRodadaAsync(Guid organizationId, RodadaComItens rodada, CancellationToken cancellationToken);
 
-    /// <summary>Counts the launch of each product in the unit (feeds the frequent items).</summary>
-    Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken);
+    /// <summary>Counts the launch of each product in the unit (feeds the frequent items) and by the waiter who launched it (feeds their favorites).</summary>
+    Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, Guid garcomId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken);
 
     /// <summary>Counts the launch of each option with its product in the unit (feeds the most used add-ons).</summary>
     Task RegistrarFrequenciaDeOpcoesAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<(Guid ProdutoId, Guid OpcaoId)> usos, CancellationToken cancellationToken);

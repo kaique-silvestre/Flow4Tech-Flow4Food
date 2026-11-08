@@ -468,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cardapio/produtos/favoritos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listProdutosFavoritos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cardapio/produtos/frequentes": {
         parameters: {
             query?: never;
@@ -692,6 +708,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/rodadas/repetir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["repetirUltimaRodada"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas/{comandaId}/rodadas/{rodadaId}/desfazer": {
         parameters: {
             query?: never;
@@ -798,6 +830,22 @@ export interface paths {
         get: operations["listMesas"];
         put?: never;
         post: operations["criarMesa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mesas/{mesaId}/ultima-vez": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getUltimaVezDaMesa"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1198,6 +1246,14 @@ export interface components {
             /** Format: int64 */
             totalCentavos: number | string;
         };
+        ItemIgnoradoDto: {
+            /** Format: uuid */
+            produtoId: string;
+            produtoNome: string;
+            /** Format: int32 */
+            quantidade: number | string;
+            motivo: string;
+        };
         ItensDaComandaDto: {
             itens: components["schemas"]["ItemDto"][];
             /** Format: int64 */
@@ -1374,6 +1430,18 @@ export interface components {
             /** Format: int64 */
             tetoDiarioCentavos: null | number | string;
         };
+        RepeticaoErro: {
+            codigo: string;
+            /** Format: int32 */
+            versaoAtual: null | number | string;
+            ignorados: components["schemas"]["ItemIgnoradoDto"][];
+        };
+        RepetirRodadaRequest: {
+            /** Format: uuid */
+            rodadaId: string;
+            /** Format: int32 */
+            versao: number | string;
+        };
         RestaurarConfiguracaoRequest: {
             camada: null | string;
             /** Format: int32 */
@@ -1394,6 +1462,10 @@ export interface components {
             /** Format: int32 */
             comandaVersao: number | string;
             itens: components["schemas"]["ItemDto"][];
+        };
+        RodadaRepetidaDto: {
+            rodada: components["schemas"]["RodadaDto"];
+            ignorados: components["schemas"]["ItemIgnoradoDto"][];
         };
         SessaoItem: {
             /** Format: uuid */
@@ -1462,6 +1534,16 @@ export interface components {
             diferencaTexto: null | string;
             /** Format: int64 */
             recebidoDinheiroCentavos: number | string;
+        };
+        UltimaVezDaMesaDto: {
+            /** Format: uuid */
+            comandaId: null | string;
+            /** Format: int32 */
+            numero: null | number | string;
+            numeroTexto: null | string;
+            /** Format: date-time */
+            fechadaEm: null | string;
+            itens: components["schemas"]["ItemDto"][];
         };
         UnidadeAtivaResponse: {
             /** Format: uuid */
@@ -2976,6 +3058,40 @@ export interface operations {
             };
         };
     };
+    listProdutosFavoritos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listProdutosFrequentes: {
         parameters: {
             query?: never;
@@ -3919,6 +4035,82 @@ export interface operations {
             };
         };
     };
+    repetirUltimaRodada: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepetirRodadaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RodadaRepetidaDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RodadaRepetidaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepeticaoErro"];
+                };
+            };
+        };
+    };
     desfazerRodada: {
         parameters: {
             query?: never;
@@ -4436,6 +4628,51 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    getUltimaVezDaMesa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mesaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UltimaVezDaMesaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
