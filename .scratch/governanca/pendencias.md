@@ -63,6 +63,13 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 - Fazer: olhar o numero das primeiras execucoes verdes, escolher um piso um pouco abaixo (como no front: app 85/77/90/85, design-system 95/95/93/95), aplicar no job `coverage-back` (`reportgenerator` + conferir `Summary.txt`/Cobertura) e colocar o job no `gates`.
 - Atencao: o numero junta projetos que se sobrepoem; dado o codigo gerado e as migracoes em SQL, o percentual absoluto importa menos que a queda. Excluir o que nao e codigo do produto (`Flow4Tech.E2eSeed`, spikes) se aparecer no relatorio.
 
+## Para rever no FIM DA SESSAO de 2026-11-07 (combinado com o dono)
+- [ ] **F4-0104** Piso de cobertura do back: ler o numero unificado do job `coverage-back` na primeira execucao verde do CI (o Docker local nao estava ligado, entao nao deu para medir) e definir o piso.
+- [ ] **Push**: conferir se os commits locais de `dev-v2` foram enviados e se o CI ficou verde (jobs novos: `trivy`, `dast`, `codeql`, `lint-frontend`, `coverage-back`).
+- [ ] **F4-0102** DAST autenticado e header CORP (adiado: "depois vemos").
+- [ ] Decisoes adiadas de proposito, so conferir que os gatilhos continuam validos: rate limit compartilhado (F4-0096), backup de producao (F4-0098, sem Pro e sem dado real).
+- Apague este bloco quando os itens forem resolvidos ou ganharem seu proprio ticket andando.
+
 ## Sem ticket (lembretes do dono)
 - Acompanhar `railway usage` depois de alguns dias (4 servicos sempre ligados: 2 APIs e 2 bancos).
 - Avisos de pacotes depreciados do pnpm (`glob`, `whatwg-encoding`): so subdependencias.
