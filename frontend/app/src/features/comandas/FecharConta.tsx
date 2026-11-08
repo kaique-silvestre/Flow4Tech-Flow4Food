@@ -2,7 +2,7 @@ import { BottomSheet, Button, centsFromDigits, formatBRL, MoneyField, Notice } f
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { enfileirarPagamento } from "../fila/fila";
+import { enfileirarPagamento, pagamentoNaFila, recebidoNaFila, temAcaoViva, useFila } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 import type { ContaDaComanda } from "./rodada";
@@ -42,6 +42,11 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
   const [erro, setErro] = useState<string | undefined>(undefined);
   const [semCaixa, setSemCaixa] = useState(false);
   const pagamentoId = useRef<string | null>(null);
+  // A payment of this comanda waiting in the queue is money the server does not know yet: while it waits the sheet is blocked, so the same amount is never received under a second payment id.
+  const fila = useFila();
+  const naFila = fila.acoes.some((a) => a.tipo === "pagamento" && a.comandaId === comandaId && a.estado !== "falhou");
+  const guardado = recebidoNaFila(comandaId);
+  const bloqueadoPelaFila = naFila && fase.tipo === "digitando";
 
   const saldo = conta.saldoCentavos;
   const podeVerCaixa = permissoes.pode("caixa:ver");
@@ -192,9 +197,14 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
         return;
       }
 
+      if (pagamentoNaFila(comandaId)) {
+        return;
+      }
+
       pagamentoId.current ??= uuidv7();
       const id = pagamentoId.current;
-      if (!navigator.onLine) {
+      // An earlier action of this comanda still in the queue goes first: the payment waits behind it.
+      if (!navigator.onLine || temAcaoViva(comandaId)) {
         guardarNaFila(id);
         return;
       }
@@ -323,11 +333,15 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
             Voltar
           </Button>
           {tudoPago ? (
-            <Button loading={enviando} onClick={() => void receber()}>
+            <Button loading={enviando} disabled={bloqueadoPelaFila} onClick={() => void receber()}>
               Fechar conta
             </Button>
           ) : (
-            <Button loading={enviando} disabled={caixaFechado || recebido <= 0} onClick={() => void receber()}>
+            <Button
+              loading={enviando}
+              disabled={caixaFechado || recebido <= 0 || bloqueadoPelaFila}
+              onClick={() => void receber()}
+            >
               Dinheiro
             </Button>
           )}
@@ -363,6 +377,14 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
           </div>
         ) : null}
       </dl>
+
+      {bloqueadoPelaFila ? (
+        <Notice tone="info">
+          {guardado > 0
+            ? `Há um recebimento de ${formatBRL(guardado)} nesta comanda esperando na fila. Aguarde ele ser registrado antes de receber de novo.`
+            : "Há um recebimento desta comanda esperando na fila. Aguarde ele ser registrado."}
+        </Notice>
+      ) : null}
 
       {caixaFechado ? (
         <Notice

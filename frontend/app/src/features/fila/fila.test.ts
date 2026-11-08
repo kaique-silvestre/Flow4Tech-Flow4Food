@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
-import { entrar, reiniciarSessaoParaTestes } from "../sessao/sessao";
+import { entrar, reiniciarSessaoParaTestes, sair } from "../sessao/sessao";
 import {
+  enfileirarCancelamento,
   enfileirarPagamento,
   enfileirarRodada,
   iniciarProcessador,
   lerFila,
   limparFila,
+  pagamentoNaFila,
   processar,
   recarregarFilaParaTestes,
+  recebidoNaFila,
   reiniciarFilaParaTestes,
   removerAcao,
+  temAcaoViva,
   tentarAgora,
 } from "./fila";
 
@@ -227,17 +231,14 @@ describe("pending-actions queue", () => {
     await vi.waitFor(() => expect(lerFila().map((a) => [a.id, a.estado])).toEqual([["ruim", "falhou"]]));
   });
 
-  it("stops on a refused session and keeps the actions for when the person signs in again", async () => {
+  it("stops on a refused session; the session ends, so the queue of that account is forgotten", async () => {
     stubRede({
       "GET /comandas/c1/conta": new Response(null, { status: 401 }),
       "POST /refresh": new Response(null, { status: 401 }),
     });
 
     enfileirar("r1");
-    await vi.waitFor(() => expect(lerFila()[0]?.motivo).toBe("Entre de novo para enviar"));
-
-    expect(lerFila()).toHaveLength(1);
-    expect(lerFila()[0]?.estado).toBe("pendente");
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
   });
 
   it("never sends the actions of another account", async () => {
@@ -251,7 +252,8 @@ describe("pending-actions queue", () => {
     await processar();
 
     expect(chamadas.filter((c) => c.method === "POST")).toHaveLength(0);
-    expect(lerFila()).toHaveLength(1);
+    // Signing in as someone else drops what the first account queued.
+    expect(lerFila()).toHaveLength(0);
   });
 
   it("survives a reload and forgets everything on sign-out", async () => {
@@ -363,5 +365,253 @@ describe("pending-actions queue", () => {
     await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
 
     expect(lerFila()[0]?.motivo).toContain("caixa está fechado");
+  });
+});
+
+describe("queue safety on a shared phone and across tabs", () => {
+  const CHAVE = "f4.fila.v1";
+  const guardada = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    tipo: "rodada",
+    contaId: "conta-1",
+    comandaId: "c1",
+    titulo: "Rodada",
+    detalhe: "",
+    itens,
+    criadoEm: Date.now(),
+    tentativas: 0,
+    proxima: 0,
+    estado: "pendente",
+    motivo: null,
+    ...extra,
+  });
+
+  it("signing out empties the queue and its storage", async () => {
+    online(false);
+    enfileirar("r1");
+    stubRede({ "POST /logout": new Response(null, { status: 204 }) });
+
+    await sair();
+
+    expect(lerFila()).toEqual([]);
+    expect(window.localStorage.getItem(CHAVE)).toBeNull();
+  });
+
+  it("an expired session (refresh refused after a 401) empties the queue", async () => {
+    online(false);
+    enfileirar("r1");
+    stubRede({
+      "GET /comandas": new Response(null, { status: 401 }),
+      "POST /refresh": new Response(null, { status: 401 }),
+    });
+    const { api } = await import("../sessao/sessao");
+
+    await api.GET("/comandas");
+
+    expect(lerFila()).toEqual([]);
+  });
+
+  it("a 401 that stays a 401 after a good refresh also ends the session and empties the queue", async () => {
+    online(false);
+    enfileirar("r1");
+    stubRede({
+      "GET /comandas": new Response(null, { status: 401 }),
+      "POST /refresh": json(sessaoJson({ accessToken: tokenDe("conta-1") })),
+    });
+    const { api, lerSessao } = await import("../sessao/sessao");
+
+    await api.GET("/comandas");
+
+    expect(lerSessao().status).toBe("anonima");
+    expect(lerFila()).toEqual([]);
+  });
+
+  it("entries of another account found on load are dropped when someone signs in", async () => {
+    window.localStorage.setItem(CHAVE, JSON.stringify([guardada("velha", { contaId: "conta-9" }), guardada("minha")]));
+    recarregarFilaParaTestes();
+    expect(lerFila()).toHaveLength(2);
+
+    await entrarComo("conta-1");
+
+    expect(lerFila().map((a) => a.id)).toEqual(["minha"]);
+  });
+
+  it("two tabs do not erase each other: a write merges what the other tab stored", () => {
+    online(false);
+    enfileirar("a");
+    window.localStorage.setItem(
+      CHAVE,
+      JSON.stringify([guardada("a"), guardada("da-outra-aba", { criadoEm: Date.now() + 5 })]),
+    );
+
+    enfileirar("b");
+
+    const gravadas = JSON.parse(window.localStorage.getItem(CHAVE) ?? "[]") as { id: string }[];
+    expect(gravadas.map((a) => a.id).sort()).toEqual(["a", "b", "da-outra-aba"]);
+  });
+
+  it("a storage event from another tab brings its queue in, keeping the action this tab is sending", () => {
+    online(false);
+    enfileirar("a");
+    window.localStorage.setItem(CHAVE, JSON.stringify([guardada("a"), guardada("nova")]));
+
+    window.dispatchEvent(new StorageEvent("storage", { key: CHAVE }));
+
+    expect(lerFila().map((a) => a.id)).toEqual(["a", "nova"]);
+  });
+
+  it("an action already sent does not come back from a stale copy in the storage", async () => {
+    const stub = { "GET /comandas/c1/conta": contaOk(), "POST /comandas/c1/rodadas": rodadaOk("r1") };
+    stubRede(stub);
+    enfileirar("r1");
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+    window.localStorage.setItem(CHAVE, JSON.stringify([guardada("r1")]));
+
+    enfileirar("r2");
+    // r2 is sent right away; r1 must not be resurrected by the merge.
+    await processar();
+
+    expect(lerFila().map((a) => a.id)).not.toContain("r1");
+  });
+
+  it("refuses to remove an action that is being sent", async () => {
+    let solta: () => void = () => undefined;
+    stubRede({
+      "GET /comandas/c1/conta": () =>
+        new Promise<Response>((resolve) => {
+          solta = () => resolve(contaOk());
+        }),
+    });
+    enfileirar("r1");
+    await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("enviando"));
+
+    expect(removerAcao("r1")).toBe(false);
+    expect(lerFila()).toHaveLength(1);
+    solta();
+  });
+
+  it("knows what the queue holds for a comanda", () => {
+    online(false);
+    enfileirarPagamento({ pagamentoId: "p1", comandaId: "c1", recebidoCentavos: 1500, titulo: "t", detalhe: "d" });
+    enfileirar("r1", "c2");
+
+    expect(temAcaoViva("c1")).toBe(true);
+    expect(temAcaoViva("c3")).toBe(false);
+    expect(pagamentoNaFila("c1")).toBe(true);
+    expect(pagamentoNaFila("c2")).toBe(false);
+    expect(recebidoNaFila("c1")).toBe(1500);
+  });
+
+  it("a close that keeps failing after the payment succeeded stops after a bounded number of attempts and shows as stuck", async () => {
+    vi.useFakeTimers();
+    const contaComSaldo = json({ ...(await contaOk().json()), saldoCentavos: 1000, versao: 4 });
+    stubRede({
+      "GET /comandas/c1/conta": () => contaComSaldo.clone(),
+      "POST /comandas/c1/pagamentos": json(
+        { saldoRestanteCentavos: 0, trocoCentavos: 0, comandaVersao: 5 },
+        { status: 201 },
+      ),
+      "POST /comandas/c1/fechar": json({}, { status: 500 }),
+    });
+    enfileirarPagamento({ pagamentoId: "p1", comandaId: "c1", recebidoCentavos: 1000, titulo: "t", detalhe: "d" });
+
+    for (let i = 0; i < 8; i += 1) {
+      await vi.advanceTimersByTimeAsync(40_000);
+      await processar();
+    }
+
+    const a = lerFila()[0];
+    expect(a?.estado).toBe("falhou");
+    expect(a?.pago).toBe(true);
+    expect(a?.motivo).toMatch(/não fechou/);
+    expect(a?.tentativas).toBeLessThanOrEqual(5);
+  });
+
+  it("an action removed in tab B is not written back by tab A, which still holds it", () => {
+    online(false);
+    enfileirar("a");
+    enfileirar("b");
+    // Tab B removes "a": it leaves the queue copy and writes its tombstone.
+    window.localStorage.setItem(CHAVE, JSON.stringify([guardada("b")]));
+    window.localStorage.setItem("f4.fila.v1.retirados", JSON.stringify(["a"]));
+
+    enfileirar("c");
+
+    const gravadas = JSON.parse(window.localStorage.getItem(CHAVE) ?? "[]") as { id: string }[];
+    expect(gravadas.map((a) => a.id).sort()).toEqual(["b", "c"]);
+    expect(lerFila().map((a) => a.id)).not.toContain("a");
+  });
+
+  it("a storage event with the tombstone of an action drops it from this tab", () => {
+    online(false);
+    enfileirar("a");
+    window.localStorage.setItem("f4.fila.v1.retirados", JSON.stringify(["a"]));
+    window.localStorage.setItem(CHAVE, JSON.stringify([guardada("a")]));
+
+    window.dispatchEvent(new StorageEvent("storage", { key: ["f4", "fila", "v1", "retirados"].join(".") }));
+
+    expect(lerFila()).toEqual([]);
+  });
+
+  it("removing here leaves a tombstone for the other tabs", () => {
+    online(false);
+    enfileirar("a");
+
+    removerAcao("a");
+
+    expect(JSON.parse(window.localStorage.getItem("f4.fila.v1.retirados") ?? "[]")).toContain("a");
+  });
+
+  it("the close counter starts when the payment is first recorded, not with the attempts before it", async () => {
+    vi.useFakeTimers();
+    const base = await contaOk().json();
+    let pagamentos = 0;
+    stubRede({
+      "GET /comandas/c1/conta": () => json({ ...base, saldoCentavos: 1000, versao: 4 }),
+      "POST /comandas/c1/pagamentos": () => {
+        pagamentos += 1;
+        // Three attempts fail before the payment goes through.
+        return pagamentos <= 3
+          ? new Response(null, { status: 500 })
+          : json({ saldoRestanteCentavos: 0, trocoCentavos: 0, comandaVersao: 5 }, { status: 201 });
+      },
+      "POST /comandas/c1/fechar": json({}, { status: 500 }),
+    });
+    enfileirarPagamento({ pagamentoId: "p1", comandaId: "c1", recebidoCentavos: 1000, titulo: "t", detalhe: "d" });
+
+    // Step in small slices until the payment is recorded and the first close attempt has failed.
+    for (let i = 0; i < 200 && lerFila()[0]?.pago !== true; i += 1) {
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+
+    const a = lerFila()[0];
+    expect(pagamentos).toBe(4);
+    expect(a?.pago).toBe(true);
+    expect(a?.estado).toBe("pendente");
+    // Three failed sends of the payment do not count: this is the first failed close.
+    expect(a?.tentativas).toBe(1);
+  });
+
+  it("queues a cancel and sends it with the version read at send time", async () => {
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(7),
+      "POST /comandas/c1/itens/i1/cancelar": json({ comandaVersao: 8 }),
+    });
+    enfileirarCancelamento({
+      acaoId: "x1",
+      comandaId: "c1",
+      itemId: "i1",
+      motivo: "erro-de-lancamento",
+      texto: null,
+      titulo: "Cancelar item",
+      detalhe: "Chopp",
+    });
+
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+    expect(chamadas.find((c) => c.path.endsWith("/cancelar"))?.body).toEqual({
+      versao: 7,
+      motivo: "erro-de-lancamento",
+      texto: null,
+    });
   });
 });

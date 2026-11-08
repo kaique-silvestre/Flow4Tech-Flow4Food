@@ -10,6 +10,15 @@ const seed = lerSeed();
 test.skip(!process.env["E2E_API"] || seed === null, "needs the API running, the seed and E2E_API=1");
 
 async function shoot(page: Page, name: string) {
+  // Every shot is taken at rest: transitions off, and an open sheet fully in place (never halfway through its slide).
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
+  });
+  const folhas = page.getByRole("dialog");
+  for (let i = 0; i < (await folhas.count()); i += 1) {
+    await expect(folhas.nth(i)).toHaveCSS("transform", /none|matrix\(1, 0, 0, 1, 0, 0\)/);
+  }
+
   const size = page.viewportSize();
   await page.screenshot({ path: join(shots, `${name}-${size?.width ?? 0}x${size?.height ?? 0}.png`) });
 }
@@ -49,6 +58,34 @@ async function comandaDoGarcom(request: APIRequestContext, baseURL: string, nome
   });
   expect(rodada.status()).toBe(201);
   return { id: comanda.id, auth };
+}
+
+/** Buttons and sheets animate; a screenshot must show the state at rest, in light and in dark. */
+async function congelarTransicoes(page: Page) {
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
+  });
+}
+
+async function shootNosTemas(page: Page, name: string) {
+  for (const tema of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: tema });
+    await shoot(page, `${name}-${tema}`);
+  }
+
+  await page.emulateMedia({ colorScheme: "light" });
+}
+
+async function abrirCaixaSeFechado(page: Page) {
+  await page.getByRole("link", { name: "Caixa" }).click();
+  const fechado = page.getByText("Caixa fechado. Abra o caixa para receber.");
+  await expect(fechado.or(page.getByRole("heading", { level: 2, name: "Caixa aberto" }))).toBeVisible();
+  if (await fechado.isVisible()) {
+    await page.getByLabel("Fundo de troco").fill("0");
+    await page.getByRole("button", { name: "Abrir caixa" }).click();
+  }
+
+  await expect(page.getByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
 }
 
 async function fecharTurnoSeAberto(page: Page) {
@@ -215,5 +252,112 @@ test("a payment taken with the signal cut waits in the queue and is registered o
   await expect(page.getByRole("link", { name: new RegExp(nome) })).toHaveCount(0);
 
   // Close the shift again so the next run starts from the closed state.
+  await fecharTurnoSeAberto(page);
+});
+
+test("reopening the close sheet with a payment still in the queue is blocked: no second payment for the same amount", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
+  const nome = `Dupla ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  await entrarComo(page, "caixa");
+  await page.getByRole("link", { name: "Caixa" }).click();
+  const fechado = page.getByText("Caixa fechado. Abra o caixa para receber.");
+  await expect(fechado.or(page.getByRole("heading", { level: 2, name: "Caixa aberto" }))).toBeVisible();
+  if (await fechado.isVisible()) {
+    await page.getByLabel("Fundo de troco").fill("0");
+    await page.getByRole("button", { name: "Abrir caixa" }).click();
+  }
+
+  await expect(page.getByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
+  await abrirComanda(page, nome);
+  await page.getByRole("button", { name: "Fechar conta" }).click();
+  let folha = page.getByRole("dialog", { name: "Fechar conta" });
+  await expect(folha.getByLabel("Valor a receber")).toContainText(/2[57],\d0/);
+
+  await context.setOffline(true);
+  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  const naFila = page.getByRole("dialog", { name: "Recebimento na fila" });
+  await expect(naFila).toBeVisible();
+  await naFila.getByRole("button", { name: "Concluir" }).click();
+
+  // Still offline: back into the same comanda, the sheet does not take the money again.
+  await abrirComanda(page, nome);
+  await page.getByRole("button", { name: "Fechar conta" }).click();
+  folha = page.getByRole("dialog", { name: "Fechar conta" });
+  await expect(folha.getByText(/esperando na fila/)).toBeVisible();
+  await expect(folha.getByRole("button", { name: "Dinheiro" })).toBeDisabled();
+  await congelarTransicoes(page);
+  await expect(folha).toHaveCSS("transform", /none|matrix\(1, 0, 0, 1, 0, 0\)/);
+  await shootNosTemas(page, "14-recebimento-bloqueado-pela-fila");
+  await folha.getByRole("button", { name: "Voltar" }).click();
+
+  await context.setOffline(false);
+  await expect(page.getByRole("button", { name: /ações? pendentes?/ })).toHaveCount(0, { timeout: 60_000 });
+  // The one queued payment settled the bill and closed it: the comanda left the open list (a second payment under another id could not have).
+  await page.getByRole("link", { name: "Comandas", exact: true }).first().click();
+  await expect(page.getByRole("link", { name: new RegExp(nome) })).toHaveCount(0);
+  await fecharTurnoSeAberto(page);
+});
+
+test("the queue bar shows the confirmation to remove a payment, the sending state and a stuck close", async ({
+  page,
+  context,
+  request,
+  baseURL,
+}) => {
+  // The stuck close needs five attempts with back-off (about 30 s).
+  test.setTimeout(150_000);
+  const nome = `Estados ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  await entrarComo(page, "caixa");
+  await abrirCaixaSeFechado(page);
+  await abrirComanda(page, nome);
+  await page.getByRole("button", { name: "Fechar conta" }).click();
+  const folha = page.getByRole("dialog", { name: "Fechar conta" });
+  await expect(folha.getByLabel("Valor a receber")).toContainText(/2[57],\d0/);
+  await context.setOffline(true);
+  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await page.getByRole("dialog", { name: "Recebimento na fila" }).getByRole("button", { name: "Concluir" }).click();
+  await congelarTransicoes(page);
+
+  // Confirmation before dropping money that was taken.
+  await page.getByRole("button", { name: "1 ação pendente" }).click();
+  await page.getByRole("button", { name: /^Remover Recebimento/ }).click();
+  await expect(page.getByText("Remover este recebimento?")).toBeVisible();
+  await semHorizontal(page);
+  await shootNosTemas(page, "14-fila-confirmar-remocao");
+  await page.getByRole("button", { name: "Manter na fila" }).click();
+  await expect(page.getByText("Remover este recebimento?")).toHaveCount(0);
+
+  // Sending: the read of the comanda is held, so the action stays in "Enviando".
+  let soltar: () => void = () => undefined;
+  const segurada = new Promise<void>((resolve) => {
+    soltar = resolve;
+  });
+  await page.route("**/comandas/*/conta", async (rota) => {
+    await segurada;
+    await rota.continue();
+  });
+  // The close always fails: the payment is recorded, the close is what gets stuck.
+  await page.route("**/comandas/*/fechar", (rota) => rota.fulfill({ status: 500, body: "{}" }));
+  await context.setOffline(false);
+  await expect(page.getByText("Enviando", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await semHorizontal(page);
+  await shootNosTemas(page, "14-fila-enviando");
+  soltar();
+
+  // Stuck: after a bounded number of attempts the action shows as not sent, with the way out in words.
+  await expect(page.getByText(/Não enviada: O recebimento foi registrado, mas a conta não fechou/)).toBeVisible({
+    timeout: 120_000,
+  });
+  await semHorizontal(page);
+  await shootNosTemas(page, "14-fila-fechamento-travado");
+
+  await page.unroute("**/comandas/*/fechar");
+  await page.getByRole("button", { name: /^Remover Recebimento/ }).click();
   await fecharTurnoSeAberto(page);
 });

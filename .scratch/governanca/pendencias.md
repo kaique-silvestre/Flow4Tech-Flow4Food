@@ -85,3 +85,6 @@ O app entrega um unico chunk JS (569 kB bruto, 179 kB gzip) e o build avisa "chu
 
 ## Identidade sem piso de mutacao (decisao do dono, 2026-11-08)
 Nota local 36,6% porque 78 mutantes so sao alcancados pelos testes com Docker. Sem piso por enquanto. Revisitar rodando o Stryker de Identidade com a suite de integracao (CI com Docker) ou separando o que e puro. F4-0107 cobre os outros 6 dominios.
+
+## S-04 (noturno) Destino de produção da API no vercel.json
+O rewrite de `frontend/app/vercel.json` ainda aponta para o host de staging do Railway. O dono define o host/domínio de produção (decisão de produção, fora do alcance do agente). Origem: F4-0045.

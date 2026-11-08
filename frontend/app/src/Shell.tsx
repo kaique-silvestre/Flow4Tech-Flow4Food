@@ -2,7 +2,6 @@ import { Button } from "@flow4tech/design-system";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { BarraDeFila } from "./features/fila/BarraDeFila";
-import { limparFila } from "./features/fila/fila";
 import { usePermissoes } from "./features/sessao/permissoes";
 import { sair, useSessao } from "./features/sessao/sessao";
 
@@ -51,8 +50,7 @@ export function Shell({
           variant="secondary"
           className="app-signout"
           onClick={() => {
-            // Signing out forgets what was waiting to be sent: the next person on the device never sends it.
-            limparFila();
+            // Ending the session forgets what was waiting (the session hooks count it and tell the sign-in screen): the next person on the device never sends it.
             void sair().then(() => navigate({ to: "/salao/entrar" }));
           }}
         >

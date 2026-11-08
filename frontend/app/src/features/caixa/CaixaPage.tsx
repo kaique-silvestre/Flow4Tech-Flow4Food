@@ -1,3 +1,4 @@
+import type { components } from "@flow4tech/api-client";
 import {
   BottomSheet,
   Button,
@@ -26,17 +27,17 @@ interface Turno {
 
 type Leitura = { tipo: "turno"; turno: Turno } | { tipo: "fechado" } | { tipo: "semPermissao" };
 
-function paraTurno(t: Record<string, unknown>): Turno {
-  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+function paraTurno(t: components["schemas"]["TurnoDto"]): Turno {
+  const n = (v: number | string | null | undefined) => (v === null || v === undefined ? null : Number(v));
   return {
-    id: String(t["id"]),
-    abertoEm: String(t["abertoEm"]),
-    fundoCentavos: Number(t["fundoCentavos"]),
-    recebidoDinheiroCentavos: Number(t["recebidoDinheiroCentavos"]),
-    contadoCentavos: n(t["contadoCentavos"]),
-    esperadoCentavos: n(t["esperadoCentavos"]),
-    diferencaCentavos: n(t["diferencaCentavos"]),
-    diferencaTexto: (t["diferencaTexto"] as string | null | undefined) ?? null,
+    id: t.id,
+    abertoEm: t.abertoEm,
+    fundoCentavos: Number(t.fundoCentavos),
+    recebidoDinheiroCentavos: Number(t.recebidoDinheiroCentavos),
+    contadoCentavos: n(t.contadoCentavos),
+    esperadoCentavos: n(t.esperadoCentavos),
+    diferencaCentavos: n(t.diferencaCentavos),
+    diferencaTexto: t.diferencaTexto ?? null,
   };
 }
 
@@ -66,7 +67,7 @@ export function CaixaPage() {
     queryFn: async () => {
       const { data, response } = await api.GET("/caixa/turnos/atual");
       if (data) {
-        return { tipo: "turno", turno: paraTurno(data as unknown as Record<string, unknown>) };
+        return { tipo: "turno", turno: paraTurno(data) };
       }
 
       if (response.status === 404) {
@@ -111,7 +112,7 @@ export function CaixaPage() {
         body: { contadoCentavos: centsFromDigits(contagem) },
       });
       if (data) {
-        setResultado(paraTurno(data as unknown as Record<string, unknown>));
+        setResultado(paraTurno(data));
       } else if (response.status === 404) {
         setErroFechar("Este caixa já foi fechado. Atualize a tela.");
       } else if (response.status === 403) {

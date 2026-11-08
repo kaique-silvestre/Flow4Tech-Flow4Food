@@ -24,8 +24,67 @@ const ouvintes = new Set<() => void>();
 let renovando: Promise<boolean> | null = null;
 let restaurando: Promise<void> | null = null;
 
+const aoEncerrar = new Set<() => void>();
+const aoAtivar = new Set<() => void>();
+
+/**
+ * Runs `limpeza` whenever a session that was active ends (sign-out button, refresh refused, 401 after a refresh): what belongs to the account (offline queue, query cache) must not reach the
+ * next person on the same phone. Returns the unsubscribe.
+ */
+export function aoEncerrarSessao(limpeza: () => void): () => void {
+  aoEncerrar.add(limpeza);
+  return () => aoEncerrar.delete(limpeza);
+}
+
+/** Runs `acao` each time a session becomes active (sign-in, refresh): the queue drops entries of other accounts. */
+export function aoAtivarSessao(acao: () => void): () => void {
+  aoAtivar.add(acao);
+  return () => aoAtivar.delete(acao);
+}
+
+let descartadas = 0;
+
+/** Records how many queued actions were dropped when the session ended (shown once on the sign-in screen). */
+export function registrarDescarte(quantas: number) {
+  descartadas = quantas;
+  for (const ouvinte of ouvintes) {
+    ouvinte();
+  }
+}
+
+/** The sign-in screen has told the person; the notice does not come back. */
+export function limparAvisoDeDescarte() {
+  if (descartadas !== 0) {
+    descartadas = 0;
+    for (const ouvinte of ouvintes) {
+      ouvinte();
+    }
+  }
+}
+
+export function useDescartadas(): number {
+  return useSyncExternalStore(
+    (ouvinte) => {
+      ouvintes.add(ouvinte);
+      return () => ouvintes.delete(ouvinte);
+    },
+    () => descartadas,
+  );
+}
+
 function definir(novo: EstadoDaSessao) {
+  const anterior = estado.status;
   estado = novo;
+  if (novo.status === "ativa") {
+    for (const acao of aoAtivar) {
+      acao();
+    }
+  } else if (novo.status === "anonima" && anterior === "ativa") {
+    for (const limpeza of aoEncerrar) {
+      limpeza();
+    }
+  }
+
   for (const ouvinte of ouvintes) {
     ouvinte();
   }
@@ -60,7 +119,13 @@ async function fetchDaSessao(request: Request): Promise<Response> {
     return resposta;
   }
 
-  return fetch(comCabecalhos(repetivel));
+  const repetida = await fetch(comCabecalhos(repetivel));
+  if (repetida.status === 401) {
+    // Refreshed and still refused: the session is gone; nothing of this account stays on the device.
+    definir({ status: "anonima" });
+  }
+
+  return repetida;
 }
 
 function comCabecalhos(request: Request): Request {
@@ -236,6 +301,7 @@ export function destinoDaSessao(
 /** Test seam: forget everything (a fresh device). */
 export function reiniciarSessaoParaTestes() {
   estado = { status: "desconhecida" };
+  descartadas = 0;
   renovando = null;
   restaurando = null;
   for (const ouvinte of ouvintes) {

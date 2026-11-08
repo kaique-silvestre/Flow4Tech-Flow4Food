@@ -4,6 +4,7 @@ import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
+import { enfileirarPagamento, lerFila } from "../fila/fila";
 import { buscarProdutos } from "./cardapio";
 import { adicionar, definirQuantidade, type ItemDaConta, totalEmPreparo, ultimaRodada, unidades } from "./rodada";
 import { uuidv7 } from "./uuid";
@@ -277,6 +278,28 @@ describe("sending a round", () => {
     expect(new Set(ids).size).toBe(1);
   });
 
+  it("with an earlier action of the same comanda waiting in the queue, a new round goes behind it even with signal", async () => {
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    const { chamadas } = await abrir();
+    enfileirarPagamento({
+      pagamentoId: "pag-1",
+      comandaId: "c1",
+      recebidoCentavos: 1000,
+      titulo: "Recebimento · Ana",
+      detalhe: "Dinheiro",
+    });
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar Chopp 300ml" }));
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    const folha = await screen.findByRole("dialog", { name: "Enviar rodada" });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Enviar agora" }));
+
+    expect(await screen.findByText(/entrou atrás delas/)).toBeVisible();
+    expect(chamadas.filter((c) => c.path === "/comandas/c1/rodadas" && c.method === "POST")).toHaveLength(0);
+    expect(lerFila().map((a) => a.tipo)).toEqual(["pagamento", "rodada"]);
+  });
+
   it("puts the round in the queue when the request cannot reach the server at all", async () => {
     const { folha } = await prepararEnvio({
       "POST /comandas/c1/rodadas": () => Promise.reject(new TypeError("network")) as never,
@@ -462,6 +485,28 @@ describe("cancelling an item", () => {
       texto: "cliente trocou de mesa",
     });
     await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Cancelar Chopp 300ml" })).toBeNull());
+  });
+
+  it("with an earlier action of the comanda waiting in the queue, the cancel goes behind it and nothing is sent now", async () => {
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    const { chamadas } = await abrir();
+    enfileirarPagamento({
+      pagamentoId: "pag-1",
+      comandaId: "c1",
+      recebidoCentavos: 500,
+      titulo: "Recebimento",
+      detalhe: "d",
+    });
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar Chopp 300ml" }));
+    const folha = await screen.findByRole("dialog", { name: "Cancelar item" });
+    await userEvent.click(within(folha).getByRole("button", { name: "Item indisponível" }));
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Cancelar item" }));
+
+    expect(await screen.findByText(/cancelamento entrou atrás delas/)).toBeVisible();
+    expect(chamadas.filter((c) => c.path.endsWith("/cancelar"))).toHaveLength(0);
+    expect(lerFila().map((a) => a.tipo)).toEqual(["pagamento", "cancelamento"]);
   });
 
   it("keeps the sheet open and says why when the item was already paid", async () => {

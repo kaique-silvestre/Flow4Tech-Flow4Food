@@ -3,7 +3,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { destinoDaSessao, entrar, lerSessao, type ResultadoDeEntrada } from "../sessao/sessao";
+import {
+  destinoDaSessao,
+  entrar,
+  lerSessao,
+  limparAvisoDeDescarte,
+  type ResultadoDeEntrada,
+  useDescartadas,
+} from "../sessao/sessao";
 import { type EntrarValores, ehEmail, entrarSchema, organizacaoValida } from "./schema";
 
 const CHAVE_ORGANIZACAO = "f4.organizacao";
@@ -41,6 +48,7 @@ export function EntrarPage() {
     defaultValues: { identificador: "", senha: "", organizacao: lerOrganizacaoSalva() },
     mode: "onSubmit",
   });
+  const descartadas = useDescartadas();
   const identificador = form.watch("identificador");
   const precisaOrganizacao = identificador.trim() !== "" && !ehEmail(identificador);
 
@@ -75,6 +83,7 @@ export function EntrarPage() {
     );
     setEnviando(false);
     if (r.tipo === "ok") {
+      limparAvisoDeDescarte();
       if (!email) {
         salvarOrganizacao(valores.organizacao.trim());
       }
@@ -97,6 +106,13 @@ export function EntrarPage() {
       <h1 className="f4-title">Entrar</h1>
       <p className="entry-lead">Use o usuário que o responsável criou para você, ou o seu e-mail.</p>
 
+      {descartadas > 0 ? (
+        <Notice tone="warning" title="Sessão encerrada">
+          {descartadas === 1
+            ? "1 ação não enviada foi descartada."
+            : `${descartadas} ações não enviadas foram descartadas.`}
+        </Notice>
+      ) : null}
       {resultado?.tipo === "invalido" ? <Notice tone="error">Usuário ou senha inválidos.</Notice> : null}
       {resultado?.tipo === "erro" ? (
         <Notice tone="error">Sem conexão ou servidor fora do ar. Tente de novo.</Notice>

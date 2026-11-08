@@ -93,5 +93,5 @@ export async function renderEm(caminho: string) {
     </QueryClientProvider>,
   );
   await router.load();
-  return { router, ...utilitarios };
+  return { router, queryClient, ...utilitarios };
 }

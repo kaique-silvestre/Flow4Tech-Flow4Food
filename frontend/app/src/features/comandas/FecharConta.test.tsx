@@ -3,7 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
-import { reiniciarFilaParaTestes } from "../fila/fila";
+import { enfileirarPagamento, lerFila, reiniciarFilaParaTestes } from "../fila/fila";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -228,5 +228,28 @@ describe("close the bill in cash", () => {
     expect(guardada).toHaveLength(1);
     expect(guardada[0]).toMatchObject({ tipo: "pagamento", recebidoCentavos: 2750 });
     expect(guardada[0]!.id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("with a payment of the comanda waiting in the queue the sheet is blocked and never makes a second payment id", async () => {
+    const chamadas = stubRede(rotas());
+    await renderEm("/salao/comanda/c1");
+    await screen.findByRole("heading", { level: 2, name: "Ana" });
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    onlineManager.setOnline(false);
+    enfileirarPagamento({
+      pagamentoId: "pag-1",
+      comandaId: "c1",
+      recebidoCentavos: 2750,
+      titulo: "Recebimento · Ana",
+      detalhe: "Dinheiro",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Fechar conta" }));
+    const folha = await screen.findByRole("dialog", { name: "Fechar conta" });
+
+    expect(within(folha).getByText(/recebimento de R\$\s?27,50 nesta comanda esperando na fila/)).toBeVisible();
+    expect(within(folha).getByRole("button", { name: "Dinheiro" })).toBeDisabled();
+    expect(lerFila().map((a) => a.id)).toEqual(["pag-1"]);
+    expect(chamadas.filter((c) => c.path.endsWith("/pagamentos"))).toHaveLength(0);
   });
 });

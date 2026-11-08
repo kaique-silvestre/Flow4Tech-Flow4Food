@@ -91,6 +91,8 @@ Railway, API service `flow4tech-api` (set separately in `staging` and `productio
 
 Vercel (per project `app` and `control`, per environment Preview/Production): the API base URL of the matching backend. Note the refresh cookie is `SameSite=Strict`; the front and the API must be the same site (own domain) or the front must proxy the API: see `.scratch/governanca/hospedagem-do-front-e-ambientes.md`.
 
+Chosen alternative for the app (F4-0045): the front proxies the API. `frontend/app/vercel.json` lists the API path prefixes as rewrites to the API, BEFORE the `index.html` catch-all, so the browser stays on its own origin (cookie `__Host-f4t_refresh` and CSRF header need no CORS). A vitest (`src/vercel.test.ts`) fails if a top-level path of `backend/src/Api/openapi.json` is missing from the rewrites or comes after the catch-all. **Owner-only:** the rewrite destination is today the staging API (`flow4tech-api-staging.up.railway.app`); the production deploy must set the production API host there (or a per-environment `vercel.json`), a decision on the production domain that is not made in the repo.
+
 ## Verify the restricted credential in staging
 
 Automatic: the pre-deploy step fails the deploy if the check fails (it prints `application credential verified`). Manual, run the migrator inside the container (idempotent; it prints each step):

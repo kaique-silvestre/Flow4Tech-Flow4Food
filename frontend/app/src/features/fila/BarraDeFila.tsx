@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useOnline } from "./conexao";
 import { type AcaoDaFilaDeRodada, iniciarProcessador, removerAcao, tentarAgora, useFila } from "./fila";
 
+/** Removing a payment that has not failed for good drops money the waiter took: it asks first. */
+function pedeConfirmacao(a: AcaoDaFilaDeRodada): boolean {
+  return a.tipo === "pagamento" && a.estado !== "falhou";
+}
+
 function situacao(a: AcaoDaFilaDeRodada, online: boolean, agora: number): string {
   if (a.estado === "enviando") {
     return "Enviando";
@@ -30,6 +35,8 @@ export function BarraDeFila() {
   const online = useOnline();
   const { acoes, mensagem } = useFila();
   const [aberta, setAberta] = useState(false);
+  const [paraRemover, setParaRemover] = useState<string | null>(null);
+  const [recusa, setRecusa] = useState<string | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
 
   useEffect(
@@ -52,6 +59,32 @@ export function BarraDeFila() {
     return () => window.clearInterval(timer);
   }, [acoes.length]);
 
+  const alvo = acoes.find((a) => a.id === paraRemover);
+
+  function aoRemover(id: string) {
+    const acao = acoes.find((a) => a.id === id);
+    setRecusa(null);
+    if (!acao) {
+      return;
+    }
+
+    if (acao.estado === "enviando") {
+      setRecusa("Esta ação está sendo enviada agora. Aguarde.");
+    } else if (pedeConfirmacao(acao)) {
+      setParaRemover(id);
+    } else {
+      removerAcao(id);
+    }
+  }
+
+  function confirmarRemocao() {
+    if (alvo && !removerAcao(alvo.id)) {
+      setRecusa("Esta ação está sendo enviada agora. Aguarde.");
+    }
+
+    setParaRemover(null);
+  }
+
   const itens: AcaoDaFila[] = acoes.map((a) => ({
     id: a.id,
     titulo: a.titulo,
@@ -72,7 +105,25 @@ export function BarraDeFila() {
           <Button variant="secondary" aria-expanded={aberta} onClick={() => setAberta((v) => !v)}>
             {acoes.length === 1 ? "1 ação pendente" : `${acoes.length} ações pendentes`}
           </Button>
-          {aberta ? <QueueList acoes={itens} onTentar={tentarAgora} onRemover={removerAcao} /> : null}
+          {alvo ? (
+            <Notice
+              tone="warning"
+              title="Remover este recebimento?"
+              action={
+                <>
+                  <Button variant="secondary" onClick={() => setParaRemover(null)}>
+                    Manter na fila
+                  </Button>
+                  <Button onClick={confirmarRemocao}>Remover recebimento</Button>
+                </>
+              }
+            >
+              {alvo.titulo} · {alvo.detalhe} ainda não foi registrado. Se remover, o dinheiro recebido não entra na
+              conta.
+            </Notice>
+          ) : null}
+          {recusa ? <Notice tone="info">{recusa}</Notice> : null}
+          {aberta ? <QueueList acoes={itens} onTentar={tentarAgora} onRemover={aoRemover} /> : null}
         </div>
       ) : null}
     </div>

@@ -1,19 +1,28 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { CaixaPage } from "./features/caixa/CaixaPage";
 import { ComandaPage } from "./features/comandas/ComandaPage";
 import { ComandasPage } from "./features/comandas/ComandasPage";
 import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
 import { UnidadePage } from "./features/conta/UnidadePage";
 import { EntrarPage } from "./features/entrar/EntrarPage";
-import { destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
+import { aoEncerrarSessao, destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
 import { EntryShell, Shell } from "./Shell";
+
+/** When a session ends (button, expired, 401 after refresh) nothing the query cache holds (permissions, bills) stays for the next person on the device. */
+function RaizDaAplicacao() {
+  const queryClient = useQueryClient();
+  useEffect(() => aoEncerrarSessao(() => queryClient.clear()), [queryClient]);
+  return <Outlet />;
+}
 
 /** The state of the session is known before any screen renders (one refresh attempt through the cookie, shared). */
 const rootRoute = createRootRoute({
   beforeLoad: async () => {
     await restaurar();
   },
-  component: Outlet,
+  component: RaizDaAplicacao,
 });
 
 const indexRoute = createRoute({

@@ -12,7 +12,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { enfileirarRodada } from "../fila/fila";
+import { enfileirarCancelamento, enfileirarRodada, temAcaoViva } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 import { type Produto, useCategorias, useFrequentes, useProdutos } from "./cardapio";
@@ -92,7 +92,7 @@ export function ComandaPage() {
   }
 
   /** The round cannot go now (no signal, a server hiccup): it waits in the visible queue under the same id and goes out in order when it can. */
-  function guardarNaFila(rodadaId: string) {
+  function guardarNaFila(rodadaId: string, atrasoDaFila = false) {
     const total = totalEmPreparo(emPreparo);
     enfileirarRodada({
       rodadaId,
@@ -104,7 +104,11 @@ export function ComandaPage() {
     rodadaEmEnvio.current = null;
     setEmPreparo([]);
     setFolhaEnviar(false);
-    setAviso("Sem conexão com o servidor. A rodada ficou na fila e será enviada quando der. Nada se perde.");
+    setAviso(
+      atrasoDaFila
+        ? "Há ações desta comanda esperando na fila. A rodada entrou atrás delas e será enviada em ordem. Nada se perde."
+        : "Sem conexão com o servidor. A rodada ficou na fila e será enviada quando der. Nada se perde.",
+    );
   }
 
   async function enviar() {
@@ -115,6 +119,13 @@ export function ComandaPage() {
     rodadaEmEnvio.current ??= uuidv7();
     const rodadaId = rodadaEmEnvio.current;
     const inicio = Date.now();
+    // With an earlier action of this comanda still waiting in the queue, a new round goes behind it even with signal: it must not overtake it.
+    if (temAcaoViva(comandaId)) {
+      guardarNaFila(rodadaId, navigator.onLine);
+      setEnviando(false);
+      return;
+    }
+
     if (!navigator.onLine) {
       guardarNaFila(rodadaId);
       setEnviando(false);
@@ -210,6 +221,22 @@ export function ComandaPage() {
 
   async function cancelarItem(item: ItemDaConta, motivo: CodigoDeMotivo, texto: string) {
     setErroCancelar(undefined);
+    // With an earlier action of this comanda still waiting in the queue, the cancel goes behind it (it could otherwise reach the server first).
+    if (temAcaoViva(comandaId)) {
+      enfileirarCancelamento({
+        acaoId: uuidv7(),
+        comandaId,
+        itemId: item.id,
+        motivo,
+        texto: texto === "" ? null : texto,
+        titulo: `Cancelar item · ${comanda?.numeroTexto ?? ""}`.trim(),
+        detalhe: `${item.produtoNome} · ${item.quantidade}`,
+      });
+      setParaCancelar(null);
+      setAviso("Há ações desta comanda esperando na fila. O cancelamento entrou atrás delas e será enviado em ordem.");
+      return;
+    }
+
     setCancelando(true);
     try {
       const { data, response, error } = await api.POST("/comandas/{comandaId}/itens/{itemId}/cancelar", {
