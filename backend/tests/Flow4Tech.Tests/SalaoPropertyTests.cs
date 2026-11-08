@@ -304,6 +304,70 @@ public sealed class SalaoPropertyTests
     public bool A_price_is_valid_exactly_inside_the_limits(long centavos) =>
         RegrasDoCardapio.PrecoValido(centavos) == (centavos >= 0 && centavos <= RegrasDoCardapio.PrecoMaximoCentavos);
 
+    // ---- boundaries the random strings almost never reach (found by the mutation test, F4-0106) ----
+
+    private static int Dentro(int n, int modulo) => Math.Abs(n % modulo);
+
+    [Property]
+    public bool A_table_name_is_accepted_exactly_from_one_to_the_maximum_length(int n, int posicao)
+    {
+        var tamanho = Dentro(n, RegrasDeMesa.IdentificacaoMaxima + 20);
+        var nome = new string('a', tamanho);
+        var aceito = RegrasDeMesa.Identificacao(nome) is not null == (tamanho is >= 1 and <= RegrasDeMesa.IdentificacaoMaxima);
+        var comControle = tamanho == 0 ? "\t" : nome.Insert(Dentro(posicao, tamanho + 1), "\n");
+        var comEspacos = RegrasDeMesa.Identificacao("  " + nome + "   ") == RegrasDeMesa.Identificacao(nome);
+        return aceito && RegrasDeMesa.Identificacao(comControle) is null && comEspacos;
+    }
+
+    [Property]
+    public bool An_observation_is_accepted_up_to_the_maximum_length_blank_means_none_and_control_is_refused(int n, int posicao)
+    {
+        var tamanho = Dentro(n, RegrasDeRodada.TextoMaximo + 60);
+        var texto = new string('a', tamanho);
+        var ok = RegrasDeRodada.TentarObservacao(texto, out var valor);
+        var limite = ok == tamanho <= RegrasDeRodada.TextoMaximo && (!ok || valor == (tamanho == 0 ? null : texto));
+        var branca = RegrasDeRodada.TentarObservacao(new string(' ', tamanho), out var nenhum) && nenhum is null;
+        var controle = !RegrasDeRodada.TentarObservacao(texto.Insert(Dentro(posicao, tamanho + 1), "\u0007"), out _);
+        return limite && branca && controle;
+    }
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(199, true)]
+    [InlineData(200, true)]
+    [InlineData(201, false)]
+    public void The_observation_limit_is_exactly_200(int tamanho, bool aceita) =>
+        Assert.Equal(aceita, RegrasDeRodada.TentarObservacao(new string('a', tamanho), out _));
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(39, true)]
+    [InlineData(40, true)]
+    [InlineData(41, false)]
+    public void The_table_name_limit_is_exactly_1_to_40(int tamanho, bool aceita) =>
+        Assert.Equal(aceita, RegrasDeMesa.Identificacao(new string('a', tamanho)) is not null);
+
+    [Theory]
+    [InlineData("cliente-desistiu", "cliente desistiu")]
+    [InlineData("erro-de-lancamento", "erro de lançamento")]
+    [InlineData("item-indisponivel", "item indisponível")]
+    public void Each_standard_cancellation_code_has_its_fixed_words_and_ignores_any_text(string codigo, string palavras)
+    {
+        Assert.Equal(palavras, RegrasDeRodada.MotivoDeItem(codigo, "qualquer coisa"));
+        Assert.Equal(palavras, RegrasDeRodada.MotivoDeItem(codigo, null));
+    }
+
+    [Property]
+    public bool A_code_outside_the_list_never_gives_a_reason_and_other_needs_valid_text(string? codigo, string? texto)
+    {
+        var known = codigo is "cliente-desistiu" or "erro-de-lancamento" or "item-indisponivel" or "outro";
+        var motivo = RegrasDeRodada.MotivoDeItem(codigo, texto);
+        var outroSemTexto = RegrasDeRodada.MotivoDeItem("outro", null) is null && RegrasDeRodada.MotivoDeItem("outro", "   ") is null;
+        return (known || motivo is null) && outroSemTexto && RegrasDeRodada.MotivoDeItem("outro", "  porque sim ") == "porque sim";
+    }
+
     private static ItemDaComanda Item(long preco, int quantidade, EstadoDoItem estado) =>
         new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(), "x", preco, quantidade, null, estado, null, null, null);
 }
