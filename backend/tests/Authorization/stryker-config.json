@@ -2,7 +2,15 @@
   "stryker-config": {
     "project": "Flow4Tech.Permissoes.Domain.csproj",
     "test-case-filter": "FullyQualifiedName~PolicyPropertyTests|FullyQualifiedName~GrantGuardTests",
-    "reporters": ["progress", "json"],
-    "concurrency": 4
+    "reporters": [
+      "progress",
+      "json"
+    ],
+    "concurrency": 4,
+    "thresholds": {
+      "high": 85,
+      "low": 70,
+      "break": 70
+    }
   }
 }

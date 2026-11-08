@@ -53,7 +53,7 @@ Leia o arquivo ANTES de mexer na área; a raiz guarda só o que vale para todo a
 - Warnings são erros; corrija a causa em vez de suprimir a regra.
 
 ## CI gates (resumo)
-Um pipeline em todo PR e em todo push em `dev-v2`/`main-v2`/`main`; o merge exige o job agregado `gates` verde. Bloqueiam: build + `dotnet format`, typecheck, lint (Biome), testes unitários, de integração (PostgreSQL real), de arquitetura e por módulo, `frontend-tests` (piso de cobertura), `bundle-budget`, `frontend-e2e` (inclui axe), gitleaks, trivy, `openapi-contract`, auditoria de dependências. Informativos: cobertura do back, `mutation-tests`, DAST. Cada job, limite e comando local: `docs/agents/ci-gates.md`.
+Um pipeline em todo PR e em todo push em `dev-v2`/`main-v2`/`main`; o merge exige o job agregado `gates` verde. Bloqueiam: build + `dotnet format`, typecheck, lint (Biome), testes unitários, de integração (PostgreSQL real), de arquitetura e por módulo, `frontend-tests` (piso de cobertura), `bundle-budget`, `mutation-tests` (piso por domínio), `frontend-e2e` (inclui axe), gitleaks, trivy, `openapi-contract`, auditoria de dependências. Informativos: cobertura do back, DAST. Cada job, limite e comando local: `docs/agents/ci-gates.md`.
 
 ## Module-boundary rules
 - Layers: Domain -> Kernel only; Application -> Domain; Infrastructure and Interface -> Application. Never the reverse.

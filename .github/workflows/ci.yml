@@ -524,9 +524,9 @@ jobs:
       - run: echo "::warning title=SAST reduced::Repository is private, CodeQL is skipped. Enable Semgrep as described in docs/runbooks/sast.md."
 
   mutation-tests:
-    # Informational (F4-0106): Stryker.NET plants bugs in the pure domain rules and reports how many the no-Docker tests catch.
-    # Not in `gates`; no floor yet (first runs set the baseline, pendencias.md). Pinned tool: .config/dotnet-tools.json.
-    name: mutation tests (informational)
+    # F4-0106/F4-0107: Stryker.NET plants bugs in the pure domain rules and fails below the floor (`thresholds.break`) in each stryker-*.json.
+    # Identidade has no floor on purpose (its score mostly misses code that only the Docker tests reach). Pinned tool: .config/dotnet-tools.json.
+    name: mutation tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -608,6 +608,7 @@ jobs:
       - lint-frontend
       - frontend-tests
       - bundle-budget
+      - mutation-tests
       - frontend-e2e
       - unit-tests
       - integration-tests

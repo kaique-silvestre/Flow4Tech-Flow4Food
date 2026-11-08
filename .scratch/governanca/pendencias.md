@@ -82,3 +82,6 @@ O scan de F4-0109 cobre so login, comandas e caixa (tela inicial). Faltam os dia
 
 ## F4-0111 (pendente): dividir o bundle do app por rota
 O app entrega um unico chunk JS (569 kB bruto, 179 kB gzip) e o build avisa "chunks maiores que 500 kB". Dividir por rota (import dinamico do TanStack Router) e baixar os limites de `frontend/app/bundle-budget.json`. Lighthouse (desempenho e PWA) tambem pendente, como relatorio informativo. Orcamento do `control` quando ele ganhar build.
+
+## Identidade sem piso de mutacao (decisao do dono, 2026-11-08)
+Nota local 36,6% porque 78 mutantes so sao alcancados pelos testes com Docker. Sem piso por enquanto. Revisitar rodando o Stryker de Identidade com a suite de integracao (CI com Docker) ou separando o que e puro. F4-0107 cobre os outros 6 dominios.

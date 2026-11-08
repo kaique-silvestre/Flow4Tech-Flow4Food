@@ -6,6 +6,11 @@
       "progress",
       "json"
     ],
-    "concurrency": 4
+    "concurrency": 4,
+    "thresholds": {
+      "high": 87,
+      "low": 72,
+      "break": 72
+    }
   }
 }
