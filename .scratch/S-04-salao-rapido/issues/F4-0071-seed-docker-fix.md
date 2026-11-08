@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Real database (Testcontainers, app credential)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Root cause confirmed (the `aspnet` runtime image lacks `libgssapi_krb5.so.2` for Npgsql) and fixed in the `e2e-seed` stage only (never in the deployed image) or by disabling GSS in the connection string.
 - [ ] From a clean state `docker compose up --build api` then the seed command exits 0 and writes `seed.json`; running it twice stays idempotent.

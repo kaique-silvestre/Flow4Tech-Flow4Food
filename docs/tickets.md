@@ -88,7 +88,7 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0068 | Pre-bill and receipt screens | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0068-pre-bill-and-receipt-ui.md` | - | - | pendente |
 | F4-0069 | Menu import from a spreadsheet | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0069-menu-import-backend.md` | - | - | pendente |
 | F4-0070 | Menu import screen | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0070-menu-import-ui.md` | - | - | pendente |
-| F4-0071 | Fix the e2e seed container (missing libgssapi_krb5) | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0071-seed-docker-fix.md` | - | - | pendente |
+| F4-0071 | Fix the e2e seed container (missing libgssapi_krb5) | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0071-seed-docker-fix.md` | - | - | feito |
 | F4-0072 | Phase 2A closeout: two tenants, measured targets, shadow-pilot script | S-04-salao-rapido | `.scratch/S-04-salao-rapido/spec.md` | `.scratch/S-04-salao-rapido/issues/F4-0072-phase2a-closeout.md` | - | - | pendente |
 | F4-0073 | Aprovar o script de build do esbuild no pnpm (allowBuilds), destrava o pre-push | governanca | - | - | `chore/F4-0073-allow-esbuild-build` | a abrir (alvo `dev-v2`) | feito |
 | F4-0074 | Liberar commit e push direto em dev-v2 (main-v2 segue só PR) | governanca | `docs/adr/016-fluxo-de-branches-e-ids-de-ticket.md` | - | `chore/F4-0074-commit-direto-em-dev-v2` | a abrir (alvo `dev-v2`) | feito |

@@ -11,6 +11,8 @@ RUN dotnet publish backend/tools/E2eSeed/Flow4Tech.E2eSeed.csproj -c Release -o 
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS e2e-seed
 WORKDIR /seed
+# Npgsql probes for Kerberos (libgssapi_krb5.so.2), absent from the aspnet runtime image; harmless noise but silenced here, in this local-only stage.
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=e2e-seed-build /seed .
 ENTRYPOINT ["dotnet", "Flow4Tech.E2eSeed.dll"]
 
