@@ -491,6 +491,43 @@ jobs:
     steps:
       - run: echo "::warning title=SAST reduced::Repository is private, CodeQL is skipped. Enable Semgrep as described in docs/runbooks/sast.md."
 
+  mutation-tests:
+    # Informational (F4-0106): Stryker.NET plants bugs in the pure domain rules and reports how many the no-Docker tests catch.
+    # Not in `gates`; no floor yet (first runs set the baseline, pendencias.md). Pinned tool: .config/dotnet-tools.json.
+    name: mutation tests (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { dir: Authorization, config: stryker-config.json, name: permissoes }
+          - { dir: Identidade, config: stryker-config.json, name: identidade }
+          - { dir: Organizacao, config: stryker-config.json, name: organizacao }
+          - { dir: Flow4Tech.Tests, config: stryker-comandas.json, name: comandas }
+          - { dir: Flow4Tech.Tests, config: stryker-pagamentos.json, name: pagamentos }
+          - { dir: Flow4Tech.Tests, config: stryker-caixa.json, name: caixa }
+          - { dir: Flow4Tech.Tests, config: stryker-cardapio.json, name: cardapio }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      - name: Stryker (${{ matrix.name }})
+        working-directory: backend/tests/${{ matrix.dir }}
+        run: dotnet tool run dotnet-stryker -f ${{ matrix.config }} | tee stryker.log
+      - name: Score in the run summary
+        if: always()
+        run: |
+          grep -E 'final mutation score' backend/tests/${{ matrix.dir }}/stryker.log | sed 's/^/${{ matrix.name }} - /' >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: mutation-${{ matrix.name }}
+          path: backend/tests/${{ matrix.dir }}/StrykerOutput/**/mutation-report.json
+          if-no-files-found: ignore
+
   coverage-back:
     # Informational (F4-0103): merges the Cobertura files of every test job and prints the numbers in the run summary. No floor yet: the
     # integration projects need Docker and were never measured locally, so the first runs set the baseline (pendencias.md, F4-0103).

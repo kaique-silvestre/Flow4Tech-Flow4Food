@@ -123,3 +123,5 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0103 | Cobertura de testes: Vitest com piso por pacote no front; coverlet em cada job do back e relatorio unificado (informativo) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0104 | Piso de cobertura do back: definir depois das primeiras execucoes do CI (relatorio `coverage-back-merged`) e tornar o job bloqueante | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
 | F4-0105 | Testes baseados em propriedades (FsCheck): regras puras de salao, autorizacao (GrantGuard/PolicyEvaluator), identidade, auditoria e configuracoes | governanca | - | `.scratch/governanca/pendencias.md` | `dev-v2` (commit direto) | - | feito |
+| F4-0106 | Teste de mutacao (Stryker.NET 5.0.0) nas regras de dominio, job informativo no CI | governanca | - | `.scratch/governanca/pendencias.md` | `dev-v2` (commit direto) | - | feito |
+| F4-0107 | Piso do teste de mutacao por dominio, depois das primeiras execucoes do CI, e tornar o job bloqueante | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |

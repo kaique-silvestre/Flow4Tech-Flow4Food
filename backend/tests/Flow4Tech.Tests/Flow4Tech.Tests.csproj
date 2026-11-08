@@ -7,6 +7,10 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Kernel/Flow4Tech.Kernel.csproj" />
     <ProjectReference Include="../../src/Api/Flow4Tech.Api.csproj" />
+    <ProjectReference Include="../../src/Comandas/Domain/Flow4Tech.Comandas.Domain.csproj" />
+    <ProjectReference Include="../../src/Pagamentos/Domain/Flow4Tech.Pagamentos.Domain.csproj" />
+    <ProjectReference Include="../../src/Caixa/Domain/Flow4Tech.Caixa.Domain.csproj" />
+    <ProjectReference Include="../../src/Cardapio/Domain/Flow4Tech.Cardapio.Domain.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Migrator/Flow4Tech.Infrastructure.Migrator.csproj" />
   </ItemGroup>
 

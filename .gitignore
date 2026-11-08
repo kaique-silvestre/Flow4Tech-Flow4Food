@@ -49,3 +49,7 @@ coverage-out/
 coverage-in/
 coverage-report/
 TestResults/
+
+# Stryker.NET output (F4-0106)
+StrykerOutput/
+stryker.log

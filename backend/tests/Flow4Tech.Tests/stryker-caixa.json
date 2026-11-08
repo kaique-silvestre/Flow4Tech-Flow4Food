@@ -1,0 +1,11 @@
+{
+  "stryker-config": {
+    "project": "Flow4Tech.Caixa.Domain.csproj",
+    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests",
+    "reporters": [
+      "progress",
+      "json"
+    ],
+    "concurrency": 4
+  }
+}

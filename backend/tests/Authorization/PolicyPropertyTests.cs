@@ -162,6 +162,48 @@ public sealed class PolicyPropertyTests
     public bool An_empty_organization_is_always_denied(Cenario c) =>
         Decide(c.Policy, c.Who, c.Permission, new Scope(Guid.Empty, c.Where.UnitId), c.Context) == Effect.Deny;
 
+    [Property(Arbitrary = [typeof(PolicyGeradores)])]
+    public bool A_daily_cap_allows_up_to_the_cap_and_hands_back_the_rule_whose_cap_must_be_consumed(Cenario c)
+    {
+        var capped = new Rule(RuleEffect.Allow, "solo", c.Permission, null, null, null, 10);
+        var who = new Subject(c.Who.UserId, ["solo"]);
+        var where = new Scope(PolicyGeradores.Org, c.Where.UnitId);
+        var r = PolicyEvaluator.Evaluate(new PolicySet(PolicyGeradores.Perms, [capped]), who, c.Permission, where, c.Context);
+        var expected = c.Context.Value is { Currency: "BRL", Cents: >= 0 and <= 10 };
+        if ((r.Effect == Effect.Allow) != expected)
+        {
+            return false;
+        }
+
+        // An uncapped allow wins: nothing is left to consume.
+        var both = new PolicySet(PolicyGeradores.Perms, [capped, new Rule(RuleEffect.Allow, "solo", c.Permission)]);
+        var free = PolicyEvaluator.Evaluate(both, who, c.Permission, where, new DecisionContext(new Money(5, "BRL"), 1));
+        return (r.Effect != Effect.Allow || r.Limited == capped) && free.Effect == Effect.Allow && free.Limited is null;
+    }
+
+    [Property(Arbitrary = [typeof(PolicyGeradores)])]
+    public bool A_deny_scoped_to_a_unit_applies_in_that_unit_and_when_no_unit_is_named_but_not_in_another(Cenario c)
+    {
+        var rules = new[] { new Rule(RuleEffect.Allow, "solo", c.Permission), new Rule(RuleEffect.Deny, "solo", c.Permission, PolicyGeradores.U1) };
+        var policy = new PolicySet(PolicyGeradores.Perms, rules);
+        var who = new Subject(c.Who.UserId, ["solo"]);
+        var decision = Decide(policy, who, c.Permission, new Scope(PolicyGeradores.Org, c.Where.UnitId), new DecisionContext());
+        return (decision == Effect.Deny) == (c.Where.UnitId is null || c.Where.UnitId == PolicyGeradores.U1);
+    }
+
+    [Property(Arbitrary = [typeof(PolicyGeradores)])]
+    public bool The_reason_says_why(Cenario c)
+    {
+        var unknown = PolicyEvaluator.Evaluate(c.Policy, c.Who, "coisa:inexistente", c.Where, c.Context).Reason;
+        var scope = PolicyEvaluator.Evaluate(c.Policy, c.Who, c.Permission, new Scope(Guid.Empty), c.Context).Reason;
+        var usd = new PolicySet(PolicyGeradores.Perms, [new Rule(RuleEffect.Allow, "solo", c.Permission, null, null, 10)]);
+        var currency = PolicyEvaluator.Evaluate(usd, new Subject(c.Who.UserId, ["solo"]), c.Permission, new Scope(PolicyGeradores.Org), new DecisionContext(new Money(1, "USD"))).Reason;
+        var over = PolicyEvaluator.Evaluate(usd, new Subject(c.Who.UserId, ["solo"]), c.Permission, new Scope(PolicyGeradores.Org), new DecisionContext(new Money(11, "BRL"))).Reason;
+        var none = PolicyEvaluator.Evaluate(new PolicySet(PolicyGeradores.Perms, []), c.Who, c.Permission, new Scope(PolicyGeradores.Org), c.Context).Reason;
+        var deny = PolicyEvaluator.Evaluate(new PolicySet(PolicyGeradores.Perms, [new Rule(RuleEffect.Deny, "solo", c.Permission)]), new Subject(c.Who.UserId, ["solo"]), c.Permission, new Scope(PolicyGeradores.Org), c.Context).Reason;
+        return (unknown, scope, currency, over, none, deny) == ("unknown-permission", "invalid-scope", "currency-not-supported", "limit-exceeded", "default-deny", "explicit-deny");
+    }
+
     // ---- anti-escalation (spec 5.4.5) ----
 
     [Property(Arbitrary = [typeof(PolicyGeradores)], MaxTest = 2000)]

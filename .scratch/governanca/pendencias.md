@@ -73,3 +73,6 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 ## Sem ticket (lembretes do dono)
 - Acompanhar `railway usage` depois de alguns dias (4 servicos sempre ligados: 2 APIs e 2 bancos).
 - Avisos de pacotes depreciados do pnpm (`glob`, `whatwg-encoding`): so subdependencias.
+
+## F4-0107 (pendente): piso do teste de mutacao
+Depois das primeiras execucoes do job `mutation-tests` (artefatos `mutation-*`), definir um piso por dominio e tornar o job bloqueante. Ver tambem os sobreviventes de Comandas/Pagamentos/Caixa/Cardapio para novas propriedades.

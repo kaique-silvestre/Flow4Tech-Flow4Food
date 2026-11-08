@@ -1,0 +1,11 @@
+{
+  "stryker-config": {
+    "project": "Flow4Tech.Organizacao.Domain.csproj",
+    "test-case-filter": "FullyQualifiedName~ConfiguracaoPropertyTests|FullyQualifiedName~ConfiguracaoResolucaoTests|FullyQualifiedName~ConfiguracaoDeclaracaoTests",
+    "reporters": [
+      "progress",
+      "json"
+    ],
+    "concurrency": 4
+  }
+}
