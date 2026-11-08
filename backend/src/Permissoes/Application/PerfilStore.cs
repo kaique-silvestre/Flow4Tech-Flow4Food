@@ -5,12 +5,18 @@ namespace Flow4Tech.Permissoes.Application;
 /// <summary>A custom profile of an organization with the rules it owns (not the ones it inherits from its template).</summary>
 public sealed record PerfilPersonalizado(Guid Id, string Nome, string? Modelo, bool AcompanhaModelo, IReadOnlyList<RegraDeAcesso> Regras);
 
+/// <summary>One assignment of a custom profile to a person.</summary>
+public sealed record AtribuicaoDePerfil(Guid UsuarioId, Guid PerfilId);
+
 /// <summary>
 /// Storage of custom profiles, assignments and individual overrides of the current organization. Every member runs INSIDE a unit of work (RLS does the filtering);
 /// nothing here decides who may do what (that is <see cref="GestaoDePerfis"/>). Changes end the sessions of the affected accounts by database triggers (migration 0010).
 /// </summary>
 public interface IPerfilStore
 {
+    /// <summary>Every (person, custom profile) assignment of the organization (RLS).</summary>
+    Task<IReadOnlyList<AtribuicaoDePerfil>> AtribuicoesAsync(Guid organizationId, CancellationToken cancellationToken);
+
     /// <summary>False when the organization already has a profile with that name; nothing is written then.</summary>
     Task<bool> CriarAsync(Guid organizationId, PerfilPersonalizado novo, DateTimeOffset em, CancellationToken cancellationToken);
 

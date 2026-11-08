@@ -1,3 +1,5 @@
+using Flow4Tech.Identidade.Application;
+using Flow4Tech.Kernel;
 using Flow4Tech.Permissoes.Application;
 using Flow4Tech.Permissoes.Domain;
 
@@ -13,6 +15,8 @@ internal sealed record ModeloCriadoDto(string Chave, string Nome, bool Criado, G
 internal sealed record DefinirOverridesRequest(List<RegraDto>? Regras);
 
 internal sealed record PerfisDaPessoaResponse(List<PerfilDto> Perfis, List<RegraDto> Overrides);
+
+internal sealed record ContaDaListaDto(Guid Id, string Nome, string? Usuario, bool Dono, bool Ativa, List<Guid> UnidadeIds, List<Guid> PerfilIds);
 
 internal sealed record PerfilErro(string Codigo);
 
@@ -49,6 +53,27 @@ internal static class PerfisEndpoints
             .RequireSession()
             .RequirePermission(PerfisPermissions.Ver)
             .Produces<List<PerfilDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/contas", async (RequestContextAccessor request, IUnitOfWork unitOfWork, IContaStore contas, IPerfilStore perfis, CancellationToken cancellationToken) =>
+            {
+                var organizationId = request.Organization.OrganizationId;
+                var lista = await unitOfWork.ExecuteAsync(
+                    request,
+                    async ct =>
+                    {
+                        var todas = await contas.ListarAsync(organizationId, ct);
+                        var atribuicoes = (await perfis.AtribuicoesAsync(organizationId, ct)).ToLookup(a => a.UsuarioId, a => a.PerfilId);
+                        return todas.Select(c => new ContaDaListaDto(c.Id, c.Nome, c.Usuario, c.Dono, c.Ativa, [.. c.Unidades], [.. atribuicoes[c.Id].Order()])).ToList();
+                    },
+                    cancellationToken);
+                return Results.Ok(lista);
+            })
+            .WithName("listContas")
+            .RequireSession()
+            .RequirePermission(PerfisPermissions.Ver)
+            .Produces<List<ContaDaListaDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 

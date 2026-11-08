@@ -69,6 +69,12 @@ public sealed class PostgresPerfilStore : IPerfilStore
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AtribuicaoDePerfil>> AtribuicoesAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Atribuicoes.AsNoTracking().Select(a => new AtribuicaoDePerfil(a.UsuarioId, a.IdDoPerfil)).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Guid>> PerfisDoUsuarioAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken)
     {
         await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));

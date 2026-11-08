@@ -592,8 +592,8 @@ public sealed partial class ComandasEndpointsTests
         Assert.DoesNotContain("comanda:lancar-item", supervisor);
         Assert.Contains("caixa:abrir", dono);
         Assert.Contains("comanda:remover-taxa-servico", dono);
-        // Only the salão: nothing about settings, profiles or accounts is offered to the phone app.
-        Assert.All(dono, p => Assert.Matches("^(comanda|caixa|mesa|produto|pagamento):", p));
+        // Only the salão plus the three profile permissions of the users screen: nothing about settings or the other profile entries is offered to the phone app.
+        Assert.All(dono, p => Assert.Matches("^((comanda|caixa|mesa|produto|pagamento):|perfil:(ver|gerir)$|permissao:atribuir$)", p));
         Assert.Equal(dono.Order(StringComparer.Ordinal).ToList(), dono);
 
         using var anonymous = await SendAsync(client, HttpMethod.Get, "/sessao/permissoes", null);

@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Flow4Tech.Identidade.Infrastructure;
 
+internal sealed record UnidadeDaConta(Guid ContaId, Guid UnidadeId);
+
 internal static class TipoContaText
 {
     public static string Text(TipoConta tipo) => tipo == TipoConta.Email ? "email" : "operacional";
@@ -52,6 +54,15 @@ public sealed class PostgresContaStore(IClock clock) : IContaStore
         await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
         var result = await context.Database.SqlQuery<bool>($"SELECT identidade_registrar_email({contaId}, {emailNormalizado}) AS \"Value\"").ToListAsync(cancellationToken);
         return result.Single();
+    }
+
+    public async Task<IReadOnlyList<ContaListada>> ListarAsync(Guid organizacaoId, CancellationToken cancellationToken)
+    {
+        await using var context = new IdentidadeDbContext(TenantUnitOfWork.Require(organizacaoId));
+        var rows = await context.Contas.AsNoTracking().OrderBy(c => c.Nome).ThenBy(c => c.Id).Select(c => new { c.Id, c.Nome, c.Usuario, c.Dono, c.Ativa }).ToListAsync(cancellationToken);
+        var links = await context.Database.SqlQuery<UnidadeDaConta>($"SELECT usuario_id AS \"ContaId\", unidade_id AS \"UnidadeId\" FROM usuario_unidades").ToListAsync(cancellationToken);
+        var byAccount = links.ToLookup(l => l.ContaId, l => l.UnidadeId);
+        return [.. rows.Select(r => new ContaListada(r.Id, r.Nome, r.Usuario, r.Dono, r.Ativa, [.. byAccount[r.Id].Order()]))];
     }
 
     public async Task<Conta?> ObterAsync(Guid organizacaoId, Guid contaId, CancellationToken cancellationToken)

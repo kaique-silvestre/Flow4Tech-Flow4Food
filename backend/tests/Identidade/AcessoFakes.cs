@@ -13,6 +13,9 @@ internal sealed class FakeContas : IContaStore
 
     public List<Guid> SenhasTrocadas { get; } = [];
 
+    public Task<IReadOnlyList<ContaListada>> ListarAsync(Guid organizacaoId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ContaListada>>([.. Linhas.Values.Where(l => l.Conta.OrganizacaoId == organizacaoId).Select(l => new ContaListada(l.Conta.Id, l.Conta.Nome, l.Conta.Usuario, l.Conta.Dono, l.Conta.Ativa, []))]);
+
     public Conta Adicionar(Guid org, TipoConta tipo, string senha, string? email = null, string? usuario = null, bool ativa = true, bool dono = false, bool deveTrocar = false)
     {
         var conta = new Conta(Guid.NewGuid(), org, tipo, "Pessoa", email, usuario, dono, ativa, 1);

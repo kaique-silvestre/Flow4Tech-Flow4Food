@@ -705,6 +705,22 @@ body {
   border-color: var(--f4-error);
 }
 
+.f4-notice {
+  flex-wrap: wrap;
+}
+
+.f4-notice > div:first-child {
+  flex: 1 1 12rem;
+}
+
+.f4-notice-action {
+  flex-shrink: 0;
+}
+
+.f4-notice-action .f4-btn {
+  white-space: nowrap;
+}
+
 .f4-notice-title {
   margin: 0;
   font-weight: 600;

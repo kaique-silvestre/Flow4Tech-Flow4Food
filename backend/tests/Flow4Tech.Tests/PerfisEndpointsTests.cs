@@ -40,6 +40,7 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
     private static readonly Guid DonoA = Guid.Parse("0197b000-0000-7000-8000-0000000000d1");
     private static readonly Guid Garcom = Guid.Parse("0197b000-0000-7000-8000-0000000000c1");
     private static readonly Guid Alvo = Guid.Parse("0197b000-0000-7000-8000-0000000000c3");
+    private static readonly Guid Inativa = Guid.Parse("0197b000-0000-7000-8000-0000000000c4");
     private static readonly Guid Gerente = Guid.Parse("0197b000-0000-7000-8000-0000000000c2");
     private static readonly Guid ContaB = Guid.Parse("0197b000-0000-7000-8000-0000000000e2");
     private static readonly Guid OrgB = Guid.Parse("0197b000-0000-7000-8000-00000000000b");
@@ -81,6 +82,12 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
                     await Exec(tx, "INSERT INTO contas (id, organizacao_id, tipo, nome, usuario, criada_em) VALUES (@i, @o, 'operacional', @n, @s, now())", ("i", id), ("o", org), ("n", nome), ("s", usuario));
                     await Exec(tx, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @u, @n)", ("o", org), ("u", id), ("n", unit));
                 }
+            }
+
+            if (org == OrgA)
+            {
+                // Deactivated and with no unit: the list still shows the person (as inactive, with no units).
+                await Exec(tx, "INSERT INTO contas (id, organizacao_id, tipo, nome, usuario, ativa, desativada_em, criada_em) VALUES (@i, @o, 'operacional', 'Inativa', 'inativa', false, now(), now())", ("i", Inativa), ("o", org));
             }
 
             if (org == OrgB)
@@ -523,4 +530,77 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
         Assert.Equal(0, Assert.Single(await CountAsync(OrgB, UnitB, "SELECT count(*) FROM usuario_perfis")));
         Assert.Equal(0, Assert.Single(await CountAsync(OrgA, UnitA, "SELECT count(*) FROM usuario_perfis")));
     }
+
+    [Fact]
+    public async Task Listing_accounts_needs_perfil_ver_shows_units_and_profiles_and_never_another_organization()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        await GiveAsync(api, Gerente, "So ver perfis", "perfil:ver");
+        await GiveAsync(api, Garcom, "So gerir perfis", "perfil:gerir");
+        var dono = await TokenAsync(api, DonoA, OrgA, UnitA);
+        var soVer = await TokenAsync(api, Gerente, OrgA, UnitA);
+        var semVer = await TokenAsync(api, Garcom, OrgA, UnitA);
+        var donoB = await TokenAsync(api, DonoB, OrgB, UnitB);
+        var perfilGerente = (await QueryAsync(OrgA, UnitA, $"SELECT perfil_id FROM usuario_perfis WHERE usuario_id = '{Gerente:D}'", r => r.GetGuid(0))).Single();
+
+        using var asOwner = await SendAsync(client, HttpMethod.Get, "/contas", dono);
+        using var asHolder = await SendAsync(client, HttpMethod.Get, "/contas", soVer);
+        using var asOther = await SendAsync(client, HttpMethod.Get, "/contas", semVer);
+        using var anonymous = await SendAsync(client, HttpMethod.Get, "/contas", null);
+        using var asOwnerB = await SendAsync(client, HttpMethod.Get, "/contas", donoB);
+
+        Assert.Equal(HttpStatusCode.OK, asHolder.StatusCode);
+        await AssertForbiddenEmptyAsync(asOther);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        var contas = (await asOwner.Content.ReadFromJsonAsync<List<ContaBody>>())!;
+        Assert.Equal(new[] { DonoA, Garcom, Gerente, Alvo, Inativa }.Order(), contas.Select(c => c.Id).Order());
+        Assert.DoesNotContain(contas, c => c.Id == ContaB || c.Id == DonoB);
+        var gerente = contas.Single(c => c.Id == Gerente);
+        Assert.Equal("gestor", gerente.Usuario);
+        Assert.Equal([UnitA], gerente.UnidadeIds);
+        Assert.Equal([perfilGerente], gerente.PerfilIds);
+        Assert.Empty(contas.Single(c => c.Id == Alvo).PerfilIds);
+        Assert.True(contas.Single(c => c.Id == DonoA).Dono);
+        var inativa = contas.Single(c => c.Id == Inativa);
+        Assert.False(inativa.Ativa);
+        Assert.Empty(inativa.UnidadeIds);
+        Assert.Empty(inativa.PerfilIds);
+        Assert.All(contas.Where(c => c.Id != Inativa), c => Assert.True(c.Ativa));
+        var raw = await asOwner.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("hash", raw, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("senha", raw, StringComparison.OrdinalIgnoreCase);
+
+        var contasB = (await asOwnerB.Content.ReadFromJsonAsync<List<ContaBody>>())!;
+        Assert.Equal(new[] { DonoB, ContaB }.Order(), contasB.Select(c => c.Id).Order());
+        Assert.All(contasB, c => Assert.Empty(c.PerfilIds));
+    }
+
+    [Fact]
+    public async Task The_session_permissions_offer_the_three_profile_permissions_to_who_holds_them()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        await GiveAsync(api, Gerente, "Perfis", "perfil:ver", "perfil:gerir", "permissao:atribuir");
+        await GiveAsync(api, Garcom, "So ver perfis", "perfil:ver");
+        var gerente = await TokenAsync(api, Gerente, OrgA, UnitA);
+        var garcom = await TokenAsync(api, Garcom, OrgA, UnitA);
+
+        using var all = await SendAsync(client, HttpMethod.Get, "/sessao/permissoes", gerente);
+        using var some = await SendAsync(client, HttpMethod.Get, "/sessao/permissoes", garcom);
+
+        var allBody = (await all.Content.ReadFromJsonAsync<PermissoesBody>())!;
+        var someBody = (await some.Content.ReadFromJsonAsync<PermissoesBody>())!;
+        Assert.Contains("perfil:ver", allBody.Permissoes);
+        Assert.Contains("perfil:gerir", allBody.Permissoes);
+        Assert.Contains("permissao:atribuir", allBody.Permissoes);
+        Assert.DoesNotContain(allBody.Permissoes, p => p is "perfil:criar" or "permissao:definir-overrides");
+        Assert.Contains("perfil:ver", someBody.Permissoes);
+        Assert.DoesNotContain("perfil:gerir", someBody.Permissoes);
+        Assert.DoesNotContain("permissao:atribuir", someBody.Permissoes);
+    }
+
+    private sealed record ContaBody(Guid Id, string Nome, string? Usuario, bool Dono, bool Ativa, List<Guid> UnidadeIds, List<Guid> PerfilIds);
+
+    private sealed record PermissoesBody(List<string> Permissoes);
 }

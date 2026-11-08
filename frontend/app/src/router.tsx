@@ -8,7 +8,8 @@ import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
 import { UnidadePage } from "./features/conta/UnidadePage";
 import { EntrarPage } from "./features/entrar/EntrarPage";
 import { aoEncerrarSessao, destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
-import { EntryShell, Shell } from "./Shell";
+import { PessoasPage } from "./features/usuarios/PessoasPage";
+import { EntryShell, Shell, salaoTabs } from "./Shell";
 
 /** When a session ends (button, expired, 401 after refresh) nothing the query cache holds (permissions, bills) stays for the next person on the device. */
 function RaizDaAplicacao() {
@@ -33,6 +34,9 @@ const indexRoute = createRoute({
   },
 });
 
+/** The tabs of the slice plus People, which only who may see profiles gets (absent, not disabled, for the rest). */
+const abas = [...salaoTabs, { to: "/salao/pessoas", label: "Pessoas", permissao: "perfil:ver" }] as const;
+
 /** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */
 const appLayout = createRoute({
   getParentRoute: () => rootRoute,
@@ -43,7 +47,7 @@ const appLayout = createRoute({
       throw redirect({ to: destino });
     }
   },
-  component: () => <Shell title="Salão" />,
+  component: () => <Shell title="Salão" tabs={abas} />,
 });
 
 const salaoRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao", component: ComandasPage });
@@ -53,6 +57,8 @@ const comandaRoute = createRoute({
   component: ComandaPage,
 });
 const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPage });
+
+const pessoasRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/pessoas", component: PessoasPage });
 
 const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
 
@@ -86,7 +92,7 @@ const unidadeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute]),
+  appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute, pessoasRoute]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);
 

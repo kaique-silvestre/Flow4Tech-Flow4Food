@@ -71,9 +71,15 @@ public interface IPreAuthLookup
 
 public sealed record NovaConta(Guid Id, TipoConta Tipo, string Nome, string? Email, string? Usuario, bool Dono, DateTimeOffset CriadaEm);
 
+/// <summary>An account as the people list shows it: no credential, no e-mail. <see cref="Usuario"/> is null for an account with e-mail; <see cref="Unidades"/> are the units the person may work in.</summary>
+public sealed record ContaListada(Guid Id, string Nome, string? Usuario, bool Dono, bool Ativa, IReadOnlyList<Guid> Unidades);
+
 /// <summary>Account storage of the current organization. Every member runs INSIDE a unit of work (RLS does the filtering).</summary>
 public interface IContaStore
 {
+    /// <summary>Every account of the organization (RLS) with its unit ids, by name. Never reads a credential.</summary>
+    Task<IReadOnlyList<ContaListada>> ListarAsync(Guid organizacaoId, CancellationToken cancellationToken);
+
     /// <summary>Inserts the account and its credential. False when the user name (or e-mail) is already taken; nothing is written then.</summary>
     Task<bool> InserirAsync(Guid organizacaoId, NovaConta conta, string senhaHash, bool deveTrocarSenha, DateTimeOffset? temporariaExpiraEm, CancellationToken cancellationToken);
 

@@ -88,3 +88,6 @@ Nota local 36,6% porque 78 mutantes so sao alcancados pelos testes com Docker. S
 
 ## S-04 (noturno) Destino de produção da API no vercel.json
 O rewrite de `frontend/app/vercel.json` ainda aponta para o host de staging do Railway. O dono define o host/domínio de produção (decisão de produção, fora do alcance do agente). Origem: F4-0045.
+
+## S-04 (noturno) Criar pessoa pela API (F4-0047)
+Não há rota que crie conta operacional (só o seed). Emitir credencial temporária/convite com perfil é decisão de segurança do dono: definir o fluxo (convite com perfil aplicado na aceitação, ver `docs/agents/identidade.md`, ou POST /contas com senha temporária) e abrir ticket. A tela de usuários e perfis do F4-0047 lista, atribui e remove perfis de contas existentes.

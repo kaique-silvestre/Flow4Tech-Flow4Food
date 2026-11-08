@@ -756,6 +756,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/contas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listContas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/contas/{id}/perfis": {
         parameters: {
             query?: never;
@@ -933,6 +949,16 @@ export interface components {
             travadaPelaOrganizacao: boolean;
             valorDaOrganizacao: null | string;
             valorDaUnidade: null | string;
+        };
+        ContaDaListaDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            usuario: null | string;
+            dono: boolean;
+            ativa: boolean;
+            unidadeIds: string[];
+            perfilIds: string[];
         };
         ContaDto: {
             /** Format: int64 */
@@ -3884,6 +3910,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PerfilDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listContas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContaDaListaDto"][];
                 };
             };
             /** @description Unauthorized */

@@ -2575,6 +2575,36 @@
         "x-permission": "perfil:ver"
       }
     },
+    "/contas": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listContas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContaDaListaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "perfil:ver"
+      }
+    },
     "/contas/{id}/perfis": {
       "get": {
         "tags": [
@@ -3276,6 +3306,53 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ContaDaListaDto": {
+        "required": [
+          "id",
+          "nome",
+          "usuario",
+          "dono",
+          "ativa",
+          "unidadeIds",
+          "perfilIds"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dono": {
+            "type": "boolean"
+          },
+          "ativa": {
+            "type": "boolean"
+          },
+          "unidadeIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "perfilIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },

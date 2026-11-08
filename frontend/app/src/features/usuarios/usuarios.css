@@ -1,0 +1,140 @@
+/* Pessoas e perfis */
+.pessoas-lead {
+  margin: 0 0 var(--f4-space-4);
+  color: var(--f4-ink-muted);
+}
+
+.pessoas-modelos {
+  display: grid;
+  gap: var(--f4-space-3);
+  margin: 0 0 var(--f4-space-4);
+  padding: var(--f4-space-4);
+  border: 1px solid var(--f4-border);
+  border-radius: var(--f4-radius-lg);
+  background: var(--f4-surface);
+}
+
+.pessoas-modelos p {
+  margin: 0;
+}
+
+.pessoas-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pessoa-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--f4-space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--f4-space-3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--f4-border);
+  background: transparent;
+  color: var(--f4-ink);
+  font: inherit;
+  text-align: left;
+}
+
+button.pessoa-linha {
+  cursor: pointer;
+}
+
+button.pessoa-linha:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+button.pessoa-linha:active {
+  background: var(--f4-hover);
+}
+
+.pessoa-nome {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pessoa-meta {
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pessoa-perfis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+}
+
+.pessoa-sheet-perfis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+  margin: 0 0 var(--f4-space-3);
+}
+
+.pessoa-sheet-resumo {
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  list-style: none;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.pessoa-corpo {
+  display: grid;
+  gap: var(--f4-space-1);
+  min-width: 0;
+}
+
+div.pessoa-linha {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pessoa-seta {
+  color: var(--f4-ink-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* Loading skeleton shaped like the screen: title, lead, then rows of name, unit and profile. */
+.pessoas-esq-titulo {
+  width: 40%;
+  height: 28px;
+}
+
+.pessoas-esq-lead {
+  width: 75%;
+  height: 18px;
+  margin-bottom: var(--f4-space-4);
+}
+
+.pessoas-esq-linha {
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.pessoas-esq-nome {
+  width: 55%;
+  height: 20px;
+}
+
+.pessoas-esq-meta {
+  width: 35%;
+  height: 16px;
+}
+
+.pessoas-esq-selo {
+  width: 25%;
+  height: 28px;
+  border-radius: var(--f4-radius-pill, 999px);
+  margin-bottom: 0;
+}
