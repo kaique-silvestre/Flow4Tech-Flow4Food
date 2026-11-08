@@ -79,3 +79,6 @@ Depois das primeiras execucoes do job `mutation-tests` (artefatos `mutation-*`),
 
 ## Axe nos dialogos (pendente, sem ID ainda)
 O scan de F4-0109 cobre so login, comandas e caixa (tela inicial). Faltam os dialogos e folhas que aparecem depois de uma acao (lancar item, fechar caixa, receber pagamento, cancelar item) e as telas de mesa e cardapio. Dono pediu para tratar depois. Pegar ID F4-NNNN livre ao comecar (0108 esta com a hospedagem do Vercel).
+
+## F4-0111 (pendente): dividir o bundle do app por rota
+O app entrega um unico chunk JS (569 kB bruto, 179 kB gzip) e o build avisa "chunks maiores que 500 kB". Dividir por rota (import dinamico do TanStack Router) e baixar os limites de `frontend/app/bundle-budget.json`. Lighthouse (desempenho e PWA) tambem pendente, como relatorio informativo. Orcamento do `control` quando ele ganhar build.

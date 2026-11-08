@@ -97,6 +97,31 @@ jobs:
             frontend/packages/*/coverage
           if-no-files-found: ignore
 
+  # Bundle budget (F4-0110): gzip size of the built JS and CSS of the app against frontend/app/bundle-budget.json.
+  bundle-budget:
+    name: bundle budget (app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @flow4tech/app build
+      - run: pnpm --filter @flow4tech/app bundle:check
+      - name: Keep the bundle report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bundle-report
+          path: frontend/app/dist/bundle-report.json
+          if-no-files-found: ignore
+
   # Browser tests (ticket 08): Playwright at 390x844 and 360x740 against the REAL API in docker compose, with the documented seed; screenshots are kept as an artifact.
   frontend-e2e:
     name: browser tests (playwright, real API)
@@ -581,6 +606,7 @@ jobs:
       - typecheck-frontend
       - lint-frontend
       - frontend-tests
+      - bundle-budget
       - frontend-e2e
       - unit-tests
       - integration-tests

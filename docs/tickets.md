@@ -127,3 +127,5 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0107 | Piso do teste de mutacao por dominio, depois das primeiras execucoes do CI, e tornar o job bloqueante | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
 | F4-0108 | Vercel de teste: rewrite das rotas da API para o staging do Railway (mesma origem, cookie SameSite=Strict) | governanca | `.scratch/governanca/hospedagem-do-front-e-ambientes.md` | `.scratch/governanca/pendencias.md` | - | - | em andamento |
 | F4-0109 | Acessibilidade automatica: axe-core (WCAG 2.1 A/AA) no Playwright sobre login, comandas e caixa, claro e escuro, nos dois tamanhos; estrito | governanca | - | `.scratch/governanca/pendencias.md` | `dev-v2` (commit direto) | - | feito |
+| F4-0110 | Orcamento de bundle do app: gzip de JS e CSS contra `frontend/app/bundle-budget.json`, job `bundle-budget` bloqueante | governanca | - | `.scratch/governanca/pendencias.md` | `dev-v2` (commit direto) | - | feito |
+| F4-0111 | Dividir o bundle do app por rota (import dinamico) e baixar os limites do orcamento | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |

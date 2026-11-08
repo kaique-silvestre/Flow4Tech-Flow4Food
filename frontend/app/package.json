@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "bundle:check": "node ../scripts/bundle-budget.mjs"
   },
   "dependencies": {
     "@flow4tech/api-client": "workspace:*",
