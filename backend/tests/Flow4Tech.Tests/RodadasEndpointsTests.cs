@@ -214,6 +214,70 @@ public sealed partial class ComandasEndpointsTests
     }
 
     [Fact]
+    public async Task Undo_does_not_need_the_current_version_so_a_second_device_launching_meanwhile_does_not_turn_it_into_409()
+    {
+        var clock = new SkewClock();
+        await using var api = new Api(_appConnection, configure: services =>
+        {
+            services.RemoveAll<IClock>();
+            services.AddSingleton<IClock>(clock);
+        });
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var produto = await CreateProductAsync(client, t.Dono, "CHOPP", "Chopp", 1000);
+        var comanda = await OpenAsync(client, t.Garcom);
+        var rodada = await LaunchOkAsync(client, t.Garcom, comanda.Id, comanda.Versao, produto.Id);
+        var outra = await LaunchOkAsync(client, t.Garcom, comanda.Id, rodada.ComandaVersao, produto.Id);
+        var terceira = await LaunchOkAsync(client, t.Garcom, comanda.Id, outra.ComandaVersao, produto.Id);
+        Assert.Equal(4, await VersionOfAsync(comanda.Id));
+
+        // The sender still holds version 2 while the comanda is at 4: the undo goes through and the answer and the audit carry the new version.
+        using var done = await UndoAsync(client, t.Garcom, comanda.Id, rodada.Id, rodada.ComandaVersao);
+        Assert.Equal(HttpStatusCode.OK, done.StatusCode);
+        Assert.NotNull((await done.Content.ReadFromJsonAsync<RodadaBody>())!.DesfeitaEm);
+        Assert.Equal(5, await VersionOfAsync(comanda.Id));
+        Assert.Equal(2000L, (await ItemsAsync(client, t.Garcom, comanda.Id)).ConsumoCentavos);
+        Assert.Equal(5, Assert.Single(await QueryAsync(OrgA, UnitA, "SELECT (depois->>'versao')::int FROM auditoria_registros WHERE acao = 'comanda:desfazer-rodada'", r => r.GetInt32(0))));
+
+        // Still refused for another user, with an item of the round cancelled, and after the window, whatever version is sent.
+        using var cancel = await CancelAsync(client, t.Garcom, comanda.Id, outra.Itens[0].Id, 5, "cliente-desistiu");
+        Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);
+        await AssertErrorAsync(await UndoAsync(client, t.Garcom, comanda.Id, outra.Id, 1), HttpStatusCode.Conflict, "rodada-com-item-cancelado");
+        await AssertErrorAsync(await UndoAsync(client, t.Dono, comanda.Id, terceira.Id, 1), HttpStatusCode.Conflict, "somente-quem-enviou");
+        var antes = await VersionOfAsync(comanda.Id);
+        clock.Skew = TimeSpan.FromSeconds(9);
+        await AssertErrorAsync(await UndoAsync(client, t.Garcom, comanda.Id, terceira.Id, 1), HttpStatusCode.Conflict, "janela-expirada");
+        Assert.Equal(antes, await VersionOfAsync(comanda.Id));
+    }
+
+    [Fact]
+    public async Task The_same_round_id_sent_twice_at_the_same_time_makes_one_round_and_two_successful_answers()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var produto = await CreateProductAsync(client, t.Dono, "CHOPP", "Chopp", 1000);
+        var comanda = await OpenAsync(client, t.Garcom);
+        var rodadaId = NewRoundId();
+
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<HttpResponseMessage> Fire()
+        {
+            await gate.Task;
+            return await LaunchAsync(client, t.Garcom, comanda.Id, comanda.Versao, produto.Id, rodadaId: rodadaId);
+        }
+
+        var first = Fire();
+        var second = Fire();
+        gate.SetResult();
+        var responses = await Task.WhenAll(first, second);
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.Created], responses.Select(r => r.StatusCode).Order().ToArray());
+        Assert.Single((await Task.WhenAll(responses.Select(r => r.Content.ReadAsStringAsync()))).Distinct());
+        Assert.Equal((1L, 1L, 2), (await CountAsync("rodadas"), await CountAsync("itens_comanda"), await VersionOfAsync(comanda.Id)));
+        Assert.Equal((1L, 1L), (await CountAsync("outbox_eventos WHERE tipo = 'comanda.rodada-enviada'"), await CountAsync("auditoria_registros WHERE acao = 'comanda:lancar-rodada'")));
+    }
+
+    [Fact]
     public async Task Only_the_sender_may_undo_a_round_even_for_a_waiter_who_may_see_the_comanda()
     {
         await using var api = new Api(_appConnection);
@@ -295,7 +359,6 @@ public sealed partial class ComandasEndpointsTests
 
         await AssertErrorAsync(await LaunchAsync(client, t.Garcom, comanda.Id, 1, produto.Id), HttpStatusCode.Conflict, "versao-desatualizada", 2);
         await AssertErrorAsync(await CancelAsync(client, t.Garcom, comanda.Id, rodada.Itens[0].Id, 1, "cliente-desistiu"), HttpStatusCode.Conflict, "versao-desatualizada", 2);
-        await AssertErrorAsync(await UndoAsync(client, t.Garcom, comanda.Id, rodada.Id, 1), HttpStatusCode.Conflict, "versao-desatualizada", 2);
 
         Assert.Equal((rodadas, 1L, 2, 1L), (await CountAsync("rodadas"), await CountAsync("itens_comanda"), await VersionOfAsync(comanda.Id), await CountAsync("auditoria_registros WHERE acao LIKE 'comanda:%rodada' OR acao = 'comanda:cancelar-item'")));
         Assert.Equal("lancado", (await ItemsAsync(client, t.Garcom, comanda.Id)).Itens.Single().Estado);

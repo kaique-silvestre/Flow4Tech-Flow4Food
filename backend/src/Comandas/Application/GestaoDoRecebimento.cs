@@ -65,9 +65,8 @@ public sealed class GestaoDoRecebimento(
             request,
             async ct =>
             {
-                var org = request.Organization;
-                var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
-                if (comanda is null || (comanda.GarcomId != request.UserId && !await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct)))
+                var comanda = await AcharVisivelAsync(request, comandaId, ct);
+                if (comanda is null)
                 {
                     return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
                 }
@@ -84,9 +83,8 @@ public sealed class GestaoDoRecebimento(
             request,
             async ct =>
             {
-                var org = request.Organization;
-                var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
-                if (comanda is null || (comanda.GarcomId != request.UserId && !await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct)))
+                var comanda = await AcharVisivelAsync(request, comandaId, ct);
+                if (comanda is null)
                 {
                     return null;
                 }
@@ -116,7 +114,7 @@ public sealed class GestaoDoRecebimento(
                     }
 
                     var org = request.Organization;
-                    var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
+                    var comanda = await AcharVisivelAsync(request, comandaId, ct);
                     if (comanda is null)
                     {
                         return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
@@ -178,7 +176,7 @@ public sealed class GestaoDoRecebimento(
                 }
 
                 var org = request.Organization;
-                var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
+                var comanda = await AcharVisivelAsync(request, comandaId, ct);
                 if (comanda is null)
                 {
                     return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
@@ -222,6 +220,7 @@ public sealed class GestaoDoRecebimento(
                     ["versao"] = versao + 1,
                 };
                 await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.RemoverTaxaServico, ObjectType = "comanda", ObjectId = comandaId.ToString("D"), After = json }, ct);
+                await eventos.PublicarAsync(org, new TaxaServicoRemovida(EntityId.New().Value, comandaId, comanda.UnidadeId, comanda.Numero, antes.TaxaServicoPercentual, antes.TaxaServicoCentavos, request.UserId), ct);
                 return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Ok, Conta: depois, Versao: versao + 1, Estado: comanda.Estado);
             },
             cancellationToken);
@@ -240,7 +239,7 @@ public sealed class GestaoDoRecebimento(
                 }
 
                 var org = request.Organization;
-                var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
+                var comanda = await AcharVisivelAsync(request, comandaId, ct);
                 if (comanda is null)
                 {
                     return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
@@ -280,6 +279,19 @@ public sealed class GestaoDoRecebimento(
         existente.ComandaId == comandaId
             ? new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Repetida, existente, Versao: existente.ComandaVersao)
             : new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Invalido);
+
+    /// <summary>The comanda when the caller may see it (their own, or any with <c>comanda:ver-comandas-de-outros</c>); null otherwise, so paying, closing and removing the fee answer as for a comanda that does not exist.</summary>
+    private async Task<Comanda?> AcharVisivelAsync(IRequestContext request, Guid comandaId, CancellationToken ct)
+    {
+        var org = request.Organization;
+        var comanda = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
+        if (comanda is null || comanda.GarcomId == request.UserId)
+        {
+            return comanda;
+        }
+
+        return await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct) ? comanda : null;
+    }
 
     private async Task<ContaDaComanda> CarregarContaAsync(IRequestContext request, Comanda comanda, CancellationToken ct)
     {

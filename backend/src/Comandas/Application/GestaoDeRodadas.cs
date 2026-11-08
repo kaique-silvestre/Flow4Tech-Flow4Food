@@ -49,6 +49,33 @@ public sealed record ResultadoDeEscrita(ResultadoDeRodada Resultado, RodadaComIt
 
 public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao);
 
+/// <summary>Raised inside the unit of work when an undo is refused AFTER the comanda row lock and version bump: the bump rolls back and the caller answers with <see cref="Resultado"/>.</summary>
+public sealed class RecusaDoDesfazer : InvalidOperationException
+{
+    public RecusaDoDesfazer()
+        : this(ResultadoDeRodada.Invalido)
+    {
+    }
+
+    public RecusaDoDesfazer(string message)
+        : base(message)
+    {
+    }
+
+    public RecusaDoDesfazer(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+
+    public RecusaDoDesfazer(ResultadoDeRodada resultado)
+        : base("Desfazer recusado: " + resultado)
+    {
+        Resultado = resultado;
+    }
+
+    public ResultadoDeRodada Resultado { get; }
+}
+
 /// <summary>
 /// Launching rounds, undoing them and cancelling items. Who may call is the route's job (decided by the one engine). Every write is ONE unit of work: the version bump, the rows, the audit record and
 /// the outbox event commit or roll back together, and a stale version changes nothing. A waiter reaches only comandas they opened unless they hold <c>comanda:ver-comandas-de-outros</c>.
@@ -158,9 +185,23 @@ public sealed class GestaoDeRodadas(
             cancellationToken);
     }
 
-    public Task<ResultadoDeEscrita> DesfazerAsync(IRequestContext request, Guid comandaId, Guid rodadaId, int versao, CancellationToken cancellationToken = default)
+    /// <summary><paramref name="versao"/> must still be a valid version (the contract keeps the field) but is not compared with the current one.</summary>
+    public async Task<ResultadoDeEscrita> DesfazerAsync(IRequestContext request, Guid comandaId, Guid rodadaId, int versao, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        try
+        {
+            return await DesfazerNaUnidadeAsync(request, comandaId, rodadaId, versao, cancellationToken);
+        }
+        catch (RecusaDoDesfazer recusa)
+        {
+            // Refused after the lock was taken: the unit of work rolled the version bump back, nothing changed.
+            return new ResultadoDeEscrita(recusa.Resultado);
+        }
+    }
+
+    private Task<ResultadoDeEscrita> DesfazerNaUnidadeAsync(IRequestContext request, Guid comandaId, Guid rodadaId, int versao, CancellationToken cancellationToken)
+    {
         return unitOfWork.ExecuteAsync(
             request,
             async ct =>
@@ -195,37 +236,46 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.JanelaExpirada);
                 }
 
-                if (rodada.Itens.Any(i => i.Estado == EstadoDoItem.Cancelado))
-                {
-                    return new ResultadoDeEscrita(ResultadoDeRodada.RodadaComItemCancelado);
-                }
-
-                if (comanda.Estado != EstadoDaComanda.Aberta)
+                // Undo is a write by the SENDER inside a short window, not an edit of what they last saw: it does not compare versions, so a second device launching meanwhile cannot turn it into 409.
+                // The bump takes the comanda row lock FIRST; everything that depends on the items and payments is checked on data read after the lock, so a concurrent cancel or payment cannot slip through.
+                if (!await comandas.AvancarVersaoSemConferirAsync(org.OrganizationId, comandaId, ct))
                 {
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
-                if (await DeixariaAbaixoDoRecebidoAsync(request, comanda, rodada.Itens, ct))
+                var atual = await rodadas.AcharRodadaAsync(org.OrganizationId, rodadaId, ct);
+                var comandaAtual = await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct);
+                if (atual is null || comandaAtual is null)
                 {
-                    return new ResultadoDeEscrita(ResultadoDeRodada.ValorJaRecebido);
+                    throw new RecusaDoDesfazer(ResultadoDeRodada.RodadaNaoEncontrada);
                 }
 
-                if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+                if (atual.Rodada.DesfeitaEm is not null)
                 {
-                    return await FalhaDeVersaoAsync(org, comandaId, ct);
+                    throw new RecusaDoDesfazer(ResultadoDeRodada.RodadaJaDesfeita);
+                }
+
+                if (atual.Itens.Any(i => i.Estado == EstadoDoItem.Cancelado))
+                {
+                    throw new RecusaDoDesfazer(ResultadoDeRodada.RodadaComItemCancelado);
+                }
+
+                if (await DeixariaAbaixoDoRecebidoAsync(request, comandaAtual, atual.Itens, ct))
+                {
+                    throw new RecusaDoDesfazer(ResultadoDeRodada.ValorJaRecebido);
                 }
 
                 if (!await rodadas.DesfazerRodadaAsync(org.OrganizationId, rodadaId, RegrasDeRodada.MotivoDesfeito, request.UserId, agora, ct))
                 {
-                    // Cannot happen under the comanda row lock; refuse rather than write a half change (the unit of work rolls the version bump back).
-                    throw new InvalidOperationException("A rodada mudou durante o desfazer.");
+                    throw new RecusaDoDesfazer(ResultadoDeRodada.RodadaJaDesfeita);
                 }
 
+                var novaVersao = (await comandas.AcharAsync(org.OrganizationId, org.UnitId, comandaId, ct))!.Versao;
                 var depois = await rodadas.AcharRodadaAsync(org.OrganizationId, rodadaId, ct);
-                var audit_ = new JsonObject { ["itens"] = rodada.Itens.Count, ["motivo"] = RegrasDeRodada.MotivoDesfeito, ["versao"] = versao + 1 };
+                var audit_ = new JsonObject { ["itens"] = rodada.Itens.Count, ["motivo"] = RegrasDeRodada.MotivoDesfeito, ["versao"] = novaVersao };
                 await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.DesfazerRodada, ObjectType = "rodada", ObjectId = rodadaId.ToString("D"), After = audit_ }, ct);
                 await eventos.PublicarAsync(org, new RodadaDesfeita(EntityId.New().Value, comandaId, rodadaId, comanda.UnidadeId, request.UserId), ct);
-                return new ResultadoDeEscrita(ResultadoDeRodada.Ok, depois, Versao: versao + 1);
+                return new ResultadoDeEscrita(ResultadoDeRodada.Ok, depois, Versao: novaVersao);
             },
             cancellationToken);
     }

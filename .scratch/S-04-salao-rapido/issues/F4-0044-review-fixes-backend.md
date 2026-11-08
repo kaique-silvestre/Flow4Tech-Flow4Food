@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Real database (Testcontainers, app credential); Contract
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Receive payment, close the comanda and remove the service fee apply the same visibility rule as reading (`comanda:ver-comandas-de-outros`): a cashier without it gets the same answer as for a comanda they cannot read; HTTP test with a cashier lacking the permission.
 - [ ] Undo of a round no longer needs the exact current `versao`: a second device launching inside the undo window does not turn the sender's undo into 409; still refused after the window, for another user, or when an item of the round was cancelled; HTTP test.
@@ -14,3 +14,6 @@
 - [ ] Parallel requests with the same round id and with the same payment id (HTTP, real database) produce one round / one payment and an idempotent answer for the other.
 - [ ] Closing a comanda with zero consumption is refused or explicitly allowed with a test and a decision note in the ticket (recorded, not silent).
 - [ ] `dotnet test backend/Flow4Tech.sln` green; regenerated `openapi.json` and client committed if any route changed.
+
+## Decision note (zero consumption)
+Closing a comanda with zero consumption is explicitly ALLOWED (decided autonomously, F4-0044). Reason: this slice has no cancel-comanda route, so refusing would leave a comanda opened by mistake open forever and block the shift/day. The balance is zero, nothing is owed, `comanda.fechada` is published with total 0. Covered by `Closing_a_comanda_with_zero_consumption_is_allowed_...`. Revisit when `comanda:cancelar` exists (then refuse empty close and send the waiter to cancel). Owner may overturn.

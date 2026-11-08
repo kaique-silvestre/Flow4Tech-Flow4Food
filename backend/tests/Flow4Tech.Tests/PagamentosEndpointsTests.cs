@@ -2,10 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Kernel;
+using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel.Events;
 using Flow4Tech.Organizacao.Application;
 using Flow4Tech.Pagamentos.Application;
 using Flow4Tech.Pagamentos.Infrastructure;
+using Flow4Tech.Permissoes.Application;
+using Flow4Tech.Permissoes.Domain;
 using Flow4Tech.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -214,11 +217,70 @@ public sealed partial class ComandasEndpointsTests
         var audit = Assert.Single(await QueryAsync(OrgA, UnitA, "SELECT usuario_id, depois->>'taxaServicoCentavos', depois->>'totalAntesCentavos', depois->>'totalDepoisCentavos' FROM auditoria_registros WHERE acao = 'comanda:remover-taxa-servico'", r => (r.GetGuid(0), r.GetString(1), r.GetString(2), r.GetString(3))));
         Assert.Equal((DonoA, "101", "1106", "1005"), audit);
         await AssertErrorAsync(await RemoveFeeAsync(client, t.Dono, comanda, versao + 1), HttpStatusCode.Conflict, "taxa-ja-removida");
+        var evento = Assert.Single(await QueryAsync(OrgA, UnitA, "SELECT payload->>'ComandaId', payload->>'TaxaServicoCentavos', payload->>'RemovidaPor' FROM outbox_eventos WHERE tipo = 'comanda.taxa-servico-removida'", r => (r.GetString(0), r.GetString(1), r.GetString(2))));
+        Assert.Equal((comanda.ToString("D"), "101", DonoA.ToString("D")), evento);
 
         // The fee stays removed: the cash needed is the consumption alone.
         await OpenShiftAsync(client, t.Dono, 0);
         var pago = await PayOkAsync(client, t.Dono, comanda, 1005, versao + 1);
         Assert.Equal((1005L, 0L), (pago.AplicadoCentavos, pago.SaldoRestanteCentavos));
+    }
+
+    [Fact]
+    public async Task A_cashier_without_the_permission_to_see_others_comandas_cannot_pay_close_or_remove_the_fee_of_one_they_cannot_read()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var perfis = api.Services.GetRequiredService<GestaoDePerfis>();
+        var request = new FakeRequest(DonoA, new OrganizationContext(OrgA, UnitA));
+        var cashier = await perfis.CriarAsync(request, "Caixa cego", [new RegraDeAcesso(RuleEffect.Allow, "comanda:ver"), new RegraDeAcesso(RuleEffect.Allow, "comanda:receber-pagamento"), new RegraDeAcesso(RuleEffect.Allow, "comanda:fechar"), new RegraDeAcesso(RuleEffect.Allow, "comanda:remover-taxa-servico"), new RegraDeAcesso(RuleEffect.Allow, "pagamento:registrar")]);
+        Assert.Equal(ResultadoGestao.Ok, cashier.Resultado);
+        Assert.Equal(ResultadoGestao.Ok, await perfis.AtribuirAsync(request, Mudo, cashier.Id!.Value));
+
+        // Assigning a profile moves the credential version, so the cashier signs in again.
+        var credencial = (await QueryAsync(OrgA, UnitA, $"SELECT versao_credencial FROM contas WHERE id = '{Mudo:D}'", r => r.GetInt32(0))).Single();
+        var caixa = (await api.Services.GetRequiredService<Sessoes>().IniciarAsync(Mudo, OrgA, credencial, false, new ClienteDaSessao("127.0.0.1", "testes"))).AccessToken;
+        await OpenShiftAsync(client, t.Dono, 0);
+        var (comanda, versao, _) = await ComandaWithConsumoAsync(client, t, 1000, 1);
+        var inexistente = Guid.NewGuid();
+        var antes = (await VersionOfAsync(comanda), await CountAsync("pagamentos"), await CountAsync("auditoria_registros WHERE acao LIKE 'comanda:%' OR acao = 'pagamento:registrar'"), await CountAsync("outbox_eventos"));
+
+        // The answer for a comanda they cannot read is the same as for one that does not exist.
+        foreach (var (real, falso) in new[]
+        {
+            (await PayAsync(client, caixa, comanda, 1100, versao), await PayAsync(client, caixa, inexistente, 1100, versao)),
+            (await CloseAsync(client, caixa, comanda, versao), await CloseAsync(client, caixa, inexistente, versao)),
+            (await RemoveFeeAsync(client, caixa, comanda, versao), await RemoveFeeAsync(client, caixa, inexistente, versao)),
+        })
+        {
+            await AssertErrorAsync(real, HttpStatusCode.NotFound, "nao-encontrada");
+            await AssertErrorAsync(falso, HttpStatusCode.NotFound, "nao-encontrada");
+        }
+
+        Assert.Equal(antes, (await VersionOfAsync(comanda), await CountAsync("pagamentos"), await CountAsync("auditoria_registros WHERE acao LIKE 'comanda:%' OR acao = 'pagamento:registrar'"), await CountAsync("outbox_eventos")));
+
+        // With the permission (the owner here) the same comanda is paid and closed.
+        var pago = await PayOkAsync(client, t.Dono, comanda, 1100, versao);
+        using var closed = await CloseAsync(client, t.Dono, comanda, pago.ComandaVersao);
+        Assert.Equal(HttpStatusCode.OK, closed.StatusCode);
+    }
+
+    [Fact]
+    public async Task Closing_a_comanda_with_zero_consumption_is_allowed_and_leaves_a_closed_comanda_with_a_zero_total()
+    {
+        // Decision (F4-0044): allowed. There is no cancel-comanda route in this slice, so refusing would leave a comanda opened by mistake open forever.
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var comanda = await OpenAsync(client, t.Dono);
+
+        using var closed = await CloseAsync(client, t.Dono, comanda.Id, comanda.Versao);
+        Assert.Equal(HttpStatusCode.OK, closed.StatusCode);
+        var conta = (await closed.Content.ReadFromJsonAsync<ContaBody>())!;
+        Assert.Equal((0L, 0L, "fechada", comanda.Versao + 1), (conta.TotalCentavos, conta.SaldoCentavos, conta.Estado, conta.Versao));
+        Assert.Equal(1L, await CountAsync("outbox_eventos WHERE tipo = 'comanda.fechada'"));
+        Assert.Equal(0L, await CountAsync("pagamentos"));
     }
 
     [Fact]

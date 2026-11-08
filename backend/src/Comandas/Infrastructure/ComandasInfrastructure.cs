@@ -314,6 +314,13 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
+    public async Task<bool> AvancarVersaoSemConferirAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE comandas SET versao = versao + 1 WHERE id = {comandaId} AND estado = 'aberta'", cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<bool> FecharAsync(Guid organizationId, Guid comandaId, DateTimeOffset fechadaEm, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));

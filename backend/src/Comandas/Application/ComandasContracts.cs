@@ -96,6 +96,9 @@ public interface IComandasStore
     /// <summary>Optimistic write: bumps the version of an OPEN comanda only if it is still <paramref name="versaoEsperada"/>; false otherwise (and nothing changes). The row stays locked until the unit of work ends.</summary>
     Task<bool> AvancarVersaoAsync(Guid organizationId, Guid comandaId, int versaoEsperada, CancellationToken cancellationToken);
 
+    /// <summary>Bumps the version of an OPEN comanda whatever it is now (taking the row lock until the unit of work ends); false when the comanda is not open. For writes that do not depend on what the caller last saw.</summary>
+    Task<bool> AvancarVersaoSemConferirAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
+
     /// <summary>Open comandas of the unit, newest first; only <paramref name="garcomId"/>'s when given.</summary>
     Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken);
 }
@@ -117,6 +120,13 @@ public sealed record RodadaDesfeita(Guid EventId, Guid ComandaId, Guid RodadaId,
 public sealed record ItemCancelado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, string Motivo, Guid CanceladoPor) : IDomainEvent
 {
     public const string Type = "comanda.item-cancelado";
+
+    public string EventType => Type;
+}
+
+public sealed record TaxaServicoRemovida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, decimal TaxaServicoPercentual, long TaxaServicoCentavos, Guid RemovidaPor) : IDomainEvent
+{
+    public const string Type = "comanda.taxa-servico-removida";
 
     public string EventType => Type;
 }
