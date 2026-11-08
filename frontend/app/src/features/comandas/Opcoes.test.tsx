@@ -272,7 +272,7 @@ describe("sending with add-ons", () => {
   it("the round goes with the add-ons by id and the note, nothing else about them", async () => {
     const chamadas = await prepararRodada({ "POST /comandas/c1/rodadas": rodadaOk });
 
-    await userEvent.click(screen.getByRole("button", { name: "Enviar", exact: true }));
+    await userEvent.click(screen.getByRole("button", { name: /^Enviar$/ }));
     const enviar = await screen.findByRole("dialog", { name: "Enviar rodada" });
     expect(enviar).toHaveTextContent("Ao ponto, Queijo");
     expect(enviar).toHaveTextContent(formatBRL(3400));
@@ -296,7 +296,7 @@ describe("sending with add-ons", () => {
       window.dispatchEvent(new Event("offline"));
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Enviar", exact: true }));
+    await userEvent.click(screen.getByRole("button", { name: /^Enviar$/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Enviar agora" }));
 
     expect(await screen.findByRole("button", { name: "1 ação pendente" })).toBeVisible();
@@ -329,7 +329,7 @@ describe("sending with add-ons", () => {
       "POST /comandas/c1/rodadas": json({ codigo: "opcao-inativa" }, { status: 409 }),
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Enviar", exact: true }));
+    await userEvent.click(screen.getByRole("button", { name: /^Enviar$/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Enviar agora" }));
 
     expect(
