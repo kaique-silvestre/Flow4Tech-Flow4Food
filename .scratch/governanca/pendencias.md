@@ -76,3 +76,6 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 
 ## F4-0107 (pendente): piso do teste de mutacao
 Depois das primeiras execucoes do job `mutation-tests` (artefatos `mutation-*`), definir um piso por dominio e tornar o job bloqueante. Ver tambem os sobreviventes de Comandas/Pagamentos/Caixa/Cardapio para novas propriedades.
+
+## Axe nos dialogos (pendente, sem ID ainda)
+O scan de F4-0109 cobre so login, comandas e caixa (tela inicial). Faltam os dialogos e folhas que aparecem depois de uma acao (lancar item, fechar caixa, receber pagamento, cancelar item) e as telas de mesa e cardapio. Dono pediu para tratar depois. Pegar ID F4-NNNN livre ao comecar (0108 esta com a hospedagem do Vercel).
