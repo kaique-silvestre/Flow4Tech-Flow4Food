@@ -6,11 +6,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)/:path*",
+      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao|perfis)/:path*",
       "destination": "https://flow4tech-api-staging.up.railway.app/$1/:path*"
     },
     {
-      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)",
+      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao|perfis)",
       "destination": "https://flow4tech-api-staging.up.railway.app/$1"
     },
     {
