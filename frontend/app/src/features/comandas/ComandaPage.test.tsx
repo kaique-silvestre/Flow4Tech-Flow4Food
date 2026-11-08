@@ -112,6 +112,7 @@ function rotas(extra: Record<string, unknown> = {}, itens: unknown[] = [item("i1
       { id: "cat2", nome: "Porções", ativa: true, versao: 1 },
     ]),
     "GET /cardapio/produtos/frequentes": json([chopp]),
+    "GET /cardapio/produtos/favoritos": json([]),
     "GET /cardapio/produtos/:id/grupos-opcao": json([]),
     ...extra,
   } as Record<string, Response | ((c: never) => Response | Promise<Response>)>;
@@ -138,7 +139,7 @@ const rodadaOk = (versao = 3) =>
   );
 
 describe("comanda screen layout", () => {
-  it("shows the bill on top and the picker below: breadcrumb, total, badge, rows, search, tabs with Frequentes first, rows with price and +", async () => {
+  it("shows the bill on top and the picker below: breadcrumb, total, badge, rows, search, tabs with Favoritos first, rows with price and +", async () => {
     await abrir();
 
     expect(document.querySelector("p.comanda-voltar")?.textContent).toBe("Comandas › #7");
@@ -149,8 +150,8 @@ describe("comanda screen layout", () => {
     expect(conta_.textContent).toContain(formatBRL(2500));
     expect(screen.getByLabelText("Buscar produto")).toBeVisible();
     const abas = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(abas).toEqual(["Frequentes", "Bebidas", "Porções"]);
-    expect(screen.getByRole("tab", { name: "Frequentes" })).toHaveAttribute("aria-selected", "true");
+    expect(abas).toEqual(["Favoritos", "Bebidas", "Porções"]);
+    expect(screen.getByRole("tab", { name: "Favoritos" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("button", { name: "Adicionar Chopp 300ml" })).toBeVisible();
     expect(screen.getByText(/Serviço/).textContent).toContain(formatBRL(250));
   });
@@ -356,23 +357,292 @@ describe("sending a round", () => {
     expect((await screen.findByLabelText("Total da conta")).textContent).toBe(formatBRL(6000));
   });
 
-  it("repeats the round the waiter sent last", async () => {
-    await abrir({}, [
-      item("i1", { rodadaId: "r1", quantidade: 2 }),
-      item("i2", {
-        rodadaId: "r2",
-        quantidade: 1,
+  it("shows favorites and most sold on top, each once, and the first category after them", async () => {
+    await abrir({
+      "GET /cardapio/produtos/favoritos": json([batata]),
+      "GET /cardapio/produtos/frequentes": json([chopp, batata]),
+    });
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Seus favoritos" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 3, name: "Mais vendidos" })).toBeVisible();
+    // The favorite is not repeated in the most sold list.
+    expect(screen.getAllByRole("button", { name: "Adicionar Porção de batata" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Adicionar Chopp 300ml" })).toHaveLength(1);
+  });
+
+  it("asks the server to search, shows its order (exact code first) and launches an exact code on Enter", async () => {
+    const { chamadas } = await abrir({
+      "GET /cardapio/produtos/busca": json([batata, chopp]),
+    });
+
+    await userEvent.type(screen.getByLabelText("Buscar produto"), "batata");
+
+    await vi.waitFor(() => expect(chamadas.some((c) => c.path === "/cardapio/produtos/busca")).toBe(true), {
+      timeout: 4000,
+    });
+    const lista = await screen.findAllByRole("button", { name: /^Adicionar / }, { timeout: 4000 });
+    expect(lista.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Adicionar Porção de batata",
+      "Adicionar Chopp 300ml",
+    ]);
+
+    await userEvent.clear(screen.getByLabelText("Buscar produto"));
+    await userEvent.type(screen.getByLabelText("Buscar produto"), "chopp{Enter}");
+    // The exact code goes straight into the round and the field is clear for the next code.
+    expect(await screen.findByRole("group", { name: "Chopp 300ml" })).toBeVisible();
+    expect(screen.getByLabelText("Buscar produto")).toHaveValue("");
+  });
+
+  it("keeps searching on the loaded menu when the server cannot answer", async () => {
+    await abrir({ "GET /cardapio/produtos/busca": () => new Response(null, { status: 500 }) });
+
+    await userEvent.type(screen.getByLabelText("Buscar produto"), "batata");
+
+    expect(await screen.findByRole("button", { name: "Adicionar Porção de batata" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Adicionar Chopp 300ml" })).toBeNull();
+  });
+
+  it("switches the search field to the numeric keypad for a short code", async () => {
+    await abrir();
+    const campo = screen.getByLabelText("Buscar produto");
+    expect(campo).toHaveAttribute("inputmode", "search");
+
+    await userEvent.click(screen.getByRole("button", { name: "123, teclado numérico para o código" }));
+
+    expect(campo).toHaveAttribute("inputmode", "numeric");
+  });
+});
+
+const itemDaRodada = (id: string, rodadaId: string, extra: Record<string, unknown> = {}) =>
+  item(id, { rodadaId, ...extra });
+const repetida = (ignorados: unknown[] = [], versao = 3) =>
+  json(
+    {
+      rodada: {
+        id: "x",
+        comandaId: "c1",
+        enviadaEm: new Date().toISOString(),
+        desfeitaEm: null,
+        comandaVersao: versao,
+        itens: [item("n1", { rodadaId: "x" })],
+      },
+      ignorados,
+    },
+    { status: 201 },
+  );
+
+describe("repeat the last round", () => {
+  const duasRodadas = [
+    itemDaRodada("i1", "r1"),
+    itemDaRodada("i2", "r2", { produtoId: "p2", produtoNome: "Porção de batata", precoCentavos: 3490, quantidade: 1 }),
+  ];
+
+  async function abrirRepetir(extra: Record<string, unknown> = {}, itens: unknown[] = duasRodadas) {
+    const r = await abrir(extra, itens);
+    await userEvent.click(screen.getByRole("button", { name: "Repetir última rodada" }));
+    const folha = await screen.findByRole("dialog", { name: "Repetir última rodada" });
+    return { ...r, folha };
+  }
+
+  it("previews the last round in two taps: opening lists what goes with today's prices, confirming sends it and offers the undo", async () => {
+    const { chamadas, folha } = await abrirRepetir({ "POST /comandas/c1/rodadas/repetir": repetida() });
+
+    const vai = within(folha).getByRole("list", { name: "Itens que vão na rodada" });
+    expect(vai).toHaveTextContent("1×");
+    expect(vai).toHaveTextContent("Porção de batata");
+    expect(vai).not.toHaveTextContent("Chopp 300ml");
+    expect((folha.textContent ?? "").replace(/\s/g, " ")).toContain(formatBRL(3490).replace(/\s/g, " "));
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    const envio = chamadas.find((c) => c.path === "/comandas/c1/rodadas/repetir");
+    expect(envio?.body).toMatchObject({ versao: 2 });
+    expect(String((envio?.body as { rodadaId?: string } | undefined)?.rodadaId)).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await screen.findByText("Rodada enviada")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Desfazer" })).toBeVisible();
+    expect(screen.queryByRole("dialog", { name: "Repetir última rodada" })).toBeNull();
+  });
+
+  it("lists what will not go because the product is gone, and says what the server left out after sending", async () => {
+    const { folha } = await abrirRepetir(
+      {
+        "GET /cardapio/produtos": json([chopp, { ...batata, indisponivel: true }]),
+        "POST /comandas/c1/rodadas/repetir": repetida([
+          { produtoId: "p1", produtoNome: "Chopp 300ml", quantidade: 2, motivo: "opcao-inativa" },
+        ]),
+      },
+      [
+        itemDaRodada("i1", "r1"),
+        itemDaRodada("i2", "r1", { produtoId: "p2", produtoNome: "Porção de batata", quantidade: 1 }),
+      ],
+    );
+
+    const fora = within(folha).getByRole("group", { name: "Itens que não entram" });
+    expect(fora).toHaveTextContent("Porção de batata");
+    expect(fora).toHaveTextContent("Acabou ou saiu do cardápio");
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(await screen.findByText("Não entraram: 2× Chopp 300ml (um adicional não está disponível).")).toBeVisible();
+  });
+
+  it("cannot send when nothing of the last round is available", async () => {
+    const { folha } = await abrirRepetir({
+      "GET /cardapio/produtos": json([
+        { ...chopp, indisponivel: true },
+        { ...batata, indisponivel: true },
+      ]),
+    });
+
+    expect(folha).toHaveTextContent("Nenhum item da última rodada está disponível agora.");
+    expect(within(folha).getByRole("button", { name: "Repetir agora" })).toBeDisabled();
+  });
+
+  it("keeps the sheet open and says why when the server finds nothing to repeat (409)", async () => {
+    const { folha } = await abrirRepetir({
+      "POST /comandas/c1/rodadas/repetir": json(
+        {
+          codigo: "nada-para-repetir",
+          versaoAtual: null,
+          ignorados: [{ produtoId: "p2", produtoNome: "Porção de batata", quantidade: 1, motivo: "produto-inativo" }],
+        },
+        { status: 409 },
+      ),
+    });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(
+      await within(folha).findByText(
+        /Nenhum item da última rodada está disponível agora\. Não entraram: 1× Porção de batata/,
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("dialog", { name: "Repetir última rodada" })).toBeVisible();
+  });
+
+  it("refreshes the bill and keeps the sheet when another device changed the comanda (409 conflict)", async () => {
+    const { folha, chamadas } = await abrirRepetir({
+      "POST /comandas/c1/rodadas/repetir": json(
+        { codigo: "versao-desatualizada", versaoAtual: 5, ignorados: [] },
+        { status: 409 },
+      ),
+    });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(await within(folha).findByText(/foi alterada em outro aparelho/)).toBeVisible();
+    await vi.waitFor(() => expect(chamadas.filter((c) => c.path === "/comandas/c1/itens").length).toBeGreaterThan(1));
+  });
+
+  it("says so when the caller may not launch (403, no reason given)", async () => {
+    const { folha } = await abrirRepetir({ "POST /comandas/c1/rodadas/repetir": new Response(null, { status: 403 }) });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(await within(folha).findByText("Você não tem permissão para lançar itens.")).toBeVisible();
+  });
+
+  it("queues the repeat under the same id when there is no signal, and the queue sends it later", async () => {
+    const { folha, chamadas } = await abrirRepetir({ "POST /comandas/c1/rodadas/repetir": repetida() });
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(await screen.findByText(/A repetição ficou na fila/)).toBeVisible();
+    const fila = lerFila();
+    expect(fila).toHaveLength(1);
+    expect(fila[0]).toMatchObject({ tipo: "repeticao", comandaId: "c1", estado: "pendente" });
+    expect(chamadas.some((c) => c.path === "/comandas/c1/rodadas/repetir")).toBe(false);
+    // With an action of this comanda waiting, a second repeat is not offered (the "last round" must not drift while it waits).
+    expect(screen.getByRole("button", { name: "Repetir última rodada" })).toBeDisabled();
+    expect(screen.getByText(/Há ações desta comanda na fila/)).toBeVisible();
+  });
+
+  it("queues the repeat when the server fails (500) instead of losing it", async () => {
+    const { folha } = await abrirRepetir({ "POST /comandas/c1/rodadas/repetir": new Response(null, { status: 503 }) });
+
+    await userEvent.click(within(folha).getByRole("button", { name: "Repetir agora" }));
+
+    expect(await screen.findByText(/A repetição ficou na fila/)).toBeVisible();
+    expect(lerFila()[0]).toMatchObject({ tipo: "repeticao" });
+  });
+});
+
+describe("last time at this table", () => {
+  const mesa = { ...comandaJson, mesaId: "m1", identificacao: "6" };
+  const ultimaVez = {
+    comandaId: "c0",
+    numero: 3,
+    numeroTexto: "#3",
+    fechadaEm: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    itens: [
+      item("u1", { rodadaId: "ra", quantidade: 2 }),
+      item("u2", {
+        rodadaId: "ra",
         produtoId: "p2",
         produtoNome: "Porção de batata",
         precoCentavos: 3490,
+        quantidade: 1,
       }),
-    ]);
+    ],
+  };
+  const permissoes = [...PERMISSOES_DO_GARCOM];
 
-    await userEvent.click(screen.getByRole("button", { name: "Repetir rodada" }));
+  async function abrirNaMesa(extra: Record<string, unknown>) {
+    const chamadas = stubRede(rotas({ "GET /comandas": json([mesa]), ...extra }) as never);
+    await renderEm("/salao/comanda/c1");
+    await screen.findByRole("heading", { level: 2, name: "Mesa 6" });
+    return { chamadas };
+  }
 
-    expect(screen.getByRole("region", { name: "Rodada não enviada" })).toHaveTextContent("1 item não enviado");
-    expect(screen.getByRole("group", { name: "Porção de batata" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Repetir rodada" })).toBeNull();
+  it("shows the card with the items and when the bill closed, and Adicionar tudo stages them", async () => {
+    await abrirNaMesa({
+      "GET /mesas/m1/ultima-vez": json(ultimaVez),
+      "GET /sessao/permissoes": json({ permissoes }),
+    });
+
+    const cartao = await screen.findByRole("region", { name: "Última vez nesta mesa" });
+    expect(cartao).toHaveTextContent("2× Chopp 300ml, 1× Porção de batata");
+    expect(cartao).toHaveTextContent("#3 · fechada há 2 dias");
+
+    await userEvent.click(within(cartao).getByRole("button", { name: "Adicionar tudo da última vez nesta mesa" }));
+
+    expect(screen.getByRole("region", { name: "Rodada não enviada" })).toHaveTextContent("3 itens não enviados");
+    expect(screen.queryByRole("region", { name: "Última vez nesta mesa" })).toBeNull();
+  });
+
+  it("names what is no longer available instead of dropping it silently", async () => {
+    await abrirNaMesa({
+      "GET /cardapio/produtos": json([chopp, { ...batata, indisponivel: true }]),
+      "GET /mesas/m1/ultima-vez": json(ultimaVez),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Adicionar tudo da última vez nesta mesa" }));
+
+    expect(screen.getByText("Não entraram (acabou ou saiu do cardápio): 1× Porção de batata.")).toBeVisible();
+    expect(screen.getByRole("region", { name: "Rodada não enviada" })).toHaveTextContent("2 itens não enviados");
+  });
+
+  it("does not appear when the server has no history for the table", async () => {
+    const { chamadas } = await abrirNaMesa({
+      "GET /mesas/m1/ultima-vez": json({
+        comandaId: null,
+        numero: null,
+        numeroTexto: null,
+        fechadaEm: null,
+        itens: [],
+      }),
+    });
+
+    await vi.waitFor(() => expect(chamadas.some((c) => c.path === "/mesas/m1/ultima-vez")).toBe(true));
+    expect(screen.queryByRole("region", { name: "Última vez nesta mesa" })).toBeNull();
+  });
+
+  it("is not asked for at all on a comanda without a table", async () => {
+    const { chamadas } = await abrir();
+
+    expect(chamadas.some((c) => c.path.includes("ultima-vez"))).toBe(false);
+    expect(screen.queryByRole("region", { name: "Última vez nesta mesa" })).toBeNull();
   });
 });
 
@@ -538,7 +808,7 @@ describe("permissions", () => {
     await screen.findByRole("heading", { level: 2, name: "Ana" });
 
     expect(screen.queryByLabelText("Buscar produto")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Repetir rodada" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Repetir última rodada" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancelar Chopp 300ml" })).toBeNull();
   });
 });
@@ -598,7 +868,8 @@ describe("round rules", () => {
     const lista = [{ ...p, nome: "Porção de batata", codigo: "BATATA" }, q];
 
     expect(buscarProdutos(lista, "porcao").map((x) => x.id)).toEqual(["p1"]);
-    expect(buscarProdutos(lista, "b").map((x) => x.id)).toEqual(["p1", "p2"]);
+    // The exact short code comes first, then names that start with the text, then the rest (the order the server answers in).
+    expect(buscarProdutos(lista, "b").map((x) => x.id)).toEqual(["p2", "p1"]);
     expect(buscarProdutos(lista, "")).toHaveLength(2);
   });
 

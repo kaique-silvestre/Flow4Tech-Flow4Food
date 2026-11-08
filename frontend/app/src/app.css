@@ -376,7 +376,120 @@ a.comanda-row:focus-visible {
 }
 
 .picker-busca {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-2);
   margin-bottom: var(--f4-space-2);
+}
+
+.picker-busca .f4-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Switches the search field to the numeric keypad for a short code. */
+.picker-codigo {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--f4-border-strong);
+  border-radius: var(--f4-radius-md);
+  background: var(--f4-surface);
+  color: var(--f4-ink-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--f4-motion-fast) var(--f4-motion-ease);
+}
+
+.picker-codigo:hover {
+  background: var(--f4-hover);
+}
+
+.picker-codigo:active {
+  transform: scale(0.98);
+}
+
+.picker-codigo[aria-pressed="true"] {
+  border-color: var(--f4-accent);
+  background: var(--f4-surface-2);
+  color: var(--f4-accent);
+}
+
+.picker-codigo:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: 2px;
+}
+
+.picker-secao {
+  margin: var(--f4-space-3) 0 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* "Última vez nesta mesa": the one grouped suggestion card of the design. */
+.ultima-vez {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-3);
+  margin: var(--f4-space-2) 0;
+  padding: var(--f4-space-3) var(--f4-space-3) var(--f4-space-3) var(--f4-space-4);
+  border: 1px solid var(--f4-border);
+  border-radius: var(--f4-radius-lg);
+  background: var(--f4-surface);
+}
+
+.ultima-vez-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.ultima-vez-titulo {
+  margin: 0;
+  font-size: var(--f4-text-secondary);
+  font-weight: 600;
+}
+
+.ultima-vez-quando,
+.ultima-vez-itens {
+  margin: 0;
+  font-size: var(--f4-text-meta);
+  color: var(--f4-ink-muted);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.ultima-vez .f4-btn {
+  flex: none;
+  min-height: 44px;
+  padding-inline: var(--f4-space-3);
+}
+
+.repetir-vazio {
+  margin: 0 0 var(--f4-space-2);
+  color: var(--f4-ink-muted);
+}
+
+.repetir-fora {
+  margin-top: var(--f4-space-3);
+  padding-top: var(--f4-space-2);
+  border-top: 1px solid var(--f4-border);
+}
+
+.repetir-fora-titulo {
+  margin: 0;
+  color: var(--f4-warning-ink);
+  font-size: var(--f4-text-meta);
+  font-weight: 600;
+}
+
+.comanda-barra-aviso {
+  margin: 0 0 var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  text-wrap: pretty;
 }
 
 .produto-lista {

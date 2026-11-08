@@ -46,6 +46,7 @@ export function BarraDeFila() {
         void queryClient.invalidateQueries({ queryKey: ["comandas"] });
         void queryClient.invalidateQueries({ queryKey: ["caixa"] });
         void queryClient.invalidateQueries({ queryKey: ["cardapio", "frequentes"] });
+        void queryClient.invalidateQueries({ queryKey: ["cardapio", "favoritos"] });
       }),
     [queryClient],
   );

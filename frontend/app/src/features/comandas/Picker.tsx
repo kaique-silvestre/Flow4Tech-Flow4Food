@@ -1,10 +1,13 @@
 import { Button, formatBRL, Notice, Skeleton, Tab, TabList, TabPanel, Tabs, ToneBadge } from "@flow4tech/design-system";
-import { useState } from "react";
-import { buscarProdutos, type Categoria, type Produto, useGruposDoProduto } from "./cardapio";
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react";
+import { BUSCA_MAXIMA, buscarProdutos, type Categoria, type Produto, useBusca, useGruposDoProduto } from "./cardapio";
 import { exigeEscolha } from "./opcoes";
 
 interface Props {
   produtos: readonly Produto[];
+  /** What this waiter launches most (best first). */
+  favoritos?: readonly Produto[];
+  /** What the unit sells most (best first). */
   frequentes: readonly Produto[];
   categorias: readonly Categoria[];
   /** Units staged per product, to show ×N. */
@@ -15,7 +18,15 @@ interface Props {
   carregando: boolean;
   erro: boolean;
   onTentarDeNovo: () => void;
+  /** "Última vez nesta mesa": shown on top of the favorites tab, only when the server had something. */
+  topo?: ReactNode;
+  /** The search is answered by the server when it can (code first). */
+  buscaNoServidor?: boolean;
 }
+
+/** The wait before a typed term goes to the server: the local filter answers at once in the meantime. */
+const ESPERA_DA_BUSCA_MS = 200;
+const SEM_FAVORITOS: readonly Produto[] = [];
 
 function LinhaDoProduto({
   produto,
@@ -70,6 +81,7 @@ function LinhaDoProduto({
 /** Search, category tabs (Frequentes first) and the product rows with ×N and +. Adding is one tap per unit; nothing is sent from here. */
 export function Picker({
   produtos,
+  favoritos = SEM_FAVORITOS,
   frequentes,
   categorias,
   quantidades,
@@ -78,9 +90,18 @@ export function Picker({
   carregando,
   erro,
   onTentarDeNovo,
+  topo,
+  buscaNoServidor = true,
 }: Props) {
   const [busca, setBusca] = useState("");
+  const [termo, setTermo] = useState("");
+  const [numerico, setNumerico] = useState(false);
   const [aba, setAba] = useState<string | null>(null);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTermo(busca), ESPERA_DA_BUSCA_MS);
+    return () => window.clearTimeout(timer);
+  }, [busca]);
+  const noServidor = useBusca(termo, buscaNoServidor && termo.trim() !== "" && termo === busca);
 
   if (carregando) {
     return <Skeleton rows={4} label="Carregando o cardápio" />;
@@ -101,9 +122,28 @@ export function Picker({
     );
   }
 
-  const abaAtiva = aba ?? (frequentes.length > 0 ? "frequentes" : (categorias[0]?.id ?? "frequentes"));
+  const naAba = favoritos.length > 0 || frequentes.length > 0 || topo !== undefined;
+  const abaAtiva = aba ?? (naAba ? "favoritos" : (categorias[0]?.id ?? "favoritos"));
   const buscando = busca.trim() !== "";
-  const resultados = buscarProdutos(produtos, busca);
+  // The server's order (exact code first) once it answered for the text on the screen; until then, and with no signal, the local filter of the loaded menu.
+  const resultados = noServidor.data && termo === busca ? noServidor.data : buscarProdutos(produtos, busca);
+  const maisVendidos = frequentes.filter((f) => !favoritos.some((v) => v.id === f.id));
+
+  // Typing a short code and pressing Enter launches it: the quickest way to a known item. Only an exact code acts; a name needs the +.
+  function aoTeclar(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") {
+      return;
+    }
+
+    e.preventDefault();
+    const digitado = busca.trim().toLowerCase();
+    const exato = resultados.find((p) => p.codigo.toLowerCase() === digitado && !p.indisponivel);
+    if (exato) {
+      onAdicionar(exato);
+      setBusca("");
+      setTermo("");
+    }
+  }
 
   const lista = (itens: readonly Produto[]) => (
     <ul className="produto-lista">
@@ -129,36 +169,64 @@ export function Picker({
           id="busca-produtos"
           className="f4-input"
           type="search"
-          inputMode="search"
+          inputMode={numerico ? "numeric" : "search"}
+          enterKeyHint="go"
           placeholder="Buscar por nome ou código"
           autoComplete="off"
+          maxLength={BUSCA_MAXIMA}
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={aoTeclar}
         />
+        <button
+          type="button"
+          className="picker-codigo"
+          aria-pressed={numerico}
+          aria-label="123, teclado numérico para o código"
+          onClick={() => setNumerico((v) => !v)}
+        >
+          123
+        </button>
       </div>
 
       {buscando ? (
         resultados.length === 0 ? (
           <p className="comandas-vazio">Nada com “{busca.trim()}”. Tente o código do produto.</p>
         ) : (
-          lista(resultados)
+          <>
+            <p className="f4-visually-hidden" role="status">
+              {resultados.length === 1 ? "1 produto encontrado" : `${resultados.length} produtos encontrados`}
+            </p>
+            {lista(resultados)}
+          </>
         )
       ) : (
         <Tabs value={abaAtiva} onValueChange={setAba}>
           <TabList aria-label="Categorias">
-            <Tab value="frequentes">Frequentes</Tab>
+            <Tab value="favoritos">Favoritos</Tab>
             {categorias.map((c) => (
               <Tab key={c.id} value={c.id}>
                 {c.nome}
               </Tab>
             ))}
           </TabList>
-          <TabPanel value="frequentes">
-            {frequentes.length === 0 ? (
-              <p className="comandas-vazio">Ainda não há itens frequentes. Use a busca ou uma categoria.</p>
-            ) : (
-              lista(frequentes)
-            )}
+          <TabPanel value="favoritos">
+            {topo}
+            {favoritos.length === 0 && maisVendidos.length === 0 ? (
+              <p className="comandas-vazio">Ainda não há favoritos. Use a busca ou uma categoria.</p>
+            ) : null}
+            {favoritos.length > 0 ? (
+              <>
+                <h3 className="picker-secao">Seus favoritos</h3>
+                {lista(favoritos)}
+              </>
+            ) : null}
+            {maisVendidos.length > 0 ? (
+              <>
+                <h3 className="picker-secao">Mais vendidos</h3>
+                {lista(maisVendidos)}
+              </>
+            ) : null}
           </TabPanel>
           {categorias.map((c) => (
             <TabPanel key={c.id} value={c.id}>

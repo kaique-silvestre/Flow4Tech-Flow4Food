@@ -4,6 +4,7 @@ import { entrar, reiniciarSessaoParaTestes, sair } from "../sessao/sessao";
 import {
   enfileirarCancelamento,
   enfileirarPagamento,
+  enfileirarRepeticao,
   enfileirarRodada,
   iniciarProcessador,
   lerFila,
@@ -621,5 +622,115 @@ describe("queue safety on a shared phone and across tabs", () => {
       motivo: "erro-de-lancamento",
       texto: null,
     });
+  });
+});
+
+describe("queued repeat of the last round", () => {
+  const repeticao = (id = "rep-1") =>
+    enfileirarRepeticao({
+      rodadaId: id,
+      comandaId: "c1",
+      titulo: "Repetir rodada · #7",
+      detalhe: "2 itens da última rodada",
+    });
+  const repetida = (ignorados: unknown[] = []) =>
+    json(
+      {
+        rodada: {
+          id: "rep-1",
+          comandaId: "c1",
+          enviadaEm: new Date().toISOString(),
+          desfeitaEm: null,
+          comandaVersao: 6,
+          itens: [],
+        },
+        ignorados,
+      },
+      { status: 201 },
+    );
+
+  it("waits without signal, survives a reload, and is sent by the repeat route under its own id", async () => {
+    const chamadas = stubRede({ "GET /comandas/c1/conta": contaOk(), "POST /comandas/c1/rodadas/repetir": repetida() });
+    online(false);
+
+    repeticao();
+    await processar();
+    recarregarFilaParaTestes();
+
+    expect(lerFila().map((a) => [a.id, a.tipo, a.estado])).toEqual([["rep-1", "repeticao", "pendente"]]);
+    expect(chamadas).toHaveLength(0);
+    expect(temAcaoViva("c1")).toBe(true);
+
+    online(true);
+    await processar();
+
+    expect(lerFila()).toEqual([]);
+    const envio = chamadas.find((c) => c.path === "/comandas/c1/rodadas/repetir");
+    expect(envio?.body).toEqual({ rodadaId: "rep-1", versao: 4 });
+  });
+
+  it("tells the waiter what the server left out of the repeat when it finally goes", async () => {
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(),
+      "POST /comandas/c1/rodadas/repetir": repetida([
+        { produtoId: "p1", produtoNome: "Chopp", quantidade: 1, motivo: "produto-inativo" },
+      ]),
+    });
+
+    repeticao();
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+  });
+
+  it("adopts the version the server names on a conflict and sends again, still under the same id", async () => {
+    let tentativa = 0;
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(4),
+      "POST /comandas/c1/rodadas/repetir": () => {
+        tentativa += 1;
+        return tentativa === 1
+          ? json({ codigo: "versao-desatualizada", versaoAtual: 9, ignorados: [] }, { status: 409 })
+          : repetida();
+      },
+    });
+
+    repeticao();
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+
+    const envios = chamadas.filter((c) => c.path === "/comandas/c1/rodadas/repetir").map((c) => c.body);
+    expect(envios).toEqual([
+      { rodadaId: "rep-1", versao: 4 },
+      { rodadaId: "rep-1", versao: 9 },
+    ]);
+  });
+
+  it("shows a repeat the server cannot do as not sent, with the reason, and does not block the rest", async () => {
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(),
+      "POST /comandas/c1/rodadas/repetir": json(
+        { codigo: "nada-para-repetir", versaoAtual: null, ignorados: [] },
+        { status: 409 },
+      ),
+    });
+
+    repeticao();
+    await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
+
+    expect(lerFila()[0]).toMatchObject({
+      estado: "falhou",
+      motivo: "Nenhum item da última rodada está disponível agora.",
+    });
+    expect(temAcaoViva("c1")).toBe(false);
+  });
+
+  it("keeps waiting with back-off when the server is down", async () => {
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(),
+      "POST /comandas/c1/rodadas/repetir": () => new Response(null, { status: 503 }),
+    });
+
+    repeticao();
+    await vi.waitFor(() => expect(lerFila()[0]?.tentativas).toBe(1));
+
+    expect(lerFila()[0]).toMatchObject({ estado: "pendente", tentativas: 1, motivo: "Aguardando o servidor" });
   });
 });

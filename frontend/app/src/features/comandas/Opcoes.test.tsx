@@ -97,6 +97,7 @@ function rotas(extra: Record<string, unknown> = {}) {
     "GET /cardapio/produtos": json([hamburguer, agua]),
     "GET /cardapio/categorias": json([{ id: "cat1", nome: "Lanches", ativa: true, versao: 1 }]),
     "GET /cardapio/produtos/frequentes": json([hamburguer, agua]),
+    "GET /cardapio/produtos/favoritos": json([]),
     "GET /cardapio/produtos/p1/grupos-opcao": json(grupos),
     "GET /cardapio/produtos/p2/grupos-opcao": json([]),
     "GET /cardapio/produtos/p1/opcoes-frequentes": json([
@@ -362,11 +363,12 @@ describe("repeat round and the bill", () => {
     const lista = screen.getByRole("list", { name: "Itens da conta" });
     expect(lista).toHaveTextContent("Bacon · sem cebola");
     expect(lista).toHaveTextContent(formatBRL(7000));
-    await userEvent.click(screen.getByRole("button", { name: "Repetir rodada" }));
+    await userEvent.click(screen.getByRole("button", { name: "Repetir última rodada" }));
 
-    const barra = screen.getByRole("region", { name: "Rodada não enviada" });
-    expect(barra).toHaveTextContent("2 itens");
-    expect(barra).toHaveTextContent(formatBRL(7000));
+    // The preview carries the add-ons and the note of the last round, at today's prices.
+    const folha = await screen.findByRole("dialog", { name: "Repetir última rodada" });
+    expect(folha).toHaveTextContent("Bacon · sem cebola");
+    expect(folha).toHaveTextContent(formatBRL(7000));
   });
 });
 

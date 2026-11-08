@@ -1,6 +1,7 @@
 import { BottomSheet, Button, Chip, formatBRL, TextField } from "@flow4tech/design-system";
 import { useEffect, useState } from "react";
 import { resumoDasOpcoes } from "./opcoes";
+import type { PreviaDaRepeticao } from "./repetir";
 import {
   type CodigoDeMotivo,
   DURACAO_DO_DESFAZER_MS,
@@ -119,6 +120,84 @@ export function CancelarItemSheet({ item, onOpenChange, enviando, erro, onCancel
           onChange={(e) => setTexto(e.target.value)}
         />
       ) : null}
+    </BottomSheet>
+  );
+}
+
+interface RepetirProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  previa: PreviaDaRepeticao;
+  enviando: boolean;
+  /** What did not go (the sheet stays open). */
+  erro: string | undefined;
+  onRepetir: () => void;
+}
+
+/** "Repetir última rodada": what goes (with the menu prices of now), what does not and why, the undo window; one tap to confirm. */
+export function RepetirRodadaSheet({ open, onOpenChange, previa, enviando, erro, onRepetir }: RepetirProps) {
+  const nada = previa.entram.length === 0;
+  return (
+    <BottomSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Repetir última rodada"
+      description={`Os mesmos itens, com os preços de agora. Você pode desfazer por ${DURACAO_DO_DESFAZER_MS / 1000} segundos.`}
+      error={erro}
+      loading={enviando}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={enviando}>
+            Voltar
+          </Button>
+          <Button loading={enviando} disabled={nada} onClick={onRepetir}>
+            Repetir agora
+          </Button>
+        </>
+      }
+    >
+      {nada ? (
+        <p className="repetir-vazio">Nenhum item da última rodada está disponível agora.</p>
+      ) : (
+        <ul className="enviar-lista" aria-label="Itens que vão na rodada">
+          {previa.entram.map(({ item, unitarioCentavos }) => (
+            <li key={item.id} className="enviar-linha">
+              <span className="f4-num">{item.quantidade}×</span>
+              <span>
+                {item.produtoNome}
+                {item.opcoes.length > 0 || item.observacao ? (
+                  <span className="enviar-detalhe">
+                    {[resumoDasOpcoes(item.opcoes), item.observacao].filter(Boolean).join(" · ")}
+                  </span>
+                ) : null}
+              </span>
+              <span className="f4-num">{formatBRL(unitarioCentavos * item.quantidade)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {previa.naoEntram.length > 0 ? (
+        <div className="repetir-fora" role="group" aria-label="Itens que não entram">
+          <p className="repetir-fora-titulo">Não entram</p>
+          <ul className="enviar-lista">
+            {previa.naoEntram.map((item) => (
+              <li key={item.id} className="enviar-linha">
+                <span className="f4-num">{item.quantidade}×</span>
+                <span>
+                  {item.produtoNome}
+                  <span className="enviar-detalhe">Acabou ou saiu do cardápio</span>
+                </span>
+                <span />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {nada ? null : (
+        <p className="enviar-total">
+          Total estimado <strong className="f4-num">{formatBRL(previa.totalCentavos)}</strong>
+        </p>
+      )}
     </BottomSheet>
   );
 }

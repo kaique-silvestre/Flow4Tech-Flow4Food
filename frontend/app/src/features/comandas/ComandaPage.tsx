@@ -12,7 +12,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { enfileirarCancelamento, enfileirarRodada, temAcaoViva } from "../fila/fila";
+import { enfileirarCancelamento, enfileirarRepeticao, enfileirarRodada, temAcaoViva, useFila } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 import {
@@ -22,16 +22,18 @@ import {
   type GrupoDeOpcao,
   type Produto,
   useCategorias,
+  useFavoritos,
   useFrequentes,
   useProdutos,
 } from "./cardapio";
-import { useComandas } from "./consultas";
+import { useComandas, useUltimaVez } from "./consultas";
 import { useConta, useItens } from "./dadosDaComanda";
 import { FecharContaSheet } from "./FecharConta";
-import { CancelarItemSheet, EnviarRodadaSheet } from "./Folhas";
+import { CancelarItemSheet, EnviarRodadaSheet, RepetirRodadaSheet } from "./Folhas";
 import { type EscolhaDoItem, ItemSheet } from "./ItemSheet";
 import { exigeEscolha, resumoDasOpcoes } from "./opcoes";
 import { Picker } from "./Picker";
+import { lerIgnorados, previaDaRepeticao, textoDosIgnorados } from "./repetir";
 import {
   adicionar,
   adicionarConfigurado,
@@ -48,6 +50,7 @@ import {
   unidades,
 } from "./rodada";
 import { nomeExibido, tempoDecorrido } from "./tipos";
+import { UltimaVezCard } from "./UltimaVezCard";
 import { uuidv7 } from "./uuid";
 
 /** The item sheet in use: a product being added, or a staged line being adjusted. */
@@ -66,7 +69,13 @@ interface Desfazer {
   duracaoMs: number;
 }
 
-type ErroDeApi = { codigo?: string; versaoAtual?: number | null } | undefined;
+type ErroDeApi =
+  | {
+      codigo?: string;
+      versaoAtual?: number | null;
+      ignorados?: { produtoNome: string; quantidade: number | string; motivo: string }[];
+    }
+  | undefined;
 
 /**
  * The comanda screen (docs/design/refs/salao/02.png, 03.png, 07.png): the bill on top, the picker below, the staged round with steppers, the round bar, the send sheet, the 8-second undo
@@ -84,6 +93,7 @@ export function ComandaPage() {
   const produtos = useProdutos(pode && lancar);
   const categorias = useCategorias(pode && lancar);
   const frequentes = useFrequentes(pode && lancar);
+  const favoritos = useFavoritos(pode && lancar);
 
   const [emPreparo, setEmPreparo] = useState<ItemEmPreparo[]>([]);
   const [folhaDoItem, setFolhaDoItem] = useState<FolhaDoItem | null>(null);
@@ -94,10 +104,16 @@ export function ComandaPage() {
   const [desfazer, setDesfazer] = useState<Desfazer | null>(null);
   const [desfazendo, setDesfazendo] = useState(false);
   const [folhaFechar, setFolhaFechar] = useState(false);
+  const [folhaRepetir, setFolhaRepetir] = useState(false);
+  const [repetindo, setRepetindo] = useState(false);
+  const [erroRepetir, setErroRepetir] = useState<string | undefined>(undefined);
+  const [ultimaVezUsada, setUltimaVezUsada] = useState(false);
+  const { acoes: filaAgora } = useFila();
   const [paraCancelar, setParaCancelar] = useState<ItemDaConta | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [erroCancelar, setErroCancelar] = useState<string | undefined>(undefined);
   const rodadaEmEnvio = useRef<string | null>(null);
+  const rodadaRepetida = useRef<string | null>(null);
   const versao = useRef(0);
 
   // The version the next write carries: the highest the screen knows (what the server says, or what the last write answered).
@@ -147,6 +163,7 @@ export function ComandaPage() {
     };
   }, [idsDoCardapio, lancar, queryClient]);
   const comanda = comandas.data?.find((c) => c.id === comandaId);
+  const ultimaVez = useUltimaVez(comanda?.mesaId ?? null, pode && lancar && permissoes.pode("mesa:ver"));
 
   async function atualizarDados() {
     await Promise.all([
@@ -398,26 +415,123 @@ export function ComandaPage() {
     setFolhaDoItem(null);
   }
 
-  function repetirRodada() {
-    const ultima = ultimaRodada(itens.data ?? []);
-    if (!ultima || !produtos.data) {
+  function abrirRepetir() {
+    setErroRepetir(undefined);
+    setAviso(null);
+    setFolhaRepetir(true);
+  }
+
+  /** The repeat could not go now: it waits in the visible queue under the same round id and goes out in order. */
+  function guardarRepeticaoNaFila(rodadaId: string, quantos: number) {
+    enfileirarRepeticao({
+      rodadaId,
+      comandaId,
+      titulo: `Repetir rodada · ${comanda?.numeroTexto ?? ""}`.trim(),
+      detalhe: `${quantos} ${quantos === 1 ? "item" : "itens"} da última rodada`,
+    });
+    rodadaRepetida.current = null;
+    setFolhaRepetir(false);
+    setAviso("Sem conexão com o servidor. A repetição ficou na fila e será enviada quando der. Nada se perde.");
+  }
+
+  /** "Repetir agora": the server builds the new round from the last one (prices of now) and tells what it left out. */
+  async function repetirRodada() {
+    setErroRepetir(undefined);
+    setAviso(null);
+    rodadaRepetida.current ??= uuidv7();
+    const rodadaId = rodadaRepetida.current;
+    const quantos = previa.entram.length;
+    if (!navigator.onLine) {
+      guardarRepeticaoNaFila(rodadaId, quantos);
+      return;
+    }
+
+    setRepetindo(true);
+    const inicio = Date.now();
+    try {
+      const { data, response, error } = await api.POST("/comandas/{comandaId}/rodadas/repetir", {
+        params: { path: { comandaId } },
+        body: { rodadaId, versao: versao.current },
+      });
+      if (data) {
+        versao.current = Number(data.rodada.comandaVersao);
+        rodadaRepetida.current = null;
+        setFolhaRepetir(false);
+        setDesfazer({
+          rodadaId: data.rodada.id,
+          duracaoMs: Math.max(0, DURACAO_DO_DESFAZER_MS - (Date.now() - inicio)),
+        });
+        const fora = textoDosIgnorados(lerIgnorados(data.ignorados));
+        if (fora !== "") {
+          setAviso(fora);
+        }
+
+        await atualizarDados();
+        void queryClient.invalidateQueries({ queryKey: ["cardapio", "frequentes"] });
+        void queryClient.invalidateQueries({ queryKey: ["cardapio", "favoritos"] });
+        return;
+      }
+
+      const falha = error as ErroDeApi;
+      const codigo = falha?.codigo;
+      const fora = textoDosIgnorados(lerIgnorados(falha?.ignorados));
+      rodadaRepetida.current = null;
+      if (response.status === 409 && codigo === "versao-desatualizada") {
+        if (typeof falha?.versaoAtual === "number") {
+          versao.current = Math.max(versao.current, falha.versaoAtual);
+        }
+
+        await atualizarDados();
+        setErroRepetir(
+          "Esta comanda foi alterada em outro aparelho. Atualizamos a conta; confira e toque em Repetir agora de novo.",
+        );
+      } else if (response.status === 409 && codigo === "nada-para-repetir") {
+        setErroRepetir(`Nenhum item da última rodada está disponível agora.${fora === "" ? "" : ` ${fora}`}`);
+      } else if (response.status === 409 && codigo === "sem-rodada-anterior") {
+        setErroRepetir("Esta comanda ainda não tem rodada para repetir.");
+      } else if (response.status === 409 && codigo === "comanda-nao-aberta") {
+        setErroRepetir("Esta comanda não está mais aberta. A rodada não foi enviada.");
+      } else if (response.status === 403) {
+        setErroRepetir("Você não tem permissão para lançar itens.");
+      } else if (response.status >= 500 || response.status === 408 || response.status === 429) {
+        guardarRepeticaoNaFila(rodadaId, quantos);
+      } else {
+        setErroRepetir("Não foi possível repetir a rodada. Tente de novo.");
+      }
+    } catch {
+      guardarRepeticaoNaFila(rodadaId, quantos);
+    } finally {
+      setRepetindo(false);
+    }
+  }
+
+  /** "Adicionar tudo" of the last-time card: the items of that bill come into the staged round (add-ons and notes included); what is "acabou" now is named, never dropped silently. */
+  function adicionarUltimaVez() {
+    const tinha = ultimaVez.data;
+    if (!tinha || !produtos.data) {
       return;
     }
 
     let proximo: ItemEmPreparo[] = [...emPreparo];
-    for (const item of ultima) {
+    const fora: string[] = [];
+    for (const item of tinha.itens) {
       const produto = produtos.data.find((p) => p.id === item.produtoId);
-      if (produto) {
-        proximo = adicionarConfigurado(proximo, {
-          produto,
-          quantidade: item.quantidade,
-          opcoes: item.opcoes,
-          observacao: item.observacao,
-        });
+      if (!produto || produto.indisponivel) {
+        fora.push(`${item.quantidade}× ${item.produtoNome}`);
+        continue;
       }
+
+      proximo = adicionarConfigurado(proximo, {
+        produto,
+        quantidade: item.quantidade,
+        opcoes: item.opcoes,
+        observacao: item.observacao,
+      });
     }
 
     setEmPreparo(proximo);
+    setUltimaVezUsada(true);
+    setAviso(fora.length > 0 ? `Não entraram (acabou ou saiu do cardápio): ${fora.join("; ")}.` : null);
   }
 
   if (permissoes.carregado && !permissoes.pode("comanda:ver")) {
@@ -462,7 +576,10 @@ export function ComandaPage() {
   const podeCancelar = permissoes.pode("comanda:cancelar-item");
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
   const podeFechar = permissoes.pode("comanda:fechar") && permissoes.pode("comanda:receber-pagamento");
-  const temUltima = ultimaRodada(itens.data) !== null;
+  const ultima = ultimaRodada(itens.data);
+  const temUltima = ultima !== null;
+  const previa = previaDaRepeticao(ultima ?? [], produtos.data ?? []);
+  const filaDaComanda = filaAgora.some((a) => a.comandaId === comandaId && a.estado !== "falhou");
   const faltaUnidades = unidades(emPreparo);
 
   return (
@@ -548,7 +665,13 @@ export function ComandaPage() {
       {lancar ? (
         <Picker
           produtos={produtos.data ?? []}
+          favoritos={favoritos.data ?? []}
           frequentes={frequentes.data ?? []}
+          topo={
+            ultimaVez.data && !ultimaVezUsada ? (
+              <UltimaVezCard ultimaVez={ultimaVez.data} agora={Date.now()} onAdicionarTudo={adicionarUltimaVez} />
+            ) : undefined
+          }
           categorias={categorias.data ?? []}
           quantidades={quantidades}
           onAdicionar={(produto: Produto) => void aoAdicionar(produto)}
@@ -571,9 +694,14 @@ export function ComandaPage() {
               action={<Button onClick={() => setFolhaEnviar(true)}>Enviar</Button>}
             />
           ) : temUltima ? (
-            <Button className="entry-submit" onClick={repetirRodada} disabled={!produtos.data}>
-              Repetir rodada
-            </Button>
+            <>
+              {filaDaComanda ? (
+                <p className="comanda-barra-aviso">Há ações desta comanda na fila. Repita depois que forem enviadas.</p>
+              ) : null}
+              <Button className="entry-submit" onClick={abrirRepetir} disabled={!produtos.data || filaDaComanda}>
+                Repetir última rodada
+              </Button>
+            </>
           ) : null}
         </div>
       ) : null}
@@ -630,6 +758,14 @@ export function ComandaPage() {
         enviando={enviando}
         erro={erroEnviar}
         onEnviar={() => void enviar()}
+      />
+      <RepetirRodadaSheet
+        open={folhaRepetir}
+        onOpenChange={setFolhaRepetir}
+        previa={previa}
+        enviando={repetindo}
+        erro={erroRepetir}
+        onRepetir={() => void repetirRodada()}
       />
       <CancelarItemSheet
         item={paraCancelar}

@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../sessao/sessao";
+import { paraItemDaConta } from "./dadosDaComanda";
+import type { ItemDaConta } from "./rodada";
 import { type Comanda, type Mesa, paraComanda, paraMesa } from "./tipos";
 
 export function useComandas(enabled: boolean) {
@@ -34,6 +36,40 @@ export function useMesas(enabled: boolean) {
       }
 
       throw new Error("mesas");
+    },
+  });
+}
+
+/** What was consumed the last time this table closed. `itens` empty / `comandaId` null means no history: the card stays hidden. */
+export interface UltimaVez {
+  comandaId: string;
+  numeroTexto: string;
+  fechadaEm: string | null;
+  itens: ItemDaConta[];
+}
+
+/** "Última vez nesta mesa": the last closed bill of the table (only the items that stayed). Resolves to null when the table has no history. */
+export function useUltimaVez(mesaId: string | null, enabled: boolean) {
+  return useQuery<UltimaVez | null>({
+    queryKey: ["mesa", mesaId, "ultima-vez"],
+    enabled: enabled && mesaId !== null,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await api.GET("/mesas/{mesaId}/ultima-vez", { params: { path: { mesaId: mesaId ?? "" } } });
+      if (!data) {
+        throw new Error("ultima-vez");
+      }
+
+      if (data.comandaId === null || data.itens.length === 0) {
+        return null;
+      }
+
+      return {
+        comandaId: String(data.comandaId),
+        numeroTexto: String(data.numeroTexto ?? ""),
+        fechadaEm: data.fechadaEm ?? null,
+        itens: data.itens.map(paraItemDaConta),
+      };
     },
   });
 }

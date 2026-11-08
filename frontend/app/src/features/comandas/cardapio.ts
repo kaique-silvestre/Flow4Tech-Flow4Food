@@ -86,14 +86,68 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
-/** The picker search: part of the name or of the short code, ignoring case and accents. */
+/** Favorites of the signed-in waiter (what they launch most, here), best first. */
+export function useFavoritos(enabled: boolean) {
+  return useQuery<Produto[]>({
+    queryKey: ["cardapio", "favoritos"],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data } = await api.GET("/cardapio/produtos/favoritos");
+      if (!data) {
+        throw new Error("favoritos");
+      }
+
+      return data.map((p) => paraProduto(p as unknown as Record<string, unknown>));
+    },
+  });
+}
+
+/** The longest search the server accepts (it answers 400 above this). */
+export const BUSCA_MAXIMA = 80;
+
+/**
+ * The picker search, answered by the server (exact short code first, then names that start with the text, then names that contain it; accent- and case-insensitive; at most 20). The screen
+ * shows the local filter of the loaded menu until this answers, and keeps it when there is no signal.
+ */
+export function useBusca(termo: string, enabled: boolean) {
+  const limpo = termo.trim().slice(0, BUSCA_MAXIMA);
+  return useQuery<Produto[]>({
+    queryKey: ["cardapio", "busca", normalizar(limpo)],
+    enabled: enabled && limpo !== "",
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data } = await api.GET("/cardapio/produtos/busca", { params: { query: { q: limpo } } });
+      if (!data) {
+        throw new Error("busca");
+      }
+
+      return data.map((p) => paraProduto(p as unknown as Record<string, unknown>));
+    },
+  });
+}
+
+/** The same order the server uses, for the local filter: the exact short code, then names that start with the text, then the rest; the menu order breaks ties. */
+function posicaoNaBusca(p: Produto, termo: string): number {
+  if (normalizar(p.codigo) === termo) {
+    return 0;
+  }
+
+  return normalizar(p.nome).startsWith(termo) ? 1 : 2;
+}
+
+/** The local search: part of the name or of the short code, ignoring case and accents, best match first. */
 export function buscarProdutos(produtos: readonly Produto[], busca: string): Produto[] {
   const termo = normalizar(busca.trim());
   if (termo === "") {
     return [...produtos];
   }
 
-  return produtos.filter((p) => normalizar(p.nome).includes(termo) || normalizar(p.codigo).includes(termo));
+  return produtos
+    .filter((p) => normalizar(p.nome).includes(termo) || normalizar(p.codigo).includes(termo))
+    .map((p, ordem) => ({ p, ordem, posicao: posicaoNaBusca(p, termo) }))
+    .sort((a, b) => a.posicao - b.posicao || a.ordem - b.ordem)
+    .map(({ p }) => p);
 }
 
 export interface Opcao {

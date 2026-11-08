@@ -163,9 +163,12 @@ test("repeats the last round and finds products by code, with a clear message wh
   await page.getByRole("dialog", { name: "Enviar rodada" }).getByRole("button", { name: "Enviar agora" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Rodada enviada" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Repetir rodada" }).click();
-
-  await expect(page.getByRole("region", { name: "Rodada não enviada" })).toContainText("1 item não enviado");
+  await page.getByRole("button", { name: "Repetir última rodada" }).click();
+  const previa = page.getByRole("dialog", { name: "Repetir última rodada" });
+  await expect(previa.getByRole("list", { name: "Itens que vão na rodada" })).toContainText("Água sem gás");
+  await previa.getByRole("button", { name: "Repetir agora" }).click();
+  await expect(page.getByRole("list", { name: "Itens da conta" })).toContainText("Água sem gás");
+  await expect(page.getByLabel("Total da conta")).toContainText("11,00");
   await page.getByLabel("Buscar produto").fill("batata");
   await expect(mais(page, "Porção de batata")).toBeVisible();
   await page.getByLabel("Buscar produto").fill("xyz");
