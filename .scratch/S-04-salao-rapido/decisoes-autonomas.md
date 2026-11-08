@@ -12,3 +12,4 @@
 | 2026-11-08 | F4-0050 | Preço de adicional sem limite? | Sem limite (produto:gerenciar); registrado como risco de negócio | Exigir cardapio:preco-alterar para adicionais |
 | 2026-11-08 | F4-0051 | Toast claro no tema escuro (.f4-toast) e follow-ups (temOpcoes em ProdutoDto; "corrigir e reenviar" na fila) | Adiados, fora do escopo; listados no resumo final | Corrigir tudo aqui |
 | 2026-11-08 | F4-0050 | CI vermelho (sast codeql 504 download) | Falha externa, rerun --failed | Alterar workflow |
+| 2026-11-08 | F4-0051 | CI vermelho: erro de tipo no build (getByRole exact) + gitleaks sem instalar (download externo) | Corrigido teste em novo commit; gitleaks tratado como externo | — |

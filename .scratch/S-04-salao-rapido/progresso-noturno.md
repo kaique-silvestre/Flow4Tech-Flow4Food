@@ -8,3 +8,5 @@
 - 06:02 · F4-0049 · feito · 0f89382 · CI: verde (verificado 06:05)
 - 06:44 · F4-0050 · feito · 62bc093 · CI: falha externa (CodeQL 504 ao baixar bundle), rerun disparado
 - 07:32 · F4-0051 · feito · 90a93a1 · CI: a verificar
+- 08:15 · F4-0052 · feito · 6b92869 · CI: a verificar
+- 08:18 · F4-0051 · correção de CI (tsc em Opcoes.test.tsx) · ec6f23b · CI: a verificar

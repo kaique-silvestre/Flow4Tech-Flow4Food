@@ -7,3 +7,4 @@
 - Test project with a static member named `Org` fails CS0118 ('Org' is a namespace, from BouncyCastle via Testcontainers) -> name it `OrgId`; and private test helpers returning an interface trip CA1859 -> make the helper `public static`.
 - Two Exe/Web projects with top-level statements both define `Program` -> a test project referencing both gets CS0433 on `WebApplicationFactory<Program>` -> give the second project an explicit `Main` in a named class (see `Migrator/Entry.cs`).
 - CA1054 fires on any `string` parameter whose name contains `url`/`uri` -> name it `value`/`fallback`.
+- A mocked 409 `versaoAtual` (fake number) is adopted by the screen's version ref and poisons the next real write in the same e2e test -> reload the page after a mock that invents a version.
