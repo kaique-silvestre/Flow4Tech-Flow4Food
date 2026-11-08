@@ -52,4 +52,17 @@ public sealed class ConfiguracaoPropertyTests
         var r3 = ResolvedorDeConfiguracao.Resolver(Opcao, "10", [v1, v2, inherit], T0);
         return r2.Value == b.ToString(System.Globalization.CultureInfo.InvariantCulture) && r3.Value == "10" && r3.Source == SettingLayer.Sistema;
     }
+
+    [Property]
+    public bool The_version_in_force_is_the_highest_one_already_started_and_the_start_instant_counts(int a, int b)
+    {
+        var dentro = V(null, 1, "1", -1);
+        var noInstante = V(null, 2, "2", 0);
+        var futura = V(null, 3, "3", 1 + Math.Abs(a % 50));
+        var anterior = V(null, 9, "9", -(1 + Math.Abs(b % 50)));
+        return ResolvedorDeConfiguracao.EmVigor([dentro, noInstante, futura], T0) == noInstante
+            && ResolvedorDeConfiguracao.EmVigor([futura], T0) is null
+            && ResolvedorDeConfiguracao.EmVigor([], T0) is null
+            && ResolvedorDeConfiguracao.EmVigor([dentro, anterior], T0) == anterior;
+    }
 }

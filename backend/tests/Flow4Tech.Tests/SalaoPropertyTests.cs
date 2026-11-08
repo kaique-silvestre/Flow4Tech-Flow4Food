@@ -436,6 +436,30 @@ public sealed class SalaoPropertyTests
     public void A_price_is_valid_from_zero_to_the_maximum_inclusive(long centavos, bool valido) =>
         Assert.Equal(valido, RegrasDoCardapio.PrecoValido(centavos));
 
+    // ---- cash register boundaries (mutation test, F4-0106) ----
+
+    [Theory]
+    [InlineData(-1L, false)]
+    [InlineData(0L, true)]
+    [InlineData(1L, true)]
+    [InlineData(99_999_999L, true)]
+    [InlineData(100_000_000L, true)]
+    [InlineData(100_000_001L, false)]
+    public void A_register_amount_is_valid_from_zero_to_the_maximum_inclusive(long centavos, bool valido) =>
+        Assert.Equal(valido, RegrasDoCaixa.ValorValido(centavos));
+
+    [Theory]
+    [InlineData(0L, "Confere")]
+    [InlineData(-1L, "Falta R$ 0,01")]
+    [InlineData(-5L, "Falta R$ 0,05")]
+    [InlineData(1L, "Sobra R$ 0,01")]
+    [InlineData(100L, "Sobra R$ 1,00")]
+    [InlineData(150L, "Sobra R$ 1,50")]
+    [InlineData(-123456L, "Falta R$ 1.234,56")]
+    [InlineData(123456L, "Sobra R$ 1.234,56")]
+    public void The_difference_sentence_is_exact(long diferenca, string frase) =>
+        Assert.Equal(frase, RegrasDoCaixa.Palavra(diferenca));
+
     private static ItemDaComanda Item(long preco, int quantidade, EstadoDoItem estado) =>
         new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(), "x", preco, quantidade, null, estado, null, null, null);
 }
