@@ -3,3 +3,4 @@
 - 02:52 · F4-0045 · feito · 963310d · CI: a verificar
 - 03:34 · F4-0046 · feito · 556c1e0 · CI: a verificar
 - 03:36 · F4-0046 · feito · 8dc6cc9 · CI: a verificar
+- 04:30 · F4-0047 · feito · a992c68 · CI: a verificar

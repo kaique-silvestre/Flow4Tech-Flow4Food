@@ -1505,6 +1505,130 @@
         "x-permission": "produto:gerenciar"
       }
     },
+    "/cardapio/produtos/{id}/preco-unidade": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "definirPrecoDaUnidade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirPrecoDaUnidadeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProdutoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      },
+      "delete": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "removerPrecoDaUnidade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProdutoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
     "/caixa/turnos/atual": {
       "get": {
         "tags": [
@@ -2954,6 +3078,13 @@
               "string"
             ],
             "format": "int32"
+          },
+          "categoriaPaiId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3045,6 +3176,20 @@
               "string"
             ],
             "format": "int32"
+          },
+          "indisponivel": {
+            "type": "boolean",
+            "default": false
+          },
+          "promocao": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PromocaoDto"
+              }
+            ]
           }
         }
       },
@@ -3102,7 +3247,8 @@
           "id",
           "nome",
           "ativa",
-          "versao"
+          "versao",
+          "categoriaPaiId"
         ],
         "type": "object",
         "properties": {
@@ -3123,6 +3269,13 @@
               "string"
             ],
             "format": "int32"
+          },
+          "categoriaPaiId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3519,6 +3672,13 @@
               "null",
               "string"
             ]
+          },
+          "categoriaPaiId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -3582,6 +3742,20 @@
           "ativo": {
             "type": "boolean",
             "default": true
+          },
+          "indisponivel": {
+            "type": "boolean",
+            "default": false
+          },
+          "promocao": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PromocaoDto"
+              }
+            ]
           }
         }
       },
@@ -3599,6 +3773,22 @@
             "items": {
               "$ref": "#/components/schemas/RegraDto"
             }
+          }
+        }
+      },
+      "DefinirPrecoDaUnidadeRequest": {
+        "required": [
+          "precoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -4141,7 +4331,11 @@
           "precoCentavos",
           "moeda",
           "ativo",
-          "versao"
+          "versao",
+          "indisponivel",
+          "promocao",
+          "precoDaUnidadeCentavos",
+          "precoEfetivoCentavos"
         ],
         "type": "object",
         "properties": {
@@ -4180,6 +4374,62 @@
               "string"
             ],
             "format": "int32"
+          },
+          "indisponivel": {
+            "type": "boolean"
+          },
+          "promocao": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PromocaoDto"
+              }
+            ]
+          },
+          "precoDaUnidadeCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "precoEfetivoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PromocaoDto": {
+        "required": [
+          "precoCentavos",
+          "inicio",
+          "fim"
+        ],
+        "type": "object",
+        "properties": {
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fim": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

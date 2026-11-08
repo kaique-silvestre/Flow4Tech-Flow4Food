@@ -148,6 +148,41 @@ public sealed partial class ComandasEndpointsTests
     }
 
     [Fact]
+    public async Task An_acabou_product_cannot_be_launched_until_it_is_back_and_launching_freezes_the_effective_price_of_the_moment()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var chopp = await CreateProductAsync(client, t.Dono, "CHOPP", "Chopp 300ml", 1000);
+        var comanda = await OpenAsync(client, t.Garcom);
+
+        // "Acabou": the product stays on the menu, but a launch is refused like an inactive one and nothing is written.
+        using var acabou = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{chopp.Id:D}", t.Dono, new { codigo = "CHOPP", nome = "Chopp 300ml", precoCentavos = 1000, categoriaId = chopp.CategoriaId, ativo = true, versao = chopp.Versao, indisponivel = true });
+        Assert.Equal(HttpStatusCode.OK, acabou.StatusCode);
+        var parado = (await acabou.Content.ReadFromJsonAsync<ProdutoBody>())!;
+        await AssertErrorAsync(await LaunchAsync(client, t.Garcom, comanda.Id, 1, chopp.Id), HttpStatusCode.Conflict, "produto-inativo");
+        Assert.Equal((0L, 1), (await CountAsync("rodadas"), await VersionOfAsync(comanda.Id)));
+
+        // Back on sale with a promotion in force: the item freezes the promotional price.
+        var agora = DateTimeOffset.UtcNow;
+        using var volta = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{chopp.Id:D}", t.Dono, new { codigo = "CHOPP", nome = "Chopp 300ml", precoCentavos = 1000, categoriaId = chopp.CategoriaId, ativo = true, versao = parado.Versao, indisponivel = false, promocao = new { precoCentavos = 800, inicio = agora.AddHours(-1), fim = agora.AddHours(1) } });
+        Assert.Equal(HttpStatusCode.OK, volta.StatusCode);
+        var promocional = (await volta.Content.ReadFromJsonAsync<ProdutoBody>())!;
+        var primeira = await LaunchOkAsync(client, t.Garcom, comanda.Id, 1, chopp.Id);
+        Assert.Equal(800L, primeira.Itens.Single().PrecoCentavos);
+
+        // The unit price beats the promotion; the next launch freezes it, and the first item keeps 800 whatever happens to the menu afterwards.
+        using var unidade = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{chopp.Id:D}/preco-unidade", t.Dono, new { precoCentavos = 1200 });
+        Assert.Equal(HttpStatusCode.OK, unidade.StatusCode);
+        var segunda = await LaunchOkAsync(client, t.Garcom, comanda.Id, primeira.ComandaVersao, chopp.Id);
+        Assert.Equal(1200L, segunda.Itens.Single().PrecoCentavos);
+        using var mudou = await SendAsync(client, HttpMethod.Put, $"/cardapio/produtos/{chopp.Id:D}", t.Dono, new { codigo = "CHOPP", nome = "Chopp 300ml", precoCentavos = 5000, categoriaId = chopp.CategoriaId, ativo = true, versao = promocional.Versao });
+        Assert.Equal(HttpStatusCode.OK, mudou.StatusCode);
+        Assert.Equal([800L, 1200L], (await ItemsAsync(client, t.Garcom, comanda.Id)).Itens.Select(i => i.PrecoCentavos));
+        Assert.Equal(2000L, (await ItemsAsync(client, t.Garcom, comanda.Id)).ConsumoCentavos);
+    }
+
+    [Fact]
     public async Task Repeating_the_same_round_id_one_to_five_times_leaves_one_round_one_set_of_items_and_the_same_response()
     {
         await using var api = new Api(_appConnection);

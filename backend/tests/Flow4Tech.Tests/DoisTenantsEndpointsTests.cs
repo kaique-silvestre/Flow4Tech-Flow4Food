@@ -175,8 +175,11 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         _ = await LoginAsync(client, b.OwnerEmail, DonoSenha);
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/configuracoes/{Inatividade}", tokenA, new { camada = "organizacao", valor = "5" }));
         // The salão tables hold rows of both organizations before the sweep, so the sweep is not vacuous for them.
-        _ = await RunSalaoAsync(client, a);
-        _ = await RunSalaoAsync(client, b);
+        var salaoSweepA = await RunSalaoAsync(client, a);
+        var salaoSweepB = await RunSalaoAsync(client, b);
+        // A unit price in each organization, so the sweep of the new table is not vacuous either.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepA.ProdutoId}/preco-unidade", salaoSweepA.Token, new { precoCentavos = 1300 }));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepB.ProdutoId}/preco-unidade", salaoSweepB.Token, new { precoCentavos = 1400 }));
         _ = await api.Services.GetRequiredService<GestaoDePerfis>().CriarAsync(a.RequestOfOwner(), "Qualquer", [new RegraDeAcesso(RuleEffect.Allow, "organizacao:ver-unidades")]);
 
         // Tables are discovered, not listed: a new tenant table is swept without editing this test.
@@ -190,6 +193,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("rodadas", tables);
         Assert.Contains("pagamentos", tables);
         Assert.Contains("turnos_caixa", tables);
+        Assert.Contains("produtos_preco_unidade", tables);
         foreach (var tenant in new[] { a, b })
         {
             foreach (var table in tables)
@@ -203,6 +207,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.True((await QueryAsync(tenant, "SELECT count(*) FROM sessoes", r => r.GetInt64(0))).Single() >= 1);
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
             Assert.Equal(0L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes WHERE id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes", r => r.GetInt64(0))).Single());
         }
@@ -244,6 +249,51 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(10_000 + 2_750, salaoA.EsperadoCentavos);
         Assert.Equal(10_000 + 2_750, salaoB.EsperadoCentavos);
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, "/caixa/turnos/atual", salaoA.Token));
+    }
+
+    [Fact]
+    public async Task A_unit_price_of_one_organization_is_not_seen_charged_or_changed_by_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var tokenA = (await LoginAsync(client, a.OwnerEmail, DonoSenha)).AccessToken;
+        var tokenB = (await LoginAsync(client, b.OwnerEmail, DonoSenha)).AccessToken;
+        var produtoA = await NewProductAsync(client, tokenA, "CHOPP", 1250);
+        var produtoB = await NewProductAsync(client, tokenB, "CHOPP", 1250);
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{produtoA}/preco-unidade", tokenA, new { precoCentavos = 2000 }));
+
+        // B still pays the base price, cannot read A's product, and its attempts to write or remove a unit price for it find nothing.
+        Assert.Equal([(produtoB, 1250L, 1250L)], await EffectivePricesAsync(client, tokenB));
+        Assert.Equal([(produtoA, 1250L, 2000L)], await EffectivePricesAsync(client, tokenA));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{produtoA}/preco-unidade", tokenB, new { precoCentavos = 1 }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Delete, $"/cardapio/produtos/{produtoA}/preco-unidade", tokenB));
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+        Assert.Equal(0L, (await QueryAsync(b, "SELECT count(*) FROM produtos_preco_unidade WHERE organizacao_id <> @o", r => r.GetInt64(0), ("o", b.Id))).Single());
+
+        // Each organization writes its own price for the same short code; neither changes the other.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{produtoB}/preco-unidade", tokenB, new { precoCentavos = 900 }));
+        Assert.Equal([(produtoA, 1250L, 2000L)], await EffectivePricesAsync(client, tokenA));
+        Assert.Equal([(produtoB, 1250L, 900L)], await EffectivePricesAsync(client, tokenB));
+    }
+
+    private static async Task<Guid> NewProductAsync(HttpClient client, string token, string codigo, long preco)
+    {
+        using var categoria = await SendAsync(client, HttpMethod.Post, "/cardapio/categorias", token, new { nome = "Bebidas" });
+        var categoriaId = (await categoria.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var produto = await SendAsync(client, HttpMethod.Post, "/cardapio/produtos", token, new { codigo, nome = "Chopp", precoCentavos = preco, categoriaId });
+        Assert.Equal(HttpStatusCode.Created, produto.StatusCode);
+        return (await produto.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private static async Task<List<(Guid Id, long Base, long Efetivo)>> EffectivePricesAsync(HttpClient client, string token)
+    {
+        using var response = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos", token);
+        var lista = await response.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>();
+        return [.. lista!.Select(p => (p.GetProperty("id").GetGuid(), p.GetProperty("precoCentavos").GetInt64(), p.GetProperty("precoEfetivoCentavos").GetInt64()))];
     }
 
     // ---- fixtures ---------------------------------------------------------------------------------------------------------------------------------

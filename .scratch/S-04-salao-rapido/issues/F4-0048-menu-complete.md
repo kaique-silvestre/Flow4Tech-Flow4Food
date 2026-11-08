@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration: category parent (max two levels), promotional price with validity window, unit price override table, `indisponivel` flag; tenant tables with exact RLS and composite FKs; `SchemaDrift` test.
 - [ ] Pure domain rule for the effective price (unit override > promotional while valid > base) with tests including window edges (UTC, `IClock`).

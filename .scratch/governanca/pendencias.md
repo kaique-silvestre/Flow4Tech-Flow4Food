@@ -91,3 +91,6 @@ O rewrite de `frontend/app/vercel.json` ainda aponta para o host de staging do R
 
 ## S-04 (noturno) Criar pessoa pela API (F4-0047)
 Não há rota que crie conta operacional (só o seed). Emitir credencial temporária/convite com perfil é decisão de segurança do dono: definir o fluxo (convite com perfil aplicado na aceitação, ver `docs/agents/identidade.md`, ou POST /contas com senha temporária) e abrir ticket. A tela de usuários e perfis do F4-0047 lista, atribui e remove perfis de contas existentes.
+
+## S-04 (noturno) Quem pode mudar preço no cardápio (F4-0048)
+`cardapio:preco-alterar` é permissão com limite (percentual). Os perfis modelo garçom/caixa/gerente NÃO a receberam (nenhum percentual foi escolhido), então hoje só o dono (ou concessão explícita) altera preço de produto existente; antes do F4-0048 quem tinha `produto:gerenciar` alterava. O dono define o limite percentual do gerente e se o modelo gerente recebe a permissão.

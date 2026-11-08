@@ -35,6 +35,8 @@ permissao:definir-overrides
 permissao:negar-escalada
 produto:alterar
 produto:criar
+produto:preco-unidade-definir
+produto:preco-unidade-remover
 sessao:encerrar
 sessao:iniciar
 sessao:refresh-reutilizado

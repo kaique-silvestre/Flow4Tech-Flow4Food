@@ -132,21 +132,23 @@ public sealed class GestaoDeRodadas(
                     return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
                 }
 
+                // The price charged is the one in force for the comanda's unit at this instant (unit override, else promotion while valid, else base), frozen into the item.
+                var precoEm = clock.UtcNow;
                 var produtos = new Dictionary<Guid, (Guid Id, string Nome, long PrecoCentavos)>();
                 foreach (var produtoId in itens.Select(i => i.ProdutoId).Distinct())
                 {
-                    var produto = await cardapio.AcharProdutoAsync(org.OrganizationId, produtoId, ct);
+                    var produto = await cardapio.AcharProdutoAsync(org.OrganizationId, comanda.UnidadeId, produtoId, ct);
                     if (produto is null)
                     {
                         return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
                     }
 
-                    if (!produto.Ativo)
+                    if (!produto.Lancavel)
                     {
                         return new ResultadoDeEscrita(ResultadoDeRodada.ProdutoInativo);
                     }
 
-                    produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoCentavos);
+                    produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoEfetivo(precoEm));
                 }
 
                 if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))

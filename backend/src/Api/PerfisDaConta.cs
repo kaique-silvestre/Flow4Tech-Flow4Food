@@ -1,4 +1,5 @@
 using Flow4Tech.Caixa.Application;
+using Flow4Tech.Cardapio.Application;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
@@ -60,6 +61,23 @@ internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDo
         var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
         var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
         var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), permission, new Scope(organization.OrganizationId, unit), new DecisionContext(), cancellationToken);
+        return decision.IsAllowed;
+    }
+}
+
+/// <summary>
+/// Adapts the one authorization engine to the question the Cardapio module asks for a price change (<c>cardapio:preco-alterar</c>, percent limited). The percent and the value are
+/// computed by the module from the stored price; this only carries them to the engine inside the unit of work in progress (a daily cap, if any, is reserved there).
+/// </summary>
+internal sealed class DecisaoDePrecoDoCardapio(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IDecisaoDePreco
+{
+    public async Task<bool> PodeAlterarAsync(IRequestContext request, decimal percentual, long deltaCentavos, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var organization = request.Organization;
+        var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
+        var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
+        var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), CardapioPermissions.AlterarPreco, new Scope(organization.OrganizationId, unit), new DecisionContext(new Money(deltaCentavos, "BRL"), percentual), cancellationToken);
         return decision.IsAllowed;
     }
 }

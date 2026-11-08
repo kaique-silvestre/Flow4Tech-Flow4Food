@@ -516,6 +516,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cardapio/produtos/{id}/preco-unidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["definirPrecoDaUnidade"];
+        post?: never;
+        delete: operations["removerPrecoDaUnidade"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/caixa/turnos/atual": {
         parameters: {
             query?: never;
@@ -864,6 +880,8 @@ export interface components {
             ativa: boolean;
             /** Format: int32 */
             versao: number | string;
+            /** Format: uuid */
+            categoriaPaiId?: null | string;
         };
         AlterarConfiguracaoRequest: {
             camada: null | string;
@@ -883,6 +901,9 @@ export interface components {
             ativo: boolean;
             /** Format: int32 */
             versao: number | string;
+            /** @default false */
+            indisponivel: boolean;
+            promocao?: null | components["schemas"]["PromocaoDto"];
         };
         CaixaErro: {
             codigo: string;
@@ -903,6 +924,8 @@ export interface components {
             ativa: boolean;
             /** Format: int32 */
             versao: number | string;
+            /** Format: uuid */
+            categoriaPaiId: null | string;
         };
         ComandaDto: {
             /** Format: uuid */
@@ -1000,6 +1023,8 @@ export interface components {
         };
         CriarCategoriaRequest: {
             nome: null | string;
+            /** Format: uuid */
+            categoriaPaiId?: null | string;
         };
         CriarMesaRequest: {
             identificacao: null | string;
@@ -1015,9 +1040,16 @@ export interface components {
             categoriaId: string;
             /** @default true */
             ativo: boolean;
+            /** @default false */
+            indisponivel: boolean;
+            promocao?: null | components["schemas"]["PromocaoDto"];
         };
         DefinirOverridesRequest: {
             regras: null | components["schemas"]["RegraDto"][];
+        };
+        DefinirPrecoDaUnidadeRequest: {
+            /** Format: int64 */
+            precoCentavos: number | string;
         };
         DesfazerRodadaRequest: {
             /** Format: int32 */
@@ -1163,6 +1195,20 @@ export interface components {
             ativo: boolean;
             /** Format: int32 */
             versao: number | string;
+            indisponivel: boolean;
+            promocao: null | components["schemas"]["PromocaoDto"];
+            /** Format: int64 */
+            precoDaUnidadeCentavos: null | number | string;
+            /** Format: int64 */
+            precoEfetivoCentavos: number | string;
+        };
+        PromocaoDto: {
+            /** Format: int64 */
+            precoCentavos: number | string;
+            /** Format: date-time */
+            inicio: string;
+            /** Format: date-time */
+            fim: string;
         };
         ReceberPagamentoRequest: {
             /** Format: uuid */
@@ -2916,6 +2962,118 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    definirPrecoDaUnidade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirPrecoDaUnidadeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    removerPrecoDaUnidade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProdutoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

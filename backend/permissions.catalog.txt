@@ -2,6 +2,7 @@ caixa:abrir
 caixa:fechar
 caixa:ver
 caixa:ver-todos
+cardapio:preco-alterar
 comanda:abrir
 comanda:cancelar-item
 comanda:desfazer-rodada
