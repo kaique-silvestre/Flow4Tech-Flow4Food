@@ -6,7 +6,10 @@ export interface Produto {
   categoriaId: string;
   codigo: string;
   nome: string;
+  /** The price a waiter charges here and now (unit override > promotion in force > base). */
   precoCentavos: number;
+  /** "Acabou": the server refuses to launch it, so the grid marks it and offers no add. */
+  indisponivel?: boolean;
 }
 
 export interface Categoria {
@@ -14,13 +17,15 @@ export interface Categoria {
   nome: string;
 }
 
-function paraProduto(p: Record<string, unknown>): Produto {
+/** The grid shows what the server will charge (effective price), not the base price. */
+export function paraProduto(p: Record<string, unknown>): Produto {
   return {
     id: String(p["id"]),
     categoriaId: String(p["categoriaId"]),
     codigo: String(p["codigo"]),
     nome: String(p["nome"]),
-    precoCentavos: Number(p["precoCentavos"]),
+    precoCentavos: Number(p["precoEfetivoCentavos"] ?? p["precoCentavos"]),
+    indisponivel: p["indisponivel"] === true,
   };
 }
 

@@ -1,0 +1,143 @@
+/* Gestão do cardápio no celular */
+.gestao-lead {
+  margin: 0 0 var(--f4-space-4);
+  color: var(--f4-ink-muted);
+}
+
+.gestao-busca {
+  margin-bottom: var(--f4-space-2);
+}
+
+.gestao-vazio {
+  margin: var(--f4-space-4) 0;
+  color: var(--f4-ink-muted);
+}
+
+.gestao-grupo {
+  margin-top: var(--f4-space-6);
+}
+
+.gestao-grupo-titulo {
+  margin: 0;
+  padding-bottom: var(--f4-space-2);
+  border-bottom: 1px solid var(--f4-border-strong);
+  font-size: var(--f4-text-row);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.gestao-grupo-titulo[data-nivel="1"] {
+  padding-left: var(--f4-space-3);
+  font-size: var(--f4-text-body);
+  color: var(--f4-ink-muted);
+}
+
+.gestao-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gestao-linha {
+  display: grid;
+  gap: var(--f4-space-1);
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.gestao-topo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--f4-space-3);
+}
+
+.gestao-nome {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gestao-linha[data-parado="true"] .gestao-nome,
+.gestao-linha[data-parado="true"] .gestao-preco {
+  color: var(--f4-ink-muted);
+}
+
+.gestao-codigo {
+  display: block;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  font-weight: 400;
+}
+
+.gestao-preco {
+  font-weight: 600;
+}
+
+.gestao-selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+}
+
+.gestao-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--f4-space-4);
+}
+
+.gestao-preco-botao {
+  margin-left: auto;
+}
+
+/* Loading skeleton shaped like the screen: title, search, then rows of name and controls. */
+.gestao-esq-titulo {
+  width: 40%;
+  height: 28px;
+}
+
+.gestao-esq-busca {
+  height: 48px;
+  margin-bottom: var(--f4-space-3);
+}
+
+.gestao-esq-linha {
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.gestao-esq-nome {
+  width: 55%;
+  height: 20px;
+}
+
+.gestao-esq-controles {
+  width: 85%;
+  height: 32px;
+  margin-bottom: 0;
+}
+
+/* The waiter's grid: a product that ran out is marked in words and cannot be added. The price keeps its column, right-aligned on the first line; the '+' slot stays reserved. */
+.produto-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-2);
+  min-width: 0;
+}
+
+.produto-linha[data-acabou="true"] {
+  align-items: start;
+  padding-block: var(--f4-space-2);
+}
+
+.produto-linha[data-acabou="true"] .produto-nome,
+.produto-linha[data-acabou="true"] .produto-preco {
+  color: var(--f4-ink-muted);
+}
+
+.produto-linha[data-acabou="true"] .produto-preco {
+  line-height: 1.35;
+}

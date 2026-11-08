@@ -1,4 +1,4 @@
-import { Button, formatBRL, Notice, Skeleton, Tab, TabList, TabPanel, Tabs } from "@flow4tech/design-system";
+import { Button, formatBRL, Notice, Skeleton, Tab, TabList, TabPanel, Tabs, ToneBadge } from "@flow4tech/design-system";
 import { useState } from "react";
 import { buscarProdutos, type Categoria, type Produto } from "./cardapio";
 
@@ -24,18 +24,25 @@ function LinhaDoProduto({
   onAdicionar: () => void;
 }) {
   return (
-    <li className="produto-linha">
+    <li className="produto-linha" data-acabou={produto.indisponivel ? "true" : undefined}>
       <span className="produto-nome">
         {produto.nome}
-        <span className="produto-codigo">{produto.codigo}</span>
+        <span className="produto-meta">
+          <span className="produto-codigo">{produto.codigo}</span>
+          {produto.indisponivel ? <ToneBadge tone="warning">Acabou</ToneBadge> : null}
+        </span>
       </span>
       <span className="produto-preco f4-num">{formatBRL(produto.precoCentavos)}</span>
       <span className="produto-qtd f4-num" aria-hidden={quantidade === 0}>
         {quantidade > 0 ? `×${quantidade}` : ""}
       </span>
-      <button type="button" className="produto-mais" aria-label={`Adicionar ${produto.nome}`} onClick={onAdicionar}>
-        +
-      </button>
+      {produto.indisponivel ? (
+        <span aria-hidden="true" />
+      ) : (
+        <button type="button" className="produto-mais" aria-label={`Adicionar ${produto.nome}`} onClick={onAdicionar}>
+          +
+        </button>
+      )}
     </li>
   );
 }

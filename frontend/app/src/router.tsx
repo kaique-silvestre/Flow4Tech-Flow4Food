@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { CaixaPage } from "./features/caixa/CaixaPage";
+import { CardapioPage } from "./features/cardapio/CardapioPage";
 import { ComandaPage } from "./features/comandas/ComandaPage";
 import { ComandasPage } from "./features/comandas/ComandasPage";
 import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
@@ -34,8 +35,12 @@ const indexRoute = createRoute({
   },
 });
 
-/** The tabs of the slice plus People, which only who may see profiles gets (absent, not disabled, for the rest). */
-const abas = [...salaoTabs, { to: "/salao/pessoas", label: "Pessoas", permissao: "perfil:ver" }] as const;
+/** The tabs of the slice plus Cardápio (who manages products) and Pessoas (who may see profiles): absent, not disabled, for the rest. */
+const abas = [
+  ...salaoTabs,
+  { to: "/salao/cardapio", label: "Cardápio", permissao: "produto:gerenciar" },
+  { to: "/salao/pessoas", label: "Pessoas", permissao: "perfil:ver" },
+] as const;
 
 /** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */
 const appLayout = createRoute({
@@ -57,6 +62,12 @@ const comandaRoute = createRoute({
   component: ComandaPage,
 });
 const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPage });
+
+const cardapioRoute = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/salao/cardapio",
+  component: CardapioPage,
+});
 
 const pessoasRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/pessoas", component: PessoasPage });
 
@@ -92,7 +103,7 @@ const unidadeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute, pessoasRoute]),
+  appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute, cardapioRoute, pessoasRoute]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);
 

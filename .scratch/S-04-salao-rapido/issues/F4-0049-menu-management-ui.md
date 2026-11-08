@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] List by category/subcategory with search; per product: 'acabou' switch, active switch, price sheet (with promotional price and window) gated by permission.
 - [ ] Price change above the permission's limit shows the generic denied message (server decides); no reason leaked.
