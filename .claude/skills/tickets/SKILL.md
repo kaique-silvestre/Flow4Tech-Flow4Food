@@ -31,13 +31,13 @@ Show the breakdown as a numbered list in Portuguese: title, blocked by, what it 
 
 ## 4. Write locally
 
-Always. `.scratch/<slug>/issues/NN-<slug>.md`, numbered from `01` in dependency order:
+Always. `.scratch/<slug>/issues/F4-NNNN-<slug>.md`, `F4-NNNN` = the ticket's global ID from `docs/tickets.md` (register it first), in dependency order:
 
 ```markdown
-# NN: <Title>
+# F4-NNNN: <Title>
 
 **What to build:** <end-to-end behavior from the user's view>
-**Blocked by:** NN, NN | None
+**Blocked by:** F4-NNNN, F4-NNNN | None
 **Touches:** <paths>
 **Nature:** objective | ui
 **tdd-scope:** required | not-applicable
@@ -48,11 +48,11 @@ Always. `.scratch/<slug>/issues/NN-<slug>.md`, numbered from `01` in dependency 
 - [ ] ...
 ```
 
-And `.scratch/<slug>/packets/NN.md`, the only thing the implementer reads besides the files it edits:
+And `.scratch/<slug>/packets/F4-NNNN.md`, the only thing the implementer reads besides the files it edits:
 
 ```markdown
-# Packet NN: <Title>
-ticket: .scratch/<slug>/issues/NN-<slug>.md
+# Packet F4-NNNN: <Title>
+ticket: .scratch/<slug>/issues/F4-NNNN-<slug>.md
 worktree: <filled by orchestrator>
 
 ## Ticket

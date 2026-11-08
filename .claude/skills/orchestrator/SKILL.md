@@ -34,9 +34,9 @@ Detection: `package.json` scripts, `biome.json` / `eslint.config.*` / `.prettier
 
 ## 3. Package check
 
-For every `issues/NN-*.md`: has `Nature:`, `Touches:`, `Blocked by:`, `tdd-scope:`, and a matching `packets/NN.md`. `Nature: ui` also needs a `design:` block in the packet and `docs/design/DESIGN.md` with the named section. Any miss → list them and stop; the fix is `/tickets` (or `/brief`), not this skill.
+For every `issues/F4-NNNN-*.md`: has `Nature:`, `Touches:`, `Blocked by:`, `tdd-scope:`, and a matching `packets/F4-NNNN.md`. `Nature: ui` also needs a `design:` block in the packet and `docs/design/DESIGN.md` with the named section. Any miss → list them and stop; the fix is `/tickets` (or `/brief`), not this skill.
 
-`--direct`: write `.scratch/direct-<date>/issues/01-direct.md` + packet from the text (nature by content, touches from a quick grep, `tdd-scope: required` unless docs/config only), skip `/spec`. `--bugfix`: call the `diagnosing-bugs` skill first, then write `01-bugfix.md` whose first acceptance criterion is "a test reproduces the bug and fails", packet includes current vs expected behavior and the condition `C(X)` under which it appears.
+`--direct`: write `.scratch/direct-<date>/issues/F4-NNNN-direct.md` (reserve the ID in `docs/tickets.md` first) + packet from the text (nature by content, touches from a quick grep, `tdd-scope: required` unless docs/config only), skip `/spec`. `--bugfix`: call the `diagnosing-bugs` skill first, then write `01-bugfix.md` whose first acceptance criterion is "a test reproduces the bug and fails", packet includes current vs expected behavior and the condition `C(X)` under which it appears.
 
 Working tree must be clean (`git status --porcelain` empty) unless `--resume`. Dirty → stop and say what is uncommitted.
 

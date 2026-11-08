@@ -15,7 +15,7 @@ Escrito em 2026-11-05. Branch `claude/flow4tech-fase-1-handoff-vgu3m9`. Nada env
 | 05 abrir comanda e listar | **implementado, sem revisão/fechamento** | `d9e9571` |
 | 06 a 15 | pendentes | n/a |
 
-`state.md` ainda marca o 05 como `running, round 1`: o orquestrador parou antes do reviewer e do merge. O explorer do 06 já rodou (gerou as 21 linhas novas em `packets/06.md`, commitadas junto com este handoff).
+`state.md` ainda marca o 05 como `running, round 1`: o orquestrador parou antes do reviewer e do merge. O explorer do 06 já rodou (gerou as 21 linhas novas em `packets/F4-0029.md`, commitadas junto com este handoff).
 
 ## Riscos anotados (resolver nos tickets indicados)
 - 02: sem teste de domínio puro, sem teste `ToQueryString`, corrida de unicidade vira 500 (`23505`), congelamento de preço só se prova no ticket 06.
@@ -26,7 +26,7 @@ Escrito em 2026-11-05. Branch `claude/flow4tech-fase-1-handoff-vgu3m9`. Nada env
 ## Como retomar
 1. `git fetch && git pull --ff-only` (a sessão em nuvem precisa da branch empurrada; o dono decide o push).
 2. Antes de seguir: rodar `dotnet test backend/Flow4Tech.sln` (precisa Docker; na nuvem sem Docker ver a nota "test without Docker" no `CLAUDE.md`) para confirmar que 01-05 estão verdes.
-3. Revisar o 05: pedir ao `reviewer` o diff de `d9e9571` contra `issues/05-*.md` e `packets/05.md`; corrigir achados; só então marcar `done` no `state.md`.
+3. Revisar o 05: pedir ao `reviewer` o diff de `d9e9571` contra `issues/05-*.md` e `packets/F4-0028.md`; corrigir achados; só então marcar `done` no `state.md`.
 4. `/orchestrator .scratch/S-03-dominio-salao --resume` (só o usuário digita). Ele deve tratar o 05 como já implementado; se refizer, avisar que o commit existe.
 5. Seguir a ordem: 06 → 07 (backend), depois 08-15 (front). 08 não depende do backend e pode andar antes, se nada colidir nos arquivos.
 

@@ -9,7 +9,7 @@ You drive every ticket in a package to done or to a recorded stop. You never imp
 
 ## Inputs (from /orchestrator's message)
 
-- `package`: `.scratch/<slug>/` with `issues/NN-*.md`, `packets/NN.md`, optional `state.md`.
+- `package`: `.scratch/<slug>/` with `issues/F4-NNNN-*.md`, `packets/F4-NNNN.md`, optional `state.md`.
 - `mode`: `auto` | `human`. `max_parallel`: N (default 3). `resume`: bool.
 - `project`: `docs/agents/project.md` path (commands: dev, port, lint, typecheck, test; viewports).
 
@@ -39,7 +39,7 @@ Heavy setup detected (docker-compose required by dev command, `.env.example` wit
 
 ## 2. Isolation
 
-Concurrency ≥ 2 → `~/.claude/scripts/worktree.sh add <NN>` per ticket; run everything for that ticket in the printed path; dev port = base port + NN. Concurrency 1 → current tree, no branch.
+Concurrency ≥ 2 → `~/.claude/scripts/worktree.sh add <F4-NNNN>` per ticket; run everything for that ticket in the printed path; dev port = base port + the numeric part of the ID. Concurrency 1 → current tree, no branch.
 
 ## 3. Per ticket
 
@@ -57,16 +57,16 @@ Round counter starts at 1. Failure-signature counter per fingerprint set.
 
 ## 4. Close
 
-1. Worktree: `worktree.sh merge <NN>` (serialized by its lock) → then in base: `git add -A -- <files from closeout>` and commit. No worktree: stage the closeout's files, commit. Commit message Conventional Commits, English, one squash per ticket:
+1. Worktree: `worktree.sh merge <F4-NNNN>` (serialized by its lock) → then in base: `git add -A -- <files from closeout>` and commit. No worktree: stage the closeout's files, commit. Commit message Conventional Commits, English, one squash per ticket:
    ```
    feat(F4-NNNN): <ticket title>
 
-   Ticket F4-NNNN (slice file NN). <one line of what it proves>
+   Ticket F4-NNNN. <one line of what it proves>
 
    Co-Authored-By: Claude <noreply@anthropic.com>
    ```
 2. On base after commit: lint, typecheck, full test suite from `project.md`. Failure → fix-task to the ticket's implementer (pointing at base), round += 1, rerun; still failing at cap → revert the squash commit, mark blocked.
-3. `worktree.sh remove <NN>`.
+3. `worktree.sh remove <F4-NNNN>`.
 4. Tracker from `docs/agents/issue-tracker.md` is a real tracker → close the issue with the commit sha. Local → set `**Status:** done` in the issue file and update the row of the ticket in `docs/tickets.md` (branch, PR, status). Every ticket needs its `F4-NNNN` row BEFORE it starts (see "Branches, IDs e PRs" in `CLAUDE.md`); work branches are `<type>/F4-NNNN-<slug>` from `dev-v2`, never commit on `main-v2`/`dev-v2` directly.
 5. Update `state.md`.
 

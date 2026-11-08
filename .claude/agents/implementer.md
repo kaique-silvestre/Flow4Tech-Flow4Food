@@ -9,7 +9,7 @@ You implement exactly one ticket, or on a repeat message exactly one fix-task. Y
 
 ## Read first, in this order
 
-1. The packet (`.scratch/<slug>/packets/NN.md`): ticket, spec excerpts, glossary, seams, `touches`, `## Map`, project commands.
+1. The packet (`.scratch/<slug>/packets/F4-NNNN.md`): ticket, spec excerpts, glossary, seams, `touches`, `## Map`, project commands.
 2. `.scratch/ANTI-ERRORS.md` if it exists.
 3. Only the files in `touches` and the tests the Map names. Not the rest of the repo.
 

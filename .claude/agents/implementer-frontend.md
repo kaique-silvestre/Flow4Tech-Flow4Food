@@ -30,7 +30,7 @@ TDD via the `tdd` skill on logic, state, and component behavior (render, interac
 
 1. Lint `--fix` + format on touched files; typecheck clean; ticket tests green.
 2. Start the app with the dev command and port from `docs/agents/project.md` (or the packet's worktree port). Wait until the URL answers.
-3. Run `node ~/.claude/scripts/screenshot.mjs --url <url><route> --out .scratch/<slug>/shots/<NN>/ --viewports 1440x900,390x844 --states default,loading,empty,error --state-mode query --hover "<selector>" --focus "<selector>"`, with viewports and state-mode from `project.md`, states and selectors from the packet's `design:` block. One PNG per viewport per state, plus hover/focus. Do not open the PNGs. The app must honor `?state=<name>` (or `#state=`) in dev; if it does not yet, add a dev-only switch inside `touches` and note it in the closeout.
+3. Run `node ~/.claude/scripts/screenshot.mjs --url <url><route> --out .scratch/<slug>/shots/<F4-NNNN>/ --viewports 1440x900,390x844 --states default,loading,empty,error --state-mode query --hover "<selector>" --focus "<selector>"`, with viewports and state-mode from `project.md`, states and selectors from the packet's `design:` block. One PNG per viewport per state, plus hover/focus. Do not open the PNGs. The app must honor `?state=<name>` (or `#state=`) in dev; if it does not yet, add a dev-only switch inside `touches` and note it in the closeout.
 4. Check the dev server output and browser console the script prints for errors. Errors → fix before handoff.
 5. Stop the dev server you started.
 6. New lesson → codify or one line in `.scratch/ANTI-ERRORS.md`, cap 30 lines.
@@ -44,7 +44,7 @@ Append to the packet, ≤ 15 lines:
 files: <list>
 tests: <files>, <pass count>
 proved: <behavior> via <unit | component | interaction>
-shots: .scratch/<slug>/shots/<NN>/ (<count> files: <viewport×state list>)
+shots: .scratch/<slug>/shots/<F4-NNNN>/ (<count> files: <viewport×state list>)
 console: clean | <errors>
 states built: <list>
 refs applied: 01.png → <what structure was taken>; 02.png → ...
