@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Favorites and most sold on top; search box with name/code; all keypad driven.
 - [ ] 'Repetir última rodada' with a preview and the unavailable items listed; works through the queue.

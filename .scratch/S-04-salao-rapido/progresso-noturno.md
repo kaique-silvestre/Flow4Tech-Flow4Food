@@ -10,3 +10,4 @@
 - 07:32 · F4-0051 · feito · 90a93a1 · CI: a verificar
 - 08:15 · F4-0052 · feito · 6b92869 · CI: a verificar
 - 08:18 · F4-0051 · correção de CI (tsc em Opcoes.test.tsx) · ec6f23b · CI: a verificar
+- 12:04 · F4-0053 · feito · (commit abaixo) · CI: a verificar

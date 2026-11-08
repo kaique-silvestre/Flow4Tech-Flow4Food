@@ -266,7 +266,10 @@ test("repeating the last round is two taps with a preview, and what cannot go is
   await mais(page, "Chopp 300ml").click();
   await page.getByRole("tab", { name: "Porções" }).click();
   await mais(page, "Porção de batata").click();
+  const totalInicial = await page.getByLabel("Total da conta").textContent();
   await enviarRodada(page);
+  // The toast shows before the account refreshes: wait (with retry) for the total to move, then read it.
+  await expect(page.getByLabel("Total da conta")).not.toHaveText(totalInicial ?? "");
   const totalAntes = await page.getByLabel("Total da conta").textContent();
 
   // Tap 1: the preview. Tap 2: send.
@@ -281,8 +284,7 @@ test("repeating the last round is two taps with a preview, and what cannot go is
   await expect(page.getByText("Rodada enviada", { exact: false })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Repetir última rodada" })).toHaveCount(0);
   meta(page, "repetir ultima rodada: 2 toques (abrir a previa, Repetir agora)");
-  const totalDepois = await page.getByLabel("Total da conta").textContent();
-  expect(totalDepois).not.toBe(totalAntes);
+  await expect(page.getByLabel("Total da conta")).not.toHaveText(totalAntes ?? "");
   await shoot(page, "53-repetir-enviada");
   await semHorizontal(page);
 
