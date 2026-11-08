@@ -18,6 +18,10 @@ const estrito = !process.env["AXE_REPORT_ONLY"];
 
 async function varrer(page: Page, tela: string, tema: "light" | "dark") {
   await page.emulateMedia({ colorScheme: tema });
+  // Buttons animate their background when the scheme flips; axe must read the colors at rest, not halfway through the transition.
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
+  });
   const size = page.viewportSize();
   const resultado = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const resumo = resultado.violations.map((v) => ({
