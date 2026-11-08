@@ -6,3 +6,4 @@
 | 2026-11-08 | todos | Explorer antes do implementer | Pulado: os packets já trazem spec, seams e comandos; o implementer lê o código | Explorer haiku por ticket |
 | 2026-11-08 | F4-0071 | Premissa do ticket (seed falha) | Verificado: só avisava, saía 0; corrigido o aviso no estágio e2e-seed | Desabilitar GSS na connection string |
 | 2026-11-08 | F4-0045 | vercel.json destino da API em produção | Mantido staging; registrado em pendencias.md (decisão do dono) | Chutar um domínio de produção |
+| 2026-11-08 | F4-0046 | Gerente pode gerir perfis/atribuir permissões? | Não: modelo gerente sem perfil:gerir/perfil:ver/permissao:atribuir (padrão mais restritivo); dono ajusta em ModelosDePerfil | Dar poder de escalada ao gerente |

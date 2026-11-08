@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Routes (named, typed, session + permission): create profiles from models, list profiles, list a person's profiles, assign and remove an assignment, set a person's overrides; permissions `perfil:gerir`, `perfil:ver`, `permissao:atribuir` are asked by the routes and the catalog is regenerated.
 - [ ] Models give waiter, cashier and manager the permissions of the current e2e seed profiles plus the new ones of this phase as they land; the model definition is data, not branching on a profile name (`ProfileBranchingTests` stays green).

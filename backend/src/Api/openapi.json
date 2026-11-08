@@ -2505,6 +2505,283 @@
         "x-permission": "mesa:gerenciar"
       }
     },
+    "/perfis/modelos": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarPerfisModelo",
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModeloCriadoDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "perfil:gerir"
+      }
+    },
+    "/perfis": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listPerfis",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PerfilDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "perfil:ver"
+      }
+    },
+    "/contas/{id}/perfis": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listPerfisDaConta",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfisDaPessoaResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "perfil:ver"
+      }
+    },
+    "/contas/{id}/perfis/{perfilId}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "atribuirPerfil",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "perfilId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "permissao:atribuir"
+      },
+      "delete": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "removerAtribuicaoDePerfil",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "perfilId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "permissao:atribuir"
+      }
+    },
+    "/contas/{id}/overrides": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "definirOverridesDaConta",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirOverridesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "permissao:atribuir"
+      }
+    },
     "/sessao/permissoes": {
       "get": {
         "tags": [
@@ -3231,6 +3508,23 @@
           }
         }
       },
+      "DefinirOverridesRequest": {
+        "required": [
+          "regras"
+        ],
+        "type": "object",
+        "properties": {
+          "regras": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RegraDto"
+            }
+          }
+        }
+      },
       "DesfazerRodadaRequest": {
         "required": [
           "versao"
@@ -3570,6 +3864,33 @@
           }
         }
       },
+      "ModeloCriadoDto": {
+        "required": [
+          "chave",
+          "nome",
+          "criado",
+          "perfilId"
+        ],
+        "type": "object",
+        "properties": {
+          "chave": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "criado": {
+            "type": "boolean"
+          },
+          "perfilId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "PagamentoDto": {
         "required": [
           "id",
@@ -3651,6 +3972,72 @@
           "operadorId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "PerfilDto": {
+        "required": [
+          "id",
+          "nome",
+          "modelo",
+          "acompanhaModelo",
+          "regras"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "modelo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "acompanhaModelo": {
+            "type": "boolean"
+          },
+          "regras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegraDto"
+            }
+          }
+        }
+      },
+      "PerfilErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          }
+        }
+      },
+      "PerfisDaPessoaResponse": {
+        "required": [
+          "perfis",
+          "overrides"
+        ],
+        "type": "object",
+        "properties": {
+          "perfis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PerfilDto"
+            }
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegraDto"
+            }
           }
         }
       },
@@ -3767,6 +4154,65 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RegraDto": {
+        "required": [
+          "efeito",
+          "permissao",
+          "unidadeDaRegraId",
+          "maxPercentual",
+          "maxValorCentavos",
+          "tetoDiarioCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "efeito": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "permissao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unidadeDaRegraId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "maxPercentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxValorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tetoDiarioCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },

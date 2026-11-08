@@ -32,6 +32,15 @@ public enum ResultadoGestao
 
 public sealed record ResultadoCriacao(ResultadoGestao Resultado, Guid? Id = null);
 
+/// <summary>One model profile after <see cref="GestaoDePerfis.CriarModelosAsync"/>: created now, or already there (same name) and left untouched.</summary>
+public sealed record ModeloCriado(string Chave, string Nome, bool Criado, Guid? PerfilId);
+
+public sealed record ResultadoModelos(ResultadoGestao Resultado, IReadOnlyList<ModeloCriado> Modelos);
+
+public sealed record ResultadoListaDePerfis(ResultadoGestao Resultado, IReadOnlyList<PerfilPersonalizado> Perfis);
+
+public sealed record ResultadoPerfisDaPessoa(ResultadoGestao Resultado, IReadOnlyList<PerfilPersonalizado> Perfis, IReadOnlyList<RegraDeAcesso> Overrides);
+
 /// <summary>
 /// Management of profiles, rules, assignments and individual overrides (spec 5.4.3 to 5.4.5, 5.4.9). Every operation is ONE unit of work: ask the engine whether the caller may
 /// manage at all (<c>perfil:gerir</c> / <c>permissao:atribuir</c>), apply the anti-escalation rules, write, audit. Anything refused leaves nothing behind. Refusals that look like an
@@ -49,6 +58,73 @@ public sealed class GestaoDePerfis(
     private const int MaxRules = 500;
 
     private sealed record Saida(ResultadoGestao Resultado, string? Motivo = null, Guid? Id = null);
+
+    /// <summary>
+    /// Creates the model profiles (<see cref="ModelosDePerfil"/>) that do not exist yet, each as an ordinary custom profile through <see cref="CriarAsync"/> (so the same guards apply:
+    /// the caller must hold every permission handed to a model). Repeating the call is harmless: a name already in use is reported as not created. The first refusal stops the run.
+    /// </summary>
+    public async Task<ResultadoModelos> CriarModelosAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var set = await policies.ObterAsync(request.Organization.OrganizationId, cancellationToken);
+        var done = new List<ModeloCriado>();
+        foreach (var modelo in ModelosDePerfil.Todos)
+        {
+            var regras = modelo.Permissoes.Where(set.KnownPermissions.Contains).Select(p => new RegraDeAcesso(RuleEffect.Allow, p)).ToList();
+            var created = await CriarAsync(request, modelo.Nome, regras, cancellationToken);
+            switch (created.Resultado)
+            {
+                case ResultadoGestao.Ok:
+                    done.Add(new ModeloCriado(modelo.Chave, modelo.Nome, true, created.Id));
+                    break;
+                case ResultadoGestao.NomeEmUso:
+                    done.Add(new ModeloCriado(modelo.Chave, modelo.Nome, false, null));
+                    break;
+                default:
+                    return new ResultadoModelos(created.Resultado, done);
+            }
+        }
+
+        return new ResultadoModelos(ResultadoGestao.Ok, done);
+    }
+
+    /// <summary>The custom profiles of the organization with their rules. Needs <c>perfil:ver</c>; a read is not audited.</summary>
+    public async Task<ResultadoListaDePerfis> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await unitOfWork.ExecuteAsync(
+            request,
+            async ct => await MayAsync(request, PerfisPermissions.Ver, ct)
+                ? new ResultadoListaDePerfis(ResultadoGestao.Ok, await store.ListarAsync(request.Organization.OrganizationId, ct))
+                : new ResultadoListaDePerfis(ResultadoGestao.Negado, []),
+            cancellationToken);
+    }
+
+    /// <summary>The custom profiles a person holds and their individual overrides. Needs <c>perfil:ver</c>; an account of another organization does not exist here (RLS).</summary>
+    public async Task<ResultadoPerfisDaPessoa> PerfisDaPessoaAsync(IRequestContext request, Guid userId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await unitOfWork.ExecuteAsync(
+            request,
+            async ct =>
+            {
+                if (!await MayAsync(request, PerfisPermissions.Ver, ct))
+                {
+                    return new ResultadoPerfisDaPessoa(ResultadoGestao.Negado, [], []);
+                }
+
+                var organizationId = request.Organization.OrganizationId;
+                if (!await store.ContaAtivaExisteAsync(organizationId, userId, ct))
+                {
+                    return new ResultadoPerfisDaPessoa(ResultadoGestao.NaoEncontrado, [], []);
+                }
+
+                var held = (await store.PerfisDoUsuarioAsync(organizationId, userId, ct)).ToHashSet();
+                var profiles = (await store.ListarAsync(organizationId, ct)).Where(p => held.Contains(p.Id)).ToList();
+                return new ResultadoPerfisDaPessoa(ResultadoGestao.Ok, profiles, await store.OverridesAsync(organizationId, userId, ct));
+            },
+            cancellationToken);
+    }
 
     /// <summary>A brand-new custom profile with its own rules.</summary>
     public Task<ResultadoCriacao> CriarAsync(IRequestContext request, string nome, IReadOnlyList<RegraDeAcesso> regras, CancellationToken cancellationToken = default) =>

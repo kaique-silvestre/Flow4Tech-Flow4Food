@@ -724,6 +724,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/perfis/modelos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["criarPerfisModelo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/perfis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPerfis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contas/{id}/perfis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPerfisDaConta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contas/{id}/perfis/{perfilId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["atribuirPerfil"];
+        post?: never;
+        delete: operations["removerAtribuicaoDePerfil"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/contas/{id}/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["definirOverridesDaConta"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessao/permissoes": {
         parameters: {
             query?: never;
@@ -910,6 +990,9 @@ export interface components {
             /** @default true */
             ativo: boolean;
         };
+        DefinirOverridesRequest: {
+            regras: null | components["schemas"]["RegraDto"][];
+        };
         DesfazerRodadaRequest: {
             /** Format: int32 */
             versao: number | string;
@@ -993,6 +1076,13 @@ export interface components {
         MesaErro: {
             codigo: string;
         };
+        ModeloCriadoDto: {
+            chave: string;
+            nome: string;
+            criado: boolean;
+            /** Format: uuid */
+            perfilId: null | string;
+        };
         PagamentoDto: {
             /** Format: uuid */
             id: string;
@@ -1015,6 +1105,21 @@ export interface components {
             registradoEm: string;
             /** Format: uuid */
             operadorId: string;
+        };
+        PerfilDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            modelo: null | string;
+            acompanhaModelo: boolean;
+            regras: components["schemas"]["RegraDto"][];
+        };
+        PerfilErro: {
+            codigo: string;
+        };
+        PerfisDaPessoaResponse: {
+            perfis: components["schemas"]["PerfilDto"][];
+            overrides: components["schemas"]["RegraDto"][];
         };
         PermissoesDoUsuarioResponse: {
             permissoes: string[];
@@ -1044,6 +1149,18 @@ export interface components {
         RedefinirSenhaRequest: {
             token: null | string;
             novaSenha: null | string;
+        };
+        RegraDto: {
+            efeito: null | string;
+            permissao: null | string;
+            /** Format: uuid */
+            unidadeDaRegraId: null | string;
+            /** Format: double */
+            maxPercentual: null | number | string;
+            /** Format: int64 */
+            maxValorCentavos: null | number | string;
+            /** Format: int64 */
+            tetoDiarioCentavos: null | number | string;
         };
         RestaurarConfiguracaoRequest: {
             camada: null | string;
@@ -3704,6 +3821,272 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    criarPerfisModelo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeloCriadoDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPerfis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPerfisDaConta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfisDaPessoaResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+        };
+    };
+    atribuirPerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                perfilId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+        };
+    };
+    removerAtribuicaoDePerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                perfilId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+        };
+    };
+    definirOverridesDaConta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirOverridesRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
                 };
             };
         };

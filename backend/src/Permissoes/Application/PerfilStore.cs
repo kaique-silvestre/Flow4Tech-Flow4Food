@@ -14,6 +14,9 @@ public interface IPerfilStore
     /// <summary>False when the organization already has a profile with that name; nothing is written then.</summary>
     Task<bool> CriarAsync(Guid organizationId, PerfilPersonalizado novo, DateTimeOffset em, CancellationToken cancellationToken);
 
+    /// <summary>Every custom profile of the organization (RLS) with its own rules, by name.</summary>
+    Task<IReadOnlyList<PerfilPersonalizado>> ListarAsync(Guid organizationId, CancellationToken cancellationToken);
+
     Task<PerfilPersonalizado?> ObterAsync(Guid organizationId, Guid id, CancellationToken cancellationToken);
 
     Task SubstituirRegrasAsync(Guid organizationId, Guid id, IReadOnlyList<RegraDeAcesso> regras, CancellationToken cancellationToken);

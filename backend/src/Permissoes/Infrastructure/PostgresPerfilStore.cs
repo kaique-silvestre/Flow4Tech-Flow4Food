@@ -38,6 +38,14 @@ public sealed class PostgresPerfilStore : IPerfilStore
         return true;
     }
 
+    public async Task<IReadOnlyList<PerfilPersonalizado>> ListarAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));
+        var profiles = await context.Perfis.AsNoTracking().OrderBy(p => p.Nome).ToListAsync(cancellationToken);
+        var rules = (await context.RegrasDosPerfis.AsNoTracking().ToListAsync(cancellationToken)).ToLookup(r => r.IdDoPerfil);
+        return [.. profiles.Select(p => new PerfilPersonalizado(p.Id, p.Nome, p.Modelo, p.AcompanhaModelo, [.. rules[p.Id].Select(ToRule)]))];
+    }
+
     public async Task<PerfilPersonalizado?> ObterAsync(Guid organizationId, Guid id, CancellationToken cancellationToken)
     {
         await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));
