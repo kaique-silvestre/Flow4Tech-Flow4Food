@@ -10,6 +10,8 @@ export interface ItemDaFila {
   produtoId: string;
   quantidade: number;
   observacao: string | null;
+  /** Add-ons by id (the server recomputes name and price). Absent in actions queued before add-ons existed. */
+  opcaoIds?: string[];
 }
 
 export interface AcaoDaFilaDeRodada {
@@ -598,6 +600,7 @@ async function enviar(acao: AcaoDaFilaDeRodada): Promise<Resultado> {
             produtoId: i.produtoId,
             quantidade: i.quantidade,
             observacao: i.observacao,
+            ...(i.opcaoIds && i.opcaoIds.length > 0 ? { opcaoIds: i.opcaoIds } : {}),
           })),
         },
       });
@@ -624,6 +627,10 @@ async function enviar(acao: AcaoDaFilaDeRodada): Promise<Resultado> {
 
       if (response.status === 409 && codigo === "produto-inativo") {
         return { tipo: "falhou", motivo: "Um item não está mais disponível." };
+      }
+
+      if (codigo === "opcao-invalida" || codigo === "opcao-inativa") {
+        return { tipo: "falhou", motivo: "Um adicional mudou ou faltou escolher. Lance a rodada de novo." };
       }
 
       if (response.status === 403) {

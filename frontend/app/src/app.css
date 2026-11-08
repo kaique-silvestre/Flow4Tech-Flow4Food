@@ -401,6 +401,57 @@ a.comanda-row:focus-visible {
   white-space: nowrap;
 }
 
+.produto-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-2);
+}
+
+.produto-escolha {
+  color: var(--f4-accent);
+  font-size: var(--f4-text-meta);
+  font-weight: 600;
+}
+
+.produto-linha[data-opcoes="true"] {
+  grid-template-columns: 1fr auto auto 44px 44px;
+  padding: var(--f4-space-2) 0;
+}
+
+/* A row with add-ons may use two lines: the name wraps and the cue stays whole instead of being cut. */
+.produto-linha[data-opcoes="true"] .produto-nome {
+  overflow: visible;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.produto-linha[data-opcoes="true"] .produto-meta {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+.produto-escolha {
+  white-space: nowrap;
+}
+
+.produto-opcoes {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--f4-radius-sm);
+  background: transparent;
+  color: var(--f4-ink-muted);
+  font: inherit;
+  font-size: var(--f4-text-sheet-title);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.produto-opcoes:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: 2px;
+}
+
 .produto-codigo {
   display: block;
   color: var(--f4-ink-muted);
@@ -435,10 +486,25 @@ a.comanda-row:focus-visible {
   outline-offset: 2px;
 }
 
+/* The round bar sits at the foot of the screen, right above the tab bar, even when the lists are short. */
+.comanda {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(
+    100dvh -
+    56px -
+    56px -
+    2 *
+    var(--f4-space-4) -
+    env(safe-area-inset-top) -
+    env(safe-area-inset-bottom)
+  );
+}
+
 .comanda-barra {
   position: sticky;
   bottom: calc(56px + env(safe-area-inset-bottom));
-  margin: var(--f4-space-4) calc(var(--f4-space-4) * -1) calc(var(--f4-space-4) * -1);
+  margin: auto calc(var(--f4-space-4) * -1) calc(var(--f4-space-4) * -1);
   padding: 0 var(--f4-space-4);
 }
 
@@ -458,6 +524,110 @@ a.comanda-row:focus-visible {
   gap: var(--f4-space-3);
   padding: var(--f4-space-2) 0;
   border-bottom: 1px solid var(--f4-border);
+}
+
+.enviar-detalhe {
+  display: block;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+}
+
+/* Item sheet: add-ons, note and quantity */
+.item-subtitulo {
+  margin: var(--f4-space-3) 0 var(--f4-space-2);
+  font-size: var(--f4-text-secondary);
+  font-weight: 600;
+}
+
+.item-regra {
+  margin-left: var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  font-weight: 400;
+}
+
+.item-esqueleto {
+  display: flex;
+  gap: var(--f4-space-2);
+  margin: var(--f4-space-3) 0;
+}
+
+.item-esqueleto span {
+  width: 96px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--f4-surface-2);
+  animation: item-pulso 1.2s ease-in-out infinite;
+}
+
+@keyframes item-pulso {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-esqueleto span {
+    animation: none;
+  }
+}
+
+.item-teclado .f4-key {
+  min-height: 48px;
+}
+
+.item-sem-resto {
+  margin: 0 0 var(--f4-space-3);
+}
+
+.f4-sheet-footer:has(.item-primario) > :first-child {
+  flex: 0 0 auto;
+}
+
+.f4-sheet-footer:has(.item-primario) > .item-primario {
+  flex: 1;
+}
+
+.conta-itens .f4-row-mod {
+  white-space: normal;
+}
+
+.item-carregando {
+  margin: var(--f4-space-3) 0 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.item-chips {
+  margin-bottom: var(--f4-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+}
+
+.item-opcao-preco {
+  margin-left: var(--f4-space-2);
+  color: var(--f4-ink-muted);
+}
+
+.item-quantidade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  margin: var(--f4-space-3) 0;
+}
+
+.item-quantidade .item-subtitulo {
+  margin: 0;
+  flex: 1;
+}
+
+.item-faltas {
+  margin: var(--f4-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
 }
 
 .enviar-total {

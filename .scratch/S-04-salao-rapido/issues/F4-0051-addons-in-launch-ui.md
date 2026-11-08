@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A product with required groups opens a sheet; the most used add-ons are one-tap chips; quantity by the numeric keypad.
 - [ ] Per-item note field (the API already accepts it; the screen hard-codes null today).

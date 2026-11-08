@@ -200,6 +200,14 @@ describe("pending-actions queue", () => {
     [{ status: 409, corpo: { codigo: "comanda-nao-aberta" } }, "A comanda não está mais aberta."],
     [{ status: 403, corpo: null }, "Você não tem permissão para lançar itens."],
     [{ status: 400, corpo: { codigo: "invalido" } }, "A rodada não foi aceita. Confira os itens."],
+    [
+      { status: 400, corpo: { codigo: "opcao-invalida" } },
+      "Um adicional mudou ou faltou escolher. Lance a rodada de novo.",
+    ],
+    [
+      { status: 409, corpo: { codigo: "opcao-inativa" } },
+      "Um adicional mudou ou faltou escolher. Lance a rodada de novo.",
+    ],
   ])("shows an action the server will never accept as failed, without retrying it: %o", async (resposta, motivo) => {
     const chamadas = stubRede({
       "GET /comandas/c1/conta": contaOk(),

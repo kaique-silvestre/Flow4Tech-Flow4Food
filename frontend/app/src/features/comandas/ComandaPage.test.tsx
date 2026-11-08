@@ -6,7 +6,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
 import { enfileirarPagamento, lerFila } from "../fila/fila";
 import { buscarProdutos } from "./cardapio";
-import { adicionar, definirQuantidade, type ItemDaConta, totalEmPreparo, ultimaRodada, unidades } from "./rodada";
+import {
+  adicionar,
+  adicionarConfigurado,
+  definirQuantidade,
+  type ItemDaConta,
+  type ItemEmPreparo,
+  totalEmPreparo,
+  ultimaRodada,
+  unidades,
+} from "./rodada";
 import { uuidv7 } from "./uuid";
 
 afterEach(() => {
@@ -103,6 +112,7 @@ function rotas(extra: Record<string, unknown> = {}, itens: unknown[] = [item("i1
       { id: "cat2", nome: "Porções", ativa: true, versao: 1 },
     ]),
     "GET /cardapio/produtos/frequentes": json([chopp]),
+    "GET /cardapio/produtos/:id/grupos-opcao": json([]),
     ...extra,
   } as Record<string, Response | ((c: never) => Response | Promise<Response>)>;
 }
@@ -553,10 +563,10 @@ describe("round rules", () => {
   });
 
   it("stops at 999 units and 50 lines", () => {
-    let r = [{ produto: p, quantidade: 999 }];
+    let r = adicionarConfigurado([], { produto: p, quantidade: 999, opcoes: [], observacao: null });
     r = adicionar(r, p);
     expect(r[0]?.quantidade).toBe(999);
-    const cheio = Array.from({ length: 50 }, (_, i) => ({ produto: { ...p, id: `x${i}` }, quantidade: 1 }));
+    const cheio = Array.from({ length: 50 }, (_, i) => adicionar([], { ...p, id: `x${i}` })[0] as ItemEmPreparo);
     expect(adicionar(cheio, q)).toHaveLength(50);
   });
 
@@ -570,6 +580,8 @@ describe("round rules", () => {
       quantidade: 1,
       observacao: null,
       estado: "lancado",
+      opcoes: [],
+      unitarioCentavos: 1,
     };
     const itens: ItemDaConta[] = [
       base,

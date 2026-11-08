@@ -1,11 +1,13 @@
 import { BottomSheet, Button, Chip, formatBRL, TextField } from "@flow4tech/design-system";
 import { useEffect, useState } from "react";
+import { resumoDasOpcoes } from "./opcoes";
 import {
   type CodigoDeMotivo,
   DURACAO_DO_DESFAZER_MS,
   type ItemDaConta,
   type ItemEmPreparo,
   MOTIVOS,
+  precoUnitario,
   totalEmPreparo,
 } from "./rodada";
 
@@ -42,10 +44,17 @@ export function EnviarRodadaSheet({ open, onOpenChange, itens, enviando, erro, o
     >
       <ul className="enviar-lista" aria-label="Itens da rodada">
         {itens.map((i) => (
-          <li key={i.produto.id} className="enviar-linha">
+          <li key={i.chave} className="enviar-linha">
             <span className="f4-num">{i.quantidade}×</span>
-            <span>{i.produto.nome}</span>
-            <span className="f4-num">{formatBRL(i.produto.precoCentavos * i.quantidade)}</span>
+            <span>
+              {i.produto.nome}
+              {i.opcoes.length > 0 || i.observacao ? (
+                <span className="enviar-detalhe">
+                  {[resumoDasOpcoes(i.opcoes), i.observacao].filter(Boolean).join(" · ")}
+                </span>
+              ) : null}
+            </span>
+            <span className="f4-num">{formatBRL(precoUnitario(i) * i.quantidade)}</span>
           </li>
         ))}
       </ul>

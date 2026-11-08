@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Chamada, json, renderEm, sessaoJson, stubRede, TODAS_AS_PERMISSOES } from "../../test-utils";
@@ -8,6 +9,16 @@ import { Picker } from "../comandas/Picker";
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+/** The picker rows read each product's add-on groups; these tests have none. */
+function renderComQuery(ui: React.ReactElement) {
+  stubRede({ "GET /cardapio/produtos/:id/grupos-opcao": json([]) });
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      {ui}
+    </QueryClientProvider>,
+  );
+}
 
 const GERE = [...TODAS_AS_PERMISSOES, "produto:ver", "produto:gerenciar"];
 const produto = (id: string, nome: string, categoriaId: string, extra: Record<string, unknown> = {}) => ({
@@ -328,8 +339,7 @@ describe("waiter's product grid", () => {
   });
 
   it("shows the effective price in the row", async () => {
-    const { render } = await import("@testing-library/react");
-    render(
+    await renderComQuery(
       <Picker
         produtos={[
           paraProduto({
@@ -345,6 +355,7 @@ describe("waiter's product grid", () => {
         categorias={[{ id: "c", nome: "Bebidas" }]}
         quantidades={new Map()}
         onAdicionar={() => undefined}
+        onOpcoes={() => undefined}
         carregando={false}
         erro={false}
         onTentarDeNovo={() => undefined}
@@ -363,6 +374,7 @@ describe("waiter's product grid", () => {
       categorias={[{ id: "c", nome: "Bebidas" }]}
       quantidades={new Map()}
       onAdicionar={noop}
+      onOpcoes={noop}
       carregando={false}
       erro={false}
       onTentarDeNovo={noop}
@@ -370,8 +382,7 @@ describe("waiter's product grid", () => {
   );
 
   it("marks a product that ran out in words and offers no add for it", async () => {
-    const { render } = await import("@testing-library/react");
-    render(
+    await renderComQuery(
       grade([
         { id: "a", nome: "Água" },
         { id: "c", nome: "Chopp", indisponivel: true },

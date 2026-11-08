@@ -1,6 +1,7 @@
 import { Button, formatBRL, Notice, Skeleton, Tab, TabList, TabPanel, Tabs, ToneBadge } from "@flow4tech/design-system";
 import { useState } from "react";
-import { buscarProdutos, type Categoria, type Produto } from "./cardapio";
+import { buscarProdutos, type Categoria, type Produto, useGruposDoProduto } from "./cardapio";
+import { exigeEscolha } from "./opcoes";
 
 interface Props {
   produtos: readonly Produto[];
@@ -9,6 +10,8 @@ interface Props {
   /** Units staged per product, to show ×N. */
   quantidades: ReadonlyMap<string, number>;
   onAdicionar: (produto: Produto) => void;
+  /** Opens the item sheet (add-ons, note, quantity) for a product that offers add-ons. */
+  onOpcoes: (produto: Produto) => void;
   carregando: boolean;
   erro: boolean;
   onTentarDeNovo: () => void;
@@ -18,24 +21,41 @@ function LinhaDoProduto({
   produto,
   quantidade,
   onAdicionar,
+  onOpcoes,
 }: {
   produto: Produto;
   quantidade: number;
   onAdicionar: () => void;
+  onOpcoes: () => void;
 }) {
+  // The groups are read once per product (cached): they tell the row whether to offer the add-ons button. A failed read just hides the button; the tap decides again.
+  const grupos = useGruposDoProduto(produto.id, !produto.indisponivel);
+  const temOpcoes = (grupos.data?.length ?? 0) > 0 && !produto.indisponivel;
   return (
-    <li className="produto-linha" data-acabou={produto.indisponivel ? "true" : undefined}>
+    <li
+      className="produto-linha"
+      data-acabou={produto.indisponivel ? "true" : undefined}
+      data-opcoes={temOpcoes ? "true" : undefined}
+    >
       <span className="produto-nome">
         {produto.nome}
         <span className="produto-meta">
           <span className="produto-codigo">{produto.codigo}</span>
           {produto.indisponivel ? <ToneBadge tone="warning">Acabou</ToneBadge> : null}
+          {temOpcoes && grupos.data && exigeEscolha(grupos.data) ? (
+            <span className="produto-escolha">Escolha opções</span>
+          ) : null}
         </span>
       </span>
       <span className="produto-preco f4-num">{formatBRL(produto.precoCentavos)}</span>
       <span className="produto-qtd f4-num" aria-hidden={quantidade === 0}>
         {quantidade > 0 ? `×${quantidade}` : ""}
       </span>
+      {temOpcoes ? (
+        <button type="button" className="produto-opcoes" aria-label={`Opções de ${produto.nome}`} onClick={onOpcoes}>
+          ⋯
+        </button>
+      ) : null}
       {produto.indisponivel ? (
         <span aria-hidden="true" />
       ) : (
@@ -54,6 +74,7 @@ export function Picker({
   categorias,
   quantidades,
   onAdicionar,
+  onOpcoes,
   carregando,
   erro,
   onTentarDeNovo,
@@ -92,6 +113,7 @@ export function Picker({
           produto={p}
           quantidade={quantidades.get(p.id) ?? 0}
           onAdicionar={() => onAdicionar(p)}
+          onOpcoes={() => onOpcoes(p)}
         />
       ))}
     </ul>

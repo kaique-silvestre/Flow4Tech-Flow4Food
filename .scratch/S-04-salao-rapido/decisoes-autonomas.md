@@ -10,3 +10,4 @@
 | 2026-11-08 | F4-0047 | Falta backend (listar pessoas, criar pessoa, permissões na sessão) | Ampliado o escopo do F4-0047: GET /contas (somente leitura, perfil:ver) + prefixos perfil:/permissao: em /sessao/permissoes, feitos por implementer backend antes da UI. NÃO criar POST /contas (emitir credencial temporária é decisão de segurança do dono) -> criterio "nova pessoa" adiado, vai para pendencias.md | Criar rota de criação de conta com credencial |
 | 2026-11-08 | F4-0048 | Gerente altera preço? | Não por padrão (sem limite escolhido); pendência do dono | Conceder sem limite |
 | 2026-11-08 | F4-0050 | Preço de adicional sem limite? | Sem limite (produto:gerenciar); registrado como risco de negócio | Exigir cardapio:preco-alterar para adicionais |
+| 2026-11-08 | F4-0051 | Toast claro no tema escuro (.f4-toast) e follow-ups (temOpcoes em ProdutoDto; "corrigir e reenviar" na fila) | Adiados, fora do escopo; listados no resumo final | Corrigir tudo aqui |

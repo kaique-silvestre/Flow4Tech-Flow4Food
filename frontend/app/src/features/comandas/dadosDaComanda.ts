@@ -37,16 +37,27 @@ export function useItens(comandaId: string, enabled: boolean) {
         throw new Error("itens");
       }
 
-      return data.itens.map((i) => ({
-        id: String(i.id),
-        rodadaId: String(i.rodadaId),
-        produtoId: String(i.produtoId),
-        produtoNome: String(i.produtoNome),
-        precoCentavos: Number(i.precoCentavos),
-        quantidade: Number(i.quantidade),
-        observacao: (i.observacao as string | null) ?? null,
-        estado: i.estado === "cancelado" ? "cancelado" : "lancado",
-      }));
+      return data.itens.map((i) => {
+        const opcoes = (i.opcoes ?? []).map((o) => ({
+          id: String(o.opcaoId),
+          grupoId: String(o.grupoId),
+          nome: String(o.nome),
+          precoCentavos: Number(o.precoCentavos),
+        }));
+        return {
+          id: String(i.id),
+          rodadaId: String(i.rodadaId),
+          produtoId: String(i.produtoId),
+          produtoNome: String(i.produtoNome),
+          precoCentavos: Number(i.precoCentavos),
+          quantidade: Number(i.quantidade),
+          observacao: (i.observacao as string | null) ?? null,
+          estado: i.estado === "cancelado" ? "cancelado" : "lancado",
+          opcoes,
+          // The server total is (price + add-ons) x quantity, so the unit the row multiplies is the same sum.
+          unitarioCentavos: Number(i.precoCentavos) + opcoes.reduce((soma, o) => soma + o.precoCentavos, 0),
+        } satisfies ItemDaConta;
+      });
     },
   });
 }

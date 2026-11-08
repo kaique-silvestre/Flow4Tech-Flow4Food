@@ -15,25 +15,50 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { enfileirarCancelamento, enfileirarRodada, temAcaoViva } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-import { type Produto, useCategorias, useFrequentes, useProdutos } from "./cardapio";
+import {
+  buscarGruposDoProduto,
+  chaveDosGrupos,
+  GRUPOS_STALE_MS,
+  type GrupoDeOpcao,
+  type Produto,
+  useCategorias,
+  useFrequentes,
+  useProdutos,
+} from "./cardapio";
 import { useComandas } from "./consultas";
 import { useConta, useItens } from "./dadosDaComanda";
 import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet } from "./Folhas";
+import { type EscolhaDoItem, ItemSheet } from "./ItemSheet";
+import { exigeEscolha, resumoDasOpcoes } from "./opcoes";
 import { Picker } from "./Picker";
 import {
   adicionar,
+  adicionarConfigurado,
   type CodigoDeMotivo,
   DURACAO_DO_DESFAZER_MS,
   definirQuantidade,
   type ItemDaConta,
   type ItemEmPreparo,
+  paraItensDaRodada,
+  precoUnitario,
+  substituirItem,
   totalEmPreparo,
   ultimaRodada,
   unidades,
 } from "./rodada";
 import { nomeExibido, tempoDecorrido } from "./tipos";
 import { uuidv7 } from "./uuid";
+
+/** The item sheet in use: a product being added, or a staged line being adjusted. */
+interface FolhaDoItem {
+  produto: Produto;
+  grupos: GrupoDeOpcao[];
+  /** Present when adjusting a staged line. */
+  edicao?: { chave: string; escolha: EscolhaDoItem };
+  /** Changes per opening, so the sheet starts clean. */
+  numero: number;
+}
 
 interface Desfazer {
   rodadaId: string;
@@ -61,6 +86,7 @@ export function ComandaPage() {
   const frequentes = useFrequentes(pode && lancar);
 
   const [emPreparo, setEmPreparo] = useState<ItemEmPreparo[]>([]);
+  const [folhaDoItem, setFolhaDoItem] = useState<FolhaDoItem | null>(null);
   const [folhaEnviar, setFolhaEnviar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erroEnviar, setErroEnviar] = useState<string | undefined>(undefined);
@@ -81,7 +107,45 @@ export function ComandaPage() {
     }
   }, [conta.data]);
 
-  const quantidades = useMemo(() => new Map(emPreparo.map((i) => [i.produto.id, i.quantidade] as const)), [emPreparo]);
+  const quantidades = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const i of emPreparo) {
+      mapa.set(i.produto.id, (mapa.get(i.produto.id) ?? 0) + i.quantidade);
+    }
+
+    return mapa;
+  }, [emPreparo]);
+  const aberturas = useRef(0);
+
+  // The add-on groups of every product are read in the background as soon as the menu is here, a few at a time, so a tap (even offline later) finds them in the cache and a product
+  // without options still goes in with one tap. A failed read is retried by the tap itself.
+  const idsDoCardapio = useMemo(
+    () => (produtos.data ?? []).filter((p) => !p.indisponivel).map((p) => p.id),
+    [produtos.data],
+  );
+  useEffect(() => {
+    if (!lancar) {
+      return;
+    }
+
+    let cancelado = false;
+    void (async () => {
+      for (let i = 0; i < idsDoCardapio.length && !cancelado; i += 4) {
+        await Promise.all(
+          idsDoCardapio.slice(i, i + 4).map((id) =>
+            queryClient.prefetchQuery({
+              queryKey: chaveDosGrupos(id),
+              queryFn: () => buscarGruposDoProduto(id),
+              staleTime: GRUPOS_STALE_MS,
+            }),
+          ),
+        );
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [idsDoCardapio, lancar, queryClient]);
   const comanda = comandas.data?.find((c) => c.id === comandaId);
 
   async function atualizarDados() {
@@ -97,7 +161,7 @@ export function ComandaPage() {
     enfileirarRodada({
       rodadaId,
       comandaId,
-      itens: emPreparo.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade, observacao: null })),
+      itens: paraItensDaRodada(emPreparo),
       titulo: `Rodada · ${comanda?.numeroTexto ?? ""}`.trim(),
       detalhe: `${unidades(emPreparo)} ${unidades(emPreparo) === 1 ? "item" : "itens"} · ${formatBRL(total)}`,
     });
@@ -138,7 +202,7 @@ export function ComandaPage() {
         body: {
           rodadaId,
           versao: versao.current,
-          itens: emPreparo.map((i) => ({ produtoId: i.produto.id, quantidade: i.quantidade, observacao: null })),
+          itens: paraItensDaRodada(emPreparo),
         },
       });
       if (data) {
@@ -164,6 +228,10 @@ export function ComandaPage() {
         setErroEnviar("Um dos itens não está mais disponível. Volte e retire-o da rodada.");
       } else if (response.status === 409 && codigo === "comanda-nao-aberta") {
         setErroEnviar("Esta comanda não está mais aberta. A rodada não foi enviada.");
+      } else if (codigo === "opcao-invalida" || codigo === "opcao-inativa") {
+        // The add-ons changed on the server (or a required group was left empty): the cached groups are dropped so the next tap reads them fresh.
+        void queryClient.invalidateQueries({ queryKey: ["cardapio", "produto"] });
+        setErroEnviar("Os adicionais de um item mudaram. Volte, ajuste o item e envie de novo.");
       } else if (response.status === 403) {
         setErroEnviar("Você não tem permissão para lançar itens.");
       } else if (response.status >= 500 || response.status === 408 || response.status === 429) {
@@ -271,6 +339,65 @@ export function ComandaPage() {
     }
   }
 
+  /** One tap on + : a product with nothing to choose goes straight into the round; a required group opens the item sheet. Groups come from the cache, so the common case never waits. */
+  async function aoAdicionar(produto: Produto) {
+    setAviso(null);
+    let grupos = queryClient.getQueryData<GrupoDeOpcao[]>(chaveDosGrupos(produto.id));
+    if (grupos === undefined) {
+      try {
+        grupos = await buscarGruposDoProduto(produto.id);
+        queryClient.setQueryData(chaveDosGrupos(produto.id), grupos, { updatedAt: Date.now() - GRUPOS_STALE_MS / 2 });
+      } catch {
+        // No signal and the groups never came: working offline must not stop, so the product goes in plain and the waiter is told. If a required group was missed the server refuses the round
+        // and the queue shows it as not sent (the waiter then adjusts the item), never as a silent loss.
+        setAviso(
+          `Sem sinal para ver as opções de ${produto.nome}. Entrou sem adicionais: confira se ele tem opção obrigatória. Se tiver, o envio será recusado e a rodada continua aqui para você corrigir.`,
+        );
+        setEmPreparo((atual) => adicionar(atual, produto));
+        return;
+      }
+    }
+
+    if (exigeEscolha(grupos)) {
+      abrirFolha(produto, grupos);
+      return;
+    }
+
+    setEmPreparo((atual) => adicionar(atual, produto));
+  }
+
+  function abrirFolha(produto: Produto, grupos: GrupoDeOpcao[], edicao?: FolhaDoItem["edicao"]) {
+    aberturas.current += 1;
+    setFolhaDoItem({ produto, grupos, numero: aberturas.current, ...(edicao ? { edicao } : {}) });
+  }
+
+  function aoAbrirOpcoes(produto: Produto) {
+    const grupos = queryClient.getQueryData<GrupoDeOpcao[]>(chaveDosGrupos(produto.id)) ?? [];
+    abrirFolha(produto, grupos);
+  }
+
+  function ajustar(item: ItemEmPreparo) {
+    const grupos = queryClient.getQueryData<GrupoDeOpcao[]>(chaveDosGrupos(item.produto.id)) ?? [];
+    abrirFolha(item.produto, grupos, {
+      chave: item.chave,
+      escolha: { opcoes: item.opcoes, observacao: item.observacao, quantidade: item.quantidade },
+    });
+  }
+
+  function confirmarItem(escolha: EscolhaDoItem) {
+    if (!folhaDoItem) {
+      return;
+    }
+
+    const { produto, edicao } = folhaDoItem;
+    setEmPreparo((atual) =>
+      edicao
+        ? substituirItem(atual, edicao.chave, { produto, ...escolha })
+        : adicionarConfigurado(atual, { produto, ...escolha }),
+    );
+    setFolhaDoItem(null);
+  }
+
   function repetirRodada() {
     const ultima = ultimaRodada(itens.data ?? []);
     if (!ultima || !produtos.data) {
@@ -281,9 +408,12 @@ export function ComandaPage() {
     for (const item of ultima) {
       const produto = produtos.data.find((p) => p.id === item.produtoId);
       if (produto) {
-        for (let n = 0; n < item.quantidade; n += 1) {
-          proximo = adicionar(proximo, produto);
-        }
+        proximo = adicionarConfigurado(proximo, {
+          produto,
+          quantidade: item.quantidade,
+          opcoes: item.opcoes,
+          observacao: item.observacao,
+        });
       }
     }
 
@@ -364,8 +494,8 @@ export function ComandaPage() {
               key={i.id}
               quantity={i.quantidade}
               name={i.produtoNome}
-              modifier={i.observacao ?? undefined}
-              priceCents={i.precoCentavos}
+              modifier={[resumoDasOpcoes(i.opcoes), i.observacao].filter(Boolean).join(" · ") || undefined}
+              priceCents={i.unitarioCentavos}
               action={
                 podeCancelar ? (
                   <button
@@ -382,18 +512,28 @@ export function ComandaPage() {
           ))}
           {emPreparo.map((i) => (
             <ItemRow
-              key={`preparo-${i.produto.id}`}
+              key={`preparo-${i.chave}`}
               quantity={i.quantidade}
               name={i.produto.nome}
-              modifier="Não enviado"
-              priceCents={i.produto.precoCentavos}
+              modifier={["Não enviado", resumoDasOpcoes(i.opcoes), i.observacao].filter(Boolean).join(" · ")}
+              priceCents={precoUnitario(i)}
               action={
-                <Stepper
-                  label={i.produto.nome}
-                  value={i.quantidade}
-                  min={0}
-                  onChange={(q) => setEmPreparo((atual) => definirQuantidade(atual, i.produto.id, q))}
-                />
+                <>
+                  <Stepper
+                    label={i.produto.nome}
+                    value={i.quantidade}
+                    min={0}
+                    onChange={(q) => setEmPreparo((atual) => definirQuantidade(atual, i.chave, q))}
+                  />
+                  <button
+                    type="button"
+                    className="f4-row-action"
+                    aria-label={`Ajustar ${i.produto.nome}`}
+                    onClick={() => ajustar(i)}
+                  >
+                    Ajustar
+                  </button>
+                </>
               }
             />
           ))}
@@ -411,7 +551,8 @@ export function ComandaPage() {
           frequentes={frequentes.data ?? []}
           categorias={categorias.data ?? []}
           quantidades={quantidades}
-          onAdicionar={(produto: Produto) => setEmPreparo((atual) => adicionar(atual, produto))}
+          onAdicionar={(produto: Produto) => void aoAdicionar(produto)}
+          onOpcoes={aoAbrirOpcoes}
           carregando={produtos.isPending || categorias.isPending}
           erro={produtos.isError || categorias.isError}
           onTentarDeNovo={() => {
@@ -465,6 +606,21 @@ export function ComandaPage() {
           conta={conta.data}
           versao={versao}
           onAtualizar={atualizarDados}
+        />
+      ) : null}
+      {folhaDoItem ? (
+        <ItemSheet
+          key={folhaDoItem.numero}
+          open
+          onOpenChange={(aberto) => {
+            if (!aberto) {
+              setFolhaDoItem(null);
+            }
+          }}
+          produto={folhaDoItem.produto}
+          grupos={folhaDoItem.grupos}
+          inicial={folhaDoItem.edicao?.escolha}
+          onConfirmar={confirmarItem}
         />
       ) : null}
       <EnviarRodadaSheet

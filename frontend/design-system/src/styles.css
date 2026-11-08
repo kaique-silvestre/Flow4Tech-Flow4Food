@@ -453,10 +453,21 @@ body {
   font-size: var(--f4-text-secondary);
 }
 
+/* Pinned to the bottom of the scrolling sheet: the primary action stays reachable however long the content is. */
 .f4-sheet-footer {
+  position: sticky;
+  bottom: calc(-1 * (var(--f4-space-4) + env(safe-area-inset-bottom)));
+  z-index: 1;
   display: flex;
   gap: var(--f4-space-2);
-  margin-top: var(--f4-space-4);
+  margin: var(--f4-space-4) calc(-1 * var(--f4-space-4)) calc(-1 * (var(--f4-space-4) + env(safe-area-inset-bottom)));
+  padding: var(--f4-space-3) var(--f4-space-4) calc(var(--f4-space-4) + env(safe-area-inset-bottom));
+  background: var(--f4-surface);
+  border-top: 1px solid var(--f4-border);
+}
+
+.f4-sheet-footer .f4-btn {
+  white-space: nowrap;
 }
 
 .f4-sheet-footer > * {
