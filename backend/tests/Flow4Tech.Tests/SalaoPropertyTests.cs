@@ -368,6 +368,74 @@ public sealed class SalaoPropertyTests
         return (known || motivo is null) && outroSemTexto && RegrasDeRodada.MotivoDeItem("outro", "  porque sim ") == "porque sim";
     }
 
+    // ---- menu boundaries (mutation test, F4-0106) ----
+
+    [Theory]
+    [InlineData("A", "A")]
+    [InlineData("ab-1", "AB-1")]
+    [InlineData("  pizza  ", "PIZZA")]
+    [InlineData("A-", "A-")]
+    [InlineData("Z9", "Z9")]
+    [InlineData("0", "0")]
+    [InlineData("-A", null)]
+    [InlineData("-", null)]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    [InlineData("A@", null)]
+    [InlineData("A[", null)]
+    [InlineData("A/", null)]
+    [InlineData("A:", null)]
+    [InlineData("A B", null)]
+    [InlineData("Á", null)]
+    public void A_product_code_keeps_only_upper_letters_digits_and_inner_dashes(string? bruto, string? esperado) =>
+        Assert.Equal(esperado, RegrasDoCardapio.Codigo(bruto));
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(19, true)]
+    [InlineData(20, true)]
+    [InlineData(21, false)]
+    public void A_product_code_has_at_most_20_characters(int tamanho, bool aceito) =>
+        Assert.Equal(aceito, RegrasDoCardapio.Codigo(new string('A', tamanho)) is not null);
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(119, true)]
+    [InlineData(120, true)]
+    [InlineData(121, false)]
+    public void A_product_name_has_1_to_120_characters(int tamanho, bool aceito) =>
+        Assert.Equal(aceito, RegrasDoCardapio.NomeDeProduto(new string('a', tamanho)) is not null);
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(79, true)]
+    [InlineData(80, true)]
+    [InlineData(81, false)]
+    public void A_category_name_has_1_to_80_characters(int tamanho, bool aceito) =>
+        Assert.Equal(aceito, RegrasDoCardapio.NomeDeCategoria(new string('a', tamanho)) is not null);
+
+    [Theory]
+    [InlineData("Pastel de queijo", "Pastel de queijo")]
+    [InlineData("  Pastel  ", "Pastel")]
+    [InlineData("Past\nel", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    public void A_name_is_trimmed_and_refused_when_blank_or_with_control_characters(string? bruto, string? esperado) =>
+        Assert.Equal(esperado, RegrasDoCardapio.NomeDeProduto(bruto));
+
+    [Theory]
+    [InlineData(-1L, false)]
+    [InlineData(0L, true)]
+    [InlineData(1L, true)]
+    [InlineData(99_999_999L, true)]
+    [InlineData(100_000_000L, true)]
+    [InlineData(100_000_001L, false)]
+    public void A_price_is_valid_from_zero_to_the_maximum_inclusive(long centavos, bool valido) =>
+        Assert.Equal(valido, RegrasDoCardapio.PrecoValido(centavos));
+
     private static ItemDaComanda Item(long preco, int quantidade, EstadoDoItem estado) =>
         new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(), "x", preco, quantidade, null, estado, null, null, null);
 }
