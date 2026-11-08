@@ -48,5 +48,13 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     css: false,
     include: ["src/**/*.test.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test-setup.ts", "src/**/*.d.ts"],
+      reporter: ["text-summary", "json-summary", "lcov"],
+      // Floor, not a goal (F4-0103): measured 2026-11-07 at 87 / 80 / 93 / 87 (statements / branches / functions / lines). Raise it when the real number rises.
+      thresholds: { statements: 85, branches: 77, functions: 90, lines: 85 },
+    },
   },
 });

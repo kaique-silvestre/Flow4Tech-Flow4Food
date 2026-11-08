@@ -42,3 +42,10 @@ graphify-out/
 .claude/worktrees/
 .claude/RESUME.md
 .claude/launch.json
+
+# Test coverage output (vitest, coverlet)
+coverage/
+coverage-out/
+coverage-in/
+coverage-report/
+TestResults/

@@ -52,6 +52,17 @@ Cada item tem o ID do indice `docs/tickets.md` (status `pendente`). Ao comecar u
 - Regra `useSemanticElements` esta DESLIGADA de proposito (`role="group"`/`region` com `aria-label` sao validos; `<fieldset>`/`<section>` mudariam estilo). Reavaliar so se o design system for refeito.
 - Avisos que sobraram: 31x `!` nao nulo (quase todos em testes), 37 infos `useLiteralKeys`, 1 `noDescendingSpecificity` no CSS do design system. Limpar aos poucos; depois pode-se tornar avisos bloqueantes (`--error-on-warnings`).
 
+## F4-0102 DAST autenticado e CORP
+- O job `dast` (F4-0093) roda sem login: so ve 401 nas rotas protegidas. Primeiro CI (2026-11-07): 1 alerta baixo (`Cross-Origin-Resource-Policy` ausente), 2 informativos esperados (4xx sem sessao, `no-store`).
+- Fazer: no job, rodar o seed (`docker compose --profile e2e run --rm seed`), `POST /login` (header `X-F4T-Csrf: 1`) como GARCOM (nao dono: menos rotas destrutivas), passar `Authorization: Bearer` ao ZAP (`-z` com replacer), subir a API do job com `Flow4Tech__Tokens__AccessMinutos=30` (o token de 5 min venceria no meio), excluir do scan `/logout`, `/sessoes/{id}/revogar` e `/sessao/trocar-senha`, e conferir no fim se o token ainda vale. Lembrar: o ZAP envia uma requisicao a cada rota do OpenAPI, inclusive POST/PUT/DELETE, mesmo em modo seguro.
+- CORP: adicionar `Cross-Origin-Resource-Policy: same-site` em `SecurityHeadersMiddleware` (so afeta requisicoes `no-cors`; o fetch do app usa CORS) e estender `SecurityHeadersTests`.
+- Scan ativo continua fora: testes de isolamento e `DoisTenantsEndpointsTests` cobrem melhor a autorizacao entre organizacoes.
+
+## F4-0104 Piso de cobertura do back
+- F4-0103 mede a cobertura do back (coverlet em cada um dos 9 jobs de teste, relatorio unificado no resumo da execucao e no artefato `coverage-back-merged`), mas SEM piso: os projetos de integracao precisam de Docker e nunca foram medidos localmente.
+- Fazer: olhar o numero das primeiras execucoes verdes, escolher um piso um pouco abaixo (como no front: app 85/77/90/85, design-system 95/95/93/95), aplicar no job `coverage-back` (`reportgenerator` + conferir `Summary.txt`/Cobertura) e colocar o job no `gates`.
+- Atencao: o numero junta projetos que se sobrepoem; dado o codigo gerado e as migracoes em SQL, o percentual absoluto importa menos que a queda. Excluir o que nao e codigo do produto (`Flow4Tech.E2eSeed`, spikes) se aparecer no relatorio.
+
 ## Sem ticket (lembretes do dono)
 - Acompanhar `railway usage` depois de alguns dias (4 servicos sempre ligados: 2 APIs e 2 bancos).
 - Avisos de pacotes depreciados do pnpm (`glob`, `whatwg-encoding`): so subdependencias.

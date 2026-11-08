@@ -85,7 +85,17 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r --if-present test
+      # Vitest with coverage: fails below the floors set in each package's vitest config (F4-0103).
+      - run: pnpm -r --if-present test:coverage
+      - name: Keep the coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-front
+          path: |
+            frontend/*/coverage
+            frontend/packages/*/coverage
+          if-no-files-found: ignore
 
   # Browser tests (ticket 08): Playwright at 390x844 and 360x740 against the REAL API in docker compose, with the documented seed; screenshots are kept as an artifact.
   frontend-e2e:
@@ -136,8 +146,15 @@ jobs:
           global-json-file: global.json
       # Integration classes are named *Endpoints* / *Integration*; everything else is unit.
       - run: >
-          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
+          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
           --filter "FullyQualifiedName!~Endpoints&FullyQualifiedName!~Integration"
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-unit-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   integration-tests:
     name: integration tests (real PostgreSQL)
@@ -149,8 +166,15 @@ jobs:
         with:
           global-json-file: global.json
       - run: >
-          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release
+          dotnet test backend/tests/Flow4Tech.Tests/Flow4Tech.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
           --filter "FullyQualifiedName~Endpoints|FullyQualifiedName~Integration"
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-integration-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   architecture-tests:
     name: architecture + route permission gate
@@ -161,7 +185,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Architecture/Flow4Tech.Architecture.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Architecture/Flow4Tech.Architecture.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-architecture-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   isolation-tests:
     name: tenant isolation + RLS (real PostgreSQL)
@@ -172,7 +203,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Isolation/Flow4Tech.Isolation.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Isolation/Flow4Tech.Isolation.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-isolation-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   outbox-tests:
     name: outbox + background jobs (real PostgreSQL)
@@ -183,7 +221,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Outbox/Flow4Tech.Outbox.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Outbox/Flow4Tech.Outbox.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-outbox-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   organizacao-tests:
     name: layered settings (real PostgreSQL)
@@ -194,7 +239,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Organizacao/Flow4Tech.Organizacao.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Organizacao/Flow4Tech.Organizacao.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-organizacao-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   audit-tests:
     name: audit trail + chain verification (real PostgreSQL)
@@ -205,7 +257,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Audit/Flow4Tech.Audit.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Audit/Flow4Tech.Audit.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-audit-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   identidade-tests:
     name: identity accounts, passwords, pre-authentication under RLS (real PostgreSQL)
@@ -216,7 +275,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Identidade/Flow4Tech.Identidade.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Identidade/Flow4Tech.Identidade.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-identidade-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   authorization-tests:
     name: authorization engine + cumulative limits (real PostgreSQL)
@@ -227,7 +293,14 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
-      - run: dotnet test backend/tests/Authorization/Flow4Tech.Authorization.Tests.csproj -c Release
+      - run: dotnet test backend/tests/Authorization/Flow4Tech.Authorization.Tests.csproj -c Release --collect:"XPlat Code Coverage" --results-directory coverage-out
+      - name: Keep the coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-authorization-tests
+          path: coverage-out/**/coverage.cobertura.xml
+          if-no-files-found: ignore
 
   secret-scan:
     name: secret scan (gitleaks, full history)
@@ -417,6 +490,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "::warning title=SAST reduced::Repository is private, CodeQL is skipped. Enable Semgrep as described in docs/runbooks/sast.md."
+
+  coverage-back:
+    # Informational (F4-0103): merges the Cobertura files of every test job and prints the numbers in the run summary. No floor yet: the
+    # integration projects need Docker and were never measured locally, so the first runs set the baseline (pendencias.md, F4-0103).
+    name: coverage report (back, informational)
+    needs:
+      - unit-tests
+      - integration-tests
+      - architecture-tests
+      - isolation-tests
+      - outbox-tests
+      - organizacao-tests
+      - audit-tests
+      - identidade-tests
+      - authorization-tests
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: coverage-back-*
+          path: coverage-in
+      - name: Merge and summarize
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+          reportgenerator -reports:"coverage-in/**/coverage.cobertura.xml" -targetdir:coverage-report \
+            -reporttypes:"MarkdownSummaryGithub;TextSummary;Cobertura" -assemblyfilters:"+Flow4Tech.*;-*.Tests"
+          cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          cat coverage-report/Summary.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-back-merged
+          path: coverage-report
+          if-no-files-found: ignore
 
   gates:
     name: gates

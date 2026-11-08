@@ -8,12 +8,14 @@
   "scripts": {
     "generate": "openapi-typescript ../../../backend/src/Api/openapi.json -o src/schema.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "4.1.12",
     "openapi-typescript": "7.13.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
