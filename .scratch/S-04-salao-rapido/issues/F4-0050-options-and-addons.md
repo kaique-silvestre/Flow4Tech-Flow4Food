@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Migration for option groups, options, product-group links and `item_opcoes` (frozen name/price); tenant RLS; `SchemaDrift` test.
 - [ ] Domain validation: min/max, required groups, option belongs to the group, inactive option refused; the item total includes option prices in cents.

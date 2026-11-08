@@ -36,9 +36,28 @@ internal sealed record DefinirPrecoDaUnidadeRequest(long PrecoCentavos);
 
 internal sealed record CardapioErro(string Codigo);
 
+internal sealed record OpcaoDto(Guid Id, string Nome, long PrecoCentavos, bool Ativa);
+
+/// <summary><c>Obrigatorio</c> = at least one choice is required (<c>Minimo</c> &gt;= 1).</summary>
+internal sealed record GrupoDeOpcaoDto(Guid Id, string Nome, int Minimo, int Maximo, bool Obrigatorio, bool Ativo, int Versao, List<OpcaoDto> Opcoes);
+
+/// <summary><c>Id</c> null creates the option; an id of this group updates it; existing options left out are turned off.</summary>
+internal sealed record OpcaoRequest(Guid? Id, string? Nome, long PrecoCentavos, bool Ativa = true);
+
+internal sealed record CriarGrupoDeOpcaoRequest(string? Nome, int Minimo, int Maximo, bool Ativo = true, List<OpcaoRequest>? Opcoes = null);
+
+internal sealed record AlterarGrupoDeOpcaoRequest(string? Nome, int Minimo, int Maximo, bool Ativo, int Versao, List<OpcaoRequest>? Opcoes = null);
+
+internal sealed record DefinirGruposDoProdutoRequest(List<Guid>? GrupoIds);
+
+/// <summary>An option with how many times it was launched with the product in the active unit.</summary>
+internal sealed record OpcaoFrequenteDto(Guid GrupoId, string GrupoNome, OpcaoDto Opcao, long Lancamentos);
+
 internal static class CardapioEndpoints
 {
     private const long Body = 4096;
+
+    private const long BodyGrupo = 32 * 1024;
 
     public static void MapCardapio(this IEndpointRouteBuilder app)
     {
@@ -185,7 +204,97 @@ internal static class CardapioEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<CardapioErro>(StatusCodes.Status404NotFound);
+
+        app.MapGet("/cardapio/grupos-opcao", async (RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+                Results.Ok((await opcoes.ListarGruposAsync(request, cancellationToken)).Select(Dto).ToList()))
+            .WithName("listGruposDeOpcao")
+            .RequireSession()
+            .RequirePermission(CardapioPermissions.Gerenciar)
+            .Produces<List<GrupoDeOpcaoDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapPost("/cardapio/grupos-opcao", async (CriarGrupoDeOpcaoRequest body, RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+            {
+                var r = await opcoes.CriarGrupoAsync(request, new NovoGrupoDeOpcao(body.Nome, body.Minimo, body.Maximo, body.Ativo, Domain(body.Opcoes)), cancellationToken);
+                return r.Resultado == ResultadoDoCardapio.Ok ? Results.Json(Dto(r.Grupo!), statusCode: StatusCodes.Status201Created) : Erro(r.Resultado);
+            })
+            .WithName("criarGrupoDeOpcao")
+            .RequireSession()
+            .WithBodyLimit(BodyGrupo)
+            .RequirePermission(CardapioPermissions.Gerenciar)
+            .Produces<GrupoDeOpcaoDto>(StatusCodes.Status201Created)
+            .Produces<CardapioErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapPut("/cardapio/grupos-opcao/{id:guid}", async (Guid id, AlterarGrupoDeOpcaoRequest body, RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+            {
+                var r = await opcoes.AlterarGrupoAsync(request, id, new AlteracaoDeGrupoDeOpcao(body.Nome, body.Minimo, body.Maximo, body.Ativo, body.Versao, Domain(body.Opcoes)), cancellationToken);
+                return r.Resultado == ResultadoDoCardapio.Ok ? Results.Ok(Dto(r.Grupo!)) : Erro(r.Resultado);
+            })
+            .WithName("alterarGrupoDeOpcao")
+            .RequireSession()
+            .WithBodyLimit(BodyGrupo)
+            .RequirePermission(CardapioPermissions.Gerenciar)
+            .Produces<GrupoDeOpcaoDto>()
+            .Produces<CardapioErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<CardapioErro>(StatusCodes.Status404NotFound)
+            .Produces<CardapioErro>(StatusCodes.Status409Conflict);
+
+        // What a launch offers for the product: its ACTIVE groups with all their options (inactive ones are marked so the screen can hide them).
+        app.MapGet("/cardapio/produtos/{id:guid}/grupos-opcao", async (Guid id, RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+            {
+                var grupos = await opcoes.GruposDoProdutoAsync(request, id, cancellationToken);
+                return grupos is null ? Erro(ResultadoDoCardapio.NaoEncontrado) : Results.Ok(grupos.Select(Dto).ToList());
+            })
+            .WithName("listGruposDeOpcaoDoProduto")
+            .RequireSession()
+            .RequirePermission(CardapioPermissions.Ver)
+            .Produces<List<GrupoDeOpcaoDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<CardapioErro>(StatusCodes.Status404NotFound);
+
+        app.MapPut("/cardapio/produtos/{id:guid}/grupos-opcao", async (Guid id, DefinirGruposDoProdutoRequest body, RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+            {
+                var r = await opcoes.DefinirGruposDoProdutoAsync(request, id, body.GrupoIds, cancellationToken);
+                return r.Resultado == ResultadoDoCardapio.Ok ? Results.Ok(r.Grupos!.Select(Dto).ToList()) : Erro(r.Resultado);
+            })
+            .WithName("definirGruposDeOpcaoDoProduto")
+            .RequireSession()
+            .WithBodyLimit(Body)
+            .RequirePermission(CardapioPermissions.Gerenciar)
+            .Produces<List<GrupoDeOpcaoDto>>()
+            .Produces<CardapioErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<CardapioErro>(StatusCodes.Status404NotFound);
+
+        // Feeds "most used add-ons" of the launch screen: counted per product in the session's unit.
+        app.MapGet("/cardapio/produtos/{id:guid}/opcoes-frequentes", async (Guid id, RequestContextAccessor request, GestaoDeOpcoes opcoes, CancellationToken cancellationToken) =>
+            {
+                var frequentes = await opcoes.FrequentesAsync(request, id, cancellationToken);
+                return frequentes is null
+                    ? Erro(ResultadoDoCardapio.NaoEncontrado)
+                    : Results.Ok(frequentes.Select(f => new OpcaoFrequenteDto(f.GrupoId, f.GrupoNome, Dto(f.Opcao), f.Lancamentos)).ToList());
+            })
+            .WithName("listOpcoesFrequentes")
+            .RequireSession()
+            .RequirePermission(CardapioPermissions.Ver)
+            .Produces<List<OpcaoFrequenteDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<CardapioErro>(StatusCodes.Status404NotFound);
     }
+
+    private static OpcaoDto Dto(Opcao o) => new(o.Id, o.Nome, o.PrecoCentavos, o.Ativa);
+
+    private static GrupoDeOpcaoDto Dto(GrupoDeOpcao g) => new(g.Id, g.Nome, g.Minimo, g.Maximo, g.Obrigatorio, g.Ativo, g.Versao, g.Opcoes.Select(Dto).ToList());
+
+    private static List<OpcaoNova>? Domain(List<OpcaoRequest>? opcoes) => opcoes?.Select(o => new OpcaoNova(o?.Id, o?.Nome, o?.PrecoCentavos ?? 0, o?.Ativa ?? true)).ToList();
 
     private static CategoriaDto Dto(Categoria c) => new(c.Id, c.Nome, c.Ativa, c.Versao, c.CategoriaPaiId);
 

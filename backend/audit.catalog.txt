@@ -25,6 +25,8 @@ conta:vincular-google
 convite:aceitar
 convite:criar
 convite:revogar
+grupo-opcao:alterar
+grupo-opcao:criar
 mesa:criar
 pagamento:registrar
 perfil:atribuir
@@ -35,6 +37,7 @@ permissao:definir-overrides
 permissao:negar-escalada
 produto:alterar
 produto:criar
+produto:grupos-opcao-definir
 produto:preco-unidade-definir
 produto:preco-unidade-remover
 sessao:encerrar

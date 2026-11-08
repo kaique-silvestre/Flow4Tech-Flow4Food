@@ -23,7 +23,21 @@ public sealed record ItemDaComanda(
     EstadoDoItem Estado,
     string? MotivoCancelamento,
     Guid? CanceladoPor,
-    DateTimeOffset? CanceladoEm);
+    DateTimeOffset? CanceladoEm,
+    IReadOnlyList<OpcaoDoItem>? OpcoesEscolhidas = null)
+{
+    /// <summary>The options picked for this item, name and price frozen at launch (empty when none).</summary>
+    public IReadOnlyList<OpcaoDoItem> Opcoes => OpcoesEscolhidas ?? [];
+
+    /// <summary>What one unit costs: the frozen product price plus the frozen price of every chosen option.</summary>
+    public long PrecoUnitarioCentavos => PrecoCentavos + Opcoes.Sum(o => o.PrecoCentavos);
+
+    /// <summary>The line total in cents: unit price with options times quantity.</summary>
+    public long TotalCentavos => PrecoUnitarioCentavos * Quantidade;
+}
+
+/// <summary>An option chosen for an item. Name and price are copies taken at launch; a later change of the option never reaches the bill.</summary>
+public sealed record OpcaoDoItem(Guid OpcaoId, Guid GrupoId, string Nome, long PrecoCentavos);
 
 /// <summary>A round with its items, as the API answers it.</summary>
 public sealed record RodadaComItens(Rodada Rodada, IReadOnlyList<ItemDaComanda> Itens);
@@ -95,10 +109,10 @@ public static class RegrasDeRodada
         _ => throw new ArgumentOutOfRangeException(nameof(palavra)),
     };
 
-    /// <summary>The consumption of the comanda in cents: items still launched, price times quantity (cancelled items leave it).</summary>
+    /// <summary>The consumption of the comanda in cents: items still launched, price with options times quantity (cancelled items leave it).</summary>
     public static long Consumo(IEnumerable<ItemDaComanda> itens)
     {
         ArgumentNullException.ThrowIfNull(itens);
-        return itens.Where(i => i.Estado == EstadoDoItem.Lancado).Sum(i => i.PrecoCentavos * i.Quantidade);
+        return itens.Where(i => i.Estado == EstadoDoItem.Lancado).Sum(i => i.TotalCentavos);
     }
 }

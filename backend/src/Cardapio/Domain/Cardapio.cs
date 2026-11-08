@@ -102,3 +102,117 @@ public static class RegrasDoCardapio
         return string.IsNullOrEmpty(text) || text.Length > max || text.Any(char.IsControl) ? null : text;
     }
 }
+
+/// <summary>An option of a group: an add-on with a price, or a removal at price zero. Never deleted (frozen copies live in launched items); turned off with <see cref="Ativa"/>.</summary>
+public sealed record Opcao(Guid Id, string Nome, long PrecoCentavos, bool Ativa);
+
+/// <summary>
+/// A group of options linked to products. The customer picks between <see cref="Minimo"/> and <see cref="Maximo"/> options of it; <see cref="Obrigatorio"/> when at least one is required.
+/// </summary>
+public sealed record GrupoDeOpcao(Guid Id, string Nome, int Minimo, int Maximo, bool Ativo, int Versao, IReadOnlyList<Opcao> Opcoes)
+{
+    public bool Obrigatorio => Minimo >= 1;
+}
+
+/// <summary>An option picked in a launch, with the group it belongs to.</summary>
+public sealed record OpcaoEscolhida(Guid GrupoId, Opcao Opcao);
+
+public enum RecusaDeEscolha
+{
+    Nenhuma,
+
+    /// <summary>The id is not an option of any group linked to the product.</summary>
+    OpcaoDesconhecida,
+
+    /// <summary>The option, or its group, is turned off.</summary>
+    OpcaoInativa,
+
+    OpcaoRepetida,
+
+    AbaixoDoMinimo,
+
+    AcimaDoMaximo,
+}
+
+public sealed record EscolhaDeOpcoes(RecusaDeEscolha Recusa, IReadOnlyList<OpcaoEscolhida> Escolhidas);
+
+/// <summary>Pure rules of option groups. The caller never stores or charges what these refuse.</summary>
+public static class RegrasDeOpcoes
+{
+    public const int NomeMaximo = 80;
+
+    public const int MaximoDeEscolhas = 50;
+
+    public const int OpcoesMaximasPorGrupo = 50;
+
+    public static string? NomeDoGrupo(string? nome) => Texto(nome);
+
+    public static string? NomeDaOpcao(string? nome) => Texto(nome);
+
+    /// <summary>0 &lt;= min &lt;= max, and max between 1 and <see cref="MaximoDeEscolhas"/>.</summary>
+    public static bool LimitesValidos(int minimo, int maximo) => minimo >= 0 && maximo >= 1 && maximo <= MaximoDeEscolhas && minimo <= maximo;
+
+    /// <summary>
+    /// Checks the chosen option ids against the groups of the product. An inactive group requires nothing and its options are refused; a group's minimum never exceeds the options still active in it
+    /// (an option marked off must not block the service). Chosen options come back in the order they were sent.
+    /// </summary>
+    public static EscolhaDeOpcoes Escolher(IReadOnlyList<GrupoDeOpcao> gruposDoProduto, IReadOnlyList<Guid> escolhidas)
+    {
+        ArgumentNullException.ThrowIfNull(gruposDoProduto);
+        ArgumentNullException.ThrowIfNull(escolhidas);
+        var porOpcao = new Dictionary<Guid, (GrupoDeOpcao Grupo, Opcao Opcao)>();
+        foreach (var grupo in gruposDoProduto)
+        {
+            foreach (var opcao in grupo.Opcoes)
+            {
+                porOpcao[opcao.Id] = (grupo, opcao);
+            }
+        }
+
+        var lista = new List<OpcaoEscolhida>(escolhidas.Count);
+        var vistas = new HashSet<Guid>();
+        foreach (var id in escolhidas)
+        {
+            if (!porOpcao.TryGetValue(id, out var achada))
+            {
+                return Recusa(RecusaDeEscolha.OpcaoDesconhecida);
+            }
+
+            if (!achada.Grupo.Ativo || !achada.Opcao.Ativa)
+            {
+                return Recusa(RecusaDeEscolha.OpcaoInativa);
+            }
+
+            if (!vistas.Add(id))
+            {
+                return Recusa(RecusaDeEscolha.OpcaoRepetida);
+            }
+
+            lista.Add(new OpcaoEscolhida(achada.Grupo.Id, achada.Opcao));
+        }
+
+        foreach (var grupo in gruposDoProduto.Where(g => g.Ativo))
+        {
+            var escolhidasDoGrupo = lista.Count(e => e.GrupoId == grupo.Id);
+            if (escolhidasDoGrupo > grupo.Maximo)
+            {
+                return Recusa(RecusaDeEscolha.AcimaDoMaximo);
+            }
+
+            if (escolhidasDoGrupo < Math.Min(grupo.Minimo, grupo.Opcoes.Count(o => o.Ativa)))
+            {
+                return Recusa(RecusaDeEscolha.AbaixoDoMinimo);
+            }
+        }
+
+        return new EscolhaDeOpcoes(RecusaDeEscolha.Nenhuma, lista);
+    }
+
+    private static EscolhaDeOpcoes Recusa(RecusaDeEscolha recusa) => new(recusa, []);
+
+    private static string? Texto(string? value)
+    {
+        var text = value?.Trim();
+        return string.IsNullOrEmpty(text) || text.Length > NomeMaximo || text.Any(char.IsControl) ? null : text;
+    }
+}

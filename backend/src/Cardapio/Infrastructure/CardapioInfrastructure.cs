@@ -86,6 +86,68 @@ internal sealed class ProdutoFrequenciaRow
     public long Lancamentos { get; set; }
 }
 
+internal sealed class GrupoOpcaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public int Minimo { get; set; }
+
+    public int Maximo { get; set; }
+
+    public bool Ativo { get; set; }
+
+    public int Versao { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+
+    public DateTimeOffset AtualizadoEm { get; set; }
+}
+
+internal sealed class OpcaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid GrupoId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public long PrecoCentavos { get; set; }
+
+    public bool Ativa { get; set; }
+
+    public int Posicao { get; set; }
+}
+
+internal sealed class ProdutoGrupoOpcaoRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid ProdutoId { get; set; }
+
+    public Guid GrupoId { get; set; }
+
+    public int Posicao { get; set; }
+}
+
+internal sealed class OpcaoFrequenciaRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public Guid ProdutoId { get; set; }
+
+    public Guid OpcaoId { get; set; }
+
+    public long Lancamentos { get; set; }
+}
+
 /// <summary>EF mapping of the menu (schema owned by <c>0015_cardapio.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
@@ -96,6 +158,14 @@ internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantD
     public DbSet<ProdutoFrequenciaRow> Frequencia => Set<ProdutoFrequenciaRow>();
 
     public DbSet<PrecoDaUnidadeRow> PrecosDaUnidade => Set<PrecoDaUnidadeRow>();
+
+    public DbSet<GrupoOpcaoRow> Grupos => Set<GrupoOpcaoRow>();
+
+    public DbSet<OpcaoRow> Opcoes => Set<OpcaoRow>();
+
+    public DbSet<ProdutoGrupoOpcaoRow> ProdutoGrupos => Set<ProdutoGrupoOpcaoRow>();
+
+    public DbSet<OpcaoFrequenciaRow> OpcoesFrequencia => Set<OpcaoFrequenciaRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -150,6 +220,51 @@ internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantD
             e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
             e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
             e.Property(x => x.ProdutoId).HasColumnName("produto_id");
+            e.Property(x => x.Lancamentos).HasColumnName("lancamentos");
+        });
+        modelBuilder.Entity<GrupoOpcaoRow>(e =>
+        {
+            e.ToTable("grupos_opcao");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.Minimo).HasColumnName("minimo");
+            e.Property(x => x.Maximo).HasColumnName("maximo");
+            e.Property(x => x.Ativo).HasColumnName("ativo");
+            e.Property(x => x.Versao).HasColumnName("versao");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+            e.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
+        });
+        modelBuilder.Entity<OpcaoRow>(e =>
+        {
+            e.ToTable("opcoes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.GrupoId).HasColumnName("grupo_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.PrecoCentavos).HasColumnName("preco_centavos");
+            e.Property(x => x.Ativa).HasColumnName("ativa");
+            e.Property(x => x.Posicao).HasColumnName("posicao");
+        });
+        modelBuilder.Entity<ProdutoGrupoOpcaoRow>(e =>
+        {
+            e.ToTable("produto_grupos_opcao");
+            e.HasKey(x => new { x.OrganizacaoId, x.ProdutoId, x.GrupoId });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.ProdutoId).HasColumnName("produto_id");
+            e.Property(x => x.GrupoId).HasColumnName("grupo_id");
+            e.Property(x => x.Posicao).HasColumnName("posicao");
+        });
+        modelBuilder.Entity<OpcaoFrequenciaRow>(e =>
+        {
+            e.ToTable("opcoes_frequencia");
+            e.HasKey(x => new { x.OrganizacaoId, x.UnidadeId, x.ProdutoId, x.OpcaoId });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.ProdutoId).HasColumnName("produto_id");
+            e.Property(x => x.OpcaoId).HasColumnName("opcao_id");
             e.Property(x => x.Lancamentos).HasColumnName("lancamentos");
         });
     }
@@ -316,6 +431,119 @@ public sealed class PostgresCardapioStore : ICardapioStore
         unidade);
 }
 
+/// <summary>Option groups on PostgreSQL. Joins the caller's unit of work; never filters on <c>organizacao_id</c> (RLS does). The group update is conditional on the stored version.</summary>
+public sealed class PostgresOpcoesStore : IOpcoesStore
+{
+    public async Task<IReadOnlyList<GrupoDeOpcao>> ListarGruposAsync(Guid organizationId, bool incluirInativos, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var grupos = await context.Grupos.AsNoTracking().Where(g => incluirInativos || g.Ativo).OrderBy(g => g.Nome).ThenBy(g => g.Id).ToListAsync(cancellationToken);
+        var opcoes = await context.Opcoes.AsNoTracking().OrderBy(o => o.Posicao).ToListAsync(cancellationToken);
+        return grupos.Select(g => Mapa(g, opcoes.Where(o => o.GrupoId == g.Id))).ToList();
+    }
+
+    public async Task<GrupoDeOpcao?> AcharGrupoAsync(Guid organizationId, Guid id, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var grupo = await context.Grupos.AsNoTracking().Where(g => g.Id == id).FirstOrDefaultAsync(cancellationToken);
+        if (grupo is null)
+        {
+            return null;
+        }
+
+        var opcoes = await context.Opcoes.AsNoTracking().Where(o => o.GrupoId == id).OrderBy(o => o.Posicao).ToListAsync(cancellationToken);
+        return Mapa(grupo, opcoes);
+    }
+
+    public async Task<IReadOnlyList<GrupoDeOpcao>> GruposDoProdutoAsync(Guid organizationId, Guid produtoId, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var vinculos = await context.ProdutoGrupos.AsNoTracking().Where(v => v.ProdutoId == produtoId).OrderBy(v => v.Posicao).ToListAsync(cancellationToken);
+        var ids = vinculos.Select(v => v.GrupoId).ToList();
+        var grupos = await context.Grupos.AsNoTracking().Where(g => ids.Contains(g.Id)).ToListAsync(cancellationToken);
+        var opcoes = await context.Opcoes.AsNoTracking().Where(o => ids.Contains(o.GrupoId)).OrderBy(o => o.Posicao).ToListAsync(cancellationToken);
+        return vinculos.Select(v => Mapa(grupos.Single(g => g.Id == v.GrupoId), opcoes.Where(o => o.GrupoId == v.GrupoId))).ToList();
+    }
+
+    public async Task InserirGrupoAsync(Guid organizationId, GrupoDeOpcao grupo, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(grupo);
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        context.Grupos.Add(new GrupoOpcaoRow { Id = grupo.Id, OrganizacaoId = organizationId, Nome = grupo.Nome, Minimo = grupo.Minimo, Maximo = grupo.Maximo, Ativo = grupo.Ativo, Versao = grupo.Versao, CriadoEm = now, AtualizadoEm = now });
+        await context.SaveChangesAsync(cancellationToken);
+        await GravarOpcoesAsync(context, organizationId, grupo, cancellationToken);
+    }
+
+    public async Task<bool> AlterarGrupoAsync(Guid organizationId, GrupoDeOpcao novo, int versaoEsperada, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(novo);
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Grupos
+            .Where(g => g.Id == novo.Id && g.Versao == versaoEsperada)
+            .ExecuteUpdateAsync(s => s.SetProperty(g => g.Nome, novo.Nome).SetProperty(g => g.Minimo, novo.Minimo).SetProperty(g => g.Maximo, novo.Maximo).SetProperty(g => g.Ativo, novo.Ativo).SetProperty(g => g.Versao, novo.Versao).SetProperty(g => g.AtualizadoEm, now), cancellationToken);
+        if (rows != 1)
+        {
+            return false;
+        }
+
+        await GravarOpcoesAsync(context, organizationId, novo, cancellationToken);
+        return true;
+    }
+
+    public async Task<int> ContarGruposAsync(Guid organizationId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var lista = ids.ToList();
+        return await context.Grupos.AsNoTracking().CountAsync(g => lista.Contains(g.Id), cancellationToken);
+    }
+
+    public async Task DefinirGruposDoProdutoAsync(Guid organizationId, Guid produtoId, IReadOnlyList<Guid> grupoIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(grupoIds);
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        await context.ProdutoGrupos.Where(v => v.ProdutoId == produtoId).ExecuteDeleteAsync(cancellationToken);
+        for (var i = 0; i < grupoIds.Count; i++)
+        {
+            context.ProdutoGrupos.Add(new ProdutoGrupoOpcaoRow { OrganizacaoId = organizationId, ProdutoId = produtoId, GrupoId = grupoIds[i], Posicao = i + 1 });
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<OpcaoFrequente>> FrequentesAsync(Guid organizationId, Guid unitId, Guid produtoId, int limite, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.OpcoesFrequencia.AsNoTracking()
+            .Where(f => f.UnidadeId == unitId && f.ProdutoId == produtoId)
+            .Join(context.Opcoes.AsNoTracking().Where(o => o.Ativa), f => f.OpcaoId, o => o.Id, (f, o) => new { f.Lancamentos, Opcao = o })
+            .Join(context.Grupos.AsNoTracking().Where(g => g.Ativo), x => x.Opcao.GrupoId, g => g.Id, (x, g) => new { x.Lancamentos, x.Opcao, GrupoNome = g.Nome })
+            .OrderByDescending(x => x.Lancamentos).ThenBy(x => x.Opcao.Nome).ThenBy(x => x.Opcao.Id)
+            .Take(limite)
+            .ToListAsync(cancellationToken);
+        return rows.Select(x => new OpcaoFrequente(x.Opcao.GrupoId, x.GrupoNome, new Opcao(x.Opcao.Id, x.Opcao.Nome, x.Opcao.PrecoCentavos, x.Opcao.Ativa), x.Lancamentos)).ToList();
+    }
+
+    private static async Task GravarOpcoesAsync(CardapioDbContext context, Guid organizationId, GrupoDeOpcao grupo, CancellationToken cancellationToken)
+    {
+        for (var i = 0; i < grupo.Opcoes.Count; i++)
+        {
+            var o = grupo.Opcoes[i];
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO opcoes (id, organizacao_id, grupo_id, nome, preco_centavos, ativa, posicao)
+                VALUES ({o.Id}, {organizationId}, {grupo.Id}, {o.Nome}, {o.PrecoCentavos}, {o.Ativa}, {i + 1})
+                ON CONFLICT (id) DO UPDATE SET nome = EXCLUDED.nome, preco_centavos = EXCLUDED.preco_centavos, ativa = EXCLUDED.ativa, posicao = EXCLUDED.posicao
+                WHERE opcoes.grupo_id = EXCLUDED.grupo_id
+                """,
+                cancellationToken);
+        }
+    }
+
+    private static GrupoDeOpcao Mapa(GrupoOpcaoRow g, IEnumerable<OpcaoRow> opcoes) =>
+        new(g.Id, g.Nome, g.Minimo, g.Maximo, g.Ativo, g.Versao, opcoes.OrderBy(o => o.Posicao).Select(o => new Opcao(o.Id, o.Nome, o.PrecoCentavos, o.Ativa)).ToList());
+}
+
 /// <summary>Menu events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDoCardapio(OutboxWriter outbox) : IEventosDoCardapio
 {
@@ -336,6 +564,8 @@ public static class CardapioServices
         services.AddSingleton<ICardapioStore, PostgresCardapioStore>();
         services.AddSingleton<IEventosDoCardapio, OutboxEventosDoCardapio>();
         services.AddSingleton<GestaoDoCardapio>();
+        services.AddSingleton<IOpcoesStore, PostgresOpcoesStore>();
+        services.AddSingleton<GestaoDeOpcoes>();
         return services;
     }
 }

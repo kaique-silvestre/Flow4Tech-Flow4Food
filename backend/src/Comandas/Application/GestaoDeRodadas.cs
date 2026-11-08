@@ -23,6 +23,12 @@ public enum ResultadoDeRodada
 
     ProdutoInativo,
 
+    /// <summary>The chosen options do not fit the product's groups (unknown, repeated, below the minimum or above the maximum): the whole round is refused.</summary>
+    OpcaoInvalida,
+
+    /// <summary>A chosen option, or its group, is turned off: the whole round is refused.</summary>
+    OpcaoInativa,
+
     /// <summary>The write carried a version other than the current one (the caller learns the current one).</summary>
     VersaoDesatualizada,
 
@@ -47,7 +53,8 @@ public enum ResultadoDeRodada
 /// <summary><c>Versao</c> is the comanda version after the write (or the one the round produced, on a repeat); <c>VersaoAtual</c> is set on a stale version.</summary>
 public sealed record ResultadoDeEscrita(ResultadoDeRodada Resultado, RodadaComItens? Rodada = null, ItemDaComanda? Item = null, int? Versao = null, int? VersaoAtual = null);
 
-public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao);
+/// <summary><c>OpcaoIds</c> are ids only: name and price come from the menu on the server, never from the client.</summary>
+public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao, IReadOnlyList<Guid>? OpcaoIds = null);
 
 /// <summary>Raised inside the unit of work when an undo is refused AFTER the comanda row lock and version bump: the bump rolls back and the caller answers with <see cref="Resultado"/>.</summary>
 public sealed class RecusaDoDesfazer : InvalidOperationException
@@ -85,6 +92,7 @@ public sealed class GestaoDeRodadas(
     IComandasStore comandas,
     IRodadasStore rodadas,
     ICardapioStore cardapio,
+    IOpcoesStore opcoes,
     IAuditLog audit,
     IEventosDeComandas eventos,
     IPermissaoDaComanda permissoes,
@@ -151,6 +159,19 @@ public sealed class GestaoDeRodadas(
                     produtos[produtoId] = (produto.Id, produto.Nome, produto.PrecoEfetivo(precoEm));
                 }
 
+                // Options: each item is checked against the groups of ITS product; one bad choice refuses the whole round (nothing is written).
+                var escolhas = new IReadOnlyList<OpcaoParaItem>[itens.Count];
+                for (var i = 0; i < itens.Count; i++)
+                {
+                    var escolha = await OpcoesDoProduto.EscolherAsync(opcoes, org.OrganizationId, itens[i].ProdutoId, itens[i].OpcaoIds ?? [], ct);
+                    if (escolha.Recusa != RecusaDeOpcoes.Nenhuma)
+                    {
+                        return new ResultadoDeEscrita(escolha.Recusa == RecusaDeOpcoes.Inativa ? ResultadoDeRodada.OpcaoInativa : ResultadoDeRodada.OpcaoInvalida);
+                    }
+
+                    escolhas[i] = escolha.Opcoes;
+                }
+
                 if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
                 {
                     // Lost the race on the row lock (or the caller is stale). A concurrent repeat of THIS round id is not a conflict: it gets the stored result.
@@ -165,12 +186,17 @@ public sealed class GestaoDeRodadas(
                 for (var i = 0; i < itens.Count; i++)
                 {
                     var produto = produtos[itens[i].ProdutoId];
-                    lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null));
+                    lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList()));
                 }
 
                 var resultado = new RodadaComItens(rodada, lista);
                 await rodadas.InserirRodadaAsync(org.OrganizationId, resultado, ct);
                 await rodadas.RegistrarFrequenciaAsync(org.OrganizationId, comanda.UnidadeId, produtos.Keys.Order().ToList(), ct);
+                var usosDeOpcao = lista.SelectMany(i => i.Opcoes.Select(o => (i.ProdutoId, o.OpcaoId))).Distinct().Order().ToList();
+                if (usosDeOpcao.Count > 0)
+                {
+                    await rodadas.RegistrarFrequenciaDeOpcoesAsync(org.OrganizationId, comanda.UnidadeId, usosDeOpcao, ct);
+                }
 
                 var valor = RegrasDeRodada.Consumo(lista);
                 var depois = new JsonObject

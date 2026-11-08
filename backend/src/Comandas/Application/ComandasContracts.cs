@@ -154,6 +154,9 @@ public interface IRodadasStore
     /// <summary>Counts the launch of each product in the unit (feeds the frequent items).</summary>
     Task RegistrarFrequenciaAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<Guid> produtos, CancellationToken cancellationToken);
 
+    /// <summary>Counts the launch of each option with its product in the unit (feeds the most used add-ons).</summary>
+    Task RegistrarFrequenciaDeOpcoesAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<(Guid ProdutoId, Guid OpcaoId)> usos, CancellationToken cancellationToken);
+
     /// <summary>Cancels one item; false when it was no longer launched.</summary>
     Task<bool> CancelarItemAsync(Guid organizationId, Guid itemId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 

@@ -1629,6 +1629,330 @@
         "x-permission": "produto:gerenciar"
       }
     },
+    "/cardapio/grupos-opcao": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listGruposDeOpcao",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrupoDeOpcaoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarGrupoDeOpcao",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarGrupoDeOpcaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrupoDeOpcaoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/grupos-opcao/{id}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "alterarGrupoDeOpcao",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarGrupoDeOpcaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrupoDeOpcaoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/produtos/{id}/grupos-opcao": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listGruposDeOpcaoDoProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrupoDeOpcaoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:ver"
+      },
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "definirGruposDeOpcaoDoProduto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirGruposDoProdutoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrupoDeOpcaoDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:gerenciar"
+      }
+    },
+    "/cardapio/produtos/{id}/opcoes-frequentes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listOpcoesFrequentes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpcaoFrequenteDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardapioErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "produto:ver"
+      }
+    },
     "/caixa/turnos/atual": {
       "get": {
         "tags": [
@@ -3131,6 +3455,60 @@
           }
         }
       },
+      "AlterarGrupoDeOpcaoRequest": {
+        "required": [
+          "nome",
+          "minimo",
+          "maximo",
+          "ativo",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minimo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OpcaoRequest"
+            }
+          }
+        }
+      },
       "AlterarProdutoRequest": {
         "required": [
           "codigo",
@@ -3682,6 +4060,51 @@
           }
         }
       },
+      "CriarGrupoDeOpcaoRequest": {
+        "required": [
+          "nome",
+          "minimo",
+          "maximo"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minimo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true
+          },
+          "opcoes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OpcaoRequest"
+            }
+          }
+        }
+      },
       "CriarMesaRequest": {
         "required": [
           "identificacao",
@@ -3759,6 +4182,24 @@
           }
         }
       },
+      "DefinirGruposDoProdutoRequest": {
+        "required": [
+          "grupoIds"
+        ],
+        "type": "object",
+        "properties": {
+          "grupoIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
       "DefinirOverridesRequest": {
         "required": [
           "regras"
@@ -3825,6 +4266,64 @@
           }
         }
       },
+      "GrupoDeOpcaoDto": {
+        "required": [
+          "id",
+          "nome",
+          "minimo",
+          "maximo",
+          "obrigatorio",
+          "ativo",
+          "versao",
+          "opcoes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "minimo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximo": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "obrigatorio": {
+            "type": "boolean"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpcaoDto"
+            }
+          }
+        }
+      },
       "HealthStatus": {
         "required": [
           "status"
@@ -3886,7 +4385,9 @@
           "estado",
           "motivoCancelamento",
           "canceladoPor",
-          "canceladoEm"
+          "canceladoEm",
+          "opcoes",
+          "totalCentavos"
         ],
         "type": "object",
         "properties": {
@@ -3957,6 +4458,20 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "opcoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpcaoDoItemDto"
+            }
+          },
+          "totalCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -4008,6 +4523,16 @@
               "null",
               "string"
             ]
+          },
+          "opcaoIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -4155,6 +4680,129 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "OpcaoDoItemDto": {
+        "required": [
+          "opcaoId",
+          "grupoId",
+          "nome",
+          "precoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "opcaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grupoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "OpcaoDto": {
+        "required": [
+          "id",
+          "nome",
+          "precoCentavos",
+          "ativa"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "ativa": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OpcaoFrequenteDto": {
+        "required": [
+          "grupoId",
+          "grupoNome",
+          "opcao",
+          "lancamentos"
+        ],
+        "type": "object",
+        "properties": {
+          "grupoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grupoNome": {
+            "type": "string"
+          },
+          "opcao": {
+            "$ref": "#/components/schemas/OpcaoDto"
+          },
+          "lancamentos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "OpcaoRequest": {
+        "required": [
+          "id",
+          "nome",
+          "precoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "precoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "ativa": {
+            "type": "boolean",
+            "default": true
           }
         }
       },

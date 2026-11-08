@@ -1,7 +1,7 @@
 {
   "stryker-config": {
     "project": "Flow4Tech.Cardapio.Domain.csproj",
-    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests|FullyQualifiedName~CardapioRulesTests",
+    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests|FullyQualifiedName~CardapioRulesTests|FullyQualifiedName~OpcoesRulesTests",
     "reporters": [
       "progress",
       "json"

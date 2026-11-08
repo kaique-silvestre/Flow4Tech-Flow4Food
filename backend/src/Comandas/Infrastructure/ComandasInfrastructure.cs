@@ -112,6 +112,21 @@ internal sealed class ItemRow
     public DateTimeOffset? CanceladoEm { get; set; }
 }
 
+internal sealed class ItemOpcaoRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid ItemId { get; set; }
+
+    public Guid OpcaoId { get; set; }
+
+    public Guid GrupoId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public long PrecoCentavos { get; set; }
+}
+
 internal sealed class NumeracaoRow
 {
     public Guid OrganizacaoId { get; set; }
@@ -135,6 +150,8 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
     public DbSet<RodadaRow> Rodadas => Set<RodadaRow>();
 
     public DbSet<ItemRow> Itens => Set<ItemRow>();
+
+    public DbSet<ItemOpcaoRow> ItemOpcoes => Set<ItemOpcaoRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -203,6 +220,17 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
             e.Property(x => x.CanceladoPor).HasColumnName("cancelado_por");
             e.Property(x => x.CanceladoEm).HasColumnName("cancelado_em");
+        });
+        modelBuilder.Entity<ItemOpcaoRow>(e =>
+        {
+            e.ToTable("item_opcoes");
+            e.HasKey(x => new { x.OrganizacaoId, x.ItemId, x.OpcaoId });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.ItemId).HasColumnName("item_id");
+            e.Property(x => x.OpcaoId).HasColumnName("opcao_id");
+            e.Property(x => x.GrupoId).HasColumnName("grupo_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.PrecoCentavos).HasColumnName("preco_centavos");
         });
         modelBuilder.Entity<NumeracaoRow>(e =>
         {
@@ -379,21 +407,23 @@ public sealed class PostgresRodadasStore : IRodadasStore
         }
 
         var itens = await ItensDaRodada(context, rodadaId).ToListAsync(cancellationToken);
-        return new RodadaComItens(new Rodada(rodada.Id, rodada.ComandaId, rodada.UnidadeId, rodada.EnviadaPor, rodada.EnviadaEm, rodada.DesfeitaEm, rodada.ComandaVersao), itens.Select(ParaItem).ToList());
+        var escolhas = await EscolhasAsync(context, itens, cancellationToken);
+        return new RodadaComItens(new Rodada(rodada.Id, rodada.ComandaId, rodada.UnidadeId, rodada.EnviadaPor, rodada.EnviadaEm, rodada.DesfeitaEm, rodada.ComandaVersao), itens.Select(i => ParaItem(i, escolhas)).ToList());
     }
 
     public async Task<IReadOnlyList<ItemDaComanda>> ListarItensAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await ItensDaComanda(context, comandaId).ToListAsync(cancellationToken);
-        return rows.Select(ParaItem).ToList();
+        var escolhas = await EscolhasAsync(context, rows, cancellationToken);
+        return rows.Select(i => ParaItem(i, escolhas)).ToList();
     }
 
     public async Task<ItemDaComanda?> AcharItemAsync(Guid organizationId, Guid itemId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var row = await context.Itens.AsNoTracking().Where(i => i.Id == itemId).FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : ParaItem(row);
+        return row is null ? null : ParaItem(row, await EscolhasAsync(context, [row], cancellationToken));
     }
 
     public async Task InserirRodadaAsync(Guid organizationId, RodadaComItens rodada, CancellationToken cancellationToken)
@@ -416,6 +446,15 @@ public sealed class PostgresRodadasStore : IRodadasStore
                 VALUES ({i.Id}, {organizationId}, {i.ComandaId}, {i.RodadaId}, {i.Posicao}, {i.ProdutoId}, {i.ProdutoNome}, {i.PrecoCentavos}, {i.Quantidade}, {i.Observacao}, {estado}, {i.MotivoCancelamento}, {i.CanceladoPor}, {i.CanceladoEm})
                 """,
                 cancellationToken);
+            foreach (var o in i.Opcoes)
+            {
+                await context.Database.ExecuteSqlAsync(
+                    $"""
+                    INSERT INTO item_opcoes (organizacao_id, item_id, opcao_id, grupo_id, nome, preco_centavos)
+                    VALUES ({organizationId}, {i.Id}, {o.OpcaoId}, {o.GrupoId}, {o.Nome}, {o.PrecoCentavos})
+                    """,
+                    cancellationToken);
+            }
         }
     }
 
@@ -430,6 +469,22 @@ public sealed class PostgresRodadasStore : IRodadasStore
                 INSERT INTO produtos_frequencia (organizacao_id, unidade_id, produto_id, lancamentos)
                 VALUES ({organizationId}, {unitId}, {produto}, 1)
                 ON CONFLICT (organizacao_id, unidade_id, produto_id) DO UPDATE SET lancamentos = produtos_frequencia.lancamentos + 1
+                """,
+                cancellationToken);
+        }
+    }
+
+    public async Task RegistrarFrequenciaDeOpcoesAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<(Guid ProdutoId, Guid OpcaoId)> usos, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(usos);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        foreach (var (produto, opcao) in usos)
+        {
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO opcoes_frequencia (organizacao_id, unidade_id, produto_id, opcao_id, lancamentos)
+                VALUES ({organizationId}, {unitId}, {produto}, {opcao}, 1)
+                ON CONFLICT (organizacao_id, unidade_id, produto_id, opcao_id) DO UPDATE SET lancamentos = opcoes_frequencia.lancamentos + 1
                 """,
                 cancellationToken);
         }
@@ -470,8 +525,16 @@ public sealed class PostgresRodadasStore : IRodadasStore
     internal static IQueryable<ItemRow> ItensDaRodada(MesasDbContext context, Guid rodadaId) =>
         context.Itens.AsNoTracking().Where(i => i.RodadaId == rodadaId).OrderBy(i => i.Posicao);
 
-    private static ItemDaComanda ParaItem(ItemRow i) =>
-        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm);
+    /// <summary>The frozen options of these items, in the order they were chosen at launch (name, then id: a stable order).</summary>
+    private static async Task<ILookup<Guid, OpcaoDoItem>> EscolhasAsync(MesasDbContext context, IReadOnlyList<ItemRow> itens, CancellationToken cancellationToken)
+    {
+        var ids = itens.Select(i => i.Id).ToList();
+        var rows = ids.Count == 0 ? [] : await context.ItemOpcoes.AsNoTracking().Where(o => ids.Contains(o.ItemId)).OrderBy(o => o.Nome).ThenBy(o => o.OpcaoId).ToListAsync(cancellationToken);
+        return rows.ToLookup(o => o.ItemId, o => new OpcaoDoItem(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos));
+    }
+
+    private static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
+        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList());
 }
 
 /// <summary>Comanda events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>

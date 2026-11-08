@@ -532,6 +532,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cardapio/grupos-opcao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listGruposDeOpcao"];
+        put?: never;
+        post: operations["criarGrupoDeOpcao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cardapio/grupos-opcao/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["alterarGrupoDeOpcao"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cardapio/produtos/{id}/grupos-opcao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listGruposDeOpcaoDoProduto"];
+        put: operations["definirGruposDeOpcaoDoProduto"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cardapio/produtos/{id}/opcoes-frequentes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listOpcoesFrequentes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/caixa/turnos/atual": {
         parameters: {
             query?: never;
@@ -891,6 +955,17 @@ export interface components {
             vigenteAPartirDe: null | string;
             motivo: null | string;
         };
+        AlterarGrupoDeOpcaoRequest: {
+            nome: null | string;
+            /** Format: int32 */
+            minimo: number | string;
+            /** Format: int32 */
+            maximo: number | string;
+            ativo: boolean;
+            /** Format: int32 */
+            versao: number | string;
+            opcoes?: null | components["schemas"]["OpcaoRequest"][];
+        };
         AlterarProdutoRequest: {
             codigo: null | string;
             nome: null | string;
@@ -1026,6 +1101,16 @@ export interface components {
             /** Format: uuid */
             categoriaPaiId?: null | string;
         };
+        CriarGrupoDeOpcaoRequest: {
+            nome: null | string;
+            /** Format: int32 */
+            minimo: number | string;
+            /** Format: int32 */
+            maximo: number | string;
+            /** @default true */
+            ativo: boolean;
+            opcoes?: null | components["schemas"]["OpcaoRequest"][];
+        };
         CriarMesaRequest: {
             identificacao: null | string;
             /** Format: int32 */
@@ -1044,6 +1129,9 @@ export interface components {
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
         };
+        DefinirGruposDoProdutoRequest: {
+            grupoIds: null | string[];
+        };
         DefinirOverridesRequest: {
             regras: null | components["schemas"]["RegraDto"][];
         };
@@ -1058,6 +1146,20 @@ export interface components {
         FecharTurnoRequest: {
             /** Format: int64 */
             contadoCentavos: null | number | string;
+        };
+        GrupoDeOpcaoDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            /** Format: int32 */
+            minimo: number | string;
+            /** Format: int32 */
+            maximo: number | string;
+            obrigatorio: boolean;
+            ativo: boolean;
+            /** Format: int32 */
+            versao: number | string;
+            opcoes: components["schemas"]["OpcaoDto"][];
         };
         HealthStatus: {
             status: string;
@@ -1092,6 +1194,9 @@ export interface components {
             canceladoPor: null | string;
             /** Format: date-time */
             canceladoEm: null | string;
+            opcoes: components["schemas"]["OpcaoDoItemDto"][];
+            /** Format: int64 */
+            totalCentavos: number | string;
         };
         ItensDaComandaDto: {
             itens: components["schemas"]["ItemDto"][];
@@ -1104,6 +1209,7 @@ export interface components {
             /** Format: int32 */
             quantidade: number | string;
             observacao: null | string;
+            opcaoIds?: null | string[];
         };
         LancarRodadaRequest: {
             /** Format: uuid */
@@ -1140,6 +1246,40 @@ export interface components {
             criado: boolean;
             /** Format: uuid */
             perfilId: null | string;
+        };
+        OpcaoDoItemDto: {
+            /** Format: uuid */
+            opcaoId: string;
+            /** Format: uuid */
+            grupoId: string;
+            nome: string;
+            /** Format: int64 */
+            precoCentavos: number | string;
+        };
+        OpcaoDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            /** Format: int64 */
+            precoCentavos: number | string;
+            ativa: boolean;
+        };
+        OpcaoFrequenteDto: {
+            /** Format: uuid */
+            grupoId: string;
+            grupoNome: string;
+            opcao: components["schemas"]["OpcaoDto"];
+            /** Format: int64 */
+            lancamentos: number | string;
+        };
+        OpcaoRequest: {
+            /** Format: uuid */
+            id: null | string;
+            nome: null | string;
+            /** Format: int64 */
+            precoCentavos: number | string;
+            /** @default true */
+            ativa: boolean;
         };
         PagamentoDto: {
             /** Format: uuid */
@@ -3056,6 +3196,302 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    listGruposDeOpcao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrupoDeOpcaoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    criarGrupoDeOpcao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriarGrupoDeOpcaoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrupoDeOpcaoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    alterarGrupoDeOpcao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlterarGrupoDeOpcaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrupoDeOpcaoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    listGruposDeOpcaoDoProduto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrupoDeOpcaoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    definirGruposDeOpcaoDoProduto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirGruposDoProdutoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrupoDeOpcaoDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    listOpcoesFrequentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpcaoFrequenteDto"][];
                 };
             };
             /** @description Unauthorized */

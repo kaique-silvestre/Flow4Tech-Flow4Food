@@ -194,6 +194,9 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("pagamentos", tables);
         Assert.Contains("turnos_caixa", tables);
         Assert.Contains("produtos_preco_unidade", tables);
+        Assert.Contains("grupos_opcao", tables);
+        Assert.Contains("item_opcoes", tables);
+        Assert.Contains("opcoes_frequencia", tables);
         foreach (var tenant in new[] { a, b })
         {
             foreach (var table in tables)
@@ -208,6 +211,11 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+            foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia" })
+            {
+                Assert.Equal(1L, (await QueryAsync(tenant, $"SELECT count(*) FROM {optionTable}", r => r.GetInt64(0))).Single());
+            }
+
             Assert.Equal(0L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes WHERE id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM organizacoes", r => r.GetInt64(0))).Single());
         }
@@ -238,6 +246,15 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{salaoA.ComandaId}/itens", salaoB.Token));
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{salaoA.ComandaId}/pagamentos", salaoB.Token));
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{salaoA.ComandaId}/pagamentos", salaoB.Token, new { pagamentoId = Guid.CreateVersion7(), recebidoCentavos = 100, versao = 1 }));
+        // Nor does it read, change, link or launch with the other's option groups: B's own product has no such group, and an option of A is simply not an option for B.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/cardapio/grupos-opcao/{salaoA.GrupoId}", salaoB.Token, new { nome = "Invadido", minimo = 0, maximo = 1, ativo = true, versao = 1 }));
+        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoB.ProdutoId}/grupos-opcao", salaoB.Token, new { grupoIds = new[] { salaoA.GrupoId } }));
+        using (var grupos = await SendAsync(client, HttpMethod.Get, "/cardapio/grupos-opcao", salaoB.Token))
+        {
+            var lista = (await grupos.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!;
+            Assert.Equal(salaoB.GrupoId, Assert.Single(lista).GetProperty("id").GetGuid());
+        }
+
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{salaoA.ComandaId}/rodadas", salaoB.Token, new { rodadaId = Guid.CreateVersion7(), versao = 1, itens = new[] { new { produtoId = salaoB.ProdutoId, quantidade = 1 } } }));
         using (var produtos = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos", salaoB.Token))
         {
@@ -246,8 +263,8 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         }
 
         // Each organization's cash is its own: each shift held its float plus its own cash only, and A's shift is closed (no open shift answers 404).
-        Assert.Equal(10_000 + 2_750, salaoA.EsperadoCentavos);
-        Assert.Equal(10_000 + 2_750, salaoB.EsperadoCentavos);
+        Assert.Equal(10_000 + 2_970, salaoA.EsperadoCentavos);
+        Assert.Equal(10_000 + 2_970, salaoB.EsperadoCentavos);
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, "/caixa/turnos/atual", salaoA.Token));
     }
 
@@ -330,7 +347,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
 
     private sealed record ComandaCriadaDto(Guid Id, int Versao);
 
-    private sealed record Salao(string Token, Guid ComandaId, Guid ProdutoId, long EsperadoCentavos);
+    private sealed record Salao(string Token, Guid ComandaId, Guid ProdutoId, long EsperadoCentavos, Guid GrupoId, Guid OpcaoId);
 
     /// <summary>The salão flow of one organization through real HTTP as its founder: R$ 100,00 float, 2 x R$ 12,50 (R$ 27,50 with the 10% fee), R$ 30,00 in cash (R$ 2,50 of change), comanda closed, shift counted exactly.</summary>
     private static async Task<Salao> RunSalaoAsync(HttpClient client, Tenant tenant)
@@ -344,22 +361,30 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(HttpStatusCode.Created, produto.StatusCode);
         var produtoId = (await produto.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
 
+        // An add-on group with one priced option (R$ 1,00 per unit), linked to the product: the round below launches it.
+        using var grupo = await SendAsync(client, HttpMethod.Post, "/cardapio/grupos-opcao", token, new { nome = "Adicionais", minimo = 1, maximo = 1, opcoes = new[] { new { nome = "Gelo extra", precoCentavos = 100 } } });
+        Assert.Equal(HttpStatusCode.Created, grupo.StatusCode);
+        var grupoJson = await grupo.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var grupoId = grupoJson.GetProperty("id").GetGuid();
+        var opcaoId = grupoJson.GetProperty("opcoes")[0].GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{produtoId}/grupos-opcao", token, new { grupoIds = new[] { grupoId } }));
+
         using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", token, new { identificacao = "Ana e Beto", mesaId = (Guid?)null, pessoas = (int?)null });
         Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
         var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
-        using var rodada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId, quantidade = 2 } } });
+        using var rodada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId, quantidade = 2, opcaoIds = new[] { opcaoId } } } });
         Assert.Equal(HttpStatusCode.Created, rodada.StatusCode);
         var versao = (await rodada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("comandaVersao").GetInt32();
 
         using var conta = await SendAsync(client, HttpMethod.Get, $"/comandas/{comanda.Id}/conta", token);
         var contaJson = await conta.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        Assert.Equal(2_750, contaJson.GetProperty("totalCentavos").GetInt64());
+        Assert.Equal(2_970, contaJson.GetProperty("totalCentavos").GetInt64());
 
         var pagamentoId = Guid.CreateVersion7();
         using var pago = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/pagamentos", token, new { pagamentoId, recebidoCentavos = 3_000, versao });
         Assert.Equal(HttpStatusCode.Created, pago.StatusCode);
         var pagoJson = await pago.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        Assert.Equal(250, pagoJson.GetProperty("trocoCentavos").GetInt64());
+        Assert.Equal(30, pagoJson.GetProperty("trocoCentavos").GetInt64());
         Assert.Equal(0, pagoJson.GetProperty("saldoRestanteCentavos").GetInt64());
 
         // The same payment id again is the same payment (200, no second charge).
@@ -371,7 +396,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         using var fechado = await SendAsync(client, HttpMethod.Post, "/caixa/turnos/atual/fechar", token, new { contadoCentavos = esperado });
         Assert.Equal(HttpStatusCode.OK, fechado.StatusCode);
         Assert.Equal(0, (await fechado.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("diferencaCentavos").GetInt64());
-        return new Salao(token, comanda.Id, produtoId, esperado);
+        return new Salao(token, comanda.Id, produtoId, esperado, grupoId, opcaoId);
     }
 
     private ApiFactory Api() => new(_db.AppConnection);

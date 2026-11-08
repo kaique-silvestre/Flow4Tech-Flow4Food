@@ -1,7 +1,8 @@
-- 01:38 · F4-0071 · feito · 47f9d6f · CI: a verificar
-- 02:10 · F4-0044 · feito · f7807b6 · CI: a verificar
-- 02:52 · F4-0045 · feito · 963310d · CI: a verificar
-- 03:34 · F4-0046 · feito · 556c1e0 · CI: a verificar
-- 03:36 · F4-0046 · feito · 8dc6cc9 · CI: a verificar
-- 04:30 · F4-0047 · feito · a992c68 · CI: a verificar
-- 05:15 · F4-0048 · feito · 81c4081 · CI: a verificar
+- 01:38 · F4-0071 · feito · 47f9d6f · CI: verde (verificado 06:05)
+- 02:10 · F4-0044 · feito · f7807b6 · CI: verde (verificado 06:05)
+- 02:52 · F4-0045 · feito · 963310d · CI: verde (verificado 06:05)
+- 03:34 · F4-0046 · feito · 556c1e0 · CI: verde (verificado 06:05)
+- 03:36 · F4-0046 · feito · 8dc6cc9 · CI: verde (verificado 06:05)
+- 04:30 · F4-0047 · feito · a992c68 · CI: verde (verificado 06:05)
+- 05:15 · F4-0048 · feito · 81c4081 · CI: verde (verificado 06:05)
+- 06:02 · F4-0049 · feito · 0f89382 · CI: verde (verificado 06:05)

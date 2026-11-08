@@ -1,7 +1,7 @@
 {
   "stryker-config": {
     "project": "Flow4Tech.Comandas.Domain.csproj",
-    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests",
+    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests|FullyQualifiedName~OpcoesRulesTests",
     "reporters": [
       "progress",
       "json"
