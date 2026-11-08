@@ -53,3 +53,5 @@ TestResults/
 # Stryker.NET output (F4-0106)
 StrykerOutput/
 stryker.log
+.vercel
+.env.local

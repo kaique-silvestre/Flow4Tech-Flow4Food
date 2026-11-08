@@ -6,6 +6,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)/:path*",
+      "destination": "https://flow4tech-api-staging.up.railway.app/$1/:path*"
+    },
+    {
+      "source": "/(login|refresh|logout|version|health|unidades|sessao|sessoes|caixa|cardapio|comandas|mesas|configuracoes|conta|contas|convites|recuperacao)",
+      "destination": "https://flow4tech-api-staging.up.railway.app/$1"
+    },
+    {
       "source": "/((?!assets/|sw.js|workbox-|manifest.webmanifest|icon|apple-touch-icon).*)",
       "destination": "/index.html"
     }
