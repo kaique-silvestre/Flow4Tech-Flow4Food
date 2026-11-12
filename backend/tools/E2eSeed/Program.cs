@@ -65,6 +65,7 @@ internal static class SeedMain
         var perfis = services.GetRequiredService<GestaoDePerfis>();
         var cardapio = services.GetRequiredService<GestaoDoCardapio>();
         var mesas = services.GetRequiredService<GestaoDeMesas>();
+        var areas = services.GetRequiredService<GestaoDeAreas>();
 
         var donoA = await CreateOwnerAsync(contas, OrgA, "dono@bar-a.test", "Dono do Bar A", password);
         var donoB = await CreateOwnerAsync(contas, OrgB, "dono@bar-b.test", "Dono do Bar B", password);
@@ -115,9 +116,14 @@ internal static class SeedMain
             Expect(produto.Produto is not null, $"product {codigo}");
         }
 
+        // Two areas for the table map (F4-0055): tables 1 to 3 in the "Salão", 4 to 6 in the "Varanda".
+        var salao = await areas.CriarAsync(requestA, "Salão");
+        var varanda = await areas.CriarAsync(requestA, "Varanda");
+        Expect(salao.Resultado == ResultadoDeMesa.Ok && varanda.Resultado == ResultadoDeMesa.Ok, "areas");
         foreach (var mesa in new[] { "1", "2", "3", "4", "5", "6" })
         {
-            Expect((await mesas.CriarAsync(requestA, mesa, null)).Resultado == ResultadoDeMesa.Ok, $"table {mesa}");
+            var area = int.Parse(mesa, System.Globalization.CultureInfo.InvariantCulture) <= 3 ? salao.Area!.Id : varanda.Area!.Id;
+            Expect((await mesas.CriarAsync(requestA, mesa, null, area)).Resultado == ResultadoDeMesa.Ok, $"table {mesa}");
         }
 
         var summary = await WriteSummaryAsync(ownerSource);

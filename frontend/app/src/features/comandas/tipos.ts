@@ -12,7 +12,7 @@ export interface Comanda {
 export interface Mesa {
   id: string;
   identificacao: string;
-  status: "livre" | "ocupada";
+  status: "livre" | "ocupada" | "aguardando-conta";
 }
 
 export function paraComanda(c: Record<string, unknown>): Comanda {
@@ -32,7 +32,7 @@ export function paraMesa(m: Record<string, unknown>): Mesa {
   return {
     id: String(m["id"]),
     identificacao: String(m["identificacao"]),
-    status: m["status"] === "ocupada" ? "ocupada" : "livre",
+    status: m["status"] === "ocupada" || m["status"] === "aguardando-conta" ? m["status"] : "livre",
   };
 }
 

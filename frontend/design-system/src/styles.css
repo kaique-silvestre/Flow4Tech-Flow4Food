@@ -662,21 +662,25 @@ body {
   background: currentcolor;
 }
 
-.f4-badge[data-status="aberta"] {
+.f4-badge[data-status="aberta"],
+.f4-badge[data-status="ocupada"] {
   background: var(--f4-success-soft);
   color: var(--f4-success);
 }
 
-.f4-badge[data-status="aberta"] .f4-badge-marker {
+.f4-badge[data-status="aberta"] .f4-badge-marker,
+.f4-badge[data-status="ocupada"] .f4-badge-marker {
   border-radius: 50%;
 }
 
-.f4-badge[data-status="aguardando-pagamento"] {
+.f4-badge[data-status="aguardando-pagamento"],
+.f4-badge[data-status="aguardando-conta"] {
   background: var(--f4-warning-soft);
   color: var(--f4-warning-ink);
 }
 
-.f4-badge[data-status="aguardando-pagamento"] .f4-badge-marker {
+.f4-badge[data-status="aguardando-pagamento"] .f4-badge-marker,
+.f4-badge[data-status="aguardando-conta"] .f4-badge-marker {
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
@@ -689,13 +693,21 @@ body {
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
 
-.f4-badge[data-status="fechada"] {
+.f4-badge[data-status="fechada"],
+.f4-badge[data-status="livre"] {
   background: var(--f4-hover);
   color: var(--f4-ink-muted);
 }
 
 .f4-badge[data-status="fechada"] .f4-badge-marker {
   border-radius: 2px;
+}
+
+/* A free table: a hollow ring, nothing filled (the opposite of occupied at a glance, and still readable without color). */
+.f4-badge[data-status="livre"] .f4-badge-marker {
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentcolor;
 }
 
 .f4-visually-hidden {

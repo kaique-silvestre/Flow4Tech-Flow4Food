@@ -97,7 +97,7 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
       return;
     }
 
-    if (mesaAlvo.status === "ocupada" && !jaConfirmouOcupada) {
+    if (mesaAlvo.status !== "livre" && !jaConfirmouOcupada) {
       setEtapa("ocupada");
       return;
     }

@@ -6,9 +6,9 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Map per area with status words (not only color) and elapsed time; tap free table = new comanda on it; tap occupied = its comandas.
-- [ ] Move-to-table sheet gated by permission; 409 conflict message keeps the user's work.
-- [ ] Hidden when the unit does not use tables; states loading, empty, error.
-- [ ] Screenshots at both viewports, light/dark; targets at least 44px.
+- [x] Map per area with status words (not only color) and elapsed time; tap free table = new comanda on it; tap occupied = its comandas.
+- [x] Move-to-table sheet gated by permission; 409 conflict message keeps the user's work.
+- [x] Hidden when the unit does not use tables; states loading, empty, error.
+- [x] Screenshots at both viewports, light/dark; targets at least 44px.

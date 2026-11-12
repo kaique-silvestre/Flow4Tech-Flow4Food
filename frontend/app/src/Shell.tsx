@@ -2,6 +2,8 @@ import { Button } from "@flow4tech/design-system";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect } from "react";
 import { BarraDeFila } from "./features/fila/BarraDeFila";
+import { useMapaDeMesas } from "./features/mesas/consultas";
+import { semMesas } from "./features/mesas/tipos";
 import { usePermissoes } from "./features/sessao/permissoes";
 import { sair, useSessao } from "./features/sessao/sessao";
 
@@ -10,11 +12,14 @@ export interface TabItem {
   label: string;
   /** The tab is absent (not disabled) for a caller who lacks it. */
   permissao: string;
+  /** Absent too when the unit has no tables to show (it does not use them, or none is registered). */
+  requerMesas?: boolean;
 }
 
 /** The slice ships Comandas and Caixa only; each later step shows or hides its tab by the caller's permission. */
 export const salaoTabs: readonly TabItem[] = [
   { to: "/salao", label: "Comandas", permissao: "comanda:ver" },
+  { to: "/salao/mesas", label: "Mesas", permissao: "mesa:ver", requerMesas: true },
   { to: "/salao/caixa", label: "Caixa", permissao: "caixa:ver" },
 ];
 
@@ -41,7 +46,9 @@ export function Shell({
   const navigate = useNavigate();
   useSairQuandoAnonima();
   const permissoes = usePermissoes();
-  const visiveis = tabs.filter((tab) => permissoes.pode(tab.permissao));
+  const mapa = useMapaDeMesas(permissoes.pode("mesa:ver") && tabs.some((tab) => tab.requerMesas));
+  const temMesas = mapa.data !== undefined && !semMesas(mapa.data);
+  const visiveis = tabs.filter((tab) => permissoes.pode(tab.permissao) && (!tab.requerMesas || temMesas));
   return (
     <div className="app-shell">
       <header className="app-topbar">

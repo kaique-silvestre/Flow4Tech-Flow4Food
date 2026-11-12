@@ -1,14 +1,20 @@
 export type ComandaStatus = "aberta" | "aguardando-pagamento" | "parada" | "fechada";
 
-const WORDS: Record<ComandaStatus, string> = {
+/** The derived status of a table on the map: free (hollow ring), occupied (filled circle), waiting for the bill (triangle). */
+export type MesaStatus = "livre" | "ocupada" | "aguardando-conta";
+
+const WORDS: Record<ComandaStatus | MesaStatus, string> = {
   aberta: "Aberta",
   "aguardando-pagamento": "Aguardando pagamento",
   parada: "Parada",
   fechada: "Fechada",
+  livre: "Livre",
+  ocupada: "Ocupada",
+  "aguardando-conta": "Aguardando conta",
 };
 
 export interface StatusBadgeProps {
-  status: ComandaStatus;
+  status: ComandaStatus | MesaStatus;
   /** Elapsed time after the word ("há 1h 12min"). */
   detail?: string | undefined;
 }

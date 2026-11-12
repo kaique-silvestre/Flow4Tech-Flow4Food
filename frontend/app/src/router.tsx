@@ -8,6 +8,7 @@ import { ComandasPage } from "./features/comandas/ComandasPage";
 import { TrocarSenhaPage } from "./features/conta/TrocarSenhaPage";
 import { UnidadePage } from "./features/conta/UnidadePage";
 import { EntrarPage } from "./features/entrar/EntrarPage";
+import { MapaDeMesasPage } from "./features/mesas/MapaDeMesasPage";
 import { aoEncerrarSessao, destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
 import { PessoasPage } from "./features/usuarios/PessoasPage";
 import { EntryShell, Shell, salaoTabs } from "./Shell";
@@ -62,6 +63,7 @@ const comandaRoute = createRoute({
   component: ComandaPage,
 });
 const caixaRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/caixa", component: CaixaPage });
+const mesasRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao/mesas", component: MapaDeMesasPage });
 
 const cardapioRoute = createRoute({
   getParentRoute: () => appLayout,
@@ -103,7 +105,7 @@ const unidadeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  appLayout.addChildren([salaoRoute, comandaRoute, caixaRoute, cardapioRoute, pessoasRoute]),
+  appLayout.addChildren([salaoRoute, comandaRoute, mesasRoute, caixaRoute, cardapioRoute, pessoasRoute]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);
 

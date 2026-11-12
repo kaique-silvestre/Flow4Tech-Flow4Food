@@ -1,0 +1,161 @@
+/* Table map: rows grouped by area, like the comanda list (a divider per row, no cards) */
+.mesas-area {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  margin: var(--f4-space-6) 0 var(--f4-space-1);
+  font-size: var(--f4-text-body);
+  font-weight: 600;
+}
+
+.mesas-area-conta {
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  font-weight: 400;
+}
+
+.mesa-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mesa-row {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "nome selo"
+    "detalhe selo";
+  align-items: center;
+  align-content: center;
+  column-gap: var(--f4-space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--f4-space-2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--f4-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.mesa-row {
+  cursor: pointer;
+}
+
+button.mesa-row:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+button.mesa-row:active:not(:disabled) {
+  background: var(--f4-hover);
+}
+
+button.mesa-row:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mesa-nome {
+  grid-area: nome;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--f4-text-row);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mesa-detalhe {
+  grid-area: detalhe;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mesa-row .f4-badge {
+  grid-area: selo;
+}
+
+/* Sheet of an occupied table: its comandas, each with the move action */
+.mesa-comandas {
+  display: grid;
+  gap: var(--f4-space-2);
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.mesa-comanda {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--f4-space-2);
+}
+
+.mesa-comanda .f4-btn {
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.mesa-comanda-ir {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mesa-nota {
+  margin: 0 0 var(--f4-space-3);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+/* Sheet "Trocar de mesa": the other tables of the unit, one tap selects */
+.mesa-opcoes {
+  display: grid;
+  max-height: 40dvh;
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.mesa-opcao {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--f4-space-2) var(--f4-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--f4-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mesa-opcao[aria-pressed="true"] {
+  background: var(--f4-surface-2);
+  box-shadow: inset 3px 0 0 var(--f4-accent);
+  font-weight: 600;
+}
+
+.mesa-opcao:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.mesa-opcao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
