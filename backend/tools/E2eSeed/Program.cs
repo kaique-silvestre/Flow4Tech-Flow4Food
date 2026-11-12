@@ -87,7 +87,7 @@ internal static class SeedMain
 
         await LinkAsync(ownerSource, OrgA, UnitA2, gerente);
 
-        var perfilGarcom = await perfis.CriarAsync(requestA, "Garçom", Rules("comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "mesa:ver", "produto:ver"));
+        var perfilGarcom = await perfis.CriarAsync(requestA, "Garçom", Rules("comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "mesa:ver", "produto:ver"));
         var perfilCaixa = await perfis.CriarAsync(
             requestA,
             "Caixa",

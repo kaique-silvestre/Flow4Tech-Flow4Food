@@ -676,6 +676,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/trocar-mesa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["trocarMesaDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas/{comandaId}/itens": {
         parameters: {
             query?: never;
@@ -830,6 +846,70 @@ export interface paths {
         get: operations["listMesas"];
         put?: never;
         post: operations["criarMesa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mesas/mapa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMapaDeMesas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mesas/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["criarArea"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mesas/areas/{areaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["atualizarArea"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mesas/{mesaId}/area": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["definirAreaDaMesa"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1028,6 +1108,24 @@ export interface components {
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
         };
+        AreaDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            unidadeId: string;
+            nome: string;
+            ativa: boolean;
+        };
+        AreaNoMapaDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            mesas: components["schemas"]["MesaNoMapaDto"][];
+        };
+        AtualizarAreaRequest: {
+            nome: null | string;
+            ativa: boolean;
+        };
         CaixaErro: {
             codigo: string;
         };
@@ -1144,6 +1242,9 @@ export interface components {
             /** Format: date-time */
             expiraEm: string;
         };
+        CriarAreaRequest: {
+            nome: null | string;
+        };
         CriarCategoriaRequest: {
             nome: null | string;
             /** Format: uuid */
@@ -1163,6 +1264,8 @@ export interface components {
             identificacao: null | string;
             /** Format: int32 */
             capacidade: null | number | string;
+            /** Format: uuid */
+            areaId?: null | string;
         };
         CriarProdutoRequest: {
             codigo: null | string;
@@ -1176,6 +1279,10 @@ export interface components {
             /** @default false */
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
+        };
+        DefinirAreaDaMesaRequest: {
+            /** Format: uuid */
+            areaId: null | string;
         };
         DefinirGruposDoProdutoRequest: {
             grupoIds: null | string[];
@@ -1282,6 +1389,10 @@ export interface components {
             senha: null | string;
             captchaResposta?: null | string;
         };
+        MapaDeMesasDto: {
+            areas: components["schemas"]["AreaNoMapaDto"][];
+            semArea: components["schemas"]["MesaNoMapaDto"][];
+        };
         MesaDto: {
             /** Format: uuid */
             id: string;
@@ -1292,9 +1403,25 @@ export interface components {
             capacidade: null | number | string;
             ativa: boolean;
             status: string;
+            /** Format: uuid */
+            areaId?: null | string;
         };
         MesaErro: {
             codigo: string;
+        };
+        MesaNoMapaDto: {
+            /** Format: uuid */
+            id: string;
+            identificacao: string;
+            /** Format: int32 */
+            capacidade: null | number | string;
+            /** Format: uuid */
+            areaId: null | string;
+            status: string;
+            /** Format: int32 */
+            comandasAbertas: number | string;
+            /** Format: date-time */
+            abertaDesde: null | string;
         };
         ModeloCriadoDto: {
             chave: string;
@@ -1499,6 +1626,12 @@ export interface components {
         };
         SolicitarRecuperacaoRequest: {
             email: null | string;
+        };
+        TrocarMesaRequest: {
+            /** Format: uuid */
+            mesaId: string;
+            /** Format: int32 */
+            versao: number | string;
         };
         TrocarSenhaErro: {
             codigo: string;
@@ -3914,6 +4047,73 @@ export interface operations {
             };
         };
     };
+    trocarMesaDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrocarMesaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
     listItensDaComanda: {
         parameters: {
             query?: never;
@@ -4625,6 +4825,228 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    getMapaDeMesas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapaDeMesasDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    criarArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriarAreaRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    atualizarArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                areaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AtualizarAreaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    definirAreaDaMesa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mesaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinirAreaDaMesaRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesaErro"];
+                };
             };
             /** @description Conflict */
             409: {

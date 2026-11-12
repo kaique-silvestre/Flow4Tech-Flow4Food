@@ -10,6 +10,7 @@ comanda:fechar
 comanda:lancar-item
 comanda:receber-pagamento
 comanda:remover-taxa-servico
+comanda:transferir-mesa
 comanda:ver
 comanda:ver-comandas-de-outros
 conta:gerir-google

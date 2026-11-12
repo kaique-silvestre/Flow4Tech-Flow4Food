@@ -1,4 +1,6 @@
 acesso:negar
+area:alterar
+area:criar
 autenticacao:bloquear
 autenticacao:falhar
 caixa:abrir
@@ -11,6 +13,7 @@ comanda:desfazer-rodada
 comanda:fechar
 comanda:lancar-rodada
 comanda:remover-taxa-servico
+comanda:transferir-mesa
 configuracao:alterar
 configuracao:restaurar
 conta:criar
@@ -28,6 +31,7 @@ convite:revogar
 grupo-opcao:alterar
 grupo-opcao:criar
 mesa:criar
+mesa:definir-area
 pagamento:registrar
 perfil:atribuir
 perfil:criar

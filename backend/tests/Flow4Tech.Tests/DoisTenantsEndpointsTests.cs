@@ -309,6 +309,65 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(3L, (await QueryAsync(a, "SELECT lancamentos FROM produtos_frequencia_garcom", r => r.GetInt64(0))).Single());
     }
 
+    [Fact]
+    public async Task Areas_the_table_map_and_moving_a_comanda_run_in_each_organization_and_nothing_of_it_crosses_to_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        // The same names in both organizations: uniqueness is per unit, never global.
+        var mapaA = await RunMapaAsync(client, salaoA);
+        var mapaB = await RunMapaAsync(client, salaoB);
+
+        foreach (var (salao, mapa) in new[] { (salaoA, mapaA), (salaoB, mapaB) })
+        {
+            using var response = await SendAsync(client, HttpMethod.Get, "/mesas/mapa", salao.Token);
+            var corpo = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            var area = Assert.Single(corpo.GetProperty("areas").EnumerateArray());
+            Assert.Equal((mapa.AreaId, "Varanda"), (area.GetProperty("id").GetGuid(), area.GetProperty("nome").GetString()));
+            var mesas = area.GetProperty("mesas").EnumerateArray().ToList();
+            Assert.Equal(mapa.MesaDestino, Assert.Single(mesas).GetProperty("id").GetGuid());
+            Assert.Equal(("ocupada", 1), (mesas[0].GetProperty("status").GetString(), mesas[0].GetProperty("comandasAbertas").GetInt32()));
+            var solta = corpo.GetProperty("semArea").EnumerateArray().Single();
+            Assert.Equal((mapa.MesaOrigem, "livre"), (solta.GetProperty("id").GetGuid(), solta.GetProperty("status").GetString()));
+        }
+
+        // The other organization neither reaches this area or table nor can move this comanda, and its own rows are untouched.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/mesas/areas/{mapaA.AreaId}", salaoB.Token, new { nome = "Roubada", ativa = false }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/mesas/{mapaA.MesaOrigem}/area", salaoB.Token, new { areaId = mapaB.AreaId }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/mesas/{mapaB.MesaOrigem}/area", salaoB.Token, new { areaId = mapaA.AreaId }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{mapaA.ComandaId}/trocar-mesa", salaoB.Token, new { mesaId = mapaB.MesaOrigem, versao = 2 }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{mapaB.ComandaId}/trocar-mesa", salaoB.Token, new { mesaId = mapaA.MesaOrigem, versao = 2 }));
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM areas", r => r.GetInt64(0))).Single());
+        Assert.Equal(mapaA.MesaDestino, (await QueryAsync(a, "SELECT mesa_id FROM comandas WHERE id = @c", r => r.GetGuid(0), ("c", mapaA.ComandaId))).Single());
+    }
+
+    private sealed record Mapeado(Guid AreaId, Guid MesaOrigem, Guid MesaDestino, Guid ComandaId);
+
+    /// <summary>One organization as its founder: an area "Varanda", a loose table and one in the area, a comanda opened on the loose one and moved into the area.</summary>
+    private static async Task<Mapeado> RunMapaAsync(HttpClient client, Salao salao)
+    {
+        using var area = await SendAsync(client, HttpMethod.Post, "/mesas/areas", salao.Token, new { nome = "Varanda" });
+        Assert.Equal(HttpStatusCode.Created, area.StatusCode);
+        var areaId = (await area.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var origem = await SendAsync(client, HttpMethod.Post, "/mesas", salao.Token, new { identificacao = "Balcao" });
+        using var destino = await SendAsync(client, HttpMethod.Post, "/mesas", salao.Token, new { identificacao = "V1", areaId });
+        Assert.Equal((HttpStatusCode.Created, HttpStatusCode.Created), (origem.StatusCode, destino.StatusCode));
+        var origemId = (await origem.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        var destinoId = (await destino.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { mesaId = origemId });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        using var movida = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/trocar-mesa", salao.Token, new { mesaId = destinoId, versao = comanda.Versao });
+        Assert.Equal(HttpStatusCode.OK, movida.StatusCode);
+        Assert.Equal(comanda.Versao + 1, (await movida.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("versao").GetInt32());
+        return new Mapeado(areaId, origemId, destinoId, comanda.Id);
+    }
+
     private sealed record Rapido(Guid MesaId, Guid ComandaId);
 
     /// <summary>Quick launch in one organization as its founder: table, comanda on it, one round, repeat the last round (two chopps with the add-on, R$ 29,70 with the fee), pay in cash, close.</summary>

@@ -21,6 +21,9 @@ public static class ComandaPermissions
     /// <summary>Launch a round of items into a comanda.</summary>
     public const string LancarItem = "comanda:lancar-item";
 
+    /// <summary>Move an open comanda to another table of the unit.</summary>
+    public const string TransferirMesa = "comanda:transferir-mesa";
+
     /// <summary>Cancel one item of a comanda (with a reason). Sensitive: a denial is audited.</summary>
     public const string CancelarItem = "comanda:cancelar-item";
 
@@ -99,11 +102,21 @@ public interface IComandasStore
     /// <summary>Bumps the version of an OPEN comanda whatever it is now (taking the row lock until the unit of work ends); false when the comanda is not open. For writes that do not depend on what the caller last saw.</summary>
     Task<bool> AvancarVersaoSemConferirAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
 
+    /// <summary>Moves an OPEN comanda to the table (and renames it to <paramref name="identificacao"/>); false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> TrocarMesaAsync(Guid organizationId, Guid comandaId, Guid mesaId, string identificacao, CancellationToken cancellationToken);
+
     /// <summary>The most recently CLOSED comanda that held the table in the unit (closed time, then id); only <paramref name="garcomId"/>'s when given. Null when there is none.</summary>
     Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken);
 
     /// <summary>Open comandas of the unit, newest first; only <paramref name="garcomId"/>'s when given.</summary>
     Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken);
+}
+
+public sealed record ComandaTransferida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, Guid? MesaDeId, Guid MesaParaId, Guid TransferidaPor) : IDomainEvent
+{
+    public const string Type = "comanda.transferida";
+
+    public string EventType => Type;
 }
 
 public sealed record RodadaEnviada(Guid EventId, Guid ComandaId, Guid RodadaId, Guid UnidadeId, int Itens, long ValorCentavos, Guid EnviadaPor) : IDomainEvent

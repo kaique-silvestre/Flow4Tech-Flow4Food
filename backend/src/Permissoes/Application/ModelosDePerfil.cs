@@ -12,7 +12,7 @@ public static class ModelosDePerfil
 {
     private static readonly string[] Garcom =
     [
-        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "mesa:ver", "produto:ver",
+        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "mesa:ver", "produto:ver",
     ];
 
     private static readonly string[] Caixa =
@@ -25,7 +25,7 @@ public static class ModelosDePerfil
     private static readonly string[] Gerente =
     [
         "comanda:abrir", "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada",
-        "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "pagamento:registrar", "pagamento:ver",
+        "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "pagamento:registrar", "pagamento:ver",
         "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
     ];
 

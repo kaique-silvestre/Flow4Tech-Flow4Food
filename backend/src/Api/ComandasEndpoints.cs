@@ -70,6 +70,9 @@ internal sealed record ReceberPagamentoRequest(Guid PagamentoId, long RecebidoCe
 
 internal sealed record VersaoRequest(int Versao);
 
+/// <summary>Moves an open comanda to <c>MesaId</c>, a table of the same unit; <c>Versao</c> is the one the screen last saw.</summary>
+internal sealed record TrocarMesaRequest(Guid MesaId, int Versao);
+
 /// <summary><c>VersaoAtual</c> is set when a write carried a stale version.</summary>
 internal sealed record ComandaErro(string Codigo, int? VersaoAtual = null);
 
@@ -105,6 +108,22 @@ internal static class ComandasEndpoints
             .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ComandaErro>(StatusCodes.Status409Conflict);
+
+        app.MapPost("/comandas/{comandaId:guid}/trocar-mesa", async (Guid comandaId, TrocarMesaRequest body, RequestContextAccessor request, GestaoDaTrocaDeMesa troca, CancellationToken cancellationToken) =>
+            {
+                var r = await troca.TrocarAsync(request, comandaId, body.MesaId, body.Versao, cancellationToken);
+                return r.Resultado == ResultadoDaTrocaDeMesa.Ok ? Results.Ok(Dto(r.Comanda!)) : Erro(r);
+            })
+            .WithName("trocarMesaDaComanda")
+            .RequireSession()
+            .WithBodyLimit(Body)
+            .RequirePermission(ComandaPermissions.TransferirMesa)
+            .Produces<ComandaDto>()
+            .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ComandaErro>(StatusCodes.Status404NotFound)
             .Produces<ComandaErro>(StatusCodes.Status409Conflict);
 
         app.MapGet("/comandas/{comandaId:guid}/itens", async (Guid comandaId, RequestContextAccessor request, GestaoDeRodadas rodadas, CancellationToken cancellationToken) =>
@@ -336,6 +355,16 @@ internal static class ComandasEndpoints
 
     private static ComandaDto Dto(Comanda c) =>
         new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm);
+
+    private static IResult Erro(ResultadoDaTroca r) => r.Resultado switch
+    {
+        ResultadoDaTrocaDeMesa.ComandaNaoEncontrada or ResultadoDaTrocaDeMesa.MesaNaoEncontrada => Results.Json(new ComandaErro("nao-encontrada"), statusCode: StatusCodes.Status404NotFound),
+        ResultadoDaTrocaDeMesa.MesasDesligadas => Results.Json(new ComandaErro("mesas-desligadas"), statusCode: StatusCodes.Status409Conflict),
+        ResultadoDaTrocaDeMesa.ComandaNaoAberta => Results.Json(new ComandaErro("comanda-nao-aberta"), statusCode: StatusCodes.Status409Conflict),
+        ResultadoDaTrocaDeMesa.MesmaMesa => Results.Json(new ComandaErro("mesma-mesa"), statusCode: StatusCodes.Status409Conflict),
+        ResultadoDaTrocaDeMesa.VersaoDesatualizada => Results.Json(new ComandaErro("versao-desatualizada", r.VersaoAtual), statusCode: StatusCodes.Status409Conflict),
+        _ => Results.Json(new ComandaErro("invalido"), statusCode: StatusCodes.Status400BadRequest),
+    };
 
     private static IResult Erro(ResultadoDeAbrir r) => r.Resultado switch
     {

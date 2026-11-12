@@ -25,6 +25,33 @@ internal sealed class MesaRow
     public bool Ativa { get; set; }
 
     public DateTimeOffset CriadaEm { get; set; }
+
+    public Guid? AreaId { get; set; }
+}
+
+internal sealed class AreaRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public bool Ativa { get; set; }
+
+    public DateTimeOffset CriadaEm { get; set; }
+}
+
+/// <summary>Projection of the map query: one row per table held by open comandas.</summary>
+internal sealed class OcupacaoRow
+{
+    public Guid MesaId { get; set; }
+
+    public int Abertas { get; set; }
+
+    public DateTimeOffset PrimeiraAbertura { get; set; }
 }
 
 internal sealed class ComandaRow
@@ -138,10 +165,12 @@ internal sealed class NumeracaoRow
     public int Ultimo { get; set; }
 }
 
-/// <summary>EF mapping of the tables and comandas (schemas owned by <c>0017_mesas.sql</c> and <c>0018_comandas.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
+/// <summary>EF mapping of the tables, areas and comandas (schemas owned by <c>0017_mesas.sql</c>, <c>0018_comandas.sql</c> and <c>0024_areas.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
     public DbSet<MesaRow> Mesas => Set<MesaRow>();
+
+    public DbSet<AreaRow> Areas => Set<AreaRow>();
 
     public DbSet<ComandaRow> Comandas => Set<ComandaRow>();
 
@@ -165,6 +194,18 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
             e.Property(x => x.Identificacao).HasColumnName("identificacao");
             e.Property(x => x.Capacidade).HasColumnName("capacidade");
+            e.Property(x => x.Ativa).HasColumnName("ativa");
+            e.Property(x => x.CriadaEm).HasColumnName("criada_em");
+            e.Property(x => x.AreaId).HasColumnName("area_id");
+        });
+        modelBuilder.Entity<AreaRow>(e =>
+        {
+            e.ToTable("areas");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
             e.Property(x => x.Ativa).HasColumnName("ativa");
             e.Property(x => x.CriadaEm).HasColumnName("criada_em");
         });
@@ -256,8 +297,8 @@ public sealed class PostgresMesasStore : IMesasStore
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Database.ExecuteSqlAsync(
             $"""
-            INSERT INTO mesas (id, organizacao_id, unidade_id, identificacao, capacidade, ativa, criada_em)
-            VALUES ({mesa.Id}, {organizationId}, {mesa.UnidadeId}, {mesa.Identificacao}, {mesa.Capacidade}, {mesa.Ativa}, {now})
+            INSERT INTO mesas (id, organizacao_id, unidade_id, identificacao, capacidade, ativa, criada_em, area_id)
+            VALUES ({mesa.Id}, {organizationId}, {mesa.UnidadeId}, {mesa.Identificacao}, {mesa.Capacidade}, {mesa.Ativa}, {now}, {mesa.AreaId})
             ON CONFLICT (organizacao_id, unidade_id, lower(identificacao)) DO NOTHING
             """,
             cancellationToken);
@@ -267,7 +308,7 @@ public sealed class PostgresMesasStore : IMesasStore
     public async Task<IReadOnlyList<Mesa>> ListarAtivasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
-        return await Ativas(context, unitId).Select(m => new Mesa(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa)).ToListAsync(cancellationToken);
+        return await Ativas(context, unitId).Select(m => new Mesa(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa, m.AreaId)).ToListAsync(cancellationToken);
     }
 
     public async Task<Mesa?> AcharAtivaAsync(Guid organizationId, Guid unitId, Guid mesaId, CancellationToken cancellationToken)
@@ -275,9 +316,95 @@ public sealed class PostgresMesasStore : IMesasStore
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         return await context.Mesas.AsNoTracking()
             .Where(m => m.Id == mesaId && m.UnidadeId == unitId && m.Ativa)
-            .Select(m => new Mesa(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa))
+            .Select(m => new Mesa(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa, m.AreaId))
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<Mesa?> AcharAsync(Guid organizationId, Guid unitId, Guid mesaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Mesas.AsNoTracking()
+            .Where(m => m.Id == mesaId && m.UnidadeId == unitId)
+            .Select(m => new Mesa(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa, m.AreaId))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, OcupacaoDaMesa>> OcupacaoAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await Ocupacao(context, unitId).ToListAsync(cancellationToken);
+        // Waiting for the bill needs the pre-bill (F4-0067): until it lands no comanda has asked for it.
+        return rows.ToDictionary(r => r.MesaId, r => new OcupacaoDaMesa(r.Abertas, 0, r.PrimeiraAbertura));
+    }
+
+    public async Task<IReadOnlyList<Area>> ListarAreasAtivasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await AreasAtivas(context, unitId).Select(a => new Area(a.Id, a.UnidadeId, a.Nome, a.Ativa)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<Area?> AcharAreaAtivaAsync(Guid organizationId, Guid unitId, Guid areaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Areas.AsNoTracking()
+            .Where(a => a.Id == areaId && a.UnidadeId == unitId && a.Ativa)
+            .Select(a => new Area(a.Id, a.UnidadeId, a.Nome, a.Ativa))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<Area?> AcharAreaAsync(Guid organizationId, Guid unitId, Guid areaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Areas.AsNoTracking()
+            .Where(a => a.Id == areaId && a.UnidadeId == unitId)
+            .Select(a => new Area(a.Id, a.UnidadeId, a.Nome, a.Ativa))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<bool> TentarInserirAreaAsync(Guid organizationId, Area area, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        await TravarAreasAsync(context, area.UnidadeId, cancellationToken);
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO areas (id, organizacao_id, unidade_id, nome, ativa, criada_em)
+            VALUES ({area.Id}, {organizationId}, {area.UnidadeId}, {area.Nome}, {area.Ativa}, {now})
+            ON CONFLICT (organizacao_id, unidade_id, lower(nome)) DO NOTHING
+            """,
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> TentarAtualizarAreaAsync(Guid organizationId, Guid unitId, Guid areaId, string nome, bool ativa, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        await TravarAreasAsync(context, unitId, cancellationToken);
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE areas SET nome = {nome}, ativa = {ativa}
+            WHERE id = {areaId} AND unidade_id = {unitId}
+              AND NOT EXISTS (SELECT 1 FROM areas o WHERE o.unidade_id = {unitId} AND o.id <> {areaId} AND lower(o.nome) = lower({nome}))
+            """,
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> DefinirAreaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? areaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE mesas SET area_id = {areaId} WHERE id = {mesaId} AND unidade_id = {unitId} AND ativa",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    /// <summary>
+    /// Serializes the writers of one unit's areas until the unit of work ends, so two simultaneous creates/renames to the same name cannot abort a transaction on the unique index:
+    /// the second one waits, then sees the first one's row.
+    /// </summary>
+    private static Task<int> TravarAreasAsync(MesasDbContext context, Guid unitId, CancellationToken cancellationToken) =>
+        context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"areas:" + unitId.ToString("D")}, 0))", cancellationToken);
 
     public async Task<IReadOnlySet<Guid>> OcupadasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
     {
@@ -288,6 +415,17 @@ public sealed class PostgresMesasStore : IMesasStore
     /// <summary>Tables held by an open comanda, exposed so a test can assert its SQL text.</summary>
     internal static IQueryable<Guid> Ocupadas(MesasDbContext context, Guid unitId) =>
         context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.Estado == "aberta" && c.MesaId != null).Select(c => c.MesaId!.Value).Distinct();
+
+    /// <summary>Open comandas per table (count and first opening), exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
+    internal static IQueryable<OcupacaoRow> Ocupacao(MesasDbContext context, Guid unitId) =>
+        context.Comandas.AsNoTracking()
+            .Where(c => c.UnidadeId == unitId && c.Estado == "aberta" && c.MesaId != null)
+            .GroupBy(c => c.MesaId!.Value)
+            .Select(g => new OcupacaoRow { MesaId = g.Key, Abertas = g.Count(), PrimeiraAbertura = g.Min(c => c.AbertaEm) });
+
+    /// <summary>The active areas of the unit by name, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
+    internal static IQueryable<AreaRow> AreasAtivas(MesasDbContext context, Guid unitId) =>
+        context.Areas.AsNoTracking().Where(a => a.UnidadeId == unitId && a.Ativa).OrderBy(a => a.Nome).ThenBy(a => a.Id);
 
     /// <summary>The list query, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
     internal static IQueryable<MesaRow> Ativas(MesasDbContext context, Guid unitId) =>
@@ -354,6 +492,15 @@ public sealed class PostgresComandasStore : IComandasStore
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Database.ExecuteSqlAsync(
             $"UPDATE comandas SET estado = 'fechada', fechada_em = {fechadaEm} WHERE id = {comandaId} AND estado = 'aberta'",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> TrocarMesaAsync(Guid organizationId, Guid comandaId, Guid mesaId, string identificacao, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET mesa_id = {mesaId}, identificacao = {identificacao} WHERE id = {comandaId} AND estado = 'aberta'",
             cancellationToken);
         return rows == 1;
     }
@@ -581,6 +728,8 @@ public static class ComandasServices
         ArgumentNullException.ThrowIfNull(services);
         services.AddSingleton<IMesasStore, PostgresMesasStore>();
         services.AddSingleton<GestaoDeMesas>();
+        services.AddSingleton<GestaoDeAreas>();
+        services.AddSingleton<ConsultaDoMapaDeMesas>();
         services.TryAddSingleton<OutboxWriter>();
         services.AddSingleton<IComandasStore, PostgresComandasStore>();
         services.AddSingleton<IEventosDeComandas, OutboxEventosDeComandas>();
@@ -588,6 +737,7 @@ public static class ComandasServices
         services.AddSingleton<IRodadasStore, PostgresRodadasStore>();
         services.AddSingleton<GestaoDeRodadas>();
         services.AddSingleton<GestaoDoRecebimento>();
+        services.AddSingleton<GestaoDaTrocaDeMesa>();
         services.AddSingleton<ConsultaDaUltimaVez>();
         return services;
     }

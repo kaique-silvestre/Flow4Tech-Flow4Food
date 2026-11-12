@@ -92,6 +92,16 @@ public static class RegrasDeComanda
     /// <summary>A comanda closes only at balance zero.</summary>
     public static bool PodeFechar(ContaDaComanda conta) => conta is not null && conta.SaldoCentavos == 0;
 
+    /// <summary>
+    /// The name a comanda carries after moving to another table. A comanda named after its table (the name opening it gives) follows the move; a comanda with any other name keeps it.
+    /// </summary>
+    public static string IdentificacaoAposTrocaDeMesa(string atual, string? identificacaoDaMesaAnterior, string identificacaoDaMesaNova)
+    {
+        ArgumentNullException.ThrowIfNull(atual);
+        ArgumentNullException.ThrowIfNull(identificacaoDaMesaNova);
+        return identificacaoDaMesaAnterior is not null && string.Equals(atual, identificacaoDaMesaAnterior, StringComparison.Ordinal) ? identificacaoDaMesaNova : atual;
+    }
+
     /// <summary>Optimistic concurrency: a write is accepted only against the version the caller last saw.</summary>
     public static bool VersaoConfere(int enviada, int atual) => enviada == atual;
 }

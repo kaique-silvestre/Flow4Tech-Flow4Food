@@ -2247,6 +2247,84 @@
         "x-permission": "comanda:abrir"
       }
     },
+    "/comandas/{comandaId}/trocar-mesa": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "trocarMesaDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocarMesaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:transferir-mesa"
+      }
+    },
     "/comandas/{comandaId}/itens": {
       "get": {
         "tags": [
@@ -3057,6 +3135,239 @@
           "403": {
             "description": "Forbidden"
           },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "mesa:gerenciar"
+      }
+    },
+    "/mesas/mapa": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getMapaDeMesas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapaDeMesasDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "mesa:ver"
+      }
+    },
+    "/mesas/areas": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarArea",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarAreaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "mesa:gerenciar"
+      }
+    },
+    "/mesas/areas/{areaId}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "atualizarArea",
+        "parameters": [
+          {
+            "name": "areaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarAreaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "mesa:gerenciar"
+      }
+    },
+    "/mesas/{mesaId}/area": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "definirAreaDaMesa",
+        "parameters": [
+          {
+            "name": "mesaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefinirAreaDaMesaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MesaErro"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Conflict",
             "content": {
@@ -3737,6 +4048,72 @@
           }
         }
       },
+      "AreaDto": {
+        "required": [
+          "id",
+          "unidadeId",
+          "nome",
+          "ativa"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unidadeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "ativa": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AreaNoMapaDto": {
+        "required": [
+          "id",
+          "nome",
+          "mesas"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "mesas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MesaNoMapaDto"
+            }
+          }
+        }
+      },
+      "AtualizarAreaRequest": {
+        "required": [
+          "nome",
+          "ativa"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ativa": {
+            "type": "boolean"
+          }
+        }
+      },
       "CaixaErro": {
         "required": [
           "codigo"
@@ -4205,6 +4582,20 @@
           }
         }
       },
+      "CriarAreaRequest": {
+        "required": [
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CriarCategoriaRequest": {
         "required": [
           "nome"
@@ -4292,6 +4683,13 @@
               "string"
             ],
             "format": "int32"
+          },
+          "areaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4345,6 +4743,21 @@
                 "$ref": "#/components/schemas/PromocaoDto"
               }
             ]
+          }
+        }
+      },
+      "DefinirAreaDaMesaRequest": {
+        "required": [
+          "areaId"
+        ],
+        "type": "object",
+        "properties": {
+          "areaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4801,6 +5214,27 @@
           }
         }
       },
+      "MapaDeMesasDto": {
+        "required": [
+          "areas",
+          "semArea"
+        ],
+        "type": "object",
+        "properties": {
+          "areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AreaNoMapaDto"
+            }
+          },
+          "semArea": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MesaNoMapaDto"
+            }
+          }
+        }
+      },
       "MesaDto": {
         "required": [
           "id",
@@ -4837,6 +5271,13 @@
           },
           "status": {
             "type": "string"
+          },
+          "areaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4848,6 +5289,61 @@
         "properties": {
           "codigo": {
             "type": "string"
+          }
+        }
+      },
+      "MesaNoMapaDto": {
+        "required": [
+          "id",
+          "identificacao",
+          "capacidade",
+          "areaId",
+          "status",
+          "comandasAbertas",
+          "abertaDesde"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identificacao": {
+            "type": "string"
+          },
+          "capacidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "areaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "comandasAbertas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "abertaDesde": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -5652,6 +6148,27 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "TrocarMesaRequest": {
+        "required": [
+          "mesaId",
+          "versao"
+        ],
+        "type": "object",
+        "properties": {
+          "mesaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
