@@ -205,6 +205,6 @@ input:checked + .mov-marca[data-forma="radio"]::after {
 }
 
 .menu-lista li[data-grupo-novo="true"] {
+  /* One separator only: the line under the last row of the previous group, then the gap. */
   margin-top: var(--f4-space-3);
-  border-top: 1px solid var(--f4-border-strong);
 }
