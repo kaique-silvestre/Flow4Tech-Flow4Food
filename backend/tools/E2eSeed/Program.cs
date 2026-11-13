@@ -88,11 +88,11 @@ internal static class SeedMain
 
         await LinkAsync(ownerSource, OrgA, UnitA2, gerente);
 
-        var perfilGarcom = await perfis.CriarAsync(requestA, "Garçom", Rules("comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "mesa:ver", "produto:ver"));
+        var perfilGarcom = await perfis.CriarAsync(requestA, "Garçom", Rules("comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "comanda:dividir", "mesa:ver", "produto:ver"));
         var perfilCaixa = await perfis.CriarAsync(
             requestA,
             "Caixa",
-            Rules("comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "pagamento:registrar", "pagamento:ver", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver"));
+            Rules("comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir", "pagamento:registrar", "pagamento:ver", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver"));
         Expect(perfilGarcom.Resultado == ResultadoGestao.Ok && perfilCaixa.Resultado == ResultadoGestao.Ok, "profiles");
         Expect(await perfis.AtribuirAsync(requestA, garcom, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign garcom");
         Expect(await perfis.AtribuirAsync(requestA, caixa, perfilCaixa.Id!.Value) == ResultadoGestao.Ok, "assign caixa");

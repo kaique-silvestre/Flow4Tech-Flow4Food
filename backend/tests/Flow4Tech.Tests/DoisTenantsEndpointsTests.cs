@@ -496,6 +496,73 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         return new Movido(x.Id, y.Id, z.GetProperty("id").GetGuid(), item1, separado.GetProperty("origem").GetProperty("versao").GetInt32(), 2);
     }
 
+    [Fact]
+    public async Task Splitting_the_bill_runs_in_each_organization_and_one_cannot_preview_record_or_read_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var divididoA = await RunDivisaoAsync(client, salaoA);
+        var divididoB = await RunDivisaoAsync(client, salaoB);
+
+        // Each organization ends with its own recorded split (two parts that add up to the bill) and one event; the other one sees none of it.
+        foreach (var (tenant, dividido) in new[] { (a, divididoA), (b, divididoB) })
+        {
+            Assert.Equal((1L, 2L, dividido.Total), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM divisoes), (SELECT count(*) FROM divisao_partes), (SELECT sum(total_centavos) FROM divisao_partes)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM outbox_eventos WHERE tipo = 'comanda.dividida'", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:dividir'", r => r.GetInt64(0))).Single());
+        }
+
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, divididoA), (salaoA.Token, divididoB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/divisao/previa", intruso, new { modo = "iguais", partes = 2 }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/divisao", intruso, new { divisaoId = Guid.CreateVersion7(), versao = alvo.Versao, pedido = new { modo = "iguais", partes = 2 } }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.ComandaId}/divisao", intruso));
+        }
+
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM divisoes", r => r.GetInt64(0))).Single());
+        Assert.Equal(1L, (await QueryAsync(b, "SELECT count(*) FROM divisoes", r => r.GetInt64(0))).Single());
+    }
+
+    private sealed record Dividido(Guid ComandaId, int Versao, long Total);
+
+    /// <summary>One organization as its founder: a comanda with two items on two seats, previewed, recorded by seat, read back, and the recorded split repeated by its client id.</summary>
+    private static async Task<Dividido> RunDivisaoAsync(HttpClient client, Salao salao)
+    {
+        async Task<System.Text.Json.JsonElement> CallAsync(HttpMethod metodo, string caminho, object? corpo, HttpStatusCode esperado)
+        {
+            using var response = await SendAsync(client, metodo, caminho, salao.Token, corpo);
+            Assert.Equal(esperado, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        }
+
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { identificacao = "Divisao", mesaId = (Guid?)null, pessoas = (int?)null });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        var rodada = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 1, assento = 1, opcaoIds = new[] { salao.OpcaoId } }, new { produtoId = salao.ProdutoId, quantidade = 1, assento = 2, opcaoIds = new[] { salao.OpcaoId } } } }, HttpStatusCode.Created);
+        var versao = rodada.GetProperty("comandaVersao").GetInt32();
+
+        var previa = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/divisao/previa", new { modo = "assento", gorjetaCentavos = 100 }, HttpStatusCode.OK);
+        var total = previa.GetProperty("totalCentavos").GetInt64();
+        Assert.Equal(total, previa.GetProperty("partes").EnumerateArray().Sum(p => p.GetProperty("totalCentavos").GetInt64()));
+        Assert.Equal(100L, previa.GetProperty("partes").EnumerateArray().Sum(p => p.GetProperty("gorjetaCentavos").GetInt64()));
+        Assert.Equal(versao, previa.GetProperty("comandaVersao").GetInt32());
+
+        var id = Guid.CreateVersion7();
+        var pedido = new { modo = "assento", gorjetaCentavos = 100 };
+        var gravada = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/divisao", new { divisaoId = id, versao, pedido }, HttpStatusCode.Created);
+        Assert.Equal((id, true, versao + 1), (gravada.GetProperty("id").GetGuid(), gravada.GetProperty("vigente").GetBoolean(), gravada.GetProperty("comandaVersao").GetInt32()));
+        var repetida = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/divisao", new { divisaoId = id, versao, pedido }, HttpStatusCode.OK);
+        Assert.Equal(gravada.GetProperty("criadoEm").GetString(), repetida.GetProperty("criadoEm").GetString());
+        var lida = await CallAsync(HttpMethod.Get, $"/comandas/{comanda.Id}/divisao", null, HttpStatusCode.OK);
+        Assert.Equal(id, lida.GetProperty("id").GetGuid());
+        return new Dividido(comanda.Id, versao + 1, total);
+    }
+
     private sealed record Descontado(Guid ComandaId, Guid ItemId, Guid DescontoId, int Versao);
 
     /// <summary>One organization as its founder: a comanda with 2 chopps and 1 more of another launch, 10 percent off the comanda, then the first line as a courtesy.</summary>

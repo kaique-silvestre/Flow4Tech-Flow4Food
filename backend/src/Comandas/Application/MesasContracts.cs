@@ -32,6 +32,8 @@ public static class ComandasAuditActions
 
     public const string JuntarComanda = "comanda:juntar";
 
+    public const string DividirConta = "comanda:dividir";
+
     public const string AbrirComanda = "comanda:abrir";
 
     public const string LancarRodada = "comanda:lancar-rodada";

@@ -12,6 +12,7 @@ comanda:cancelar-item
 comanda:cortesia
 comanda:desconto
 comanda:desfazer-rodada
+comanda:dividir
 comanda:fechar
 comanda:juntar
 comanda:lancar-item

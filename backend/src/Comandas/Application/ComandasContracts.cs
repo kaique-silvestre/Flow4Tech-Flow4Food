@@ -30,6 +30,9 @@ public static class ComandaPermissions
     /// <summary>Merge an open comanda into another open comanda of the unit (the first one is closed by the merge).</summary>
     public const string Juntar = "comanda:juntar";
 
+    /// <summary>Preview and record the split of a comanda's bill (equal parts, by seat, by item, free values, by percent).</summary>
+    public const string Dividir = "comanda:dividir";
+
     /// <summary>Change the quantity or the note of an item already launched (the frozen price never changes).</summary>
     public const string AlterarItem = "comanda:alterar-item";
 
@@ -175,6 +178,14 @@ public sealed record ItensTransferidos(Guid EventId, Guid UnidadeId, Guid Origem
     public string EventType => Type;
 }
 
+/// <summary>The bill of a comanda was split and the split recorded (<c>comanda.dividida</c>).</summary>
+public sealed record ComandaDividida(Guid EventId, Guid ComandaId, Guid UnidadeId, int ComandaNumero, Guid DivisaoId, string Modo, int Partes, long TotalCentavos, long GorjetaCentavos, Guid DivididaPor) : IDomainEvent
+{
+    public const string Type = "comanda.dividida";
+
+    public string EventType => Type;
+}
+
 /// <summary>A comanda merged into another: its launched items moved to <paramref name="DestinoId"/> and it closed with no balance.</summary>
 public sealed record ComandaJuntada(Guid EventId, Guid UnidadeId, Guid OrigemId, int OrigemNumero, Guid DestinoId, int DestinoNumero, int ItensMovidos, Guid JuntadaPor) : IDomainEvent
 {
@@ -296,6 +307,33 @@ public interface IRodadasStore
 
 /// <summary>One line of a comanda's timeline: the audit record behind it. <c>Antes</c> and <c>Depois</c> hold only top-level scalar fields that are not secrets.</summary>
 public sealed record EventoDoHistorico(Guid Id, string Acao, DateTimeOffset Quando, Guid? UsuarioId, string? UsuarioNome, IReadOnlyDictionary<string, string> Antes, IReadOnlyDictionary<string, string> Depois);
+
+/// <summary>A recorded split: the parts as computed by <see cref="RegrasDeDivisao"/>, the fingerprint of the bill they were computed from and the comanda version it produced.</summary>
+public sealed record DivisaoGravada(
+    Guid Id,
+    Guid ComandaId,
+    Guid UnidadeId,
+    ModoDeDivisao Modo,
+    int ComandaVersao,
+    string Assinatura,
+    long TotalCentavos,
+    long TaxaServicoCentavos,
+    long GorjetaCentavos,
+    Guid CriadoPor,
+    DateTimeOffset CriadoEm,
+    IReadOnlyList<ParteDaDivisao> Partes);
+
+/// <summary>Port: the recorded splits of the current organization. Runs inside a unit of work (RLS filters). Rows are written once.</summary>
+public interface IDivisoesStore
+{
+    Task<DivisaoGravada?> AcharAsync(Guid organizationId, Guid divisaoId, CancellationToken cancellationToken);
+
+    /// <summary>The latest split recorded for the comanda (instant, then id); null when none.</summary>
+    Task<DivisaoGravada?> UltimaDaComandaAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
+
+    /// <summary>Writes the split and its parts; false when the id already existed (nothing is written then).</summary>
+    Task<bool> InserirAsync(Guid organizationId, DivisaoGravada divisao, CancellationToken cancellationToken);
+}
 
 /// <summary>Port: reads the audit trail of one comanda (its own records, its rounds', its items' and its payments'). Runs inside a unit of work (RLS filters).</summary>
 public interface IHistoricoDaComanda

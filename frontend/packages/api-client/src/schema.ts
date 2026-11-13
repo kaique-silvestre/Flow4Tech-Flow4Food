@@ -1060,6 +1060,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/divisao/previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previaDivisaoDaConta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/divisao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDivisaoDaComanda"];
+        put?: never;
+        post: operations["dividirContaDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -1590,6 +1622,37 @@ export interface components {
             /** Format: int32 */
             versao: number | string;
         };
+        DividirContaRequest: {
+            /** Format: uuid */
+            divisaoId: string;
+            /** Format: int32 */
+            versao: number | string;
+            pedido: components["schemas"]["PedidoDeDivisaoRequest"];
+        };
+        DivisaoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            comandaId: string;
+            modo: string;
+            /** Format: int32 */
+            comandaVersao: number | string;
+            vigente: boolean;
+            /** Format: int64 */
+            totalCentavos: number | string;
+            /** Format: int64 */
+            taxaServicoCentavos: number | string;
+            /** Format: int64 */
+            gorjetaCentavos: number | string;
+            /** Format: date-time */
+            criadoEm: string;
+            partes: components["schemas"]["ParteDaDivisaoDto"][];
+        };
+        DivisaoErro: {
+            codigo: string;
+            /** Format: int32 */
+            versaoAtual?: null | number | string;
+        };
         EventoDoHistoricoDto: {
             /** Format: uuid */
             id: string;
@@ -1681,6 +1744,8 @@ export interface components {
             motivoDoTipo: null | string;
             /** Format: int64 */
             valorDeTabelaCentavos: number | string;
+            /** Format: int32 */
+            assento?: null | number | string;
         };
         ItemIgnoradoDto: {
             /** Format: uuid */
@@ -1710,6 +1775,8 @@ export interface components {
             quantidade: number | string;
             observacao: null | string;
             opcaoIds?: null | string[];
+            /** Format: int32 */
+            assento?: null | number | string;
         };
         LancarRodadaRequest: {
             /** Format: uuid */
@@ -1837,6 +1904,33 @@ export interface components {
             /** Format: uuid */
             operadorId: string;
         };
+        ParteDaDivisaoDto: {
+            /** Format: int32 */
+            numero: number | string;
+            /** Format: int32 */
+            assento: null | number | string;
+            itemIds: string[];
+            /** Format: int64 */
+            consumoCentavos: number | string;
+            /** Format: int64 */
+            taxaServicoCentavos: number | string;
+            /** Format: int64 */
+            totalCentavos: number | string;
+            /** Format: int64 */
+            gorjetaCentavos: number | string;
+            /** Format: int64 */
+            aPagarCentavos: number | string;
+        };
+        PedidoDeDivisaoRequest: {
+            modo: string;
+            /** Format: int32 */
+            partes: null | number | string;
+            grupos: null | string[][];
+            valores: null | (number | string)[];
+            percentuais: null | (number | string)[];
+            /** Format: int64 */
+            gorjetaCentavos: null | number | string;
+        };
         PerfilDto: {
             /** Format: uuid */
             id: string;
@@ -1854,6 +1948,18 @@ export interface components {
         };
         PermissoesDoUsuarioResponse: {
             permissoes: string[];
+        };
+        PreviaDaDivisaoDto: {
+            modo: string;
+            /** Format: int32 */
+            comandaVersao: number | string;
+            /** Format: int64 */
+            totalCentavos: number | string;
+            /** Format: int64 */
+            taxaServicoCentavos: number | string;
+            /** Format: int64 */
+            gorjetaCentavos: number | string;
+            partes: components["schemas"]["ParteDaDivisaoDto"][];
         };
         ProdutoDto: {
             /** Format: uuid */
@@ -6022,6 +6128,203 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+        };
+    };
+    previaDivisaoDaConta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoDeDivisaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviaDaDivisaoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+        };
+    };
+    getDivisaoDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+        };
+    };
+    dividirContaDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DividirContaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DivisaoErro"];
                 };
             };
         };

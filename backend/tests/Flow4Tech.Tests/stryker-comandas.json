@@ -1,7 +1,7 @@
 {
   "stryker-config": {
     "project": "Flow4Tech.Comandas.Domain.csproj",
-    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests|FullyQualifiedName~OpcoesRulesTests|FullyQualifiedName~DescontoRulesTests|FullyQualifiedName~DescontoPropertyTests|FullyQualifiedName~TransferenciaRulesTests|FullyQualifiedName~ComandaRulesTests",
+    "test-case-filter": "FullyQualifiedName~SalaoPropertyTests|FullyQualifiedName~PagamentoRulesTests|FullyQualifiedName~OpcoesRulesTests|FullyQualifiedName~DescontoRulesTests|FullyQualifiedName~DescontoPropertyTests|FullyQualifiedName~TransferenciaRulesTests|FullyQualifiedName~ComandaRulesTests|FullyQualifiedName~DivisaoRulesTests|FullyQualifiedName~DivisaoPropertyTests",
     "reporters": [
       "progress",
       "json"

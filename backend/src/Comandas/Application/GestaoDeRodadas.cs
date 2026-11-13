@@ -75,8 +75,8 @@ public sealed record ItemIgnorado(Guid ProdutoId, string ProdutoNome, int Quanti
 /// <summary><c>Versao</c> is the comanda version after the write (or the one the round produced, on a repeat); <c>VersaoAtual</c> is set on a stale version.</summary>
 public sealed record ResultadoDeEscrita(ResultadoDeRodada Resultado, RodadaComItens? Rodada = null, ItemDaComanda? Item = null, int? Versao = null, int? VersaoAtual = null, IReadOnlyList<ItemIgnorado>? Ignorados = null);
 
-/// <summary><c>OpcaoIds</c> are ids only: name and price come from the menu on the server, never from the client.</summary>
-public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao, IReadOnlyList<Guid>? OpcaoIds = null);
+/// <summary><c>OpcaoIds</c> are ids only: name and price come from the menu on the server, never from the client. <c>Assento</c> is the optional seat (1 to 99) the item belongs to, used by the split of the bill.</summary>
+public sealed record ItemParaLancar(Guid ProdutoId, int Quantidade, string? Observacao, IReadOnlyList<Guid>? OpcaoIds = null, int? Assento = null);
 
 /// <summary>Raised inside the unit of work when an undo is refused AFTER the comanda row lock and version bump: the bump rolls back and the caller answers with <see cref="Resultado"/>.</summary>
 public sealed class RecusaDoDesfazer : InvalidOperationException
@@ -197,7 +197,7 @@ public sealed class GestaoDeRodadas(
                         continue;
                     }
 
-                    lancaveis.Add(new ItemParaLancar(item.ProdutoId, item.Quantidade, item.Observacao, opcaoIds));
+                    lancaveis.Add(new ItemParaLancar(item.ProdutoId, item.Quantidade, item.Observacao, opcaoIds, item.Assento));
                 }
 
                 if (lancaveis.Count == 0)
@@ -221,7 +221,7 @@ public sealed class GestaoDeRodadas(
         var observacoes = new string?[itens.Count];
         for (var i = 0; i < itens.Count; i++)
         {
-            if (itens[i] is null || !RegrasDeRodada.QuantidadeValida(itens[i].Quantidade) || !RegrasDeRodada.TentarObservacao(itens[i].Observacao, out observacoes[i]))
+            if (itens[i] is null || !RegrasDeRodada.QuantidadeValida(itens[i].Quantidade) || !RegrasDeDivisao.AssentoValido(itens[i].Assento) || !RegrasDeRodada.TentarObservacao(itens[i].Observacao, out observacoes[i]))
             {
                 return new ResultadoDeEscrita(ResultadoDeRodada.Invalido);
             }
@@ -291,7 +291,7 @@ public sealed class GestaoDeRodadas(
         for (var i = 0; i < itens.Count; i++)
         {
             var produto = produtos[itens[i].ProdutoId];
-            lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList()));
+            lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList(), Assento: itens[i].Assento));
         }
 
         var resultado = new RodadaComItens(rodada, lista);

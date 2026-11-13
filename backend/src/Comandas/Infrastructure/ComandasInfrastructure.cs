@@ -153,6 +153,8 @@ internal sealed class ItemRow
     public Guid? TipoPor { get; set; }
 
     public DateTimeOffset? TipoEm { get; set; }
+
+    public int? Assento { get; set; }
 }
 
 internal sealed class DescontoRow
@@ -180,6 +182,54 @@ internal sealed class DescontoRow
     public Guid CriadoPor { get; set; }
 
     public DateTimeOffset CriadoEm { get; set; }
+}
+
+internal sealed class DivisaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public Guid ComandaId { get; set; }
+
+    public string Modo { get; set; } = "";
+
+    public int ComandaVersao { get; set; }
+
+    public string Assinatura { get; set; } = "";
+
+    public long TotalCentavos { get; set; }
+
+    public long TaxaServicoCentavos { get; set; }
+
+    public long GorjetaCentavos { get; set; }
+
+    public Guid CriadoPor { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+}
+
+internal sealed class DivisaoParteRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid DivisaoId { get; set; }
+
+    public int Numero { get; set; }
+
+    public int? Assento { get; set; }
+
+    public Guid[] ItemIds { get; set; } = [];
+
+    public long ConsumoCentavos { get; set; }
+
+    public long TaxaServicoCentavos { get; set; }
+
+    public long TotalCentavos { get; set; }
+
+    public long GorjetaCentavos { get; set; }
 }
 
 internal sealed class ItemOpcaoRow
@@ -222,6 +272,10 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
     public DbSet<RodadaRow> Rodadas => Set<RodadaRow>();
 
     public DbSet<ItemRow> Itens => Set<ItemRow>();
+
+    public DbSet<DivisaoRow> Divisoes => Set<DivisaoRow>();
+
+    public DbSet<DivisaoParteRow> DivisaoPartes => Set<DivisaoParteRow>();
 
     public DbSet<ItemOpcaoRow> ItemOpcoes => Set<ItemOpcaoRow>();
 
@@ -313,6 +367,7 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.MotivoTipo).HasColumnName("motivo_tipo");
             e.Property(x => x.TipoPor).HasColumnName("tipo_por");
             e.Property(x => x.TipoEm).HasColumnName("tipo_em");
+            e.Property(x => x.Assento).HasColumnName("assento");
         });
         modelBuilder.Entity<DescontoRow>(e =>
         {
@@ -330,6 +385,37 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.Motivo).HasColumnName("motivo");
             e.Property(x => x.CriadoPor).HasColumnName("criado_por");
             e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+        });
+        modelBuilder.Entity<DivisaoRow>(e =>
+        {
+            e.ToTable("divisoes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.ComandaId).HasColumnName("comanda_id");
+            e.Property(x => x.Modo).HasColumnName("modo");
+            e.Property(x => x.ComandaVersao).HasColumnName("comanda_versao");
+            e.Property(x => x.Assinatura).HasColumnName("assinatura");
+            e.Property(x => x.TotalCentavos).HasColumnName("total_centavos");
+            e.Property(x => x.TaxaServicoCentavos).HasColumnName("taxa_servico_centavos");
+            e.Property(x => x.GorjetaCentavos).HasColumnName("gorjeta_centavos");
+            e.Property(x => x.CriadoPor).HasColumnName("criado_por");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+        });
+        modelBuilder.Entity<DivisaoParteRow>(e =>
+        {
+            e.ToTable("divisao_partes");
+            e.HasKey(x => new { x.DivisaoId, x.Numero });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.DivisaoId).HasColumnName("divisao_id");
+            e.Property(x => x.Numero).HasColumnName("numero");
+            e.Property(x => x.Assento).HasColumnName("assento");
+            e.Property(x => x.ItemIds).HasColumnName("item_ids");
+            e.Property(x => x.ConsumoCentavos).HasColumnName("consumo_centavos");
+            e.Property(x => x.TaxaServicoCentavos).HasColumnName("taxa_servico_centavos");
+            e.Property(x => x.TotalCentavos).HasColumnName("total_centavos");
+            e.Property(x => x.GorjetaCentavos).HasColumnName("gorjeta_centavos");
         });
         modelBuilder.Entity<ItemOpcaoRow>(e =>
         {
@@ -719,8 +805,8 @@ public sealed class PostgresRodadasStore : IRodadasStore
             var estado = RegrasDeRodada.Palavra(i.Estado);
             await context.Database.ExecuteSqlAsync(
                 $"""
-                INSERT INTO itens_comanda (id, organizacao_id, comanda_id, rodada_id, posicao, produto_id, produto_nome, preco_centavos, quantidade, observacao, estado, motivo_cancelamento, cancelado_por, cancelado_em)
-                VALUES ({i.Id}, {organizationId}, {i.ComandaId}, {i.RodadaId}, {i.Posicao}, {i.ProdutoId}, {i.ProdutoNome}, {i.PrecoCentavos}, {i.Quantidade}, {i.Observacao}, {estado}, {i.MotivoCancelamento}, {i.CanceladoPor}, {i.CanceladoEm})
+                INSERT INTO itens_comanda (id, organizacao_id, comanda_id, rodada_id, posicao, produto_id, produto_nome, preco_centavos, quantidade, observacao, estado, motivo_cancelamento, cancelado_por, cancelado_em, assento)
+                VALUES ({i.Id}, {organizationId}, {i.ComandaId}, {i.RodadaId}, {i.Posicao}, {i.ProdutoId}, {i.ProdutoNome}, {i.PrecoCentavos}, {i.Quantidade}, {i.Observacao}, {estado}, {i.MotivoCancelamento}, {i.CanceladoPor}, {i.CanceladoEm}, {i.Assento})
                 """,
                 cancellationToken);
             foreach (var o in i.Opcoes)
@@ -868,7 +954,7 @@ public sealed class PostgresRodadasStore : IRodadasStore
     }
 
     private static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
-        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo);
+        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo, i.Assento);
 }
 
 internal sealed class GarcomRow
@@ -997,6 +1083,74 @@ public sealed class PostgresDescontosStore : IDescontosStore
     }
 }
 
+/// <summary>The recorded splits on PostgreSQL. Joins the caller's unit of work; never filters on <c>organizacao_id</c> (RLS does). Rows are written once (the app credential has no UPDATE or DELETE).</summary>
+public sealed class PostgresDivisoesStore : IDivisoesStore
+{
+    public async Task<DivisaoGravada?> AcharAsync(Guid organizationId, Guid divisaoId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var row = await context.Divisoes.AsNoTracking().Where(d => d.Id == divisaoId).FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : await ParaDivisaoAsync(context, row, cancellationToken);
+    }
+
+    public async Task<DivisaoGravada?> UltimaDaComandaAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var row = await context.Divisoes.AsNoTracking().Where(d => d.ComandaId == comandaId).OrderByDescending(d => d.CriadoEm).ThenByDescending(d => d.Id).FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : await ParaDivisaoAsync(context, row, cancellationToken);
+    }
+
+    public async Task<bool> InserirAsync(Guid organizationId, DivisaoGravada divisao, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(divisao);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var modo = RegrasDeDivisao.Palavra(divisao.Modo);
+        var gravadas = await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO divisoes (id, organizacao_id, unidade_id, comanda_id, modo, comanda_versao, assinatura, total_centavos, taxa_servico_centavos, gorjeta_centavos, criado_por, criado_em)
+            VALUES ({divisao.Id}, {organizationId}, {divisao.UnidadeId}, {divisao.ComandaId}, {modo}, {divisao.ComandaVersao}, {divisao.Assinatura}, {divisao.TotalCentavos}, {divisao.TaxaServicoCentavos}, {divisao.GorjetaCentavos}, {divisao.CriadoPor}, {divisao.CriadoEm})
+            ON CONFLICT (id) DO NOTHING
+            """,
+            cancellationToken);
+        if (gravadas == 0)
+        {
+            return false;
+        }
+
+        foreach (var p in divisao.Partes)
+        {
+            var itens = p.ItemIds.ToArray();
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO divisao_partes (organizacao_id, divisao_id, numero, assento, item_ids, consumo_centavos, taxa_servico_centavos, total_centavos, gorjeta_centavos)
+                VALUES ({organizationId}, {divisao.Id}, {p.Numero}, {p.Assento}, {itens}, {p.ConsumoCentavos}, {p.TaxaServicoCentavos}, {p.TotalCentavos}, {p.GorjetaCentavos})
+                """,
+                cancellationToken);
+        }
+
+        return true;
+    }
+
+    private static async Task<DivisaoGravada> ParaDivisaoAsync(MesasDbContext context, DivisaoRow d, CancellationToken cancellationToken)
+    {
+        var partes = await context.DivisaoPartes.AsNoTracking().Where(p => p.DivisaoId == d.Id).OrderBy(p => p.Numero).ToListAsync(cancellationToken);
+        RegrasDeDivisao.TentarModo(d.Modo, out var modo);
+        return new DivisaoGravada(
+            d.Id,
+            d.ComandaId,
+            d.UnidadeId,
+            modo,
+            d.ComandaVersao,
+            d.Assinatura,
+            d.TotalCentavos,
+            d.TaxaServicoCentavos,
+            d.GorjetaCentavos,
+            d.CriadoPor,
+            d.CriadoEm,
+            partes.Select(p => new ParteDaDivisao(p.Numero, p.Assento, p.ItemIds, p.ConsumoCentavos, p.TaxaServicoCentavos, p.TotalCentavos, p.GorjetaCentavos)).ToList());
+    }
+}
+
 /// <summary>Comanda events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDeComandas(OutboxWriter outbox) : IEventosDeComandas
 {
@@ -1030,6 +1184,8 @@ public static class ComandasServices
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
         services.AddSingleton<IDescontosStore, PostgresDescontosStore>();
         services.AddSingleton<GestaoDeDescontos>();
+        services.AddSingleton<IDivisoesStore, PostgresDivisoesStore>();
+        services.AddSingleton<GestaoDaDivisaoDaConta>();
         services.AddSingleton<GestaoDaTransferenciaDeItens>();
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDeGarcons>();
