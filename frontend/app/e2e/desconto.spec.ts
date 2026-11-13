@@ -205,19 +205,45 @@ test("the offline sheet explains that discount needs a connection and keeps noth
   await context.setOffline(false);
 });
 
-test("a waiter without the permission is told 'sem permissão para este valor', with no limit named", async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  const nome = `DescNegado ${Date.now() % 100000}`;
-  await comandaDoGarcom(request, baseURL!, nome);
+async function entrarComoGarcom(page: Page) {
   await page.goto("/salao/entrar");
   await page.getByLabel("Usuário ou e-mail").fill("garcom2");
   await page.getByLabel("Código da organização").fill(seed!.organizacaoA);
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();
+}
+
+test("a waiter with no discount rule is offered neither discount, courtesy nor gift, not even in the menu", async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  const nome = `DescSemRegra ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  await entrarComoGarcom(page);
+  await abrirDaLista(page, nome);
+
+  await expect(page.getByText("Chopp 300ml", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desconto em Chopp 300ml" })).toHaveCount(0);
+  // The waiter has other menu actions (rename, history...), but the discount of the comanda is not among them.
+  await page.getByRole("button", { name: "Mais" }).click();
+  await expect(page.getByRole("list", { name: "Ações da comanda" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desconto na comanda" })).toHaveCount(0);
+});
+
+test("the server's 403 stays the last defence: told 'sem permissão para este valor', with no limit named", async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  const nome = `DescNegado ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  // The screen is made to believe the waiter has a rule (as if the rule had been removed meanwhile): the server still refuses.
+  await page.route("**/sessao/regras-de-desconto", (rota) =>
+    rota.fulfill({ json: { desconto: true, cortesia: true, brinde: true } }),
+  );
+  await entrarComoGarcom(page);
   await abrirDaLista(page, nome);
 
   await page.getByRole("button", { name: "Desconto em Chopp 300ml" }).click();

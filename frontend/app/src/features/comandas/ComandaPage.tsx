@@ -37,8 +37,8 @@ import {
 } from "./cardapio";
 import { useComandas, useUltimaVez } from "./consultas";
 import { DescontoSheet } from "./DescontoSheet";
-import { useConta, useItens } from "./dadosDaComanda";
-import { type PedidoDeDesconto, textoDaFalha } from "./desconto";
+import { useConta, useItens, useRegrasDeDesconto } from "./dadosDaComanda";
+import { ACOES_DE_DESCONTO, type PedidoDeDesconto, textoDaFalha } from "./desconto";
 import {
   type AcaoDoMenu,
   AlterarItemSheet,
@@ -114,6 +114,7 @@ export function ComandaPage() {
   const permissoes = usePermissoes();
   const pode = permissoes.carregado && permissoes.pode("comanda:ver");
   const lancar = permissoes.pode("comanda:lancar-item");
+  const regras = useRegrasDeDesconto(pode);
   const comandas = useComandas(pode);
   const conta = useConta(comandaId, pode);
   const itens = useItens(comandaId, pode);
@@ -747,8 +748,9 @@ export function ComandaPage() {
   const podeCancelar = permissoes.pode("comanda:cancelar-item");
   const podeAlterarItem = permissoes.pode("comanda:alterar-item");
   const comandaAberta = conta.data.estado === "aberta";
-  // Discount, courtesy and gift have a LIMIT, and GET /sessao/permissoes asks the engine without values (a permission with a limit shows as not granted): the action is offered to whoever sees
-  // the comanda and the server refuses what the person may not give (403, "sem permissão para este valor").
+  // Discount, courtesy and gift have a LIMIT, so /sessao/permissoes does not list them; GET /sessao/regras-de-desconto says only whether the caller has ANY rule for each (never the limit). The
+  // server still refuses a value beyond the limit (403, "sem permissão para este valor").
+  const acoesDeDesconto = ACOES_DE_DESCONTO.filter((a) => regras[a]);
   const acoesDoMenu: AcaoDoMenu[] = (
     [
       ["desconto", "comanda:ver"],
@@ -759,7 +761,9 @@ export function ComandaPage() {
       ["cancelar", "comanda:cancelar"],
     ] as const
   )
-    .filter(([acao, permissao]) => permissoes.pode(permissao) && (acao !== "desconto" || comandaAberta))
+    .filter(([acao, permissao]) =>
+      acao === "desconto" ? comandaAberta && regras.desconto : permissoes.pode(permissao),
+    )
     .map(([acao]) => acao);
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
   const podeFechar = permissoes.pode("comanda:fechar") && permissoes.pode("comanda:receber-pagamento");
@@ -812,14 +816,14 @@ export function ComandaPage() {
               }
               priceCents={ehDeCortesia(i) ? 0 : i.unitarioCentavos}
               action={
-                podeAlterarItem || podeCancelar || comandaAberta || ehDeCortesia(i) ? (
+                podeAlterarItem || podeCancelar || (comandaAberta && acoesDeDesconto.length > 0) || ehDeCortesia(i) ? (
                   <>
                     {ehDeCortesia(i) ? (
                       <span className="conta-tipo">
                         <ToneBadge tone="warning">{i.tipo === "brinde" ? "Brinde" : "Cortesia"}</ToneBadge>
                       </span>
                     ) : null}
-                    {comandaAberta && !ehDeCortesia(i) ? (
+                    {comandaAberta && !ehDeCortesia(i) && acoesDeDesconto.length > 0 ? (
                       <button
                         type="button"
                         className="f4-row-action"
@@ -1089,6 +1093,7 @@ export function ComandaPage() {
           }
         }}
         conta={conta.data}
+        acoes={alvoDoDesconto?.item ? acoesDeDesconto : ["desconto"]}
         bloqueio={
           !navigator.onLine
             ? "Sem conexão. Desconto, cortesia e brinde precisam do servidor e não ficam na fila."

@@ -67,6 +67,7 @@ async function abrir(extra: Rotas = {}, itens: unknown[] = [item], contaAtual: u
   const chamadas = stubRede({
     "POST /refresh": json(sessaoJson()),
     "GET /sessao/permissoes": json({ permissoes: PERMISSOES }),
+    "GET /sessao/regras-de-desconto": json({ desconto: true, cortesia: true, brinde: true }),
     "GET /comandas": json([comandaJson]),
     "GET /comandas/c1/conta": json(contaAtual),
     "GET /comandas/c1/itens": json({ itens, consumoCentavos: 2500 }),
@@ -283,6 +284,40 @@ describe("discount on the whole comanda", () => {
     await screen.findByText("Chopp 300ml");
     expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Desconto em Chopp 300ml" })).not.toBeInTheDocument();
+  });
+});
+
+describe("what is offered depends on the rules the server says the caller has", () => {
+  const regras = (desconto: boolean, cortesia: boolean, brinde: boolean) => ({
+    "GET /sessao/regras-de-desconto": json({ desconto, cortesia, brinde }),
+  });
+
+  it("offers nothing (no row button, no menu) when the caller has no rule", async () => {
+    await abrir(regras(false, false, false));
+
+    await screen.findByText("Chopp 300ml");
+    expect(screen.queryByRole("button", { name: "Desconto em Chopp 300ml" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+  });
+
+  it("offers on an item only the actions the caller has a rule for", async () => {
+    await abrir(regras(false, true, false));
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Desconto em Chopp 300ml" }));
+    const f = within(await screen.findByRole("dialog", { name: "Desconto, cortesia ou brinde" }));
+    expect(f.getByRole("button", { name: "Cortesia" })).toBeInTheDocument();
+    expect(f.queryByRole("button", { name: "Brinde" })).not.toBeInTheDocument();
+    expect(f.queryByRole("button", { name: "Desconto" })).not.toBeInTheDocument();
+    expect(f.getByRole("button", { name: "Dar cortesia" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+  });
+
+  it("offers the discount of the comanda in the menu only with a discount rule", async () => {
+    await abrir(regras(false, true, true));
+
+    await screen.findByText("Chopp 300ml");
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
   });
 });
 

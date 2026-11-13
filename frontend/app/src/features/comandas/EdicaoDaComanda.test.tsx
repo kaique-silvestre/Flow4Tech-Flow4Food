@@ -73,6 +73,7 @@ async function abrir(permissoes: string[], extra: Record<string, unknown> = {}) 
   const chamadas = stubRede({
     "POST /refresh": json(sessaoJson()),
     "GET /sessao/permissoes": json({ permissoes }),
+    "GET /sessao/regras-de-desconto": json({ desconto: false, cortesia: false, brinde: false }),
     "GET /comandas": json([comandaJson]),
     "GET /comandas/c1/conta": json(conta),
     "GET /comandas/c1/itens": json({ itens: [item], consumoCentavos: 2500 }),
@@ -91,13 +92,19 @@ const corpoDe = (chamadas: { method: string; path: string; body?: unknown }[], f
   chamadas.find((c) => c.method === "POST" && c.path.endsWith(fim))?.body;
 
 describe("what is offered depends on the permission", () => {
-  it("shows no edit button and a menu with only the discount without any of the edit permissions", async () => {
+  it("shows no edit button and no menu without any of the edit permissions and without a discount rule", async () => {
     await abrir(BASE);
-    const user = userEvent.setup();
 
     expect(await screen.findByText("Chopp 300ml")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Alterar Chopp 300ml" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Mais" }));
+    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+  });
+
+  it("offers the discount of the comanda in the menu only when the server says the caller has a discount rule", async () => {
+    await abrir(BASE, { "GET /sessao/regras-de-desconto": json({ desconto: true, cortesia: false, brinde: false }) });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Mais" }));
     const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
     expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual(["Desconto na comanda"]);
   });
@@ -109,11 +116,7 @@ describe("what is offered depends on the permission", () => {
     await user.click(await screen.findByRole("button", { name: "Mais" }));
 
     const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
-    expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Desconto na comanda",
-      "Renomear comanda",
-      "Histórico",
-    ]);
+    expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual(["Renomear comanda", "Histórico"]);
   });
 
   it("lists every action with every permission", async () => {
@@ -124,7 +127,6 @@ describe("what is offered depends on the permission", () => {
 
     const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
     expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Desconto na comanda",
       "Renomear comanda",
       "Pessoas e observação",
       "Trocar de garçom",

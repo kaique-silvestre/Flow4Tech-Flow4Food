@@ -3,6 +3,35 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../sessao/sessao";
 import type { ContaDaComanda, ItemDaConta } from "./rodada";
 
+export interface RegrasDeDesconto {
+  desconto: boolean;
+  cortesia: boolean;
+  brinde: boolean;
+}
+
+const SEM_REGRAS: RegrasDeDesconto = { desconto: false, cortesia: false, brinde: false };
+
+/**
+ * Whether the caller has ANY rule for discount, courtesy and gift (the server asks the engine without values, so no limit shows here). It only hides what the server would refuse: until the answer is
+ * known, or if it fails, nothing is offered, and the server's 403 stays the last defence.
+ */
+export function useRegrasDeDesconto(enabled: boolean): RegrasDeDesconto {
+  const consulta = useQuery<RegrasDeDesconto>({
+    queryKey: ["regras-de-desconto"],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await api.GET("/sessao/regras-de-desconto");
+      if (!data) {
+        throw new Error("regras-de-desconto");
+      }
+
+      return { desconto: data.desconto, cortesia: data.cortesia, brinde: data.brinde };
+    },
+  });
+  return consulta.data ?? SEM_REGRAS;
+}
+
 export function useConta(comandaId: string, enabled: boolean) {
   return useQuery<ContaDaComanda>({
     queryKey: ["comanda", comandaId, "conta"],

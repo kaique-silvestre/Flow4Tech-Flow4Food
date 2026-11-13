@@ -410,6 +410,13 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/itens/{alvo.ItemId}/brinde", intruso, new { versao = alvo.Versao, motivo = "x" }));
         }
 
+        // The visibility question is answered per session: each organization's owner holds every rule in his own organization, nothing of the other's reaches him.
+        foreach (var salao in new[] { salaoA, salaoB })
+        {
+            using var regras = await SendAsync(client, HttpMethod.Get, "/sessao/regras-de-desconto", salao.Token);
+            Assert.Equal("""{"desconto":true,"cortesia":true,"brinde":true}""", await regras.Content.ReadAsStringAsync());
+        }
+
         Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM descontos_comanda", r => r.GetInt64(0))).Single());
         Assert.Equal(("cortesia", 0L), (await QueryAsync(a, "SELECT tipo, 0::bigint FROM itens_comanda WHERE id = @i", r => (r.GetString(0), r.GetInt64(1)), ("i", descontoA.ItemId))).Single());
     }

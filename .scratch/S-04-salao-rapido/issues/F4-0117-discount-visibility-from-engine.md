@@ -6,10 +6,10 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Real database (Testcontainers); Contract; Two tenants over HTTP; vitest/testing-library for the screen.
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Route with `.RequireSession()` and a stable `.WithName(...)`, typed response, decided by `IAuthorizationEngine` (no branching on profile name); never returns limit values.
-- [ ] Test for the allowed case (a profile with a rule) and the denied case (a profile without), plus another organization.
-- [ ] The comanda screen shows "Desconto", "Cortesia" and "Brinde" only when the route says the session has a rule; the "Mais" menu stops appearing when it would be empty; the F4-0057 test adapted in F4-0059 goes back to expecting the menu absent for who has no action.
-- [ ] The server's 403 stays as the last defence.
-- [ ] Contract regenerated and committed (openapi.json and schema.ts).
+- [x] Route with `.RequireSession()` and a stable `.WithName(...)`, typed response, decided by `IAuthorizationEngine` (no branching on profile name); never returns limit values.
+- [x] Test for the allowed case (a profile with a rule) and the denied case (a profile without), plus another organization.
+- [x] The comanda screen shows "Desconto", "Cortesia" and "Brinde" only when the route says the session has a rule; the "Mais" menu stops appearing when it would be empty; the F4-0057 test adapted in F4-0059 goes back to expecting the menu absent for who has no action.
+- [x] The server's 403 stays as the last defence.
+- [x] Contract regenerated and committed (openapi.json and schema.ts).

@@ -59,6 +59,38 @@ public sealed class DecisaoDeDescontoNegadaException : InvalidOperationException
     }
 }
 
+/// <summary>Whether the caller holds ANY rule for each of the three actions. No limit, no value: only yes or no.</summary>
+public sealed record RegrasDeDescontoDoOperador(bool Desconto, bool Cortesia, bool Brinde);
+
+/// <summary>Ends the visibility question's unit of work by rolling it back (a capped rule would reserve zero cents); always carries the answer. Never leaves <see cref="GestaoDeDescontos"/>.</summary>
+public sealed class ConsultaDeRegrasConcluidaException : InvalidOperationException
+{
+    public ConsultaDeRegrasConcluidaException()
+        : this(new RegrasDeDescontoDoOperador(false, false, false))
+    {
+    }
+
+    public ConsultaDeRegrasConcluidaException(string message)
+        : base(message)
+    {
+        Resultado = new RegrasDeDescontoDoOperador(false, false, false);
+    }
+
+    public ConsultaDeRegrasConcluidaException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Resultado = new RegrasDeDescontoDoOperador(false, false, false);
+    }
+
+    public ConsultaDeRegrasConcluidaException(RegrasDeDescontoDoOperador resultado)
+        : base("question finished (rolled back on purpose)")
+    {
+        Resultado = resultado;
+    }
+
+    public RegrasDeDescontoDoOperador Resultado { get; }
+}
+
 /// <summary>
 /// Discounts, courtesies and gifts. The route has already asked for the plain permission; the LIMITED one (<c>comanda:desconto|cortesia|brinde</c>) is asked of the engine here, inside the unit of work and AFTER the
 /// comanda row lock (the version bump), with the percent and the value computed from the stored comanda, never from the request. A refusal throws, so the bump and the daily cap the engine reserved roll back together;
@@ -185,6 +217,34 @@ public sealed class GestaoDeDescontos(
             await RegistrarNegacaoAsync(request, comandaId, ComandaPermissions.Desconto, cancellationToken);
             return new ResultadoDeDescontoDaComanda(ResultadoDoDesconto.Negado);
         }
+    }
+
+    /// <summary>
+    /// Does the caller hold ANY rule for discount, courtesy and gift? Asks the engine for the smallest possible operation (zero percent, zero cents): it is allowed exactly when some rule of the permission applies,
+    /// whatever its limits. It runs in its own unit of work, rolled back at the end, so a daily cap is never reserved. The answer carries no limit; each real operation is still decided with the real numbers.
+    /// </summary>
+    public async Task<RegrasDeDescontoDoOperador> RegrasDoOperadorAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        try
+        {
+            await unitOfWork.ExecuteAsync<object?>(
+                request,
+                async ct =>
+                {
+                    var desconto = await decisao.PodeAsync(request, ComandaPermissions.Desconto, 0m, 0, ct);
+                    var cortesia = await decisao.PodeAsync(request, ComandaPermissions.Cortesia, 0m, 0, ct);
+                    var brinde = await decisao.PodeAsync(request, ComandaPermissions.Brinde, 0m, 0, ct);
+                    throw new ConsultaDeRegrasConcluidaException(new RegrasDeDescontoDoOperador(desconto, cortesia, brinde));
+                },
+                cancellationToken);
+        }
+        catch (ConsultaDeRegrasConcluidaException feito)
+        {
+            return feito.Resultado;
+        }
+
+        throw new InvalidOperationException("The question must end by rolling back.");
     }
 
     /// <summary>Gives a launched item as a courtesy: charge zero, original price kept, with a reason.</summary>

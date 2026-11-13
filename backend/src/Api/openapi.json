@@ -3541,6 +3541,33 @@
         "x-permission": "comanda:ver-historico"
       }
     },
+    "/sessao/regras-de-desconto": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getRegrasDeDesconto",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegrasDeDescontoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
     "/comandas/{comandaId}/descontos": {
       "post": {
         "tags": [
@@ -7075,6 +7102,25 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "RegrasDeDescontoResponse": {
+        "required": [
+          "desconto",
+          "cortesia",
+          "brinde"
+        ],
+        "type": "object",
+        "properties": {
+          "desconto": {
+            "type": "boolean"
+          },
+          "cortesia": {
+            "type": "boolean"
+          },
+          "brinde": {
+            "type": "boolean"
           }
         }
       },

@@ -16,6 +16,8 @@ interface Props {
   alvo: { item: ItemDaConta | null } | null;
   onOpenChange: (open: boolean) => void;
   conta: ContaDaComanda;
+  /** What the caller has a rule for; the chips offer only these, and at least one is always present. */
+  acoes: readonly AcaoDeDesconto[];
   /** What blocks it now (no signal, actions of the comanda waiting in the queue); null when it can go. */
   bloqueio: string | null;
   enviando: boolean;
@@ -33,9 +35,10 @@ const ACOES: { acao: AcaoDeDesconto; rotulo: string }[] = [
  * Discount, courtesy or gift on one item (or a discount on the whole comanda): percent or value on a keypad, a mandatory reason, and the new total before confirming. The preview uses the
  * server's numbers of the bill; what the server answers on confirming replaces it. It needs a connection and never waits in the queue; a refusal says only that this value is not allowed.
  */
-export function DescontoSheet({ alvo, onOpenChange, conta, bloqueio, enviando, erro, onAplicar }: Props) {
+export function DescontoSheet({ alvo, onOpenChange, conta, acoes, bloqueio, enviando, erro, onAplicar }: Props) {
   const item = alvo?.item ?? null;
-  const [acao, setAcao] = useState<AcaoDeDesconto>("desconto");
+  const primeira = acoes[0] ?? "desconto";
+  const [acao, setAcao] = useState<AcaoDeDesconto>(primeira);
   const [forma, setForma] = useState<FormaDoDesconto>("percentual");
   const [digitos, setDigitos] = useState("");
   const [motivo, setMotivo] = useState<string | null>(null);
@@ -43,7 +46,7 @@ export function DescontoSheet({ alvo, onOpenChange, conta, bloqueio, enviando, e
   // biome-ignore lint/correctness/useExhaustiveDependencies: the form restarts each time the sheet opens on a target (the item id, or the comanda), not on every render of the same one.
   useEffect(() => {
     if (alvo) {
-      setAcao("desconto");
+      setAcao(primeira);
       setForma("percentual");
       setDigitos("");
       setMotivo(null);
@@ -119,7 +122,7 @@ export function DescontoSheet({ alvo, onOpenChange, conta, bloqueio, enviando, e
       {bloqueio ? <Notice tone="info">{bloqueio}</Notice> : null}
       {item ? (
         <div className="motivos" role="group" aria-label="O que dar">
-          {ACOES.map((a) => (
+          {ACOES.filter((a) => acoes.includes(a.acao)).map((a) => (
             <Chip key={a.acao} selected={acao === a.acao} onClick={() => setAcao(a.acao)}>
               {a.rotulo}
             </Chip>

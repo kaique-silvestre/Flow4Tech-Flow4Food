@@ -12,6 +12,7 @@ export const MOTIVOS_DE_DESCONTO = [
 
 export type FormaDoDesconto = "percentual" | "valor";
 export type AcaoDeDesconto = "desconto" | "cortesia" | "brinde";
+export const ACOES_DE_DESCONTO: readonly AcaoDeDesconto[] = ["desconto", "cortesia", "brinde"];
 
 export type PedidoDeDesconto =
   | { acao: "desconto"; itemId: string | null; forma: "percentual"; percentual: number; motivo: string }

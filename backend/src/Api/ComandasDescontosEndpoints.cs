@@ -20,6 +20,9 @@ internal sealed record DescontoAplicadoDto(DescontoDto Desconto, ContaDto Conta)
 /// <summary>The item after the change (zero charge, reason kept) and the bill after it.</summary>
 internal sealed record ItemDadoDto(ItemDto Item, ContaDto Conta);
 
+/// <summary>Whether the session holds ANY rule for each action; never the limits. The app hides what would be refused; the server still decides each operation.</summary>
+internal sealed record RegrasDeDescontoResponse(bool Desconto, bool Cortesia, bool Brinde);
+
 /// <summary>
 /// The three POST routes declare the plain <c>comanda:ver</c> (a route-level decision carries no operation values, so a permission with a limit would always be refused there). The LIMITED permission
 /// (<c>comanda:desconto|cortesia|brinde</c>) is asked of the engine by the Application handler with the percent and the value computed from the stored comanda; a refusal there is 403 without reason and an
@@ -32,6 +35,18 @@ internal static class ComandasDescontosEndpoints
     public static void MapDescontosDaComanda(this IEndpointRouteBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
+
+        app.MapGet("/sessao/regras-de-desconto", async (RequestContextAccessor request, GestaoDeDescontos gestao, CancellationToken cancellationToken) =>
+            {
+                var regras = await gestao.RegrasDoOperadorAsync(request, cancellationToken);
+                return Results.Ok(new RegrasDeDescontoResponse(regras.Desconto, regras.Cortesia, regras.Brinde));
+            })
+            .WithName("getRegrasDeDesconto")
+            .RequireSession()
+            .RequirePermission(ComandaPermissions.Ver)
+            .Produces<RegrasDeDescontoResponse>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         app.MapPost("/comandas/{comandaId:guid}/descontos", async (Guid comandaId, AplicarDescontoRequest body, RequestContextAccessor request, GestaoDeDescontos gestao, CancellationToken cancellationToken) =>
             {

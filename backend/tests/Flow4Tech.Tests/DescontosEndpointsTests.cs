@@ -66,6 +66,39 @@ public sealed partial class ComandasEndpointsTests
 
     private async Task<long> ClosedSuccessAuditsAsync(string acao) => await CountAsync($"auditoria_registros WHERE acao = '{acao}' AND resultado = 'sucesso'");
 
+    private sealed record RegrasDeDescontoLidas(bool Desconto, bool Cortesia, bool Brinde);
+
+    [Fact]
+    public async Task The_discount_visibility_route_tells_only_whether_a_rule_exists_decided_by_the_engine_and_never_reserves_a_cap()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var limitados = await GiveDiscountProfilesAsync(api);
+
+        async Task<RegrasDeDescontoLidas> AskAsync(string token)
+        {
+            using var response = await SendAsync(client, HttpMethod.Get, "/sessao/regras-de-desconto", token);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var texto = await response.Content.ReadAsStringAsync();
+            using var json = System.Text.Json.JsonDocument.Parse(texto);
+            var corpo = json.RootElement;
+            Assert.Equal(["brinde", "cortesia", "desconto"], corpo.EnumerateObject().Select(x => x.Name).Order(StringComparer.Ordinal));
+            return new RegrasDeDescontoLidas(corpo.GetProperty("desconto").GetBoolean(), corpo.GetProperty("cortesia").GetBoolean(), corpo.GetProperty("brinde").GetBoolean());
+        }
+
+        Assert.Equal(new RegrasDeDescontoLidas(true, true, true), await AskAsync(t.Dono));
+        Assert.Equal(new RegrasDeDescontoLidas(true, true, true), await AskAsync(limitados.Gerente));
+        Assert.Equal(new RegrasDeDescontoLidas(true, false, false), await AskAsync(limitados.Capado));
+        Assert.Equal(new RegrasDeDescontoLidas(false, false, false), await AskAsync(t.Garcom));
+        Assert.Equal(new RegrasDeDescontoLidas(true, true, true), await AskAsync(t.DonoB));
+        using var semSessao = await SendAsync(client, HttpMethod.Get, "/sessao/regras-de-desconto", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, semSessao.StatusCode);
+
+        // Asking the capped profile reserved nothing: the cap counter is untouched.
+        Assert.Equal(0L, await CountAsync("limites_consumo"));
+    }
+
     [Fact]
     public async Task A_percent_discount_on_an_item_is_computed_on_the_server_audited_published_and_the_fee_follows_the_discounted_consumption()
     {

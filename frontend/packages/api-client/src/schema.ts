@@ -948,6 +948,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessao/regras-de-desconto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRegrasDeDesconto"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas/{comandaId}/descontos": {
         parameters: {
             query?: never;
@@ -1821,6 +1837,11 @@ export interface components {
             maxValorCentavos: null | number | string;
             /** Format: int64 */
             tetoDiarioCentavos: null | number | string;
+        };
+        RegrasDeDescontoResponse: {
+            desconto: boolean;
+            cortesia: boolean;
+            brinde: boolean;
         };
         RenomearComandaRequest: {
             /** Format: int32 */
@@ -5435,6 +5456,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ComandaErro"];
                 };
+            };
+        };
+    };
+    getRegrasDeDesconto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegrasDeDescontoResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
