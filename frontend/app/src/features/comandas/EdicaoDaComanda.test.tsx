@@ -91,12 +91,15 @@ const corpoDe = (chamadas: { method: string; path: string; body?: unknown }[], f
   chamadas.find((c) => c.method === "POST" && c.path.endsWith(fim))?.body;
 
 describe("what is offered depends on the permission", () => {
-  it("shows no edit button and no menu without any of the new permissions", async () => {
+  it("shows no edit button and a menu with only the discount without any of the edit permissions", async () => {
     await abrir(BASE);
+    const user = userEvent.setup();
 
     expect(await screen.findByText("Chopp 300ml")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Alterar Chopp 300ml" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
+    expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual(["Desconto na comanda"]);
   });
 
   it("lists in the menu only the actions the caller holds", async () => {
@@ -106,7 +109,11 @@ describe("what is offered depends on the permission", () => {
     await user.click(await screen.findByRole("button", { name: "Mais" }));
 
     const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
-    expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual(["Renomear comanda", "Histórico"]);
+    expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Desconto na comanda",
+      "Renomear comanda",
+      "Histórico",
+    ]);
   });
 
   it("lists every action with every permission", async () => {
@@ -117,6 +124,7 @@ describe("what is offered depends on the permission", () => {
 
     const lista = within(await screen.findByRole("list", { name: "Ações da comanda" }));
     expect(lista.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Desconto na comanda",
       "Renomear comanda",
       "Pessoas e observação",
       "Trocar de garçom",

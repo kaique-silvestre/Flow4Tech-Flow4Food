@@ -119,7 +119,7 @@ test("edit the item and the comanda, read the history, hit a conflict and cancel
 
   // The menu and the history.
   await page.getByRole("button", { name: "Mais" }).click();
-  await expect(page.getByRole("list", { name: "Ações da comanda" }).getByRole("button")).toHaveCount(5);
+  await expect(page.getByRole("list", { name: "Ações da comanda" }).getByRole("button")).toHaveCount(6);
   await shootNosTemas(page, "edicao-menu");
   await page.getByRole("button", { name: "Histórico", exact: true }).click();
   const historico = page.getByRole("list", { name: "Linha do tempo da comanda" });

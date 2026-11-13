@@ -13,6 +13,11 @@ export interface ItemDaConta {
   opcoes: OpcaoEscolhida[];
   /** Price of ONE unit with its add-ons: what the server multiplies by the quantity. */
   unitarioCentavos: number;
+  /** How the line is charged: `cortesia` and `brinde` charge zero (the table value stays for reports). Absent means normal. */
+  tipo?: "normal" | "cortesia" | "brinde";
+  motivoDoTipo?: string | null;
+  /** What one line of this item would cost at its frozen price (the server's number), before discounts. */
+  valorDeTabelaCentavos?: number;
 }
 
 export interface ContaDaComanda {
@@ -25,6 +30,8 @@ export interface ContaDaComanda {
   taxaServicoPercentual?: number;
   versao: number;
   estado: string;
+  /** What the discounts took off the consumption (the server's number). */
+  descontoCentavos?: number;
 }
 
 /** An add-on picked for a staged item. The screen shows its price; the server recomputes name and price from the id. */

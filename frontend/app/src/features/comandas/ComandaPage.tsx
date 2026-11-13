@@ -7,6 +7,7 @@ import {
   Skeleton,
   StatusBadge,
   Stepper,
+  ToneBadge,
   UndoToast,
 } from "@flow4tech/design-system";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,7 +36,9 @@ import {
   useProdutos,
 } from "./cardapio";
 import { useComandas, useUltimaVez } from "./consultas";
+import { DescontoSheet } from "./DescontoSheet";
 import { useConta, useItens } from "./dadosDaComanda";
+import { type PedidoDeDesconto, textoDaFalha } from "./desconto";
 import {
   type AcaoDoMenu,
   AlterarItemSheet,
@@ -71,6 +74,11 @@ import {
 import { nomeExibido, tempoDecorrido } from "./tipos";
 import { UltimaVezCard } from "./UltimaVezCard";
 import { uuidv7 } from "./uuid";
+
+/** A line charged zero because it is a courtesy or a gift. */
+function ehDeCortesia(item: ItemDaConta): boolean {
+  return item.tipo === "cortesia" || item.tipo === "brinde";
+}
 
 /** The item sheet in use: a product being added, or a staged line being adjusted. */
 interface FolhaDoItem {
@@ -130,6 +138,9 @@ export function ComandaPage() {
   const [ultimaVezUsada, setUltimaVezUsada] = useState(false);
   const [folhaMenu, setFolhaMenu] = useState(false);
   const [itemParaAlterar, setItemParaAlterar] = useState<ItemDaConta | null>(null);
+  const [alvoDoDesconto, setAlvoDoDesconto] = useState<{ item: ItemDaConta | null } | null>(null);
+  const [aplicandoDesconto, setAplicandoDesconto] = useState(false);
+  const [erroDoDesconto, setErroDoDesconto] = useState<string | undefined>(undefined);
   const [folhaNome, setFolhaNome] = useState(false);
   const [folhaDados, setFolhaDados] = useState(false);
   const [folhaGarcom, setFolhaGarcom] = useState(false);
@@ -401,7 +412,10 @@ export function ComandaPage() {
   function aoEscolherNoMenu(acao: AcaoDoMenu) {
     setFolhaMenu(false);
     setAviso(null);
-    if (acao === "renomear") {
+    if (acao === "desconto") {
+      setErroDoDesconto(undefined);
+      setAlvoDoDesconto({ item: null });
+    } else if (acao === "renomear") {
       setFolhaNome(true);
     } else if (acao === "dados") {
       setFolhaDados(true);
@@ -412,6 +426,62 @@ export function ComandaPage() {
     } else {
       setErroCancelarComanda(undefined);
       setFolhaCancelarComanda(true);
+    }
+  }
+
+  /** Discount, courtesy and gift need the server now (the engine decides the limit with the server's numbers): never queued, and a refusal does not say what the limit is. */
+  async function aplicarDesconto(pedido: PedidoDeDesconto) {
+    setErroDoDesconto(undefined);
+    setAplicandoDesconto(true);
+    try {
+      const params = { path: { comandaId } };
+      const resultado =
+        pedido.acao === "desconto"
+          ? await api.POST("/comandas/{comandaId}/descontos", {
+              params,
+              body: {
+                versao: versao.current,
+                itemId: pedido.itemId,
+                percentual: pedido.forma === "percentual" ? pedido.percentual : null,
+                valorCentavos: pedido.forma === "valor" ? pedido.valorCentavos : null,
+                motivo: pedido.motivo,
+              },
+            })
+          : await api.POST(
+              pedido.acao === "cortesia"
+                ? "/comandas/{comandaId}/itens/{itemId}/cortesia"
+                : "/comandas/{comandaId}/itens/{itemId}/brinde",
+              {
+                params: { path: { comandaId, itemId: pedido.itemId } },
+                body: { versao: versao.current, motivo: pedido.motivo },
+              },
+            );
+      const { data, response, error } = resultado;
+      if (data) {
+        versao.current = Math.max(versao.current, Number(data.conta.versao));
+        setAlvoDoDesconto(null);
+        await atualizarDados();
+        return;
+      }
+
+      const falha = error as ErroDeApi;
+      if (response.status === 409 && falha?.codigo === "versao-desatualizada") {
+        if (typeof falha.versaoAtual === "number") {
+          versao.current = Math.max(versao.current, falha.versaoAtual);
+        }
+
+        await atualizarDados();
+      } else if (response.status === 409 && falha?.codigo === "comanda-nao-aberta") {
+        setAlvoDoDesconto(null);
+        await atualizarDados();
+        return;
+      }
+
+      setErroDoDesconto(textoDaFalha(response.status, falha?.codigo));
+    } catch {
+      setErroDoDesconto("Sem conexão. Desconto, cortesia e brinde precisam do servidor.");
+    } finally {
+      setAplicandoDesconto(false);
     }
   }
 
@@ -676,8 +746,12 @@ export function ComandaPage() {
   const lancados = itens.data.filter((i) => i.estado === "lancado");
   const podeCancelar = permissoes.pode("comanda:cancelar-item");
   const podeAlterarItem = permissoes.pode("comanda:alterar-item");
+  const comandaAberta = conta.data.estado === "aberta";
+  // Discount, courtesy and gift have a LIMIT, and GET /sessao/permissoes asks the engine without values (a permission with a limit shows as not granted): the action is offered to whoever sees
+  // the comanda and the server refuses what the person may not give (403, "sem permissão para este valor").
   const acoesDoMenu: AcaoDoMenu[] = (
     [
+      ["desconto", "comanda:ver"],
       ["renomear", "comanda:renomear"],
       ["dados", "comanda:alterar-dados"],
       ["garcom", "comanda:trocar-garcom"],
@@ -685,7 +759,7 @@ export function ComandaPage() {
       ["cancelar", "comanda:cancelar"],
     ] as const
   )
-    .filter(([, permissao]) => permissoes.pode(permissao))
+    .filter(([acao, permissao]) => permissoes.pode(permissao) && (acao !== "desconto" || comandaAberta))
     .map(([acao]) => acao);
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
   const podeFechar = permissoes.pode("comanda:fechar") && permissoes.pode("comanda:receber-pagamento");
@@ -731,11 +805,33 @@ export function ComandaPage() {
               key={i.id}
               quantity={i.quantidade}
               name={i.produtoNome}
-              modifier={[resumoDasOpcoes(i.opcoes), i.observacao].filter(Boolean).join(" · ") || undefined}
-              priceCents={i.unitarioCentavos}
+              modifier={
+                [i.tipo === "normal" ? "" : i.motivoDoTipo, resumoDasOpcoes(i.opcoes), i.observacao]
+                  .filter(Boolean)
+                  .join(" · ") || undefined
+              }
+              priceCents={ehDeCortesia(i) ? 0 : i.unitarioCentavos}
               action={
-                podeAlterarItem || podeCancelar ? (
+                podeAlterarItem || podeCancelar || comandaAberta || ehDeCortesia(i) ? (
                   <>
+                    {ehDeCortesia(i) ? (
+                      <span className="conta-tipo">
+                        <ToneBadge tone="warning">{i.tipo === "brinde" ? "Brinde" : "Cortesia"}</ToneBadge>
+                      </span>
+                    ) : null}
+                    {comandaAberta && !ehDeCortesia(i) ? (
+                      <button
+                        type="button"
+                        className="f4-row-action"
+                        aria-label={`Desconto em ${i.produtoNome}`}
+                        onClick={() => {
+                          setErroDoDesconto(undefined);
+                          setAlvoDoDesconto({ item: i });
+                        }}
+                      >
+                        Desconto
+                      </button>
+                    ) : null}
                     {podeAlterarItem ? (
                       <button
                         type="button"
@@ -789,6 +885,11 @@ export function ComandaPage() {
             />
           ))}
         </ul>
+        {(conta.data.descontoCentavos ?? 0) > 0 ? (
+          <p className="conta-taxa f4-num" aria-label="Desconto da conta">
+            Desconto <span>−{formatBRL(conta.data.descontoCentavos ?? 0)}</span>
+          </p>
+        ) : null}
         {conta.data.taxaServicoCentavos > 0 ? (
           <p className="conta-taxa f4-num">
             Serviço <span>{formatBRL(conta.data.taxaServicoCentavos)}</span>
@@ -866,6 +967,7 @@ export function ComandaPage() {
           comandaId={comandaId}
           nome={nomeExibido(comanda)}
           conta={conta.data}
+          itens={lancados}
           versao={versao}
           onAtualizar={atualizarDados}
         />
@@ -977,6 +1079,26 @@ export function ComandaPage() {
           eventos: historico.data,
           recarregar: () => void historico.refetch(),
         }}
+      />
+      <DescontoSheet
+        alvo={alvoDoDesconto}
+        onOpenChange={(aberto) => {
+          if (!aberto) {
+            setAlvoDoDesconto(null);
+            setErroDoDesconto(undefined);
+          }
+        }}
+        conta={conta.data}
+        bloqueio={
+          !navigator.onLine
+            ? "Sem conexão. Desconto, cortesia e brinde precisam do servidor e não ficam na fila."
+            : filaDaComanda
+              ? "Há ações desta comanda na fila. Aplique depois que forem enviadas."
+              : null
+        }
+        enviando={aplicandoDesconto}
+        erro={erroDoDesconto}
+        onAplicar={(pedido) => void aplicarDesconto(pedido)}
       />
       <CancelarComandaSheet
         open={folhaCancelarComanda}

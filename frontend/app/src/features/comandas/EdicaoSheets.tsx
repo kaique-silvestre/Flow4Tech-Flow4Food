@@ -4,7 +4,7 @@ import { type EventoDoHistorico, type Garcom, horaDoEvento, linhaDoHistorico } f
 import { type CodigoDeMotivo, type ItemDaConta, MOTIVOS } from "./rodada";
 import type { Comanda } from "./tipos";
 
-export type AcaoDoMenu = "renomear" | "dados" | "garcom" | "historico" | "cancelar";
+export type AcaoDoMenu = "desconto" | "renomear" | "dados" | "garcom" | "historico" | "cancelar";
 
 interface MenuProps {
   open: boolean;
@@ -15,6 +15,7 @@ interface MenuProps {
 }
 
 const ROTULOS: Record<AcaoDoMenu, string> = {
+  desconto: "Desconto na comanda",
   renomear: "Renomear comanda",
   dados: "Pessoas e observação",
   garcom: "Trocar de garçom",

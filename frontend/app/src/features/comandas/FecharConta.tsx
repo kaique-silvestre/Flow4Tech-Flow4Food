@@ -1,11 +1,19 @@
-import { BottomSheet, Button, centsFromDigits, formatBRL, MoneyField, Notice } from "@flow4tech/design-system";
+import {
+  BottomSheet,
+  Button,
+  centsFromDigits,
+  formatBRL,
+  MoneyField,
+  Notice,
+  ToneBadge,
+} from "@flow4tech/design-system";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { enfileirarPagamento, pagamentoNaFila, recebidoNaFila, temAcaoViva, useFila } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-import type { ContaDaComanda } from "./rodada";
+import type { ContaDaComanda, ItemDaConta } from "./rodada";
 import { uuidv7 } from "./uuid";
 
 type ErroDeApi = { codigo?: string; versaoAtual?: number | null } | undefined;
@@ -16,6 +24,8 @@ interface Props {
   comandaId: string;
   nome: string;
   conta: ContaDaComanda;
+  /** The launched items: the courtesies and gifts are listed in the bill as such. */
+  itens?: readonly ItemDaConta[];
   /** The highest comanda version the screen knows; the sheet raises it with what its writes answer. */
   versao: { current: number };
   onAtualizar: () => Promise<void>;
@@ -32,7 +42,16 @@ type Fase =
  * received with the change in large type, and a partial payment that leaves the rest open. The payment id is made on the client, so a retry after a lost answer is one payment; with no signal
  * the payment waits in the visible queue.
  */
-export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, versao, onAtualizar }: Props) {
+export function FecharContaSheet({
+  open,
+  onOpenChange,
+  comandaId,
+  nome,
+  conta,
+  itens = [],
+  versao,
+  onAtualizar,
+}: Props) {
   const permissoes = usePermissoes();
   const navegar = useNavigate();
   const queryClient = useQueryClient();
@@ -353,6 +372,25 @@ export function FecharContaSheet({ open, onOpenChange, comandaId, nome, conta, v
           <dt>Consumo</dt>
           <dd className="f4-num">{formatBRL(conta.consumoCentavos)}</dd>
         </div>
+        {itens
+          .filter((i) => i.tipo === "cortesia" || i.tipo === "brinde")
+          .map((i) => (
+            <div key={i.id} className="fechar-cortesia">
+              <dt>
+                <span className="conta-tipo">
+                  <ToneBadge tone="warning">{i.tipo === "brinde" ? "Brinde" : "Cortesia"}</ToneBadge>
+                </span>
+                {i.quantidade}× {i.produtoNome}
+              </dt>
+              <dd className="f4-num">{formatBRL(0)}</dd>
+            </div>
+          ))}
+        {(conta.descontoCentavos ?? 0) > 0 ? (
+          <div>
+            <dt>Desconto</dt>
+            <dd className="f4-num">−{formatBRL(conta.descontoCentavos ?? 0)}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>
             {conta.taxaServicoRemovida ? "Serviço removido" : percentual > 0 ? `Serviço (${percentual}%)` : "Serviço"}

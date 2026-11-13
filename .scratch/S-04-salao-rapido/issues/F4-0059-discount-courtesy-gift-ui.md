@@ -6,9 +6,9 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Action sheet per item and for the comanda: percent/value keypad, mandatory reason list, preview of the new total from the server's numbers.
-- [ ] These operations need a connection (not queued); offline state explains it; a 403 shows 'sem permissão para este valor' without the limit value.
-- [ ] Items marked as courtesy/gift are visible as such in the comanda and the bill.
-- [ ] Screenshots at both viewports, light/dark; states loading, error, denied.
+- [x] Action sheet per item and for the comanda: percent/value keypad, mandatory reason list, preview of the new total from the server's numbers.
+- [x] These operations need a connection (not queued); offline state explains it; a 403 shows 'sem permissão para este valor' without the limit value.
+- [x] Items marked as courtesy/gift are visible as such in the comanda and the bill.
+- [x] Screenshots at both viewports, light/dark; states loading, error, denied.

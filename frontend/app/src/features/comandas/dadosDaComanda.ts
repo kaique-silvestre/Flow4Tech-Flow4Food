@@ -23,6 +23,7 @@ export function useConta(comandaId: string, enabled: boolean) {
         taxaServicoPercentual: Number(data.taxaServicoPercentual),
         versao: Number(data.versao),
         estado: String(data.estado),
+        descontoCentavos: Number(data.descontoCentavos ?? 0),
       };
     },
   });
@@ -53,6 +54,7 @@ export function paraItemDaConta(i: ItemDoServidor): ItemDaConta {
     nome: String(o.nome),
     precoCentavos: Number(o.precoCentavos),
   }));
+  const tipo = i.tipo === "cortesia" || i.tipo === "brinde" ? i.tipo : "normal";
   return {
     id: String(i.id),
     rodadaId: String(i.rodadaId),
@@ -64,5 +66,8 @@ export function paraItemDaConta(i: ItemDoServidor): ItemDaConta {
     estado: i.estado === "cancelado" ? "cancelado" : "lancado",
     opcoes,
     unitarioCentavos: Number(i.precoCentavos) + opcoes.reduce((soma, o) => soma + o.precoCentavos, 0),
+    tipo,
+    motivoDoTipo: (i.motivoDoTipo as string | null | undefined) ?? null,
+    valorDeTabelaCentavos: Number(i.valorDeTabelaCentavos ?? 0),
   };
 }
