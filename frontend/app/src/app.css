@@ -756,6 +756,70 @@ a.comanda-row:focus-visible {
   margin-bottom: var(--f4-space-3);
 }
 
+/* Comanda menu, edit sheets and history */
+.comanda-status-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+}
+
+.menu-lista {
+  margin: 0 0 var(--f4-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.menu-linha {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--f4-space-1);
+  border: 0;
+  border-bottom: 1px solid var(--f4-border);
+  background: transparent;
+  color: var(--f4-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-linha:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.alterar-quantidade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--f4-space-3);
+}
+
+.historico {
+  margin: 0 0 var(--f4-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.historico-linha {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-2) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.historico-hora {
+  color: var(--f4-ink-muted);
+}
+
+.historico-titulo {
+  display: block;
+  font-weight: 600;
+}
+
 /* Offline notice and queue */
 .fila {
   position: sticky;

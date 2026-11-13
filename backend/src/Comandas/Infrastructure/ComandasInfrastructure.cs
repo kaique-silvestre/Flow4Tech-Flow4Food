@@ -766,6 +766,13 @@ public sealed class PostgresRodadasStore : IRodadasStore
         new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList());
 }
 
+internal sealed class GarcomRow
+{
+    public Guid Id { get; set; }
+
+    public string Nome { get; set; } = "";
+}
+
 internal sealed class HistoricoRow
 {
     public Guid Id { get; set; }
@@ -835,6 +842,19 @@ public sealed class PostgresHistoricoDaComanda : IHistoricoDaComanda
 /// <summary>Whether an account may take comandas of a unit: an active account linked to it (the composite FK of the comanda already keeps the organization).</summary>
 public sealed class PostgresGarconsDaUnidade : IGarconsDaUnidade
 {
+    public async Task<IReadOnlyList<GarcomDaUnidade>> ListarAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.SqlQuery<GarcomRow>(
+            $"""
+            SELECT c.id AS "Id", c.nome AS "Nome" FROM contas c
+            JOIN usuario_unidades u ON u.organizacao_id = c.organizacao_id AND u.usuario_id = c.id
+            WHERE c.ativa AND u.unidade_id = {unitId}
+            ORDER BY c.nome, c.id
+            """).ToListAsync(cancellationToken);
+        return rows.Select(r => new GarcomDaUnidade(r.Id, r.Nome)).ToList();
+    }
+
     public async Task<bool> PodeAtenderAsync(Guid organizationId, Guid unitId, Guid contaId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -880,6 +900,7 @@ public static class ComandasServices
         services.AddSingleton<IGarconsDaUnidade, PostgresGarconsDaUnidade>();
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
+        services.AddSingleton<ConsultaDeGarcons>();
         services.AddSingleton<ConsultaDaUltimaVez>();
         return services;
     }

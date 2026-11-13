@@ -304,6 +304,16 @@ public sealed class GestaoDaEdicaoDaComanda(
     }
 }
 
+/// <summary>The accounts of the active unit a comanda can be handed to (the route asks for <c>comanda:trocar-garcom</c>).</summary>
+public sealed class ConsultaDeGarcons(IUnitOfWork unitOfWork, IGarconsDaUnidade garcons)
+{
+    public Task<IReadOnlyList<GarcomDaUnidade>> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return unitOfWork.ExecuteAsync(request, ct => garcons.ListarAsync(request.Organization.OrganizationId, request.Organization.UnitId, ct), cancellationToken);
+    }
+}
+
 /// <summary>The timeline of a comanda for the caller who may see it, oldest first (the audit trail behind it, with who did it and when). Null when the comanda is not theirs to see.</summary>
 public sealed class ConsultaDoHistoricoDaComanda(IUnitOfWork unitOfWork, IComandasStore comandas, IHistoricoDaComanda historico, IPermissaoDaComanda permissoes)
 {

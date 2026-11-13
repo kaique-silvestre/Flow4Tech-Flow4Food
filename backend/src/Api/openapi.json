@@ -3463,6 +3463,36 @@
         "x-permission": "comanda:cancelar"
       }
     },
+    "/comandas/garcons": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listGarconsDaUnidade",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GarcomDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:trocar-garcom"
+      }
+    },
     "/comandas/{comandaId}/historico": {
       "get": {
         "tags": [
@@ -5458,6 +5488,22 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "GarcomDto": {
+        "required": [
+          "id",
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
           }
         }
       },

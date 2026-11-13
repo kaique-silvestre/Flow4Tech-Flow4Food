@@ -10,9 +10,17 @@ import {
   UndoToast,
 } from "@flow4tech/design-system";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { enfileirarCancelamento, enfileirarRepeticao, enfileirarRodada, temAcaoViva, useFila } from "../fila/fila";
+import {
+  type EdicaoDaFila,
+  enfileirarCancelamento,
+  enfileirarEdicao,
+  enfileirarRepeticao,
+  enfileirarRodada,
+  temAcaoViva,
+  useFila,
+} from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
 import {
@@ -28,8 +36,19 @@ import {
 } from "./cardapio";
 import { useComandas, useUltimaVez } from "./consultas";
 import { useConta, useItens } from "./dadosDaComanda";
+import {
+  type AcaoDoMenu,
+  AlterarItemSheet,
+  CancelarComandaSheet,
+  DadosDaComandaSheet,
+  HistoricoSheet,
+  MenuDaComandaSheet,
+  RenomearSheet,
+  TrocarGarcomSheet,
+} from "./EdicaoSheets";
 import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet, RepetirRodadaSheet } from "./Folhas";
+import { useGarcons, useHistorico } from "./historico";
 import { type EscolhaDoItem, ItemSheet } from "./ItemSheet";
 import { exigeEscolha, resumoDasOpcoes } from "./opcoes";
 import { Picker } from "./Picker";
@@ -94,6 +113,7 @@ export function ComandaPage() {
   const categorias = useCategorias(pode && lancar);
   const frequentes = useFrequentes(pode && lancar);
   const favoritos = useFavoritos(pode && lancar);
+  const navegar = useNavigate();
 
   const [emPreparo, setEmPreparo] = useState<ItemEmPreparo[]>([]);
   const [folhaDoItem, setFolhaDoItem] = useState<FolhaDoItem | null>(null);
@@ -108,6 +128,17 @@ export function ComandaPage() {
   const [repetindo, setRepetindo] = useState(false);
   const [erroRepetir, setErroRepetir] = useState<string | undefined>(undefined);
   const [ultimaVezUsada, setUltimaVezUsada] = useState(false);
+  const [folhaMenu, setFolhaMenu] = useState(false);
+  const [itemParaAlterar, setItemParaAlterar] = useState<ItemDaConta | null>(null);
+  const [folhaNome, setFolhaNome] = useState(false);
+  const [folhaDados, setFolhaDados] = useState(false);
+  const [folhaGarcom, setFolhaGarcom] = useState(false);
+  const [folhaHistorico, setFolhaHistorico] = useState(false);
+  const [folhaCancelarComanda, setFolhaCancelarComanda] = useState(false);
+  const [cancelandoComanda, setCancelandoComanda] = useState(false);
+  const [erroCancelarComanda, setErroCancelarComanda] = useState<string | undefined>(undefined);
+  const historico = useHistorico(comandaId, pode && folhaHistorico && permissoes.pode("comanda:ver-historico"));
+  const garcons = useGarcons(pode && folhaGarcom && permissoes.pode("comanda:trocar-garcom"));
   const { acoes: filaAgora } = useFila();
   const [paraCancelar, setParaCancelar] = useState<ItemDaConta | null>(null);
   const [cancelando, setCancelando] = useState(false);
@@ -356,6 +387,76 @@ export function ComandaPage() {
     }
   }
 
+  /** An edit of the comanda always goes through the visible queue: it is sent at once with signal, waits in order behind earlier actions and without signal, and never overtakes them. */
+  function editar(edicao: EdicaoDaFila, titulo: string, detalhe: string) {
+    enfileirarEdicao({
+      acaoId: uuidv7(),
+      comandaId,
+      edicao,
+      titulo: `${titulo} · ${comanda?.numeroTexto ?? ""}`.trim(),
+      detalhe,
+    });
+  }
+
+  function aoEscolherNoMenu(acao: AcaoDoMenu) {
+    setFolhaMenu(false);
+    setAviso(null);
+    if (acao === "renomear") {
+      setFolhaNome(true);
+    } else if (acao === "dados") {
+      setFolhaDados(true);
+    } else if (acao === "garcom") {
+      setFolhaGarcom(true);
+    } else if (acao === "historico") {
+      setFolhaHistorico(true);
+    } else {
+      setErroCancelarComanda(undefined);
+      setFolhaCancelarComanda(true);
+    }
+  }
+
+  /** Cancelling the whole comanda needs the server now (it is never queued): the answer decides what the screen does next. */
+  async function cancelarComanda(motivo: CodigoDeMotivo, texto: string) {
+    setErroCancelarComanda(undefined);
+    setCancelandoComanda(true);
+    try {
+      const { data, response, error } = await api.POST("/comandas/{comandaId}/cancelar", {
+        params: { path: { comandaId } },
+        body: { versao: versao.current, motivo, texto: texto === "" ? null : texto },
+      });
+      if (data) {
+        setFolhaCancelarComanda(false);
+        await queryClient.invalidateQueries({ queryKey: ["comandas"] });
+        void queryClient.invalidateQueries({ queryKey: ["mesas"] });
+        await navegar({ to: "/salao" });
+        return;
+      }
+
+      const codigo = (error as ErroDeApi)?.codigo;
+      if (response.status === 409 && codigo === "versao-desatualizada") {
+        if (typeof (error as ErroDeApi)?.versaoAtual === "number") {
+          versao.current = Math.max(versao.current, Number((error as ErroDeApi)?.versaoAtual));
+        }
+
+        await atualizarDados();
+        setErroCancelarComanda("Esta comanda foi alterada em outro aparelho. Atualizamos; confira e tente de novo.");
+      } else if (response.status === 409 && codigo === "com-pagamentos") {
+        setErroCancelarComanda("Esta comanda já tem pagamento e não pode ser cancelada.");
+      } else if (response.status === 409 && codigo === "comanda-nao-aberta") {
+        setFolhaCancelarComanda(false);
+        await atualizarDados();
+      } else if (response.status === 403) {
+        setErroCancelarComanda("Você não tem permissão para cancelar comandas.");
+      } else {
+        setErroCancelarComanda("Não foi possível cancelar a comanda. Tente de novo.");
+      }
+    } catch {
+      setErroCancelarComanda("Sem conexão. Cancelar a comanda precisa do servidor.");
+    } finally {
+      setCancelandoComanda(false);
+    }
+  }
+
   /** One tap on + : a product with nothing to choose goes straight into the round; a required group opens the item sheet. Groups come from the cache, so the common case never waits. */
   async function aoAdicionar(produto: Produto) {
     setAviso(null);
@@ -574,6 +675,18 @@ export function ComandaPage() {
 
   const lancados = itens.data.filter((i) => i.estado === "lancado");
   const podeCancelar = permissoes.pode("comanda:cancelar-item");
+  const podeAlterarItem = permissoes.pode("comanda:alterar-item");
+  const acoesDoMenu: AcaoDoMenu[] = (
+    [
+      ["renomear", "comanda:renomear"],
+      ["dados", "comanda:alterar-dados"],
+      ["garcom", "comanda:trocar-garcom"],
+      ["historico", "comanda:ver-historico"],
+      ["cancelar", "comanda:cancelar"],
+    ] as const
+  )
+    .filter(([, permissao]) => permissoes.pode(permissao))
+    .map(([acao]) => acao);
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
   const podeFechar = permissoes.pode("comanda:fechar") && permissoes.pode("comanda:receber-pagamento");
   const ultima = ultimaRodada(itens.data);
@@ -596,7 +709,14 @@ export function ComandaPage() {
             {formatBRL(conta.data.totalCentavos)}
           </p>
         </div>
-        <StatusBadge status="aberta" detail={tempoDecorrido(comanda.abertaEm, Date.now())} />
+        <div className="comanda-status-linha">
+          <StatusBadge status="aberta" detail={tempoDecorrido(comanda.abertaEm, Date.now())} />
+          {acoesDoMenu.length > 0 ? (
+            <Button variant="secondary" onClick={() => setFolhaMenu(true)}>
+              Mais
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       {aviso ? <Notice tone="info">{aviso}</Notice> : null}
@@ -614,15 +734,29 @@ export function ComandaPage() {
               modifier={[resumoDasOpcoes(i.opcoes), i.observacao].filter(Boolean).join(" · ") || undefined}
               priceCents={i.unitarioCentavos}
               action={
-                podeCancelar ? (
-                  <button
-                    type="button"
-                    className="f4-row-action"
-                    aria-label={`Cancelar ${i.produtoNome}`}
-                    onClick={() => setParaCancelar(i)}
-                  >
-                    Cancelar
-                  </button>
+                podeAlterarItem || podeCancelar ? (
+                  <>
+                    {podeAlterarItem ? (
+                      <button
+                        type="button"
+                        className="f4-row-action"
+                        aria-label={`Alterar ${i.produtoNome}`}
+                        onClick={() => setItemParaAlterar(i)}
+                      >
+                        Alterar
+                      </button>
+                    ) : null}
+                    {podeCancelar ? (
+                      <button
+                        type="button"
+                        className="f4-row-action"
+                        aria-label={`Cancelar ${i.produtoNome}`}
+                        onClick={() => setParaCancelar(i)}
+                      >
+                        Cancelar
+                      </button>
+                    ) : null}
+                  </>
                 ) : undefined
               }
             />
@@ -766,6 +900,98 @@ export function ComandaPage() {
         enviando={repetindo}
         erro={erroRepetir}
         onRepetir={() => void repetirRodada()}
+      />
+      <MenuDaComandaSheet
+        open={folhaMenu}
+        onOpenChange={setFolhaMenu}
+        acoes={acoesDoMenu}
+        onEscolher={aoEscolherNoMenu}
+      />
+      <AlterarItemSheet
+        item={itemParaAlterar}
+        onOpenChange={(aberto) => {
+          if (!aberto) {
+            setItemParaAlterar(null);
+          }
+        }}
+        onSalvar={(quantidade, observacao) => {
+          if (itemParaAlterar) {
+            editar(
+              { tipo: "item", itemId: itemParaAlterar.id, quantidade, observacao },
+              "Alterar item",
+              `${itemParaAlterar.produtoNome} · ${quantidade}`,
+            );
+          }
+
+          setItemParaAlterar(null);
+        }}
+      />
+      <RenomearSheet
+        open={folhaNome}
+        onOpenChange={setFolhaNome}
+        comanda={comanda}
+        onSalvar={(identificacao) => {
+          editar({ tipo: "nome", identificacao }, "Renomear", identificacao);
+          setFolhaNome(false);
+        }}
+      />
+      <DadosDaComandaSheet
+        open={folhaDados}
+        onOpenChange={setFolhaDados}
+        comanda={comanda}
+        onSalvar={(pessoas, observacao) => {
+          editar(
+            { tipo: "dados", pessoas, observacao },
+            "Pessoas e observação",
+            pessoas === null ? "Sem número de pessoas" : `${pessoas} pessoas`,
+          );
+          setFolhaDados(false);
+        }}
+      />
+      <TrocarGarcomSheet
+        open={folhaGarcom}
+        onOpenChange={setFolhaGarcom}
+        garcomAtualId={comanda.garcomId}
+        garcons={{
+          carregando: garcons.isPending && !garcons.isError,
+          erro: garcons.isError,
+          dados: garcons.data,
+          recarregar: () => void garcons.refetch(),
+        }}
+        onTrocar={(garcomId) => {
+          editar(
+            { tipo: "garcom", garcomId },
+            "Trocar garçom",
+            garcons.data?.find((g) => g.id === garcomId)?.nome ?? "",
+          );
+          setFolhaGarcom(false);
+        }}
+      />
+      <HistoricoSheet
+        open={folhaHistorico}
+        onOpenChange={setFolhaHistorico}
+        agora={new Date()}
+        historico={{
+          carregando: historico.isPending && !historico.isError,
+          erro: historico.isError,
+          eventos: historico.data,
+          recarregar: () => void historico.refetch(),
+        }}
+      />
+      <CancelarComandaSheet
+        open={folhaCancelarComanda}
+        onOpenChange={setFolhaCancelarComanda}
+        numeroTexto={comanda.numeroTexto}
+        bloqueio={
+          !navigator.onLine
+            ? "Sem conexão. Cancelar a comanda precisa do servidor."
+            : filaDaComanda
+              ? "Há ações desta comanda na fila. Cancele depois que forem enviadas."
+              : null
+        }
+        enviando={cancelandoComanda}
+        erro={erroCancelarComanda}
+        onCancelar={(motivo, texto) => void cancelarComanda(motivo, texto)}
       />
       <CancelarItemSheet
         item={paraCancelar}

@@ -380,11 +380,14 @@ describe("sending a round", () => {
     await vi.waitFor(() => expect(chamadas.some((c) => c.path === "/cardapio/produtos/busca")).toBe(true), {
       timeout: 4000,
     });
-    const lista = await screen.findAllByRole("button", { name: /^Adicionar / }, { timeout: 4000 });
-    expect(lista.map((b) => b.getAttribute("aria-label"))).toEqual([
-      "Adicionar Porção de batata",
-      "Adicionar Chopp 300ml",
-    ]);
+    // The list first shows what was already there and then the server's order: wait for the final list instead of reading the first one that appears.
+    await vi.waitFor(
+      () =>
+        expect(screen.getAllByRole("button", { name: /^Adicionar / }).map((b) => b.getAttribute("aria-label"))).toEqual(
+          ["Adicionar Porção de batata", "Adicionar Chopp 300ml"],
+        ),
+      { timeout: 4000 },
+    );
 
     await userEvent.clear(screen.getByLabelText("Buscar produto"));
     await userEvent.type(screen.getByLabelText("Buscar produto"), "chopp{Enter}");

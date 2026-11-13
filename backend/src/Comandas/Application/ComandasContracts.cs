@@ -239,9 +239,14 @@ public interface IHistoricoDaComanda
     Task<IReadOnlyList<EventoDoHistorico>> ListarAsync(Guid organizationId, Guid comandaId, int limite, CancellationToken cancellationToken);
 }
 
+public sealed record GarcomDaUnidade(Guid Id, string Nome);
+
 /// <summary>Port: whether an account may take comandas of the unit (active, and linked to the unit). Runs inside a unit of work.</summary>
 public interface IGarconsDaUnidade
 {
+    /// <summary>The active accounts linked to the unit, by name (who a comanda can be handed to).</summary>
+    Task<IReadOnlyList<GarcomDaUnidade>> ListarAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
+
     Task<bool> PodeAtenderAsync(Guid organizationId, Guid unitId, Guid contaId, CancellationToken cancellationToken);
 }
 

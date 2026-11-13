@@ -250,6 +250,25 @@ public sealed partial class ComandasEndpointsTests
     }
 
     [Fact]
+    public async Task The_waiter_list_holds_the_active_accounts_of_the_unit_for_whoever_may_change_waiters_and_nobody_else()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        await RunSqlAsync(OrgA, UnitA, $"UPDATE contas SET ativa = false, desativada_em = now() WHERE id = '{Supervisor:D}'");
+
+        var lista = await BodyAsync<List<GarcomLido>>(await SendAsync(client, HttpMethod.Get, "/comandas/garcons", t.Dono), HttpStatusCode.OK);
+
+        Assert.Equal(["Dono", "Garcom", "Garcom Dois", "Mudo"], lista.Select(g => g.Nome));
+        Assert.DoesNotContain(lista, g => g.Id == Supervisor);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(client, HttpMethod.Get, "/comandas/garcons", t.Garcom)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(client, HttpMethod.Get, "/comandas/garcons", null)).StatusCode);
+        Assert.DoesNotContain(await BodyAsync<List<GarcomLido>>(await SendAsync(client, HttpMethod.Get, "/comandas/garcons", t.DonoB), HttpStatusCode.OK), g => g.Id == Garcom);
+    }
+
+    private sealed record GarcomLido(Guid Id, string Nome);
+
+    [Fact]
     public async Task An_editor_without_permission_to_see_other_waiters_comandas_reaches_only_their_own()
     {
         await using var api = new Api(_appConnection);

@@ -7,6 +7,9 @@ export interface Comanda {
   abertaEm: string;
   versao: number;
   estado: string;
+  garcomId: string;
+  pessoas: number | null;
+  observacao: string | null;
 }
 
 export interface Mesa {
@@ -25,6 +28,9 @@ export function paraComanda(c: Record<string, unknown>): Comanda {
     abertaEm: String(c["abertaEm"] ?? ""),
     versao: Number(c["versao"] ?? 1),
     estado: String(c["estado"] ?? "aberta"),
+    garcomId: String(c["garcomId"] ?? ""),
+    pessoas: typeof c["pessoas"] === "number" ? c["pessoas"] : null,
+    observacao: typeof c["observacao"] === "string" ? c["observacao"] : null,
   };
 }
 

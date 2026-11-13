@@ -4,6 +4,7 @@ import { json, jsonDoContrato, sessaoJson, stubRede, tokenDe } from "../../test-
 import { entrar, reiniciarSessaoParaTestes, sair } from "../sessao/sessao";
 import {
   enfileirarCancelamento,
+  enfileirarEdicao,
   enfileirarPagamento,
   enfileirarRepeticao,
   enfileirarRodada,
@@ -774,5 +775,161 @@ describe("queued repeat of the last round", () => {
     await vi.waitFor(() => expect(lerFila()[0]?.tentativas).toBe(1));
 
     expect(lerFila()[0]).toMatchObject({ estado: "pendente", tentativas: 1, motivo: "Aguardando o servidor" });
+  });
+});
+
+describe("queued edits of a comanda", () => {
+  const comandaEditada = (extra: Partial<components["schemas"]["ComandaDto"]> = {}) => ({
+    id: "c1",
+    unidadeId: "u1",
+    numero: 7,
+    numeroTexto: "#7",
+    identificacao: "Ana",
+    mesaId: null,
+    canal: "salao",
+    garcomId: "g1",
+    pessoas: null,
+    estado: "aberta",
+    taxaServicoPercentual: 10,
+    taxaServicoRemovida: false,
+    versao: 5,
+    abertaEm: new Date().toISOString(),
+    observacao: null,
+    ...extra,
+  });
+  const itemAlterado = jsonDoContrato("post", "/comandas/{comandaId}/itens/{itemId}/alterar", 200, {
+    comandaVersao: 5,
+    item: {
+      id: "i1",
+      rodadaId: "r1",
+      posicao: 1,
+      produtoId: "p1",
+      produtoNome: "Chopp",
+      precoCentavos: 1000,
+      quantidade: 3,
+      observacao: null,
+      estado: "lancado",
+      motivoCancelamento: null,
+      canceladoPor: null,
+      canceladoEm: null,
+      opcoes: [],
+      totalCentavos: 3000,
+    },
+  });
+
+  it.each([
+    [
+      { tipo: "item", itemId: "i1", quantidade: 3, observacao: "sem gelo" } as const,
+      "POST /comandas/c1/itens/i1/alterar",
+      { versao: 7, quantidade: 3, observacao: "sem gelo" },
+    ],
+    [
+      { tipo: "nome", identificacao: "Mesa da Ana" } as const,
+      "POST /comandas/c1/renomear",
+      { versao: 7, identificacao: "Mesa da Ana" },
+    ],
+    [{ tipo: "garcom", garcomId: "g2" } as const, "POST /comandas/c1/trocar-garcom", { versao: 7, garcomId: "g2" }],
+    [
+      { tipo: "dados", pessoas: 4, observacao: null } as const,
+      "POST /comandas/c1/dados",
+      { versao: 7, pessoas: 4, observacao: null },
+    ],
+  ])("queues %j and sends it to its route with the version read at send time", async (edicao, rota, corpo) => {
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(7),
+      "POST /comandas/c1/itens/i1/alterar": itemAlterado,
+      "POST /comandas/c1/renomear": json(comandaEditada()),
+      "POST /comandas/c1/trocar-garcom": json(comandaEditada()),
+      "POST /comandas/c1/dados": json(comandaEditada()),
+    });
+
+    enfileirarEdicao({ acaoId: "e1", comandaId: "c1", edicao, titulo: "Alterar · #7", detalhe: "x" });
+
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+    expect(chamadas.find((c) => `${c.method} ${c.path}` === rota)?.body).toEqual(corpo);
+  });
+
+  it("waits without signal, survives a reload and is sent once", async () => {
+    const chamadas = stubRede({
+      "GET /comandas/c1/conta": contaOk(7),
+      "POST /comandas/c1/renomear": json(comandaEditada()),
+    });
+    online(false);
+
+    enfileirarEdicao({
+      acaoId: "e1",
+      comandaId: "c1",
+      edicao: { tipo: "nome", identificacao: "Nova" },
+      titulo: "Renomear",
+      detalhe: "Nova",
+    });
+    recarregarFilaParaTestes();
+
+    expect(lerFila().map((a) => [a.tipo, a.edicao])).toEqual([["edicao", { tipo: "nome", identificacao: "Nova" }]]);
+    expect(temAcaoViva("c1")).toBe(true);
+    online(true);
+    tentarAgora("e1");
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+    expect(chamadas.filter((c) => c.path.endsWith("/renomear"))).toHaveLength(1);
+  });
+
+  it("adopts the version the server names on a conflict and sends again", async () => {
+    let tentativa = 0;
+    const versoes: number[] = [];
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(4),
+      "POST /comandas/c1/dados": (c) => {
+        versoes.push((c.body as { versao: number }).versao);
+        tentativa += 1;
+        return tentativa === 1
+          ? jsonDoContrato("post", "/comandas/{comandaId}/dados", 409, {
+              codigo: "versao-desatualizada",
+              versaoAtual: 9,
+            })
+          : json(comandaEditada());
+      },
+    });
+
+    enfileirarEdicao({
+      acaoId: "e1",
+      comandaId: "c1",
+      edicao: { tipo: "dados", pessoas: 2, observacao: null },
+      titulo: "Dados",
+      detalhe: "2 pessoas",
+    });
+
+    await vi.waitFor(() => expect(lerFila()).toEqual([]));
+    expect(versoes).toEqual([4, 9]);
+  });
+
+  it.each([
+    [
+      { status: 409, corpo: { codigo: "valor-ja-recebido" } },
+      "A conta já foi paga acima desse valor. A quantidade não pode baixar.",
+    ],
+    [{ status: 409, corpo: { codigo: "item-ja-cancelado" } }, "Este item já foi cancelado."],
+    [{ status: 409, corpo: { codigo: "comanda-nao-aberta" } }, "A comanda não está mais aberta."],
+    [{ status: 403, corpo: null }, "Você não tem permissão para esta alteração."],
+    [{ status: 400, corpo: { codigo: "garcom-invalido" } }, "A alteração não foi aceita. Confira os dados."],
+  ])("shows a refused edit as not sent with its reason: %j", async (resposta, motivo) => {
+    stubRede({
+      "GET /comandas/c1/conta": contaOk(4),
+      "POST /comandas/c1/itens/i1/alterar": () =>
+        new Response(resposta.corpo ? JSON.stringify(resposta.corpo) : null, {
+          status: resposta.status,
+          headers: { "content-type": "application/json" },
+        }),
+    });
+
+    enfileirarEdicao({
+      acaoId: "e1",
+      comandaId: "c1",
+      edicao: { tipo: "item", itemId: "i1", quantidade: 1, observacao: null },
+      titulo: "Alterar",
+      detalhe: "Chopp",
+    });
+
+    await vi.waitFor(() => expect(lerFila()[0]?.estado).toBe("falhou"));
+    expect(lerFila()[0]?.motivo).toBe(motivo);
   });
 });

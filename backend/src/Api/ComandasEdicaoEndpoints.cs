@@ -25,6 +25,8 @@ internal sealed record ComandaCanceladaDto(ComandaDto Comanda, int ItensCancelad
 /// <summary>One line of the timeline. <c>Acao</c> is the audit action (comanda:abrir, comanda:lancar-rodada, comanda:cancelar-item, pagamento:registrar...); <c>Antes</c>/<c>Depois</c> hold only simple, non-secret fields.</summary>
 internal sealed record EventoDoHistoricoDto(Guid Id, string Acao, DateTimeOffset Quando, Guid? UsuarioId, string? UsuarioNome, Dictionary<string, string> Antes, Dictionary<string, string> Depois);
 
+internal sealed record GarcomDto(Guid Id, string Nome);
+
 internal sealed record HistoricoDaComandaDto(List<EventoDoHistoricoDto> Eventos);
 
 internal static class ComandasEdicaoEndpoints
@@ -114,6 +116,15 @@ internal static class ComandasEdicaoEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ComandaErro>(StatusCodes.Status404NotFound)
             .Produces<ComandaErro>(StatusCodes.Status409Conflict);
+
+        app.MapGet("/comandas/garcons", async (RequestContextAccessor request, ConsultaDeGarcons garcons, CancellationToken cancellationToken) =>
+                Results.Ok((await garcons.ListarAsync(request, cancellationToken)).Select(g => new GarcomDto(g.Id, g.Nome)).ToList()))
+            .WithName("listGarconsDaUnidade")
+            .RequireSession()
+            .RequirePermission(ComandaPermissions.TrocarGarcom)
+            .Produces<List<GarcomDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         app.MapGet("/comandas/{comandaId:guid}/historico", async (Guid comandaId, RequestContextAccessor request, ConsultaDoHistoricoDaComanda historico, CancellationToken cancellationToken) =>
             {
