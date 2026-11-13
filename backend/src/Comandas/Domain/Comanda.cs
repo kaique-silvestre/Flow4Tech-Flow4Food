@@ -5,6 +5,9 @@ public enum EstadoDaComanda
     Aberta,
     Fechada,
     Cancelada,
+
+    /// <summary>Closed by a merge into another comanda: its items moved there, it keeps no balance.</summary>
+    Juntada,
 }
 
 /// <summary>
@@ -28,7 +31,8 @@ public sealed record Comanda(
     bool TaxaServicoRemovida,
     int Versao,
     string? Observacao = null,
-    string? MotivoCancelamento = null);
+    string? MotivoCancelamento = null,
+    Guid? JuntadaNaComandaId = null);
 
 /// <summary>The bill of a comanda in cents: consumption of the launched items, service fee, total, what the payments applied and what remains.</summary>
 public sealed record ContaDaComanda(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual, long DescontoCentavos = 0);
@@ -42,9 +46,9 @@ public static class RegrasDeComanda
 
     public const decimal TaxaMaxima = 20m;
 
-    /// <summary>Only an open comanda moves, and only to closed or cancelled (reopening is outside this slice).</summary>
+    /// <summary>Only an open comanda moves, and only to closed, cancelled or merged (reopening is outside this slice).</summary>
     public static bool PodeTransitar(EstadoDaComanda de, EstadoDaComanda para) =>
-        de == EstadoDaComanda.Aberta && para is EstadoDaComanda.Fechada or EstadoDaComanda.Cancelada;
+        de == EstadoDaComanda.Aberta && para is EstadoDaComanda.Fechada or EstadoDaComanda.Cancelada or EstadoDaComanda.Juntada;
 
     /// <summary>The stored word of a state.</summary>
     public static string Palavra(EstadoDaComanda estado) => estado switch
@@ -52,6 +56,7 @@ public static class RegrasDeComanda
         EstadoDaComanda.Aberta => "aberta",
         EstadoDaComanda.Fechada => "fechada",
         EstadoDaComanda.Cancelada => "cancelada",
+        EstadoDaComanda.Juntada => "juntada",
         _ => throw new ArgumentOutOfRangeException(nameof(estado)),
     };
 
@@ -60,6 +65,7 @@ public static class RegrasDeComanda
         "aberta" => EstadoDaComanda.Aberta,
         "fechada" => EstadoDaComanda.Fechada,
         "cancelada" => EstadoDaComanda.Cancelada,
+        "juntada" => EstadoDaComanda.Juntada,
         _ => throw new ArgumentOutOfRangeException(nameof(palavra)),
     };
 

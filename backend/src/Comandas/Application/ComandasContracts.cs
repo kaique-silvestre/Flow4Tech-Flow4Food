@@ -24,6 +24,12 @@ public static class ComandaPermissions
     /// <summary>Move an open comanda to another table of the unit.</summary>
     public const string TransferirMesa = "comanda:transferir-mesa";
 
+    /// <summary>Move launched items to another open comanda of the unit, or separate them into a new comanda.</summary>
+    public const string TransferirItem = "comanda:transferir-item";
+
+    /// <summary>Merge an open comanda into another open comanda of the unit (the first one is closed by the merge).</summary>
+    public const string Juntar = "comanda:juntar";
+
     /// <summary>Change the quantity or the note of an item already launched (the frozen price never changes).</summary>
     public const string AlterarItem = "comanda:alterar-item";
 
@@ -120,6 +126,9 @@ public interface IComandasStore
     /// <summary>Closes an OPEN comanda; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
     Task<bool> FecharAsync(Guid organizationId, Guid comandaId, DateTimeOffset fechadaEm, CancellationToken cancellationToken);
 
+    /// <summary>Closes an OPEN comanda as merged into <paramref name="destinoId"/>; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> JuntarAsync(Guid organizationId, Guid comandaId, Guid destinoId, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
     /// <summary>Marks the service fee of an OPEN comanda as removed; false when it was already removed or the comanda is not open.</summary>
     Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
 
@@ -154,6 +163,22 @@ public interface IComandasStore
 public sealed record ComandaTransferida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, Guid? MesaDeId, Guid MesaParaId, Guid TransferidaPor) : IDomainEvent
 {
     public const string Type = "comanda.transferida";
+
+    public string EventType => Type;
+}
+
+/// <summary>Items moved between two comandas of one unit (<c>comanda:transferir-item</c>), or into a NEW comanda that a separation created (<paramref name="DestinoCriada"/>). Shares the event name of a table move; the fields tell them apart.</summary>
+public sealed record ItensTransferidos(Guid EventId, Guid UnidadeId, Guid OrigemId, int OrigemNumero, Guid DestinoId, int DestinoNumero, bool DestinoCriada, IReadOnlyList<Guid> ItemIds, long ValorDeTabelaCentavos, Guid TransferidaPor) : IDomainEvent
+{
+    public const string Type = ComandaTransferida.Type;
+
+    public string EventType => Type;
+}
+
+/// <summary>A comanda merged into another: its launched items moved to <paramref name="DestinoId"/> and it closed with no balance.</summary>
+public sealed record ComandaJuntada(Guid EventId, Guid UnidadeId, Guid OrigemId, int OrigemNumero, Guid DestinoId, int DestinoNumero, int ItensMovidos, Guid JuntadaPor) : IDomainEvent
+{
+    public const string Type = "comanda.juntada";
 
     public string EventType => Type;
 }
@@ -258,6 +283,12 @@ public interface IRodadasStore
 
     /// <summary>Turns a launched NORMAL item into a courtesy or a gift (charge zero; price and options stay); false when it was no longer a launched normal item.</summary>
     Task<bool> DefinirTipoAsync(Guid organizationId, Guid itemId, TipoDoItem tipo, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Moves launched items to the comanda <paramref name="destinoId"/>: each item changes comanda and goes into a copy of its round that belongs to the destination (same send time, author and position;
+    /// <paramref name="destinoVersao"/> is the destination version after the write). Price, options, type and note travel with the item. Returns how many moved. Runs after both version bumps of the same unit of work.
+    /// </summary>
+    Task<int> MoverItensAsync(Guid organizationId, IReadOnlyCollection<Guid> itemIds, Guid destinoId, int destinoVersao, CancellationToken cancellationToken);
 
     /// <summary>Marks the round undone and cancels its items with the fixed reason; false when it was already undone.</summary>
     Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);

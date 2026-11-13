@@ -8,18 +8,21 @@ public sealed class ComandaRulesTests
     [Theory]
     [InlineData(EstadoDaComanda.Aberta, EstadoDaComanda.Fechada, true)]
     [InlineData(EstadoDaComanda.Aberta, EstadoDaComanda.Cancelada, true)]
+    [InlineData(EstadoDaComanda.Aberta, EstadoDaComanda.Juntada, true)]
+    [InlineData(EstadoDaComanda.Juntada, EstadoDaComanda.Aberta, false)]
     [InlineData(EstadoDaComanda.Fechada, EstadoDaComanda.Aberta, false)]
     [InlineData(EstadoDaComanda.Fechada, EstadoDaComanda.Cancelada, false)]
     [InlineData(EstadoDaComanda.Cancelada, EstadoDaComanda.Aberta, false)]
     [InlineData(EstadoDaComanda.Cancelada, EstadoDaComanda.Fechada, false)]
     [InlineData(EstadoDaComanda.Aberta, EstadoDaComanda.Aberta, false)]
-    public void Only_an_open_comanda_can_move_and_only_to_closed_or_cancelled(EstadoDaComanda from, EstadoDaComanda to, bool allowed) =>
+    public void Only_an_open_comanda_can_move_and_only_to_closed_cancelled_or_merged(EstadoDaComanda from, EstadoDaComanda to, bool allowed) =>
         Assert.Equal(allowed, RegrasDeComanda.PodeTransitar(from, to));
 
     [Theory]
     [InlineData(EstadoDaComanda.Aberta, "aberta")]
     [InlineData(EstadoDaComanda.Fechada, "fechada")]
     [InlineData(EstadoDaComanda.Cancelada, "cancelada")]
+    [InlineData(EstadoDaComanda.Juntada, "juntada")]
     public void A_state_has_one_stored_word_and_back(EstadoDaComanda state, string word)
     {
         Assert.Equal(word, RegrasDeComanda.Palavra(state));

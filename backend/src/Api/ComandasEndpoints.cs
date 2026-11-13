@@ -308,6 +308,7 @@ internal static class ComandasEndpoints
 
         app.MapEdicaoDaComanda();
         app.MapDescontosDaComanda();
+        app.MapMovimentoDeItens();
     }
 
     private static PagamentoDto PagamentoParaDto(PagamentoRecebido p) =>

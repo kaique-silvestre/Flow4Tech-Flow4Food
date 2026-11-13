@@ -17,9 +17,11 @@ comanda:cortesia
 comanda:desconto
 comanda:desfazer-rodada
 comanda:fechar
+comanda:juntar
 comanda:lancar-rodada
 comanda:remover-taxa-servico
 comanda:renomear
+comanda:transferir-item
 comanda:transferir-mesa
 comanda:trocar-garcom
 configuracao:alterar

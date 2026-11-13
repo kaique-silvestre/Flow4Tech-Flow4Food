@@ -455,7 +455,7 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
         var dono = await TokenAsync(api, DonoA, OrgA, UnitA);
         var waiter = (await CreateModelsAsync(client, dono)).Single(m => m.Chave == "garcom").PerfilId!.Value;
         var cashier = (await QueryAsync(OrgA, UnitA, "SELECT id FROM perfis WHERE nome = 'Caixa'", r => r.GetGuid(0))).Single();
-        await GiveAsync(api, Gerente, "Gestor de atribuicoes", "permissao:atribuir", "comanda:ver", "comanda:abrir", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "mesa:ver", "produto:ver");
+        await GiveAsync(api, Gerente, "Gestor de atribuicoes", "permissao:atribuir", "comanda:ver", "comanda:abrir", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "mesa:ver", "produto:ver");
         var gestor = await TokenAsync(api, Gerente, OrgA, UnitA);
 
         using (var self = await SendAsync(client, HttpMethod.Put, $"/contas/{Gerente:D}/perfis/{waiter:D}", gestor))

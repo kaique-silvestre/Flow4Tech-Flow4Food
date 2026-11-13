@@ -421,6 +421,81 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(("cortesia", 0L), (await QueryAsync(a, "SELECT tipo, 0::bigint FROM itens_comanda WHERE id = @i", r => (r.GetString(0), r.GetInt64(1)), ("i", descontoA.ItemId))).Single());
     }
 
+    [Fact]
+    public async Task Transfers_merges_and_separations_run_in_each_organization_and_one_cannot_reach_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var movidoA = await RunMovimentoAsync(client, salaoA);
+        var movidoB = await RunMovimentoAsync(client, salaoB);
+
+        // Each organization ends with the same shape: the comanda of the salao flow, X (open, one item), Y (merged into X, no live item), Z (new, one item).
+        foreach (var (tenant, movido) in new[] { (a, movidoA), (b, movidoB) })
+        {
+            Assert.Equal(("aberta", 1L), (await QueryAsync(tenant, "SELECT estado, (SELECT count(*) FROM itens_comanda WHERE comanda_id = @x) FROM comandas WHERE id = @x", r => (r.GetString(0), r.GetInt64(1)), ("x", movido.X))).Single());
+            Assert.Equal(("juntada", movido.X), (await QueryAsync(tenant, "SELECT estado, juntada_na_comanda_id FROM comandas WHERE id = @y", r => (r.GetString(0), r.GetGuid(1)), ("y", movido.Y))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM itens_comanda WHERE comanda_id = @z", r => r.GetInt64(0), ("z", movido.Z))).Single());
+            Assert.Equal(4L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM outbox_eventos WHERE tipo = 'comanda.juntada'", r => r.GetInt64(0))).Single());
+        }
+
+        // The other organization neither moves, merges nor separates them, and the rows stay as the owner left them.
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, movidoA), (salaoA.Token, movidoB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.X}/itens/transferir", intruso, new { versao = alvo.VersaoX, destinoId = alvo.Z, destinoVersao = alvo.VersaoZ, itemIds = new[] { alvo.ItemId } }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.X}/juntar", intruso, new { versao = alvo.VersaoX, origemId = alvo.Z, origemVersao = alvo.VersaoZ }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.X}/itens/separar", intruso, new { versao = alvo.VersaoX, itemIds = new[] { alvo.ItemId }, identificacao = (string?)null }));
+        }
+
+        Assert.Equal(4L, (await QueryAsync(a, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM itens_comanda WHERE comanda_id = @x", r => r.GetInt64(0), ("x", movidoA.X))).Single());
+    }
+
+    private sealed record Movido(Guid X, Guid Y, Guid Z, Guid ItemId, int VersaoX, int VersaoZ);
+
+    /// <summary>One organization as its founder: X launches two items, one goes to Y, Y is merged back into X, the other is separated into a new comanda Z.</summary>
+    private static async Task<Movido> RunMovimentoAsync(HttpClient client, Salao salao)
+    {
+        async Task<System.Text.Json.JsonElement> PostAsync(string caminho, object corpo, HttpStatusCode esperado)
+        {
+            using var response = await SendAsync(client, HttpMethod.Post, caminho, salao.Token, corpo);
+            Assert.Equal(esperado, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        }
+
+        async Task<ComandaCriadaDto> AbrirAsync(string nome)
+        {
+            using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { identificacao = nome, mesaId = (Guid?)null, pessoas = (int?)null });
+            Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+            return (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        }
+
+        var x = await AbrirAsync("Movimento X");
+        var y = await AbrirAsync("Movimento Y");
+        var primeira = await PostAsync($"/comandas/{x.Id}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = x.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 1, opcaoIds = new[] { salao.OpcaoId } } } }, HttpStatusCode.Created);
+        var segunda = await PostAsync($"/comandas/{x.Id}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = primeira.GetProperty("comandaVersao").GetInt32(), itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 2, opcaoIds = new[] { salao.OpcaoId } } } }, HttpStatusCode.Created);
+        var (item1, item2) = (primeira.GetProperty("itens")[0].GetProperty("id").GetGuid(), segunda.GetProperty("itens")[0].GetProperty("id").GetGuid());
+        var versaoX = segunda.GetProperty("comandaVersao").GetInt32();
+
+        var transferido = await PostAsync($"/comandas/{x.Id}/itens/transferir", new { versao = versaoX, destinoId = y.Id, destinoVersao = y.Versao, itemIds = new[] { item1 } }, HttpStatusCode.OK);
+        Assert.Equal(1, transferido.GetProperty("itensMovidos").GetInt32());
+        var (vx, vy) = (transferido.GetProperty("origem").GetProperty("versao").GetInt32(), transferido.GetProperty("destino").GetProperty("versao").GetInt32());
+
+        var juntado = await PostAsync($"/comandas/{x.Id}/juntar", new { versao = vx, origemId = y.Id, origemVersao = vy }, HttpStatusCode.OK);
+        Assert.Equal(("juntada", 1), (juntado.GetProperty("origem").GetProperty("estado").GetString(), juntado.GetProperty("itensMovidos").GetInt32()));
+        vx = juntado.GetProperty("destino").GetProperty("versao").GetInt32();
+
+        var separado = await PostAsync($"/comandas/{x.Id}/itens/separar", new { versao = vx, itemIds = new[] { item2 }, identificacao = "Separada" }, HttpStatusCode.Created);
+        var z = separado.GetProperty("destino");
+        Assert.Equal(("Separada", 2), (z.GetProperty("identificacao").GetString(), z.GetProperty("versao").GetInt32()));
+        return new Movido(x.Id, y.Id, z.GetProperty("id").GetGuid(), item1, separado.GetProperty("origem").GetProperty("versao").GetInt32(), 2);
+    }
+
     private sealed record Descontado(Guid ComandaId, Guid ItemId, Guid DescontoId, int Versao);
 
     /// <summary>One organization as its founder: a comanda with 2 chopps and 1 more of another launch, 10 percent off the comanda, then the first line as a courtesy.</summary>

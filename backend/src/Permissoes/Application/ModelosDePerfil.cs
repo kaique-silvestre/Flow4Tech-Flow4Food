@@ -17,7 +17,7 @@ public static class ModelosDePerfil
 {
     private static readonly string[] Garcom =
     [
-        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "mesa:ver", "produto:ver",
+        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "mesa:ver", "produto:ver",
     ];
 
     private static readonly string[] Caixa =
@@ -31,7 +31,7 @@ public static class ModelosDePerfil
     [
         "comanda:abrir", "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada",
         "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados",
-        "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "pagamento:registrar", "pagamento:ver",
+        "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "pagamento:registrar", "pagamento:ver",
         "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
         "comanda:desconto", "comanda:cortesia", "comanda:brinde",
     ];

@@ -155,14 +155,14 @@ public sealed class SalaoPropertyTests
     // ---- states ----
 
     [Fact]
-    public void Only_an_open_comanda_can_move_and_only_to_closed_or_cancelled()
+    public void Only_an_open_comanda_can_move_and_only_to_closed_cancelled_or_merged()
     {
         var todos = Enum.GetValues<EstadoDaComanda>();
         foreach (var de in todos)
         {
             foreach (var para in todos)
             {
-                var esperado = de == EstadoDaComanda.Aberta && para is EstadoDaComanda.Fechada or EstadoDaComanda.Cancelada;
+                var esperado = de == EstadoDaComanda.Aberta && para is EstadoDaComanda.Fechada or EstadoDaComanda.Cancelada or EstadoDaComanda.Juntada;
                 Assert.Equal(esperado, RegrasDeComanda.PodeTransitar(de, para));
             }
         }

@@ -1012,6 +1012,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/itens/transferir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["transferirItensDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/juntar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["juntarComandas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/itens/separar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["separarItensDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -1647,6 +1695,14 @@ export interface components {
             /** Format: int64 */
             consumoCentavos: number | string;
         };
+        JuntarComandasRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: uuid */
+            origemId: string;
+            /** Format: int32 */
+            origemVersao: number | string;
+        };
         LancarItemRequest: {
             /** Format: uuid */
             produtoId: string;
@@ -1710,6 +1766,19 @@ export interface components {
             criado: boolean;
             /** Format: uuid */
             perfilId: null | string;
+        };
+        MovimentoDeItensDto: {
+            origem: components["schemas"]["ComandaDto"];
+            destino: components["schemas"]["ComandaDto"];
+            /** Format: int32 */
+            itensMovidos: number | string;
+        };
+        MovimentoErro: {
+            codigo: string;
+            /** Format: uuid */
+            comandaId?: null | string;
+            /** Format: int32 */
+            versaoAtual?: null | number | string;
         };
         OpcaoDoItemDto: {
             /** Format: uuid */
@@ -1885,6 +1954,12 @@ export interface components {
             rodada: components["schemas"]["RodadaDto"];
             ignorados: components["schemas"]["ItemIgnoradoDto"][];
         };
+        SepararItensRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            itemIds: string[];
+            identificacao: null | string;
+        };
         SessaoItem: {
             /** Format: uuid */
             id: string;
@@ -1917,6 +1992,15 @@ export interface components {
         };
         SolicitarRecuperacaoRequest: {
             email: null | string;
+        };
+        TransferirItensRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: uuid */
+            destinoId: string;
+            /** Format: int32 */
+            destinoVersao: number | string;
+            itemIds: string[];
         };
         TrocarGarcomRequest: {
             /** Format: int32 */
@@ -5737,6 +5821,207 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    transferirItensDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferirItensRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDeItensDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+        };
+    };
+    juntarComandas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JuntarComandasRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDeItensDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+        };
+    };
+    separarItensDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SepararItensRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDeItensDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoErro"];
                 };
             };
         };

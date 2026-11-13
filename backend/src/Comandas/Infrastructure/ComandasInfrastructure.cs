@@ -93,6 +93,8 @@ internal sealed class ComandaRow
     public string? Observacao { get; set; }
 
     public string? MotivoCancelamento { get; set; }
+
+    public Guid? JuntadaNaComandaId { get; set; }
 }
 
 internal sealed class RodadaRow
@@ -274,6 +276,7 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.Versao).HasColumnName("versao");
             e.Property(x => x.Observacao).HasColumnName("observacao");
             e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
+            e.Property(x => x.JuntadaNaComandaId).HasColumnName("juntada_na_comanda_id");
         });
         modelBuilder.Entity<RodadaRow>(e =>
         {
@@ -601,6 +604,15 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
+    public async Task<bool> JuntarAsync(Guid organizationId, Guid comandaId, Guid destinoId, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET estado = 'juntada', fechada_em = {quando}, juntada_na_comanda_id = {destinoId}, juntada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
+            cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -625,7 +637,7 @@ public sealed class PostgresComandasStore : IComandasStore
     }
 
     private static Comanda ParaComanda(ComandaRow c) =>
-        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento);
+        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento, c.JuntadaNaComandaId);
 
     /// <summary>The last-closed query, exposed so a test can assert its SQL text (unit filter explicit, no organization filter: RLS does it).</summary>
     internal static IQueryable<ComandaRow> UltimaFechadaDaMesa(MesasDbContext context, Guid unitId, Guid mesaId, Guid? garcomId)
@@ -794,6 +806,31 @@ public sealed class PostgresRodadasStore : IRodadasStore
         return await context.Database.ExecuteSqlAsync(
             $"UPDATE itens_comanda SET estado = 'cancelado', motivo_cancelamento = {motivo}, cancelado_por = {por}, cancelado_em = {quando} WHERE comanda_id = {comandaId} AND estado = 'lancado'",
             cancellationToken);
+    }
+
+    public async Task<int> MoverItensAsync(Guid organizationId, IReadOnlyCollection<Guid> itemIds, Guid destinoId, int destinoVersao, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(itemIds);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var ids = itemIds.ToArray();
+        var rodadas = await context.Itens.AsNoTracking().Where(i => ids.Contains(i.Id)).Select(i => i.RodadaId).Distinct().ToListAsync(cancellationToken);
+        var movidos = 0;
+        foreach (var antiga in rodadas)
+        {
+            // The items keep their send time, author and position, in a copy of their round that belongs to the destination: undoing the old round can never reach an item that left it.
+            var nova = EntityId.New().Value;
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO rodadas (id, organizacao_id, unidade_id, comanda_id, enviada_por, enviada_em, desfeita_em, comanda_versao)
+                SELECT {nova}, organizacao_id, unidade_id, {destinoId}, enviada_por, enviada_em, desfeita_em, {destinoVersao} FROM rodadas WHERE id = {antiga}
+                """,
+                cancellationToken);
+            movidos += await context.Database.ExecuteSqlAsync(
+                $"UPDATE itens_comanda SET comanda_id = {destinoId}, rodada_id = {nova} WHERE rodada_id = {antiga} AND id = ANY({ids}) AND estado = 'lancado'",
+                cancellationToken);
+        }
+
+        return movidos;
     }
 
     public async Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
@@ -993,6 +1030,7 @@ public static class ComandasServices
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
         services.AddSingleton<IDescontosStore, PostgresDescontosStore>();
         services.AddSingleton<GestaoDeDescontos>();
+        services.AddSingleton<GestaoDaTransferenciaDeItens>();
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDeGarcons>();
         services.AddSingleton<ConsultaDaUltimaVez>();

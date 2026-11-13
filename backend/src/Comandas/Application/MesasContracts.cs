@@ -28,6 +28,10 @@ public static class ComandasAuditActions
 
     public const string TransferirMesa = "comanda:transferir-mesa";
 
+    public const string TransferirItem = "comanda:transferir-item";
+
+    public const string JuntarComanda = "comanda:juntar";
+
     public const string AbrirComanda = "comanda:abrir";
 
     public const string LancarRodada = "comanda:lancar-rodada";
