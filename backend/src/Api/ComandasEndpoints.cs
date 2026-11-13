@@ -18,7 +18,8 @@ internal sealed record ComandaDto(
     decimal TaxaServicoPercentual,
     bool TaxaServicoRemovida,
     int Versao,
-    DateTimeOffset AbertaEm);
+    DateTimeOffset AbertaEm,
+    string? Observacao);
 
 /// <summary>Every field is optional on purpose: a comanda opens with a number only. Unit, waiter and channel never come from the body.</summary>
 internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, int? Pessoas);
@@ -304,6 +305,8 @@ internal static class ComandasEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ComandaErro>(StatusCodes.Status404NotFound)
             .Produces<ComandaErro>(StatusCodes.Status409Conflict);
+
+        app.MapEdicaoDaComanda();
     }
 
     private static PagamentoDto PagamentoParaDto(PagamentoRecebido p) =>
@@ -353,8 +356,8 @@ internal static class ComandasEndpoints
         return Results.Json(new ComandaErro(codigo, r.VersaoAtual), statusCode: status);
     }
 
-    private static ComandaDto Dto(Comanda c) =>
-        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm);
+    internal static ComandaDto Dto(Comanda c) =>
+        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao);
 
     private static IResult Erro(ResultadoDaTroca r) => r.Resultado switch
     {

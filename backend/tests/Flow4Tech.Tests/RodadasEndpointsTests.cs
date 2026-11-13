@@ -142,7 +142,7 @@ public sealed partial class ComandasEndpointsTests
         await AssertErrorAsync(noId, HttpStatusCode.BadRequest, "invalido");
         Assert.Equal((0L, 1), (await CountAsync("rodadas"), await VersionOfAsync(comanda.Id)));
 
-        await RunSqlAsync(OrgA, UnitA, $"UPDATE comandas SET estado = 'cancelada', fechada_em = now() WHERE id = '{comanda.Id:D}'");
+        await RunSqlAsync(OrgA, UnitA, $"UPDATE comandas SET estado = 'cancelada', fechada_em = now(), motivo_cancelamento = 'teste', cancelada_por = '{DonoA:D}' WHERE id = '{comanda.Id:D}'");
         await AssertErrorAsync(await LaunchAsync(client, t.Garcom, comanda.Id, 1, ativo.Id), HttpStatusCode.Conflict, "comanda-nao-aberta");
         Assert.Equal(0L, await CountAsync("rodadas"));
     }

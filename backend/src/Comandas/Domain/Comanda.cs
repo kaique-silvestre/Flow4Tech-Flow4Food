@@ -26,7 +26,9 @@ public sealed record Comanda(
     DateTimeOffset? FechadaEm,
     decimal TaxaServicoPercentual,
     bool TaxaServicoRemovida,
-    int Versao);
+    int Versao,
+    string? Observacao = null,
+    string? MotivoCancelamento = null);
 
 /// <summary>The bill of a comanda in cents: consumption of the launched items, service fee, total, what the payments applied and what remains.</summary>
 public sealed record ContaDaComanda(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual);
@@ -71,6 +73,9 @@ public static class RegrasDeComanda
 
     /// <summary>A free name follows the same rules as a table identification (trimmed, 1 to 40, no control characters); null when refused.</summary>
     public static string? Identificacao(string? value) => RegrasDeMesa.Identificacao(value);
+
+    /// <summary>The general note of a comanda: trimmed, 1 to 200, no control characters; false when refused, <paramref name="valor"/> null for an absent or blank note.</summary>
+    public static bool TentarObservacao(string? bruto, out string? valor) => RegrasDeRodada.TentarObservacao(bruto, out valor);
 
     /// <summary>Optional head count; when given, 1 to <see cref="PessoasMaximo"/>.</summary>
     public static bool PessoasValidas(int? pessoas) => pessoas is null or (>= 1 and <= PessoasMaximo);

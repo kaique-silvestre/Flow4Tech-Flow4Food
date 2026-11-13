@@ -305,7 +305,7 @@ public sealed partial class ComandasEndpointsTests : IAsyncLifetime
         await using var source = NpgsqlDataSource.Create(_appConnection);
         await using (var tx = await new TenantDatabase(source).BeginAsync(new OrganizationContext(OrgA, UnitA)))
         {
-            await Exec(tx, "UPDATE comandas SET estado = 'cancelada', fechada_em = now()");
+            await Exec(tx, $"UPDATE comandas SET estado = 'cancelada', fechada_em = now(), motivo_cancelamento = 'teste', cancelada_por = '{DonoA:D}'");
             await tx.CommitAsync();
         }
 

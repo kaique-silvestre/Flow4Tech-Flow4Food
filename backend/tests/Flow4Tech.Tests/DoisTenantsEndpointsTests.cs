@@ -346,6 +346,75 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(mapaA.MesaDestino, (await QueryAsync(a, "SELECT mesa_id FROM comandas WHERE id = @c", r => r.GetGuid(0), ("c", mapaA.ComandaId))).Single());
     }
 
+    [Fact]
+    public async Task Editing_the_history_and_cancelling_a_comanda_run_in_each_organization_and_one_cannot_reach_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var edicaoA = await RunEdicaoAsync(client, salaoA);
+        var edicaoB = await RunEdicaoAsync(client, salaoB);
+
+        // Each organization sees only its own timeline: open, launch, rename, alter item, data, cancel.
+        foreach (var (salao, edicao) in new[] { (salaoA, edicaoA), (salaoB, edicaoB) })
+        {
+            using var historico = await SendAsync(client, HttpMethod.Get, $"/comandas/{edicao.ComandaId}/historico", salao.Token);
+            var eventos = (await historico.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("eventos").EnumerateArray().Select(e => e.GetProperty("acao").GetString()).ToList();
+            Assert.Equal(["comanda:abrir", "comanda:lancar-rodada", "comanda:renomear", "comanda:alterar-item", "comanda:alterar-dados", "comanda:cancelar"], eventos);
+        }
+
+        // The other organization neither reads nor changes it, and the rows stay as the owner left them.
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, edicaoA), (salaoA.Token, edicaoB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.ComandaId}/historico", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/itens/{alvo.ItemId}/alterar", intruso, new { versao = alvo.Versao, quantidade = 9 }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/renomear", intruso, new { versao = alvo.Versao, identificacao = "Invadida" }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/dados", intruso, new { versao = alvo.Versao, pessoas = 9, observacao = "x" }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/trocar-garcom", intruso, new { versao = alvo.Versao, garcomId = Guid.NewGuid() }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/cancelar", intruso, new { versao = alvo.Versao, motivo = "cliente-desistiu" }));
+        }
+
+        Assert.Equal(("Ana e Beto 2", 4, "cancelada"), (await QueryAsync(a, "SELECT identificacao, pessoas, estado FROM comandas WHERE id = @c", r => (r.GetString(0), r.GetInt32(1), r.GetString(2)), ("c", edicaoA.ComandaId))).Single());
+        Assert.Equal(2, (await QueryAsync(a, "SELECT quantidade FROM itens_comanda WHERE id = @i", r => r.GetInt32(0), ("i", edicaoA.ItemId))).Single());
+    }
+
+    private sealed record Editado(Guid ComandaId, Guid ItemId, int Versao);
+
+    /// <summary>One organization as its founder: open a comanda, launch 3 chopps, rename it, lower the item to 2, set people and note, then cancel it (no payment). Returns the version the comanda ended with.</summary>
+    private static async Task<Editado> RunEdicaoAsync(HttpClient client, Salao salao)
+    {
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { identificacao = "Ana e Beto", mesaId = (Guid?)null, pessoas = (int?)null });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        using var rodada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", salao.Token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 3, opcaoIds = new[] { salao.OpcaoId } } } });
+        Assert.Equal(HttpStatusCode.Created, rodada.StatusCode);
+        var rodadaJson = await rodada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var versao = rodadaJson.GetProperty("comandaVersao").GetInt32();
+        var itemId = rodadaJson.GetProperty("itens")[0].GetProperty("id").GetGuid();
+
+        using var renomeada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/renomear", salao.Token, new { versao, identificacao = "Ana e Beto 2" });
+        Assert.Equal(HttpStatusCode.OK, renomeada.StatusCode);
+        versao = (await renomeada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("versao").GetInt32();
+        using var alterado = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/itens/{itemId}/alterar", salao.Token, new { versao, quantidade = 2, observacao = "sem espuma" });
+        Assert.Equal(HttpStatusCode.OK, alterado.StatusCode);
+        versao = (await alterado.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("comandaVersao").GetInt32();
+        using var dados = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/dados", salao.Token, new { versao, pessoas = 4, observacao = "aniversario" });
+        Assert.Equal(HttpStatusCode.OK, dados.StatusCode);
+        var dadosJson = await dados.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(("aniversario", 4), (dadosJson.GetProperty("observacao").GetString(), dadosJson.GetProperty("pessoas").GetInt32()));
+        versao = dadosJson.GetProperty("versao").GetInt32();
+
+        using var cancelada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/cancelar", salao.Token, new { versao, motivo = "erro-de-lancamento" });
+        Assert.Equal(HttpStatusCode.OK, cancelada.StatusCode);
+        var canceladaJson = await cancelada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(("cancelada", 1), (canceladaJson.GetProperty("comanda").GetProperty("estado").GetString(), canceladaJson.GetProperty("itensCancelados").GetInt32()));
+        return new Editado(comanda.Id, itemId, versao + 1);
+    }
+
     private sealed record Mapeado(Guid AreaId, Guid MesaOrigem, Guid MesaDestino, Guid ComandaId);
 
     /// <summary>One organization as its founder: an area "Varanda", a loose table and one in the area, a comanda opened on the loose one and moved into the area.</summary>

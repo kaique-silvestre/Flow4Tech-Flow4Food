@@ -37,6 +37,7 @@ const comandaJson: components["schemas"]["ComandaDto"] = {
   taxaServicoRemovida: false,
   versao: 2,
   abertaEm: new Date().toISOString(),
+  observacao: null,
 };
 const conta = (extra: Partial<components["schemas"]["ContaDto"]> = {}): components["schemas"]["ContaDto"] => ({
   consumoCentavos: 2500,

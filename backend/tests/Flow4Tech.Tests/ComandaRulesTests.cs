@@ -93,4 +93,48 @@ public sealed class ComandaRulesTests
     [InlineData(-0.5, false)]
     public void The_service_fee_percentage_is_between_zero_and_twenty(double percent, bool valid) =>
         Assert.Equal(valid, RegrasDeComanda.TaxaValida((decimal)percent));
+
+    [Theory]
+    [InlineData(null, true, null)]
+    [InlineData("", true, null)]
+    [InlineData("   ", true, null)]
+    [InlineData("  sem cebola  ", true, "sem cebola")]
+    [InlineData("linha\ncontrole", false, null)]
+    public void The_general_note_is_optional_trimmed_and_free_of_control_characters(string? raw, bool valid, string? stored)
+    {
+        Assert.Equal(valid, RegrasDeComanda.TentarObservacao(raw, out var note));
+        if (valid)
+        {
+            Assert.Equal(stored, note);
+        }
+    }
+
+    [Fact]
+    public void The_general_note_has_at_most_200_characters()
+    {
+        Assert.True(RegrasDeComanda.TentarObservacao(new string('x', 200), out _));
+        Assert.False(RegrasDeComanda.TentarObservacao(new string('x', 201), out _));
+    }
+
+    [Theory]
+    [InlineData("cliente-desistiu", null, "cliente desistiu")]
+    [InlineData("erro-de-lancamento", "ignorado", "erro de lançamento")]
+    [InlineData("outro", "  mesa errada ", "mesa errada")]
+    [InlineData("outro", null, null)]
+    [InlineData("outro", "   ", null)]
+    [InlineData("inexistente", "x", null)]
+    [InlineData(null, "x", null)]
+    public void Cancelling_a_comanda_uses_the_standard_reason_list_and_outro_needs_free_text(string? code, string? text, string? stored) =>
+        Assert.Equal(stored, RegrasDeRodada.MotivoDeItem(code, text));
+
+    [Fact]
+    public void An_edited_item_total_follows_the_new_quantity_and_keeps_the_frozen_price_and_options()
+    {
+        var item = new ItemDaComanda(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(), "Chopp", 1000, 2, null, EstadoDoItem.Lancado, null, null, null, [new OpcaoDoItem(Guid.NewGuid(), Guid.NewGuid(), "Gelo", 100)]);
+
+        var editado = item with { Quantidade = 5, Observacao = "sem espuma" };
+
+        Assert.Equal((1000L, 1100L, 5500L), (editado.PrecoCentavos, editado.PrecoUnitarioCentavos, editado.TotalCentavos));
+        Assert.Equal(5500L, RegrasDeRodada.Consumo([editado]));
+    }
 }

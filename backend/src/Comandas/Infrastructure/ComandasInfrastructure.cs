@@ -2,7 +2,9 @@ using Flow4Tech.Comandas.Application;
 using Flow4Tech.Comandas.Domain;
 using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Infrastructure.Outbox;
+using System.Text.Json.Nodes;
 using Flow4Tech.Kernel;
+using Flow4Tech.Kernel.Audit;
 using Flow4Tech.Kernel.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +89,10 @@ internal sealed class ComandaRow
     public bool TaxaServicoRemovida { get; set; }
 
     public int Versao { get; set; }
+
+    public string? Observacao { get; set; }
+
+    public string? MotivoCancelamento { get; set; }
 }
 
 internal sealed class RodadaRow
@@ -229,6 +235,8 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.TaxaServicoPercentual).HasColumnName("taxa_servico_percentual").HasColumnType("numeric(5,2)");
             e.Property(x => x.TaxaServicoRemovida).HasColumnName("taxa_servico_removida");
             e.Property(x => x.Versao).HasColumnName("versao");
+            e.Property(x => x.Observacao).HasColumnName("observacao");
+            e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
         });
         modelBuilder.Entity<RodadaRow>(e =>
         {
@@ -468,7 +476,7 @@ public sealed class PostgresComandasStore : IComandasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var c = await Achar(context, unitId, comandaId).FirstOrDefaultAsync(cancellationToken);
-        return c is null ? null : new Comanda(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao);
+        return c is null ? null : ParaComanda(c);
     }
 
     public async Task<bool> AvancarVersaoAsync(Guid organizationId, Guid comandaId, int versaoEsperada, CancellationToken cancellationToken)
@@ -505,6 +513,36 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
+    public async Task<bool> RenomearAsync(Guid organizationId, Guid comandaId, string identificacao, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE comandas SET identificacao = {identificacao} WHERE id = {comandaId} AND estado = 'aberta'", cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> TrocarGarcomAsync(Guid organizationId, Guid comandaId, Guid garcomId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE comandas SET garcom_id = {garcomId} WHERE id = {comandaId} AND estado = 'aberta'", cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> AtualizarDadosAsync(Guid organizationId, Guid comandaId, int? pessoas, string? observacao, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE comandas SET pessoas = {pessoas}, observacao = {observacao} WHERE id = {comandaId} AND estado = 'aberta'", cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> CancelarAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET estado = 'cancelada', fechada_em = {quando}, motivo_cancelamento = {motivo}, cancelada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
+            cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -518,15 +556,18 @@ public sealed class PostgresComandasStore : IComandasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await Abertas(context, unitId, garcomId).Take(limite).ToListAsync(cancellationToken);
-        return rows.Select(c => new Comanda(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao)).ToList();
+        return rows.Select(c => ParaComanda(c)).ToList();
     }
 
     public async Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var c = await UltimaFechadaDaMesa(context, unitId, mesaId, garcomId).FirstOrDefaultAsync(cancellationToken);
-        return c is null ? null : new Comanda(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao);
+        return c is null ? null : ParaComanda(c);
     }
+
+    private static Comanda ParaComanda(ComandaRow c) =>
+        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento);
 
     /// <summary>The last-closed query, exposed so a test can assert its SQL text (unit filter explicit, no organization filter: RLS does it).</summary>
     internal static IQueryable<ComandaRow> UltimaFechadaDaMesa(MesasDbContext context, Guid unitId, Guid mesaId, Guid? garcomId)
@@ -672,6 +713,21 @@ public sealed class PostgresRodadasStore : IRodadasStore
         return rows == 1;
     }
 
+    public async Task<bool> AlterarItemAsync(Guid organizationId, Guid itemId, int quantidade, string? observacao, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE itens_comanda SET quantidade = {quantidade}, observacao = {observacao} WHERE id = {itemId} AND estado = 'lancado'", cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<int> CancelarItensVivosAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Database.ExecuteSqlAsync(
+            $"UPDATE itens_comanda SET estado = 'cancelado', motivo_cancelamento = {motivo}, cancelado_por = {por}, cancelado_em = {quando} WHERE comanda_id = {comandaId} AND estado = 'lancado'",
+            cancellationToken);
+    }
+
     public async Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -710,6 +766,88 @@ public sealed class PostgresRodadasStore : IRodadasStore
         new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList());
 }
 
+internal sealed class HistoricoRow
+{
+    public Guid Id { get; set; }
+
+    public string Acao { get; set; } = "";
+
+    public DateTimeOffset Quando { get; set; }
+
+    public Guid? UsuarioId { get; set; }
+
+    public string? UsuarioNome { get; set; }
+
+    public string? Antes { get; set; }
+
+    public string? Depois { get; set; }
+}
+
+/// <summary>
+/// The timeline of a comanda from the audit trail (<c>auditoria_registros</c>, successes only): records about the comanda itself, about its rounds and items (their ids are the audit object) and about its
+/// payments (the record carries the comanda id). RLS filters the organization. Only top-level scalar fields are exposed, and never a key <see cref="SensitiveData"/> calls sensitive (the audit already refuses
+/// to store one; this is the second wall).
+/// </summary>
+public sealed class PostgresHistoricoDaComanda : IHistoricoDaComanda
+{
+    private static readonly HashSet<string> Escondidos = new(StringComparer.Ordinal) { "versao" };
+
+    public async Task<IReadOnlyList<EventoDoHistorico>> ListarAsync(Guid organizationId, Guid comandaId, int limite, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var id = comandaId.ToString("D");
+        var rows = await context.Database.SqlQuery<HistoricoRow>(
+            $"""
+            SELECT a.id AS "Id", a.acao AS "Acao", a.ocorrido_em AS "Quando", a.usuario_id AS "UsuarioId", c.nome AS "UsuarioNome", a.antes::text AS "Antes", a.depois::text AS "Depois"
+            FROM auditoria_registros a
+            LEFT JOIN contas c ON c.organizacao_id = a.organizacao_id AND c.id = a.usuario_id
+            WHERE a.resultado = 'sucesso'
+              AND ((a.objeto_tipo = 'comanda' AND a.objeto_id = {id})
+                OR (a.objeto_tipo = 'rodada' AND a.objeto_id IN (SELECT r.id::text FROM rodadas r WHERE r.comanda_id = {comandaId}))
+                OR (a.objeto_tipo = 'item-comanda' AND a.objeto_id IN (SELECT i.id::text FROM itens_comanda i WHERE i.comanda_id = {comandaId}))
+                OR (a.objeto_tipo = 'pagamento' AND a.depois ->> 'comandaId' = {id}))
+            ORDER BY a.sequencia
+            LIMIT {limite}
+            """).ToListAsync(cancellationToken);
+        return rows.Select(r => new EventoDoHistorico(r.Id, r.Acao, r.Quando, r.UsuarioId, r.UsuarioNome, Campos(r.Antes), Campos(r.Depois))).ToList();
+    }
+
+    private static Dictionary<string, string> Campos(string? json)
+    {
+        var campos = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (string.IsNullOrEmpty(json) || JsonNode.Parse(json) is not JsonObject objeto)
+        {
+            return campos;
+        }
+
+        foreach (var (chave, valor) in objeto)
+        {
+            if (valor is JsonValue escalar && !Escondidos.Contains(chave) && !SensitiveData.IsSensitiveKey(chave))
+            {
+                campos[chave] = escalar.ToString();
+            }
+        }
+
+        return campos;
+    }
+}
+
+/// <summary>Whether an account may take comandas of a unit: an active account linked to it (the composite FK of the comanda already keeps the organization).</summary>
+public sealed class PostgresGarconsDaUnidade : IGarconsDaUnidade
+{
+    public async Task<bool> PodeAtenderAsync(Guid organizationId, Guid unitId, Guid contaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var achados = await context.Database.SqlQuery<int>(
+            $"""
+            SELECT 1 AS "Value" FROM contas c
+            JOIN usuario_unidades u ON u.organizacao_id = c.organizacao_id AND u.usuario_id = c.id
+            WHERE c.id = {contaId} AND c.ativa AND u.unidade_id = {unitId}
+            """).ToListAsync(cancellationToken);
+        return achados.Count > 0;
+    }
+}
+
 /// <summary>Comanda events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDeComandas(OutboxWriter outbox) : IEventosDeComandas
 {
@@ -738,6 +876,10 @@ public static class ComandasServices
         services.AddSingleton<GestaoDeRodadas>();
         services.AddSingleton<GestaoDoRecebimento>();
         services.AddSingleton<GestaoDaTrocaDeMesa>();
+        services.AddSingleton<IHistoricoDaComanda, PostgresHistoricoDaComanda>();
+        services.AddSingleton<IGarconsDaUnidade, PostgresGarconsDaUnidade>();
+        services.AddSingleton<GestaoDaEdicaoDaComanda>();
+        services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDaUltimaVez>();
         return services;
     }

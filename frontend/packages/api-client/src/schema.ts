@@ -836,6 +836,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/itens/{itemId}/alterar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["alterarItemDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/renomear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["renomearComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/trocar-garcom": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["trocarGarcomDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/dados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["alterarDadosDaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelarComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/historico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getHistoricoDaComanda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -1083,6 +1179,13 @@ export interface components {
             vigenteAPartirDe: null | string;
             motivo: null | string;
         };
+        AlterarDadosRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: int32 */
+            pessoas: null | number | string;
+            observacao: null | string;
+        };
         AlterarGrupoDeOpcaoRequest: {
             nome: null | string;
             /** Format: int32 */
@@ -1093,6 +1196,13 @@ export interface components {
             /** Format: int32 */
             versao: number | string;
             opcoes?: null | components["schemas"]["OpcaoRequest"][];
+        };
+        AlterarItemRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: int32 */
+            quantidade: number | string;
+            observacao: null | string;
         };
         AlterarProdutoRequest: {
             codigo: null | string;
@@ -1129,6 +1239,12 @@ export interface components {
         CaixaErro: {
             codigo: string;
         };
+        CancelarComandaRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            motivo: string;
+            texto: null | string;
+        };
         CancelarItemRequest: {
             /** Format: int32 */
             versao: number | string;
@@ -1147,6 +1263,11 @@ export interface components {
             versao: number | string;
             /** Format: uuid */
             categoriaPaiId: null | string;
+        };
+        ComandaCanceladaDto: {
+            comanda: components["schemas"]["ComandaDto"];
+            /** Format: int32 */
+            itensCancelados: number | string;
         };
         ComandaDto: {
             /** Format: uuid */
@@ -1172,6 +1293,7 @@ export interface components {
             versao: number | string;
             /** Format: date-time */
             abertaEm: string;
+            observacao: null | string;
         };
         ComandaErro: {
             codigo: string;
@@ -1298,6 +1420,22 @@ export interface components {
             /** Format: int32 */
             versao: number | string;
         };
+        EventoDoHistoricoDto: {
+            /** Format: uuid */
+            id: string;
+            acao: string;
+            /** Format: date-time */
+            quando: string;
+            /** Format: uuid */
+            usuarioId: null | string;
+            usuarioNome: null | string;
+            antes: {
+                [key: string]: string;
+            };
+            depois: {
+                [key: string]: string;
+            };
+        };
         FecharTurnoRequest: {
             /** Format: int64 */
             contadoCentavos: null | number | string;
@@ -1320,8 +1458,16 @@ export interface components {
             status: string;
             commit?: null | string;
         };
+        HistoricoDaComandaDto: {
+            eventos: components["schemas"]["EventoDoHistoricoDto"][];
+        };
         IniciarGoogleResponse: {
             url: string;
+        };
+        ItemAlteradoDto: {
+            item: components["schemas"]["ItemDto"];
+            /** Format: int32 */
+            comandaVersao: number | string;
         };
         ItemCanceladoDto: {
             item: components["schemas"]["ItemDto"];
@@ -1557,6 +1703,11 @@ export interface components {
             /** Format: int64 */
             tetoDiarioCentavos: null | number | string;
         };
+        RenomearComandaRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            identificacao: string;
+        };
         RepeticaoErro: {
             codigo: string;
             /** Format: int32 */
@@ -1626,6 +1777,12 @@ export interface components {
         };
         SolicitarRecuperacaoRequest: {
             email: null | string;
+        };
+        TrocarGarcomRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: uuid */
+            garcomId: string;
         };
         TrocarMesaRequest: {
             /** Format: uuid */
@@ -4738,6 +4895,387 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    alterarItemDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlterarItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemAlteradoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    renomearComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenomearComandaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    trocarGarcomDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrocarGarcomRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    alterarDadosDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlterarDadosRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    cancelarComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarComandaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaCanceladaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    getHistoricoDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricoDaComandaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

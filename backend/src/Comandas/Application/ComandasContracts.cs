@@ -24,6 +24,24 @@ public static class ComandaPermissions
     /// <summary>Move an open comanda to another table of the unit.</summary>
     public const string TransferirMesa = "comanda:transferir-mesa";
 
+    /// <summary>Change the quantity or the note of an item already launched (the frozen price never changes).</summary>
+    public const string AlterarItem = "comanda:alterar-item";
+
+    /// <summary>Rename an open comanda.</summary>
+    public const string Renomear = "comanda:renomear";
+
+    /// <summary>Hand an open comanda to another waiter of the unit.</summary>
+    public const string TrocarGarcom = "comanda:trocar-garcom";
+
+    /// <summary>Change the head count and the general note of an open comanda.</summary>
+    public const string AlterarDados = "comanda:alterar-dados";
+
+    /// <summary>Read the timeline (who, what, when) of a comanda.</summary>
+    public const string VerHistorico = "comanda:ver-historico";
+
+    /// <summary>Cancel a whole comanda that has no payment (with a standard reason). Sensitive: a denial is audited.</summary>
+    public const string Cancelar = "comanda:cancelar";
+
     /// <summary>Cancel one item of a comanda (with a reason). Sensitive: a denial is audited.</summary>
     public const string CancelarItem = "comanda:cancelar-item";
 
@@ -102,6 +120,18 @@ public interface IComandasStore
     /// <summary>Bumps the version of an OPEN comanda whatever it is now (taking the row lock until the unit of work ends); false when the comanda is not open. For writes that do not depend on what the caller last saw.</summary>
     Task<bool> AvancarVersaoSemConferirAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
 
+    /// <summary>Renames an OPEN comanda; false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> RenomearAsync(Guid organizationId, Guid comandaId, string identificacao, CancellationToken cancellationToken);
+
+    /// <summary>Hands an OPEN comanda to another waiter; false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> TrocarGarcomAsync(Guid organizationId, Guid comandaId, Guid garcomId, CancellationToken cancellationToken);
+
+    /// <summary>Replaces the head count and the general note (null clears each) of an OPEN comanda; false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> AtualizarDadosAsync(Guid organizationId, Guid comandaId, int? pessoas, string? observacao, CancellationToken cancellationToken);
+
+    /// <summary>Cancels an OPEN comanda with its reason and author; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
+    Task<bool> CancelarAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
     /// <summary>Moves an OPEN comanda to the table (and renames it to <paramref name="identificacao"/>); false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
     Task<bool> TrocarMesaAsync(Guid organizationId, Guid comandaId, Guid mesaId, string identificacao, CancellationToken cancellationToken);
 
@@ -115,6 +145,20 @@ public interface IComandasStore
 public sealed record ComandaTransferida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, Guid? MesaDeId, Guid MesaParaId, Guid TransferidaPor) : IDomainEvent
 {
     public const string Type = "comanda.transferida";
+
+    public string EventType => Type;
+}
+
+public sealed record ItemAlterado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, int QuantidadeAntes, int QuantidadeDepois, Guid AlteradoPor) : IDomainEvent
+{
+    public const string Type = "comanda.item-alterado";
+
+    public string EventType => Type;
+}
+
+public sealed record ComandaCancelada(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, string Motivo, int ItensCancelados, Guid CanceladaPor) : IDomainEvent
+{
+    public const string Type = "comanda.cancelada";
 
     public string EventType => Type;
 }
@@ -176,8 +220,29 @@ public interface IRodadasStore
     /// <summary>Cancels one item; false when it was no longer launched.</summary>
     Task<bool> CancelarItemAsync(Guid organizationId, Guid itemId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 
+    /// <summary>Changes quantity and note of an item still launched (price and options stay frozen); false when it was no longer launched.</summary>
+    Task<bool> AlterarItemAsync(Guid organizationId, Guid itemId, int quantidade, string? observacao, CancellationToken cancellationToken);
+
+    /// <summary>Cancels every item of the comanda that is still launched, with one reason; returns how many.</summary>
+    Task<int> CancelarItensVivosAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
     /// <summary>Marks the round undone and cancels its items with the fixed reason; false when it was already undone.</summary>
     Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+}
+
+/// <summary>One line of a comanda's timeline: the audit record behind it. <c>Antes</c> and <c>Depois</c> hold only top-level scalar fields that are not secrets.</summary>
+public sealed record EventoDoHistorico(Guid Id, string Acao, DateTimeOffset Quando, Guid? UsuarioId, string? UsuarioNome, IReadOnlyDictionary<string, string> Antes, IReadOnlyDictionary<string, string> Depois);
+
+/// <summary>Port: reads the audit trail of one comanda (its own records, its rounds', its items' and its payments'). Runs inside a unit of work (RLS filters).</summary>
+public interface IHistoricoDaComanda
+{
+    Task<IReadOnlyList<EventoDoHistorico>> ListarAsync(Guid organizationId, Guid comandaId, int limite, CancellationToken cancellationToken);
+}
+
+/// <summary>Port: whether an account may take comandas of the unit (active, and linked to the unit). Runs inside a unit of work.</summary>
+public interface IGarconsDaUnidade
+{
+    Task<bool> PodeAtenderAsync(Guid organizationId, Guid unitId, Guid contaId, CancellationToken cancellationToken);
 }
 
 /// <summary>Port: domain events of the comandas, written to the outbox on the unit of work in progress.</summary>

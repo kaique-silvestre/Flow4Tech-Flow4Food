@@ -36,6 +36,16 @@ public static class ComandasAuditActions
 
     public const string CancelarItem = "comanda:cancelar-item";
 
+    public const string AlterarItem = "comanda:alterar-item";
+
+    public const string RenomearComanda = "comanda:renomear";
+
+    public const string TrocarGarcom = "comanda:trocar-garcom";
+
+    public const string AlterarDados = "comanda:alterar-dados";
+
+    public const string CancelarComanda = "comanda:cancelar";
+
     public const string FecharComanda = "comanda:fechar";
 
     public const string RemoverTaxaServico = "comanda:remover-taxa-servico";

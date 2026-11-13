@@ -8,12 +8,17 @@ caixa:fechar
 categoria:alterar
 categoria:criar
 comanda:abrir
+comanda:alterar-dados
+comanda:alterar-item
+comanda:cancelar
 comanda:cancelar-item
 comanda:desfazer-rodada
 comanda:fechar
 comanda:lancar-rodada
 comanda:remover-taxa-servico
+comanda:renomear
 comanda:transferir-mesa
+comanda:trocar-garcom
 configuracao:alterar
 configuracao:restaurar
 conta:criar
