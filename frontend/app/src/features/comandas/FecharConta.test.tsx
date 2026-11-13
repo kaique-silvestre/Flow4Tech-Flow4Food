@@ -1,8 +1,9 @@
+import type { components } from "@flow4tech/api-client";
 import { onlineManager } from "@tanstack/react-query";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
+import { json, jsonDoContrato, renderEm, sessaoJson, stubRede } from "../../test-utils";
 import { enfileirarPagamento, lerFila, reiniciarFilaParaTestes } from "../fila/fila";
 
 afterEach(() => {
@@ -21,7 +22,7 @@ const CAIXA = [
   "mesa:ver",
   "produto:ver",
 ];
-const comandaJson = {
+const comandaJson: components["schemas"]["ComandaDto"] = {
   id: "c1",
   unidadeId: "u1",
   numero: 7,
@@ -37,7 +38,7 @@ const comandaJson = {
   versao: 2,
   abertaEm: new Date().toISOString(),
 };
-const conta = (extra: Record<string, unknown> = {}) => ({
+const conta = (extra: Partial<components["schemas"]["ContaDto"]> = {}): components["schemas"]["ContaDto"] => ({
   consumoCentavos: 2500,
   taxaServicoCentavos: 250,
   totalCentavos: 2750,
@@ -49,7 +50,9 @@ const conta = (extra: Record<string, unknown> = {}) => ({
   estado: "aberta",
   ...extra,
 });
-const pagamento = (extra: Record<string, unknown> = {}) => ({
+const pagamento = (
+  extra: Partial<components["schemas"]["PagamentoDto"]> = {},
+): components["schemas"]["PagamentoDto"] => ({
   id: "p",
   comandaId: "c1",
   turnoId: "t",
@@ -105,8 +108,13 @@ describe("close the bill in cash", () => {
 
   it("shows the change in large type and pays, then closes the bill", async () => {
     const { chamadas, folha } = await abrirFolha({
-      "POST /comandas/c1/pagamentos": json(pagamento(), { status: 201 }),
-      "POST /comandas/c1/fechar": json(conta({ saldoCentavos: 0, pagoCentavos: 2750, versao: 4, estado: "fechada" })),
+      "POST /comandas/c1/pagamentos": jsonDoContrato("post", "/comandas/{comandaId}/pagamentos", 201, pagamento()),
+      "POST /comandas/c1/fechar": jsonDoContrato(
+        "post",
+        "/comandas/{comandaId}/fechar",
+        200,
+        conta({ saldoCentavos: 0, pagoCentavos: 2750, versao: 4, estado: "fechada" }),
+      ),
     });
 
     await userEvent.clear(within(folha).getByLabelText("Dinheiro recebido"));
@@ -150,7 +158,11 @@ describe("close the bill in cash", () => {
 
   it("learns the register is closed from the server when the person cannot see it", async () => {
     const { folha } = await abrirFolha(
-      { "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }) },
+      {
+        "POST /comandas/c1/pagamentos": jsonDoContrato("post", "/comandas/{comandaId}/pagamentos", 409, {
+          codigo: "caixa-fechado",
+        }),
+      },
       CAIXA.filter((p) => p !== "caixa:ver"),
     );
 

@@ -1,5 +1,6 @@
+import type { components } from "@flow4tech/api-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { json, sessaoJson, stubRede, tokenDe } from "../../test-utils";
+import { json, jsonDoContrato, sessaoJson, stubRede, tokenDe } from "../../test-utils";
 import { entrar, reiniciarSessaoParaTestes, sair } from "../sessao/sessao";
 import {
   enfileirarCancelamento,
@@ -20,7 +21,7 @@ import {
 } from "./fila";
 
 const contaOk = (versao = 4) =>
-  json({
+  jsonDoContrato("get", "/comandas/{comandaId}/conta", 200, {
     consumoCentavos: 0,
     taxaServicoCentavos: 0,
     totalCentavos: 0,
@@ -32,10 +33,49 @@ const contaOk = (versao = 4) =>
     taxaServicoPercentual: 10,
   });
 const rodadaOk = (id: string) =>
-  json(
-    { id, comandaId: "c1", enviadaEm: new Date().toISOString(), desfeitaEm: null, comandaVersao: 5, itens: [] },
-    { status: 201 },
-  );
+  jsonDoContrato("post", "/comandas/{comandaId}/rodadas", 201, {
+    id,
+    comandaId: "c1",
+    enviadaEm: new Date().toISOString(),
+    desfeitaEm: null,
+    comandaVersao: 5,
+    itens: [],
+  });
+const pagamentoOk = (
+  extra: Partial<{ saldoRestanteCentavos: number; trocoCentavos: number; aplicadoCentavos: number }> = {},
+) =>
+  jsonDoContrato("post", "/comandas/{comandaId}/pagamentos", 201, {
+    id: "x",
+    comandaId: "c1",
+    turnoId: "t",
+    metodo: "dinheiro",
+    recebidoCentavos: 3000,
+    aplicadoCentavos: 2750,
+    trocoCentavos: 250,
+    saldoRestanteCentavos: 0,
+    comandaVersao: 5,
+    registradoEm: new Date().toISOString(),
+    operadorId: "o",
+    ...extra,
+  });
+const contaFechada = () =>
+  jsonDoContrato("post", "/comandas/{comandaId}/fechar", 200, {
+    consumoCentavos: 0,
+    taxaServicoCentavos: 0,
+    totalCentavos: 0,
+    pagoCentavos: 0,
+    saldoCentavos: 0,
+    versao: 6,
+    estado: "fechada",
+    taxaServicoRemovida: false,
+    taxaServicoPercentual: 10,
+  });
+const contaComSaldoDe = (base: components["schemas"]["ContaDto"]) =>
+  jsonDoContrato("get", "/comandas/{comandaId}/conta", 200, {
+    ...base,
+    saldoCentavos: 1000,
+    versao: 4,
+  });
 const itens = [{ produtoId: "p1", quantidade: 2, observacao: null }];
 
 async function entrarComo(conta = "conta-1") {
@@ -157,7 +197,7 @@ describe("pending-actions queue", () => {
         // The server stored it the first time; the answer never arrived. The repeat is answered 200 with the stored round.
         return chamadasDePost === 1
           ? (Promise.reject(new TypeError("network")) as never)
-          : json({
+          : jsonDoContrato("post", "/comandas/{comandaId}/rodadas", 200, {
               id: "r1",
               comandaId: "c1",
               enviadaEm: "2026-11-06T20:00:00Z",
@@ -185,7 +225,10 @@ describe("pending-actions queue", () => {
         versoes.push((c.body as { versao: number }).versao);
         tentativa += 1;
         return tentativa === 1
-          ? json({ codigo: "versao-desatualizada", versaoAtual: 7 }, { status: 409 })
+          ? jsonDoContrato("post", "/comandas/{comandaId}/rodadas", 409, {
+              codigo: "versao-desatualizada",
+              versaoAtual: 7,
+            })
           : rodadaOk("r1");
       },
     });
@@ -231,7 +274,7 @@ describe("pending-actions queue", () => {
       "GET /comandas/c1/conta": contaOk(),
       "POST /comandas/c1/rodadas": (c) =>
         (c.body as { rodadaId: string }).rodadaId === "ruim"
-          ? json({ codigo: "produto-inativo" }, { status: 409 })
+          ? jsonDoContrato("post", "/comandas/{comandaId}/rodadas", 409, { codigo: "produto-inativo" })
           : rodadaOk("bom"),
     });
 
@@ -307,33 +350,8 @@ describe("pending-actions queue", () => {
   it("sends a queued payment under its own id and closes the bill when nothing is left", async () => {
     const chamadas = stubRede({
       "GET /comandas/c1/conta": contaOk(4),
-      "POST /comandas/c1/pagamentos": json(
-        {
-          id: "x",
-          comandaId: "c1",
-          turnoId: "t",
-          metodo: "dinheiro",
-          recebidoCentavos: 3000,
-          aplicadoCentavos: 2750,
-          trocoCentavos: 250,
-          saldoRestanteCentavos: 0,
-          comandaVersao: 5,
-          registradoEm: new Date().toISOString(),
-          operadorId: "o",
-        },
-        { status: 201 },
-      ),
-      "POST /comandas/c1/fechar": json({
-        consumoCentavos: 0,
-        taxaServicoCentavos: 0,
-        totalCentavos: 0,
-        pagoCentavos: 0,
-        saldoCentavos: 0,
-        versao: 6,
-        estado: "fechada",
-        taxaServicoRemovida: false,
-        taxaServicoPercentual: 10,
-      }),
+      "POST /comandas/c1/pagamentos": pagamentoOk(),
+      "POST /comandas/c1/fechar": contaFechada(),
     });
 
     enfileirarPagamento({
@@ -361,7 +379,9 @@ describe("pending-actions queue", () => {
   it("keeps a payment that met a closed cash register as failed, with the reason", async () => {
     stubRede({
       "GET /comandas/c1/conta": contaOk(4),
-      "POST /comandas/c1/pagamentos": json({ codigo: "caixa-fechado" }, { status: 409 }),
+      "POST /comandas/c1/pagamentos": jsonDoContrato("post", "/comandas/{comandaId}/pagamentos", 409, {
+        codigo: "caixa-fechado",
+      }),
     });
 
     enfileirarPagamento({
@@ -513,14 +533,11 @@ describe("queue safety on a shared phone and across tabs", () => {
 
   it("a close that keeps failing after the payment succeeded stops after a bounded number of attempts and shows as stuck", async () => {
     vi.useFakeTimers();
-    const contaComSaldo = json({ ...(await contaOk().json()), saldoCentavos: 1000, versao: 4 });
+    const contaComSaldo = contaComSaldoDe(await contaOk().json());
     stubRede({
       "GET /comandas/c1/conta": () => contaComSaldo.clone(),
-      "POST /comandas/c1/pagamentos": json(
-        { saldoRestanteCentavos: 0, trocoCentavos: 0, comandaVersao: 5 },
-        { status: 201 },
-      ),
-      "POST /comandas/c1/fechar": json({}, { status: 500 }),
+      "POST /comandas/c1/pagamentos": pagamentoOk({ saldoRestanteCentavos: 0, trocoCentavos: 0 }),
+      "POST /comandas/c1/fechar": new Response(null, { status: 500 }),
     });
     enfileirarPagamento({ pagamentoId: "p1", comandaId: "c1", recebidoCentavos: 1000, titulo: "t", detalhe: "d" });
 
@@ -576,15 +593,15 @@ describe("queue safety on a shared phone and across tabs", () => {
     const base = await contaOk().json();
     let pagamentos = 0;
     stubRede({
-      "GET /comandas/c1/conta": () => json({ ...base, saldoCentavos: 1000, versao: 4 }),
+      "GET /comandas/c1/conta": () => contaComSaldoDe(base),
       "POST /comandas/c1/pagamentos": () => {
         pagamentos += 1;
         // Three attempts fail before the payment goes through.
         return pagamentos <= 3
           ? new Response(null, { status: 500 })
-          : json({ saldoRestanteCentavos: 0, trocoCentavos: 0, comandaVersao: 5 }, { status: 201 });
+          : pagamentoOk({ saldoRestanteCentavos: 0, trocoCentavos: 0 });
       },
-      "POST /comandas/c1/fechar": json({}, { status: 500 }),
+      "POST /comandas/c1/fechar": new Response(null, { status: 500 }),
     });
     enfileirarPagamento({ pagamentoId: "p1", comandaId: "c1", recebidoCentavos: 1000, titulo: "t", detalhe: "d" });
 
@@ -604,7 +621,30 @@ describe("queue safety on a shared phone and across tabs", () => {
   it("queues a cancel and sends it with the version read at send time", async () => {
     const chamadas = stubRede({
       "GET /comandas/c1/conta": contaOk(7),
-      "POST /comandas/c1/itens/i1/cancelar": json({ comandaVersao: 8 }),
+      "POST /comandas/c1/itens/i1/cancelar": jsonDoContrato(
+        "post",
+        "/comandas/{comandaId}/itens/{itemId}/cancelar",
+        200,
+        {
+          comandaVersao: 8,
+          item: {
+            id: "i1",
+            rodadaId: "r1",
+            posicao: 1,
+            produtoId: "p1",
+            produtoNome: "Chopp",
+            precoCentavos: 1000,
+            quantidade: 1,
+            observacao: null,
+            estado: "cancelado",
+            motivoCancelamento: "erro",
+            canceladoPor: null,
+            canceladoEm: null,
+            opcoes: [],
+            totalCentavos: 1000,
+          },
+        },
+      ),
     });
     enfileirarCancelamento({
       acaoId: "x1",
@@ -633,21 +673,18 @@ describe("queued repeat of the last round", () => {
       titulo: "Repetir rodada · #7",
       detalhe: "2 itens da última rodada",
     });
-  const repetida = (ignorados: unknown[] = []) =>
-    json(
-      {
-        rodada: {
-          id: "rep-1",
-          comandaId: "c1",
-          enviadaEm: new Date().toISOString(),
-          desfeitaEm: null,
-          comandaVersao: 6,
-          itens: [],
-        },
-        ignorados,
+  const repetida = (ignorados: components["schemas"]["ItemIgnoradoDto"][] = []) =>
+    jsonDoContrato("post", "/comandas/{comandaId}/rodadas/repetir", 201, {
+      rodada: {
+        id: "rep-1",
+        comandaId: "c1",
+        enviadaEm: new Date().toISOString(),
+        desfeitaEm: null,
+        comandaVersao: 6,
+        itens: [],
       },
-      { status: 201 },
-    );
+      ignorados,
+    });
 
   it("waits without signal, survives a reload, and is sent by the repeat route under its own id", async () => {
     const chamadas = stubRede({ "GET /comandas/c1/conta": contaOk(), "POST /comandas/c1/rodadas/repetir": repetida() });
@@ -688,7 +725,11 @@ describe("queued repeat of the last round", () => {
       "POST /comandas/c1/rodadas/repetir": () => {
         tentativa += 1;
         return tentativa === 1
-          ? json({ codigo: "versao-desatualizada", versaoAtual: 9, ignorados: [] }, { status: 409 })
+          ? jsonDoContrato("post", "/comandas/{comandaId}/rodadas/repetir", 409, {
+              codigo: "versao-desatualizada",
+              versaoAtual: 9,
+              ignorados: [],
+            })
           : repetida();
       },
     });
@@ -706,10 +747,11 @@ describe("queued repeat of the last round", () => {
   it("shows a repeat the server cannot do as not sent, with the reason, and does not block the rest", async () => {
     stubRede({
       "GET /comandas/c1/conta": contaOk(),
-      "POST /comandas/c1/rodadas/repetir": json(
-        { codigo: "nada-para-repetir", versaoAtual: null, ignorados: [] },
-        { status: 409 },
-      ),
+      "POST /comandas/c1/rodadas/repetir": jsonDoContrato("post", "/comandas/{comandaId}/rodadas/repetir", 409, {
+        codigo: "nada-para-repetir",
+        versaoAtual: null,
+        ignorados: [],
+      }),
     });
 
     repeticao();

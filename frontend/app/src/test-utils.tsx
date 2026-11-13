@@ -1,3 +1,4 @@
+import type { paths } from "@flow4tech/api-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
@@ -17,6 +18,36 @@ type Resposta = Response | ((chamada: Chamada) => Response | Promise<Response>);
 
 export function json(corpo: unknown, init?: ResponseInit): Response {
   return Response.json(corpo, init);
+}
+
+type Metodo = "get" | "post" | "put" | "delete" | "patch";
+
+/** The JSON body the contract (`openapi.json` via the generated `schema.ts`) declares for `METHOD path` answering `status`; `never` if the contract has no such answer. */
+type CorpoDoContrato<P extends keyof paths, M extends Metodo, S extends number> = paths[P] extends infer Rota
+  ? M extends keyof Rota
+    ? Rota[M] extends { responses: infer Respostas }
+      ? S extends keyof Respostas
+        ? Respostas[S] extends { content: { "application/json": infer Corpo } }
+          ? Corpo
+          : never
+        : never
+      : never
+    : never
+  : never;
+
+/**
+ * A stub answer typed by the API contract: the body must be exactly what the route's declared `status` answer carries,
+ * so renaming or retyping a field in the API fails `pnpm -r typecheck` here instead of passing a test that the real API would not satisfy.
+ * `rota` is the contract's template (`"/comandas/{comandaId}/pagamentos"`), not the concrete path the stub matches on.
+ * Use plain `json()` only for what the contract does not type (empty bodies, a network failure, a deliberately malformed answer).
+ */
+export function jsonDoContrato<P extends keyof paths, M extends Metodo, S extends number>(
+  _metodo: M,
+  _rota: P,
+  status: S,
+  corpo: CorpoDoContrato<P, M, S>,
+): Response {
+  return Response.json(corpo, { status });
 }
 
 /** A token shaped like the server's (header.payload.signature) whose `sub` is the account; the client only reads `sub` to keep one person's queue from being sent by another. */

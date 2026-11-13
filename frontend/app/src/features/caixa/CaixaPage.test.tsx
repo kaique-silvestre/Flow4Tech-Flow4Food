@@ -1,8 +1,9 @@
+import type { components } from "@flow4tech/api-client";
 import { formatBRL } from "@flow4tech/design-system";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { json, renderEm, sessaoJson, stubRede, TODAS_AS_PERMISSOES } from "../../test-utils";
+import { json, jsonDoContrato, renderEm, sessaoJson, stubRede, TODAS_AS_PERMISSOES } from "../../test-utils";
 import { tomDaDiferenca } from "./CaixaPage";
 
 afterEach(() => {
@@ -10,7 +11,7 @@ afterEach(() => {
 });
 
 const pronta = { "POST /refresh": json(sessaoJson()), "GET /comandas": json([]) };
-const turno = (extra: Record<string, unknown> = {}) => ({
+const turno = (extra: Partial<components["schemas"]["TurnoDto"]> = {}): components["schemas"]["TurnoDto"] => ({
   id: "t1",
   unidadeId: "u1",
   operadorId: "o1",
@@ -64,7 +65,7 @@ describe("caixa screen", () => {
     const chamadas = stubRede({
       ...pronta,
       "GET /caixa/turnos/atual": semTurno,
-      "POST /caixa/turnos": json(turno(), { status: 201 }),
+      "POST /caixa/turnos": jsonDoContrato("post", "/caixa/turnos", 201, turno()),
     });
     await renderEm("/salao/caixa");
 

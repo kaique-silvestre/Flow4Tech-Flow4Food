@@ -133,3 +133,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0113 | Arquivos de ticket e packet com o ID global: `F4-NNNN-<resumo>.md` nas fatias S-01 a S-04, titulos e `Blocked by` com o ID, teste de arquitetura | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0114 | Arquitetura do front com dependency-cruiser: ciclos, camadas entre app/control/design-system/api-client, sessao como base, sem devDependency em producao; job `architecture-frontend` bloqueante e pre-push | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0115 | Codigo morto do front com Knip: arquivos, exports, tipos e dependencias sem uso; job `dead-code-frontend` bloqueante e pre-push | governanca | - | - | `dev-v2` (commit direto) | - | feito |
+| F4-0116 | Respostas dos stubs de rede dos testes tipadas pelo contrato da API (`jsonDoContrato`): fila, pagamento, fechamento, caixa | governanca | - | - | `dev-v2` (commit direto) | - | feito |
