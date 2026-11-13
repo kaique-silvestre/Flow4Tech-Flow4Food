@@ -150,7 +150,7 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
 
     private sealed record ModeloBody(string Chave, string Nome, bool Criado, Guid? PerfilId);
 
-    private sealed record RegraBody(string Efeito, string Permissao);
+    private sealed record RegraBody(string Efeito, string Permissao, decimal? MaxPercentual, long? MaxValorCentavos, long? TetoDiarioCentavos);
 
     private sealed record PerfilBody(Guid Id, string Nome, List<RegraBody> Regras);
 
@@ -265,6 +265,9 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
             var perfil = Assert.Single(perfis, p => p.Nome == modelo.Nome);
             Assert.Equal(modelo.Permissoes.Where(catalog.Contains).Order(StringComparer.Ordinal), perfil.Regras.Select(r => r.Permissao).Order(StringComparer.Ordinal));
             Assert.All(perfil.Regras, r => Assert.Equal("allow", r.Efeito));
+            // The default limits of the model reach the persisted rules (F4-0118); nothing else carries a limit.
+            var limitadas = perfil.Regras.Where(r => r.MaxPercentual is not null || r.MaxValorCentavos is not null || r.TetoDiarioCentavos is not null).ToList();
+            Assert.Equal(modelo.Limites.Select(l => (l.Permission, l.MaxPercent, l.MaxValueCents)).Order(), limitadas.Select(r => (r.Permissao, r.MaxPercentual, r.MaxValorCentavos)).Order());
         }
 
         // The cashier takes the money, the waiter does not; the manager can do both and manage tables, but not profiles.

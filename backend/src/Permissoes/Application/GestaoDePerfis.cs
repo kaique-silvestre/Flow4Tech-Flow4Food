@@ -70,7 +70,7 @@ public sealed class GestaoDePerfis(
         var done = new List<ModeloCriado>();
         foreach (var modelo in ModelosDePerfil.Todos)
         {
-            var regras = modelo.Permissoes.Where(set.KnownPermissions.Contains).Select(p => new RegraDeAcesso(RuleEffect.Allow, p)).ToList();
+            var regras = ModelosDePerfil.Regras(modelo).Where(r => set.KnownPermissions.Contains(r.Permission)).ToList();
             var created = await CriarAsync(request, modelo.Nome, regras, cancellationToken);
             switch (created.Resultado)
             {
