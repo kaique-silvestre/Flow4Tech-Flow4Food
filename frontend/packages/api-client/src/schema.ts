@@ -948,6 +948,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/descontos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDescontosDaComanda"];
+        put?: never;
+        post: operations["aplicarDescontoNaComanda"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/itens/{itemId}/cortesia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["darCortesiaNoItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comandas/{comandaId}/itens/{itemId}/brinde": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["darBrindeNoItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mesas": {
         parameters: {
             query?: never;
@@ -1234,6 +1282,17 @@ export interface components {
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
         };
+        AplicarDescontoRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: uuid */
+            itemId: null | string;
+            /** Format: double */
+            percentual: null | number | string;
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            motivo: string;
+        };
         AreaDto: {
             /** Format: uuid */
             id: string;
@@ -1359,6 +1418,8 @@ export interface components {
             /** Format: int32 */
             versao: number | string;
             estado: string;
+            /** Format: int64 */
+            descontoCentavos: number | string;
         };
         ConviteRequest: {
             email: null | string;
@@ -1418,6 +1479,11 @@ export interface components {
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
         };
+        DarComoRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            motivo: string;
+        };
         DefinirAreaDaMesaRequest: {
             /** Format: uuid */
             areaId: null | string;
@@ -1431,6 +1497,30 @@ export interface components {
         DefinirPrecoDaUnidadeRequest: {
             /** Format: int64 */
             precoCentavos: number | string;
+        };
+        DescontoAplicadoDto: {
+            desconto: components["schemas"]["DescontoDto"];
+            conta: components["schemas"]["ContaDto"];
+        };
+        DescontoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            comandaId: string;
+            /** Format: uuid */
+            itemId: null | string;
+            forma: string;
+            /** Format: double */
+            percentual: null | number | string;
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            /** Format: int64 */
+            aplicadoCentavos: number | string;
+            motivo: string;
+            /** Format: uuid */
+            criadoPor: string;
+            /** Format: date-time */
+            criadoEm: string;
         };
         DesfazerRodadaRequest: {
             /** Format: int32 */
@@ -1495,6 +1585,10 @@ export interface components {
             /** Format: int32 */
             comandaVersao: number | string;
         };
+        ItemDadoDto: {
+            item: components["schemas"]["ItemDto"];
+            conta: components["schemas"]["ContaDto"];
+        };
         ItemDto: {
             /** Format: uuid */
             id: string;
@@ -1519,6 +1613,10 @@ export interface components {
             opcoes: components["schemas"]["OpcaoDoItemDto"][];
             /** Format: int64 */
             totalCentavos: number | string;
+            tipo: string;
+            motivoDoTipo: null | string;
+            /** Format: int64 */
+            valorDeTabelaCentavos: number | string;
         };
         ItemIgnoradoDto: {
             /** Format: uuid */
@@ -5331,6 +5429,254 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    listDescontosDaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescontoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    aplicarDescontoNaComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AplicarDescontoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescontoAplicadoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    darCortesiaNoItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DarComoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemDadoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
+    darBrindeNoItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DarComoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemDadoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

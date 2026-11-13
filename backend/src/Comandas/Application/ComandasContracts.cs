@@ -39,6 +39,15 @@ public static class ComandaPermissions
     /// <summary>Read the timeline (who, what, when) of a comanda.</summary>
     public const string VerHistorico = "comanda:ver-historico";
 
+    /// <summary>Give a discount (percent or value, on an item or the comanda). Limited: the engine measures the percent and the value the SERVER computed. Sensitive: a denial is audited.</summary>
+    public const string Desconto = "comanda:desconto";
+
+    /// <summary>Give an item as a courtesy (charge zero, kept for reports). Limited like a discount. Sensitive: a denial is audited.</summary>
+    public const string Cortesia = "comanda:cortesia";
+
+    /// <summary>Give an item as a gift (charge zero, kept for reports and the stock write-off). Limited like a discount. Sensitive: a denial is audited.</summary>
+    public const string Brinde = "comanda:brinde";
+
     /// <summary>Cancel a whole comanda that has no payment (with a standard reason). Sensitive: a denial is audited.</summary>
     public const string Cancelar = "comanda:cancelar";
 
@@ -149,6 +158,27 @@ public sealed record ComandaTransferida(Guid EventId, Guid ComandaId, Guid Unida
     public string EventType => Type;
 }
 
+public sealed record ItemCortesia(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, Guid ProdutoId, string ProdutoNome, int Quantidade, long ValorDeTabelaCentavos, string Motivo, Guid DadaPor) : IDomainEvent
+{
+    public const string Type = "comanda.item-cortesia";
+
+    public string EventType => Type;
+}
+
+public sealed record ItemBrinde(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, Guid ProdutoId, string ProdutoNome, int Quantidade, long ValorDeTabelaCentavos, string Motivo, Guid DadoPor) : IDomainEvent
+{
+    public const string Type = "comanda.item-brinde";
+
+    public string EventType => Type;
+}
+
+public sealed record DescontoAplicado(Guid EventId, Guid ComandaId, Guid DescontoId, Guid UnidadeId, Guid? ItemId, string Forma, decimal? Percentual, long AplicadoCentavos, string Motivo, Guid DadoPor) : IDomainEvent
+{
+    public const string Type = "comanda.desconto-aplicado";
+
+    public string EventType => Type;
+}
+
 public sealed record ItemAlterado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, int QuantidadeAntes, int QuantidadeDepois, Guid AlteradoPor) : IDomainEvent
 {
     public const string Type = "comanda.item-alterado";
@@ -226,6 +256,9 @@ public interface IRodadasStore
     /// <summary>Cancels every item of the comanda that is still launched, with one reason; returns how many.</summary>
     Task<int> CancelarItensVivosAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 
+    /// <summary>Turns a launched NORMAL item into a courtesy or a gift (charge zero; price and options stay); false when it was no longer a launched normal item.</summary>
+    Task<bool> DefinirTipoAsync(Guid organizationId, Guid itemId, TipoDoItem tipo, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
     /// <summary>Marks the round undone and cancels its items with the fixed reason; false when it was already undone.</summary>
     Task<bool> DesfazerRodadaAsync(Guid organizationId, Guid rodadaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 }
@@ -248,6 +281,24 @@ public interface IGarconsDaUnidade
     Task<IReadOnlyList<GarcomDaUnidade>> ListarAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
 
     Task<bool> PodeAtenderAsync(Guid organizationId, Guid unitId, Guid contaId, CancellationToken cancellationToken);
+}
+
+/// <summary>Port: the discounts of the current organization. Runs inside a unit of work (RLS filters). Rows are written once.</summary>
+public interface IDescontosStore
+{
+    /// <summary>The discounts of one comanda in the order they were given (instant, then id).</summary>
+    Task<IReadOnlyList<Desconto>> ListarAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
+
+    Task InserirAsync(Guid organizationId, Guid unitId, Desconto desconto, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Port: asks the one authorization engine for a LIMITED permission of a comanda (<c>comanda:desconto|cortesia|brinde</c>) with the percent and the value the SERVER computed (adapted in Api). A daily cap, if any, is
+/// reserved inside the unit of work in progress, so a refusal that throws rolls the reservation back with the rest.
+/// </summary>
+public interface IDecisaoDeDesconto
+{
+    Task<bool> PodeAsync(IRequestContext request, string permission, decimal percentual, long valorCentavos, CancellationToken cancellationToken);
 }
 
 /// <summary>Port: domain events of the comandas, written to the outbox on the unit of work in progress.</summary>

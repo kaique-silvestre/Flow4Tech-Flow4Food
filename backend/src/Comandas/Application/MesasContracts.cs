@@ -46,6 +46,12 @@ public static class ComandasAuditActions
 
     public const string CancelarComanda = "comanda:cancelar";
 
+    public const string DarDesconto = "comanda:desconto";
+
+    public const string DarCortesia = "comanda:cortesia";
+
+    public const string DarBrinde = "comanda:brinde";
+
     public const string FecharComanda = "comanda:fechar";
 
     public const string RemoverTaxaServico = "comanda:remover-taxa-servico";

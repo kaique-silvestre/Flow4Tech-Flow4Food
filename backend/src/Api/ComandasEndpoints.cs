@@ -27,8 +27,8 @@ internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, 
 /// <summary>An option chosen for an item; name and price were copied when it was launched.</summary>
 internal sealed record OpcaoDoItemDto(Guid OpcaoId, Guid GrupoId, string Nome, long PrecoCentavos);
 
-/// <summary><c>PrecoCentavos</c> is the frozen product price; <c>TotalCentavos</c> is (price + options) times quantity.</summary>
-internal sealed record ItemDto(Guid Id, Guid RodadaId, int Posicao, Guid ProdutoId, string ProdutoNome, long PrecoCentavos, int Quantidade, string? Observacao, string Estado, string? MotivoCancelamento, Guid? CanceladoPor, DateTimeOffset? CanceladoEm, List<OpcaoDoItemDto> Opcoes, long TotalCentavos);
+/// <summary><c>PrecoCentavos</c> is the frozen product price; <c>ValorDeTabelaCentavos</c> is (price + options) times quantity; <c>TotalCentavos</c> is what the line charges (zero when <c>Tipo</c> is cortesia or brinde, with <c>MotivoDoTipo</c> saying why).</summary>
+internal sealed record ItemDto(Guid Id, Guid RodadaId, int Posicao, Guid ProdutoId, string ProdutoNome, long PrecoCentavos, int Quantidade, string? Observacao, string Estado, string? MotivoCancelamento, Guid? CanceladoPor, DateTimeOffset? CanceladoEm, List<OpcaoDoItemDto> Opcoes, long TotalCentavos, string Tipo, string? MotivoDoTipo, long ValorDeTabelaCentavos);
 
 /// <summary><c>ComandaVersao</c> is the comanda version after the write: the one the client sends with its next write.</summary>
 internal sealed record RodadaDto(Guid Id, Guid ComandaId, DateTimeOffset EnviadaEm, DateTimeOffset? DesfeitaEm, int ComandaVersao, List<ItemDto> Itens);
@@ -60,8 +60,8 @@ internal sealed record RepeticaoErro(string Codigo, int? VersaoAtual, List<ItemI
 /// <summary><c>Motivo</c> is a code of the standard list (cliente-desistiu, erro-de-lancamento, item-indisponivel, outro); <c>Texto</c> is required with 'outro'.</summary>
 internal sealed record CancelarItemRequest(int Versao, string Motivo, string? Texto);
 
-/// <summary>The bill of a comanda in cents. <c>Versao</c> is the version the next write must carry.</summary>
-internal sealed record ContaDto(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual, int Versao, string Estado);
+/// <summary>The bill of a comanda in cents: consumption, discounts, service fee on what is left, total (ADR-018). <c>Versao</c> is the version the next write must carry.</summary>
+internal sealed record ContaDto(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual, int Versao, string Estado, long DescontoCentavos);
 
 /// <summary><c>SaldoRestanteCentavos</c> is what remains to pay after this payment; <c>TrocoCentavos</c> the change to give back.</summary>
 internal sealed record PagamentoDto(Guid Id, Guid ComandaId, Guid? TurnoId, string Metodo, long RecebidoCentavos, long AplicadoCentavos, long TrocoCentavos, long SaldoRestanteCentavos, int ComandaVersao, DateTimeOffset RegistradoEm, Guid OperadorId);
@@ -307,13 +307,14 @@ internal static class ComandasEndpoints
             .Produces<ComandaErro>(StatusCodes.Status409Conflict);
 
         app.MapEdicaoDaComanda();
+        app.MapDescontosDaComanda();
     }
 
     private static PagamentoDto PagamentoParaDto(PagamentoRecebido p) =>
         new(p.Id, p.ComandaId, p.TurnoId, p.Metodo, p.RecebidoCentavos, p.AplicadoCentavos, p.TrocoCentavos, p.SaldoAposCentavos, p.ComandaVersao, p.RegistradoEm, p.OperadorId);
 
     private static ContaDto ContaParaDto(ResultadoDoRecebimentoComConta r) =>
-        new(r.Conta!.ConsumoCentavos, r.Conta.TaxaServicoCentavos, r.Conta.TotalCentavos, r.Conta.PagoCentavos, r.Conta.SaldoCentavos, r.Conta.TaxaServicoRemovida, r.Conta.TaxaServicoPercentual, r.Versao!.Value, RegrasDeComanda.Palavra(r.Estado!.Value));
+        new(r.Conta!.ConsumoCentavos, r.Conta.TaxaServicoCentavos, r.Conta.TotalCentavos, r.Conta.PagoCentavos, r.Conta.SaldoCentavos, r.Conta.TaxaServicoRemovida, r.Conta.TaxaServicoPercentual, r.Versao!.Value, RegrasDeComanda.Palavra(r.Estado!.Value), r.Conta.DescontoCentavos);
 
     private static IResult ErroDeRecebimento(ResultadoDoRecebimentoComConta r) => r.Resultado switch
     {
@@ -330,7 +331,7 @@ internal static class ComandasEndpoints
     };
 
     internal static ItemDto ItemParaDto(ItemDaComanda i) =>
-        new(i.Id, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.Palavra(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, i.Opcoes.Select(o => new OpcaoDoItemDto(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos)).ToList(), i.TotalCentavos);
+        new(i.Id, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.Palavra(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, i.Opcoes.Select(o => new OpcaoDoItemDto(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos)).ToList(), i.TotalCentavos, RegrasDeDesconto.Palavra(i.Tipo), i.MotivoDoTipo, i.ValorDeTabelaCentavos);
 
     private static RodadaDto RodadaParaDto(ResultadoDeEscrita r) =>
         new(r.Rodada!.Rodada.Id, r.Rodada.Rodada.ComandaId, r.Rodada.Rodada.EnviadaEm, r.Rodada.Rodada.DesfeitaEm, r.Versao!.Value, r.Rodada.Itens.Select(ItemParaDto).ToList());

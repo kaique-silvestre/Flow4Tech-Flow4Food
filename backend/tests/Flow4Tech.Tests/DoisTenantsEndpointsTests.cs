@@ -382,6 +382,66 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(2, (await QueryAsync(a, "SELECT quantidade FROM itens_comanda WHERE id = @i", r => r.GetInt32(0), ("i", edicaoA.ItemId))).Single());
     }
 
+    [Fact]
+    public async Task Discounts_courtesies_and_gifts_run_in_each_organization_and_one_cannot_reach_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var descontoA = await RunDescontoAsync(client, salaoA);
+        var descontoB = await RunDescontoAsync(client, salaoB);
+
+        // Each organization sees only its own discount; the bill is the same arithmetic in both (see RunDescontoAsync).
+        foreach (var (salao, alvo) in new[] { (salaoA, descontoA), (salaoB, descontoB) })
+        {
+            using var lista = await SendAsync(client, HttpMethod.Get, $"/comandas/{alvo.ComandaId}/descontos", salao.Token);
+            Assert.Equal(alvo.DescontoId, (await lista.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).EnumerateArray().Single().GetProperty("id").GetGuid());
+        }
+
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, descontoA), (salaoA.Token, descontoB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.ComandaId}/descontos", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/descontos", intruso, new { versao = alvo.Versao, percentual = 5m, motivo = "x" }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/itens/{alvo.ItemId}/cortesia", intruso, new { versao = alvo.Versao, motivo = "x" }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/itens/{alvo.ItemId}/brinde", intruso, new { versao = alvo.Versao, motivo = "x" }));
+        }
+
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM descontos_comanda", r => r.GetInt64(0))).Single());
+        Assert.Equal(("cortesia", 0L), (await QueryAsync(a, "SELECT tipo, 0::bigint FROM itens_comanda WHERE id = @i", r => (r.GetString(0), r.GetInt64(1)), ("i", descontoA.ItemId))).Single());
+    }
+
+    private sealed record Descontado(Guid ComandaId, Guid ItemId, Guid DescontoId, int Versao);
+
+    /// <summary>One organization as its founder: a comanda with 2 chopps and 1 more of another launch, 10 percent off the comanda, then the first line as a courtesy.</summary>
+    private static async Task<Descontado> RunDescontoAsync(HttpClient client, Salao salao)
+    {
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { identificacao = "Desconto", mesaId = (Guid?)null, pessoas = (int?)null });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        using var rodada = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", salao.Token, new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 2, opcaoIds = new[] { salao.OpcaoId } } } });
+        Assert.Equal(HttpStatusCode.Created, rodada.StatusCode);
+        var rodadaJson = await rodada.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var versao = rodadaJson.GetProperty("comandaVersao").GetInt32();
+        var itemId = rodadaJson.GetProperty("itens")[0].GetProperty("id").GetGuid();
+
+        // 2 x (12,50 + 1,00) = 27,00; 10% off = 2,70 -> 24,30; fee 10% = 2,43 -> total 26,73.
+        using var desconto = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/descontos", salao.Token, new { versao, percentual = 10m, motivo = "cliente antigo" });
+        Assert.Equal(HttpStatusCode.Created, desconto.StatusCode);
+        var descontoJson = await desconto.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal((270, 2_673), (descontoJson.GetProperty("desconto").GetProperty("aplicadoCentavos").GetInt32(), descontoJson.GetProperty("conta").GetProperty("totalCentavos").GetInt32()));
+        versao = descontoJson.GetProperty("conta").GetProperty("versao").GetInt32();
+
+        using var cortesia = await SendAsync(client, HttpMethod.Post, $"/comandas/{comanda.Id}/itens/{itemId}/cortesia", salao.Token, new { versao, motivo = "aniversario" });
+        Assert.Equal(HttpStatusCode.OK, cortesia.StatusCode);
+        var cortesiaJson = await cortesia.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal(("cortesia", 0, 0), (cortesiaJson.GetProperty("item").GetProperty("tipo").GetString(), cortesiaJson.GetProperty("item").GetProperty("totalCentavos").GetInt32(), cortesiaJson.GetProperty("conta").GetProperty("totalCentavos").GetInt32()));
+        return new Descontado(comanda.Id, itemId, descontoJson.GetProperty("desconto").GetProperty("id").GetGuid(), cortesiaJson.GetProperty("conta").GetProperty("versao").GetInt32());
+    }
+
     private sealed record Editado(Guid ComandaId, Guid ItemId, int Versao);
 
     /// <summary>One organization as its founder: open a comanda, launch 3 chopps, rename it, lower the item to 2, set people and note, then cancel it (no payment). Returns the version the comanda ended with.</summary>

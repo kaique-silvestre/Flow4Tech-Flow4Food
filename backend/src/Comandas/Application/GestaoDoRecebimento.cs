@@ -51,6 +51,7 @@ public sealed class GestaoDoRecebimento(
     IUnitOfWork unitOfWork,
     IComandasStore comandas,
     IRodadasStore rodadas,
+    IDescontosStore descontos,
     GestaoDePagamentos pagamentos,
     IAuditLog audit,
     IEventosDeComandas eventos,
@@ -151,7 +152,7 @@ public sealed class GestaoDoRecebimento(
                     var aplicado = RegrasDeRecebimento.Aplicado(recebidoCentavos, conta.SaldoCentavos);
                     var novaVersao = versao + 1;
                     var pagamento = await pagamentos.RegistrarAsync(request, pagamentoId, comandaId, contexto.TurnoId, recebidoCentavos, aplicado, conta.SaldoCentavos - aplicado, novaVersao, ct);
-                    var depois = RegrasDeComanda.Conta(conta.ConsumoCentavos, conta.TaxaServicoPercentual, conta.TaxaServicoRemovida, conta.PagoCentavos + aplicado);
+                    var depois = RegrasDeComanda.Conta(conta.ConsumoCentavos, conta.TaxaServicoPercentual, conta.TaxaServicoRemovida, conta.PagoCentavos + aplicado, conta.DescontoCentavos);
                     return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Ok, pagamento, depois, novaVersao, Estado: comanda.Estado);
                 },
                 cancellationToken);
@@ -193,7 +194,7 @@ public sealed class GestaoDoRecebimento(
                 }
 
                 var antes = await CarregarContaAsync(request, comanda, ct);
-                var depois = RegrasDeComanda.Conta(antes.ConsumoCentavos, antes.TaxaServicoPercentual, true, antes.PagoCentavos);
+                var depois = RegrasDeComanda.Conta(antes.ConsumoCentavos, antes.TaxaServicoPercentual, true, antes.PagoCentavos, antes.DescontoCentavos);
                 if (depois.SaldoCentavos < 0)
                 {
                     // Removing the fee can only lower the bill, never below what was already paid (that would be a refund, outside this slice).
@@ -297,7 +298,8 @@ public sealed class GestaoDoRecebimento(
     {
         var itens = await rodadas.ListarItensAsync(request.Organization.OrganizationId, comanda.Id, ct);
         var pago = await pagamentos.SomaAplicadaAsync(request, comanda.Id, ct);
-        return RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago);
+        var dados = await descontos.ListarAsync(request.Organization.OrganizationId, comanda.Id, ct);
+        return RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago, RegrasDeDesconto.Calcular(itens, dados).TotalCentavos);
     }
 
     private async Task<ResultadoDoRecebimentoComConta> FalhaDeVersaoAsync(OrganizationContext org, Guid comandaId, CancellationToken ct)

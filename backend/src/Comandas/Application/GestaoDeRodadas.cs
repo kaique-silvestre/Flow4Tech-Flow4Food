@@ -113,6 +113,7 @@ public sealed class GestaoDeRodadas(
     IUnitOfWork unitOfWork,
     IComandasStore comandas,
     IRodadasStore rodadas,
+    IDescontosStore descontos,
     ICardapioStore cardapio,
     IOpcoesStore opcoes,
     IAuditLog audit,
@@ -497,7 +498,9 @@ public sealed class GestaoDeRodadas(
 
         var itens = await rodadas.ListarItensAsync(request.Organization.OrganizationId, comanda.Id, ct);
         var ids = retirados.Select(i => i.Id).ToHashSet();
-        var depois = RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens.Where(i => !ids.Contains(i.Id))), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago);
+        var restantes = itens.Where(i => !ids.Contains(i.Id)).ToList();
+        var dados = await descontos.ListarAsync(request.Organization.OrganizationId, comanda.Id, ct);
+        var depois = RegrasDeComanda.Conta(RegrasDeRodada.Consumo(restantes), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago, RegrasDeDesconto.Calcular(restantes, dados).TotalCentavos);
         return depois.SaldoCentavos < 0;
     }
 

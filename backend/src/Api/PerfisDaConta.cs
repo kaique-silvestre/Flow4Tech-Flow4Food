@@ -82,6 +82,23 @@ internal sealed class DecisaoDePrecoDoCardapio(IAuthorizationEngine engine, IPer
     }
 }
 
+/// <summary>
+/// Adapts the one authorization engine to the question Comandas asks for a discount, a courtesy or a gift (<c>comanda:desconto|cortesia|brinde</c>, limited by percent, value and daily cap). The module
+/// computes the percent and the value from the stored comanda; this only carries them to the engine inside the unit of work in progress, where a daily cap is reserved.
+/// </summary>
+internal sealed class DecisaoDeDescontoDaComanda(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IDecisaoDeDesconto
+{
+    public async Task<bool> PodeAsync(IRequestContext request, string permission, decimal percentual, long valorCentavos, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var organization = request.Organization;
+        var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
+        var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
+        var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), permission, new Scope(organization.OrganizationId, unit), new DecisionContext(new Money(valorCentavos, "BRL"), percentual), cancellationToken);
+        return decision.IsAllowed;
+    }
+}
+
 /// <summary>Adapts the operating-day resolver (Permissoes) to the port Comandas declares, so display numbers restart with the unit's operating day without Comandas referencing Permissoes.</summary>
 internal sealed class DiaOperacionalDaUnidade(IOperatingDayResolver resolver) : IDiaOperacional
 {

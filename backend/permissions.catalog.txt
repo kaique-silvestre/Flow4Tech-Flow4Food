@@ -6,8 +6,11 @@ cardapio:preco-alterar
 comanda:abrir
 comanda:alterar-dados
 comanda:alterar-item
+comanda:brinde
 comanda:cancelar
 comanda:cancelar-item
+comanda:cortesia
+comanda:desconto
 comanda:desfazer-rodada
 comanda:fechar
 comanda:lancar-item

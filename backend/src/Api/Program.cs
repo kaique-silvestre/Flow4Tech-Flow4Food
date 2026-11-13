@@ -74,6 +74,7 @@ builder.Services.AddPagamentos();
 builder.Services.AddComandas();
 builder.Services.AddSingleton<IPermissaoDoOperador, PermissaoDoOperador>();
 builder.Services.AddSingleton<IDecisaoDePreco, DecisaoDePrecoDoCardapio>();
+builder.Services.AddSingleton<IDecisaoDeDesconto, DecisaoDeDescontoDaComanda>();
 builder.Services.AddSingleton<IPermissaoDaComanda, PermissaoDoOperador>();
 builder.Services.AddSingleton<IDiaOperacional, DiaOperacionalDaUnidade>();
 builder.Services.AddSingleton<IPermissaoDoChamador, PermissaoDoChamador>();

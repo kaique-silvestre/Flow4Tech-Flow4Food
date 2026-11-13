@@ -143,6 +143,41 @@ internal sealed class ItemRow
     public Guid? CanceladoPor { get; set; }
 
     public DateTimeOffset? CanceladoEm { get; set; }
+
+    public string Tipo { get; set; } = "normal";
+
+    public string? MotivoTipo { get; set; }
+
+    public Guid? TipoPor { get; set; }
+
+    public DateTimeOffset? TipoEm { get; set; }
+}
+
+internal sealed class DescontoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public Guid ComandaId { get; set; }
+
+    public Guid? ItemId { get; set; }
+
+    public string Forma { get; set; } = "";
+
+    public decimal? Percentual { get; set; }
+
+    public long? ValorCentavos { get; set; }
+
+    public long AplicadoCentavos { get; set; }
+
+    public string Motivo { get; set; } = "";
+
+    public Guid CriadoPor { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
 }
 
 internal sealed class ItemOpcaoRow
@@ -187,6 +222,8 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
     public DbSet<ItemRow> Itens => Set<ItemRow>();
 
     public DbSet<ItemOpcaoRow> ItemOpcoes => Set<ItemOpcaoRow>();
+
+    public DbSet<DescontoRow> Descontos => Set<DescontoRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -269,6 +306,27 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
             e.Property(x => x.CanceladoPor).HasColumnName("cancelado_por");
             e.Property(x => x.CanceladoEm).HasColumnName("cancelado_em");
+            e.Property(x => x.Tipo).HasColumnName("tipo");
+            e.Property(x => x.MotivoTipo).HasColumnName("motivo_tipo");
+            e.Property(x => x.TipoPor).HasColumnName("tipo_por");
+            e.Property(x => x.TipoEm).HasColumnName("tipo_em");
+        });
+        modelBuilder.Entity<DescontoRow>(e =>
+        {
+            e.ToTable("descontos_comanda");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.ComandaId).HasColumnName("comanda_id");
+            e.Property(x => x.ItemId).HasColumnName("item_id");
+            e.Property(x => x.Forma).HasColumnName("forma");
+            e.Property(x => x.Percentual).HasColumnName("percentual").HasColumnType("numeric(5,2)");
+            e.Property(x => x.ValorCentavos).HasColumnName("valor_centavos");
+            e.Property(x => x.AplicadoCentavos).HasColumnName("aplicado_centavos");
+            e.Property(x => x.Motivo).HasColumnName("motivo");
+            e.Property(x => x.CriadoPor).HasColumnName("criado_por");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
         });
         modelBuilder.Entity<ItemOpcaoRow>(e =>
         {
@@ -713,6 +771,16 @@ public sealed class PostgresRodadasStore : IRodadasStore
         return rows == 1;
     }
 
+    public async Task<bool> DefinirTipoAsync(Guid organizationId, Guid itemId, TipoDoItem tipo, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var palavra = RegrasDeDesconto.Palavra(tipo);
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE itens_comanda SET tipo = {palavra}, motivo_tipo = {motivo}, tipo_por = {por}, tipo_em = {quando} WHERE id = {itemId} AND estado = 'lancado' AND tipo = 'normal'",
+            cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<bool> AlterarItemAsync(Guid organizationId, Guid itemId, int quantidade, string? observacao, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -763,7 +831,7 @@ public sealed class PostgresRodadasStore : IRodadasStore
     }
 
     private static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
-        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList());
+        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo);
 }
 
 internal sealed class GarcomRow
@@ -868,6 +936,30 @@ public sealed class PostgresGarconsDaUnidade : IGarconsDaUnidade
     }
 }
 
+/// <summary>The discounts on PostgreSQL. Joins the caller's unit of work; never filters on <c>organizacao_id</c> (RLS does). Rows are written once (the app credential has no UPDATE or DELETE).</summary>
+public sealed class PostgresDescontosStore : IDescontosStore
+{
+    public async Task<IReadOnlyList<Desconto>> ListarAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Descontos.AsNoTracking().Where(d => d.ComandaId == comandaId).OrderBy(d => d.CriadoEm).ThenBy(d => d.Id).ToListAsync(cancellationToken);
+        return rows.Select(d => new Desconto(d.Id, d.ComandaId, d.ItemId, RegrasDeDesconto.Forma(d.Forma), d.Percentual, d.ValorCentavos, d.AplicadoCentavos, d.Motivo, d.CriadoPor, d.CriadoEm)).ToList();
+    }
+
+    public async Task InserirAsync(Guid organizationId, Guid unitId, Desconto desconto, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(desconto);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var forma = RegrasDeDesconto.Palavra(desconto.Forma);
+        await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO descontos_comanda (id, organizacao_id, unidade_id, comanda_id, item_id, forma, percentual, valor_centavos, aplicado_centavos, motivo, criado_por, criado_em)
+            VALUES ({desconto.Id}, {organizationId}, {unitId}, {desconto.ComandaId}, {desconto.ItemId}, {forma}, {desconto.Percentual}, {desconto.ValorCentavos}, {desconto.AplicadoCentavos}, {desconto.Motivo}, {desconto.CriadoPor}, {desconto.CriadoEm})
+            """,
+            cancellationToken);
+    }
+}
+
 /// <summary>Comanda events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDeComandas(OutboxWriter outbox) : IEventosDeComandas
 {
@@ -899,6 +991,8 @@ public static class ComandasServices
         services.AddSingleton<IHistoricoDaComanda, PostgresHistoricoDaComanda>();
         services.AddSingleton<IGarconsDaUnidade, PostgresGarconsDaUnidade>();
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
+        services.AddSingleton<IDescontosStore, PostgresDescontosStore>();
+        services.AddSingleton<GestaoDeDescontos>();
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDeGarcons>();
         services.AddSingleton<ConsultaDaUltimaVez>();

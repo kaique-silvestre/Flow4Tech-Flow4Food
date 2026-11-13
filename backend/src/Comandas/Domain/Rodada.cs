@@ -24,7 +24,9 @@ public sealed record ItemDaComanda(
     string? MotivoCancelamento,
     Guid? CanceladoPor,
     DateTimeOffset? CanceladoEm,
-    IReadOnlyList<OpcaoDoItem>? OpcoesEscolhidas = null)
+    IReadOnlyList<OpcaoDoItem>? OpcoesEscolhidas = null,
+    TipoDoItem Tipo = TipoDoItem.Normal,
+    string? MotivoDoTipo = null)
 {
     /// <summary>The options picked for this item, name and price frozen at launch (empty when none).</summary>
     public IReadOnlyList<OpcaoDoItem> Opcoes => OpcoesEscolhidas ?? [];
@@ -32,8 +34,11 @@ public sealed record ItemDaComanda(
     /// <summary>What one unit costs: the frozen product price plus the frozen price of every chosen option.</summary>
     public long PrecoUnitarioCentavos => PrecoCentavos + Opcoes.Sum(o => o.PrecoCentavos);
 
-    /// <summary>The line total in cents: unit price with options times quantity.</summary>
-    public long TotalCentavos => PrecoUnitarioCentavos * Quantidade;
+    /// <summary>The line at the frozen price, whatever its type: what a courtesy or a gift would have charged (kept for reports and the future stock write-off).</summary>
+    public long ValorDeTabelaCentavos => PrecoUnitarioCentavos * Quantidade;
+
+    /// <summary>What the line charges in cents: unit price with options times quantity, zero for a courtesy or a gift.</summary>
+    public long TotalCentavos => Tipo == TipoDoItem.Normal ? ValorDeTabelaCentavos : 0;
 }
 
 /// <summary>An option chosen for an item. Name and price are copies taken at launch; a later change of the option never reaches the bill.</summary>

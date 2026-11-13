@@ -3541,6 +3541,307 @@
         "x-permission": "comanda:ver-historico"
       }
     },
+    "/comandas/{comandaId}/descontos": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "aplicarDescontoNaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AplicarDescontoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescontoAplicadoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      },
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listDescontosDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DescontoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/itens/{itemId}/cortesia": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "darCortesiaNoItem",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DarComoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDadoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/itens/{itemId}/brinde": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "darBrindeNoItem",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DarComoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemDadoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [
@@ -4590,6 +4891,54 @@
           }
         }
       },
+      "AplicarDescontoRequest": {
+        "required": [
+          "versao",
+          "itemId",
+          "percentual",
+          "valorCentavos",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "itemId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "percentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
       "AreaDto": {
         "required": [
           "id",
@@ -5036,7 +5385,8 @@
           "taxaServicoRemovida",
           "taxaServicoPercentual",
           "versao",
-          "estado"
+          "estado",
+          "descontoCentavos"
         ],
         "type": "object",
         "properties": {
@@ -5101,6 +5451,14 @@
           },
           "estado": {
             "type": "string"
+          },
+          "descontoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -5342,6 +5700,26 @@
           }
         }
       },
+      "DarComoRequest": {
+        "required": [
+          "versao",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
       "DefinirAreaDaMesaRequest": {
         "required": [
           "areaId"
@@ -5405,6 +5783,93 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "DescontoAplicadoDto": {
+        "required": [
+          "desconto",
+          "conta"
+        ],
+        "type": "object",
+        "properties": {
+          "desconto": {
+            "$ref": "#/components/schemas/DescontoDto"
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ContaDto"
+          }
+        }
+      },
+      "DescontoDto": {
+        "required": [
+          "id",
+          "comandaId",
+          "itemId",
+          "forma",
+          "percentual",
+          "valorCentavos",
+          "aplicadoCentavos",
+          "motivo",
+          "criadoPor",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comandaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "forma": {
+            "type": "string"
+          },
+          "percentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "aplicadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "criadoPor": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -5647,6 +6112,21 @@
           }
         }
       },
+      "ItemDadoDto": {
+        "required": [
+          "item",
+          "conta"
+        ],
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ItemDto"
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ContaDto"
+          }
+        }
+      },
       "ItemDto": {
         "required": [
           "id",
@@ -5662,7 +6142,10 @@
           "canceladoPor",
           "canceladoEm",
           "opcoes",
-          "totalCentavos"
+          "totalCentavos",
+          "tipo",
+          "motivoDoTipo",
+          "valorDeTabelaCentavos"
         ],
         "type": "object",
         "properties": {
@@ -5741,6 +6224,23 @@
             }
           },
           "totalCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "motivoDoTipo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "valorDeTabelaCentavos": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",

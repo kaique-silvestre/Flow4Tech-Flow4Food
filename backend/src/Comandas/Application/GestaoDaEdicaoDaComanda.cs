@@ -47,6 +47,7 @@ public sealed class GestaoDaEdicaoDaComanda(
     IUnitOfWork unitOfWork,
     IComandasStore comandas,
     IRodadasStore rodadas,
+    IDescontosStore descontos,
     IGarconsDaUnidade garcons,
     IAuditLog audit,
     IEventosDeComandas eventos,
@@ -279,8 +280,9 @@ public sealed class GestaoDaEdicaoDaComanda(
             return false;
         }
 
-        var itens = (await rodadas.ListarItensAsync(request.Organization.OrganizationId, comanda.Id, ct)).Select(i => i.Id == antes.Id ? depois : i);
-        return RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago).SaldoCentavos < 0;
+        var itens = (await rodadas.ListarItensAsync(request.Organization.OrganizationId, comanda.Id, ct)).Select(i => i.Id == antes.Id ? depois : i).ToList();
+        var dados = await descontos.ListarAsync(request.Organization.OrganizationId, comanda.Id, ct);
+        return RegrasDeComanda.Conta(RegrasDeRodada.Consumo(itens), comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida, pago, RegrasDeDesconto.Calcular(itens, dados).TotalCentavos).SaldoCentavos < 0;
     }
 
     private async Task<Comanda?> AcharVisivelAsync(IRequestContext request, Guid comandaId, CancellationToken ct)

@@ -32,6 +32,7 @@ const contaOk = (versao = 4) =>
     estado: "aberta",
     taxaServicoRemovida: false,
     taxaServicoPercentual: 10,
+    descontoCentavos: 0,
   });
 const rodadaOk = (id: string) =>
   jsonDoContrato("post", "/comandas/{comandaId}/rodadas", 201, {
@@ -70,6 +71,7 @@ const contaFechada = () =>
     estado: "fechada",
     taxaServicoRemovida: false,
     taxaServicoPercentual: 10,
+    descontoCentavos: 0,
   });
 const contaComSaldoDe = (base: components["schemas"]["ContaDto"]) =>
   jsonDoContrato("get", "/comandas/{comandaId}/conta", 200, {
@@ -643,6 +645,9 @@ describe("queue safety on a shared phone and across tabs", () => {
             canceladoEm: null,
             opcoes: [],
             totalCentavos: 1000,
+            tipo: "normal",
+            motivoDoTipo: null,
+            valorDeTabelaCentavos: 1000,
           },
         },
       ),
@@ -814,6 +819,9 @@ describe("queued edits of a comanda", () => {
       canceladoEm: null,
       opcoes: [],
       totalCentavos: 3000,
+      tipo: "normal",
+      motivoDoTipo: null,
+      valorDeTabelaCentavos: 3000,
     },
   });
 

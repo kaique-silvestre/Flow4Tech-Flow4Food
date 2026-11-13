@@ -49,6 +49,7 @@ const conta = (extra: Partial<components["schemas"]["ContaDto"]> = {}): componen
   taxaServicoPercentual: 10,
   versao: 2,
   estado: "aberta",
+  descontoCentavos: 0,
   ...extra,
 });
 const pagamento = (
