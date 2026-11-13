@@ -156,6 +156,38 @@ test("discount, then courtesy: the owner sees the new total before confirming, a
   await shootNosTemas(page, "cortesia-na-conta");
 });
 
+test("a decimal percent (7,5%) is typed with the comma, previewed, and the bill takes the same value", async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  const nome = `DescDec ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  await entrarComoDono(page);
+  await abrirDaLista(page, nome);
+
+  await page.getByRole("button", { name: "Desconto em Chopp 300ml" }).click();
+  const folha = page.getByRole("dialog", { name: "Desconto, cortesia ou brinde" });
+  await digitar(page, "7");
+  await folha.getByRole("button", { name: "Vírgula" }).click();
+  await digitar(page, "555");
+  await expect(folha.getByLabel("Desconto digitado")).toContainText("7,55%");
+  await folha.getByRole("button", { name: "Apagar" }).click();
+  await expect(folha.getByLabel("Desconto digitado")).toContainText("7,5%");
+  await folha.getByRole("button", { name: "Cliente frequente" }).click();
+  // 7,5% of R$ 25,00 = R$ 1,875 -> R$ 1,88; the fee (10%) on R$ 23,12 -> R$ 2,31; total R$ 25,43.
+  await expect(folha.getByLabel("Prévia da conta")).toContainText("1,88");
+  await expect(folha.getByLabel("Prévia da conta")).toContainText("25,43");
+  await expect(folha.getByRole("button", { name: "Aplicar desconto" })).toBeInViewport();
+  await semHorizontal(page);
+  await shootNosTemas(page, "desconto-decimal");
+  await semViolacoes(page, "desconto-decimal");
+  await folha.getByRole("button", { name: "Aplicar desconto" }).click();
+  await expect(folha).toBeHidden();
+  await expect(page.getByLabel("Desconto da conta")).toContainText("1,88");
+  await expect(page.getByLabel("Total da conta")).toContainText("25,43");
+});
+
 test("a failed request is told, keeps the sheet and the typed value, and the retry goes through", async ({
   page,
   request,
@@ -269,12 +301,34 @@ test("the close-bill sheet lists the courtesy and the gift as such, and the disc
 }) => {
   const nome = `DescConta ${Date.now() % 100000}`;
   const c = await comandaDoGarcom(request, baseURL!, nome);
-  const produtos = (await (await request.get("/cardapio/produtos", { headers: c.auth })).json()) as {
+  // The second item is a product of this test (no option group), so what the menu already holds, from the seed or from another spec, never matters.
+  const dono = await request.post("/login", {
+    headers: { "X-F4T-Csrf": "1", Origin: baseURL! },
+    data: { email: "dono@bar-a.test", senha: SENHA },
+  });
+  expect(dono.ok()).toBeTruthy();
+  const donoAuth = {
+    "X-F4T-Csrf": "1",
+    Origin: baseURL!,
+    Authorization: `Bearer ${((await dono.json()) as { accessToken: string }).accessToken}`,
+  };
+  const categorias = (await (await request.get("/cardapio/categorias", { headers: donoAuth })).json()) as {
     id: string;
-    codigo: string;
-    nome: string;
   }[];
-  const outro = produtos.find((p) => p.codigo !== "CHOPP")!;
+  const sufixo = `${Date.now() % 1_000_000}`;
+  const criado = await request.post("/cardapio/produtos", {
+    headers: donoAuth,
+    data: {
+      codigo: `DC${sufixo}`,
+      nome: `Porção Desc ${sufixo}`,
+      precoCentavos: 1800,
+      categoriaId: categorias[0]!.id,
+      ativo: true,
+      indisponivel: false,
+    },
+  });
+  expect(criado.ok()).toBeTruthy();
+  const outro = { ...((await criado.json()) as { id: string }), nome: `Porção Desc ${sufixo}` };
   const rodada = await request.post(`/comandas/${c.id}/rodadas`, {
     headers: c.auth,
     data: { rodadaId: crypto.randomUUID(), versao: c.versao, itens: [{ produtoId: outro.id, quantidade: 1 }] },

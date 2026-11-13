@@ -6,8 +6,8 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** vitest/testing-library for logic and component; Playwright at 390x844 and 360x740.
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Percent mode accepts a decimal separator and at most two decimals, range above 0 and up to 100; the value mode is unchanged.
-- [ ] Preview math (ADR-018 order and rounding) is correct for decimal percents; tests cover rounding edges.
-- [ ] Request sends the decimal percent as the contract types it.
+- [x] Percent mode accepts a decimal separator and at most two decimals, range above 0 and up to 100; the value mode is unchanged.
+- [x] Preview math (ADR-018 order and rounding) is correct for decimal percents; tests cover rounding edges.
+- [x] Request sends the decimal percent as the contract types it.

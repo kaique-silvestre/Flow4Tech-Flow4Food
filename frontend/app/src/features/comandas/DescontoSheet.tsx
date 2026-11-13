@@ -2,10 +2,12 @@ import { BottomSheet, Button, Chip, formatBRL, Keypad, Notice, TextField } from 
 import { useEffect, useState } from "react";
 import {
   type AcaoDeDesconto,
+  digitarPercentual,
   type FormaDoDesconto,
   MOTIVOS_DE_DESCONTO,
   numeroValido,
   type PedidoDeDesconto,
+  percentualNaTela,
   previaDoTotal,
   quantoTira,
 } from "./desconto";
@@ -79,11 +81,15 @@ export function DescontoSheet({ alvo, onOpenChange, conta, acoes, bloqueio, envi
   }
 
   function digitar(d: string) {
-    const novo = `${digitos}${d}`.replace(/^0+/, "");
-    setDigitos(novo.slice(0, forma === "percentual" ? 3 : 8));
+    if (forma === "percentual") {
+      setDigitos(digitarPercentual(digitos, d));
+      return;
+    }
+
+    setDigitos(`${digitos}${d}`.replace(/^0+/, "").slice(0, 8));
   }
 
-  const mostrado = forma === "percentual" ? `${numero}%` : formatBRL(numero);
+  const mostrado = forma === "percentual" ? percentualNaTela(digitos) : formatBRL(numero);
   return (
     <BottomSheet
       open={alvo !== null}
@@ -151,18 +157,32 @@ export function DescontoSheet({ alvo, onOpenChange, conta, acoes, bloqueio, envi
               Valor
             </Chip>
           </div>
-          <p className="desconto-valor f4-num" aria-live="polite" aria-label="Desconto digitado">
-            {mostrado}
-          </p>
+          <div className="desconto-linha">
+            <p className="desconto-valor f4-num" aria-live="polite" aria-label="Desconto digitado">
+              {mostrado}
+            </p>
+            {forma === "percentual" ? (
+              <button
+                type="button"
+                className="f4-key desconto-virgula"
+                data-kind="action"
+                aria-label="Vírgula"
+                disabled={enviando}
+                onClick={() => digitar(",")}
+              >
+                ,
+              </button>
+            ) : null}
+          </div>
           <Keypad
             onDigit={digitar}
             onBackspace={() => setDigitos((d) => d.slice(0, -1))}
             onCancel={() => onOpenChange(false)}
             disabled={enviando}
             error={
-              digitos !== "" && !numeroOk
+              digitos !== "" && !numeroOk && (forma === "valor" || numero > 100)
                 ? forma === "percentual"
-                  ? "Use de 1% a 100%."
+                  ? "Use de 0,01% a 100%."
                   : "Use pelo menos R$ 0,01."
                 : undefined
             }

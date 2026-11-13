@@ -903,6 +903,21 @@ a.comanda-row:focus-visible {
 }
 
 /* Discount, courtesy and gift sheet */
+.desconto-linha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.desconto-virgula {
+  position: absolute;
+  right: 0;
+  min-width: 56px;
+  min-height: 48px;
+  font-size: var(--f4-text-sheet-title);
+}
+
 .desconto-valor {
   margin: var(--f4-space-2) 0;
   font-size: 2.25rem;

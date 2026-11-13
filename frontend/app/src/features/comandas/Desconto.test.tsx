@@ -160,6 +160,47 @@ describe("discount on an item", () => {
     );
   });
 
+  it("types a decimal percent with a comma, previews and sends it as a decimal, two decimals at most", async () => {
+    const chamadas = await abrir({ "POST /comandas/c1/descontos": aplicado({ totalCentavos: 2_575 }) });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Desconto em Chopp 300ml" }));
+    const f = within(await screen.findByRole("dialog", { name: "Desconto, cortesia ou brinde" }));
+    await user.click(f.getByRole("button", { name: "Vírgula" }));
+    await digitar(user, f, "755");
+    expect(f.getByLabelText("Desconto digitado")).toHaveTextContent("0,75%");
+    // the third decimal was refused; erase "0,75" key by key (the comma included) and type 7,5
+    for (let i = 0; i < 4; i += 1) {
+      await user.click(f.getByRole("button", { name: "Apagar" }));
+    }
+
+    await digitar(user, f, "7");
+    await user.click(f.getByRole("button", { name: "Vírgula" }));
+    await digitar(user, f, "5");
+    expect(f.getByLabelText("Desconto digitado")).toHaveTextContent("7,5%");
+    expect(f.getByLabelText("Prévia da conta")).toHaveTextContent(/Tira\s*R\$\s*1,88/);
+    await user.click(f.getByRole("button", { name: "Cliente frequente" }));
+    await user.click(f.getByRole("button", { name: "Aplicar desconto" }));
+
+    await waitFor(() =>
+      expect(corpoDe(chamadas, "/descontos")).toMatchObject({ percentual: 7.5, valorCentavos: null }),
+    );
+  });
+
+  it("has no comma in value mode and refuses a percent that is zero", async () => {
+    await abrir();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Desconto em Chopp 300ml" }));
+    const f = within(await screen.findByRole("dialog", { name: "Desconto, cortesia ou brinde" }));
+    await user.click(f.getByRole("button", { name: "Vírgula" }));
+    await digitar(user, f, "00");
+    await user.click(f.getByRole("button", { name: "Cliente frequente" }));
+    expect(f.getByRole("button", { name: "Aplicar desconto" })).toBeDisabled();
+    await user.click(f.getByRole("button", { name: "Valor" }));
+    expect(f.queryByRole("button", { name: "Vírgula" })).toBeNull();
+  });
+
   it("refuses more than 100 percent before sending", async () => {
     await abrir();
     const user = userEvent.setup();
@@ -169,7 +210,7 @@ describe("discount on an item", () => {
     await digitar(user, f, "150");
     await user.click(f.getByRole("button", { name: "Cliente frequente" }));
 
-    expect(f.getByText("Use de 1% a 100%.")).toBeInTheDocument();
+    expect(f.getByText("Use de 0,01% a 100%.")).toBeInTheDocument();
     expect(f.getByRole("button", { name: "Aplicar desconto" })).toBeDisabled();
   });
 

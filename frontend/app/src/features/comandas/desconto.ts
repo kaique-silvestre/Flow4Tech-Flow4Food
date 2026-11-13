@@ -19,16 +19,43 @@ export type PedidoDeDesconto =
   | { acao: "desconto"; itemId: string | null; forma: "valor"; valorCentavos: number; motivo: string }
   | { acao: "cortesia" | "brinde"; itemId: string; motivo: string };
 
-/** What one discount takes off: the percent of the base (half up, the same rounding as the server) or the value typed, never more than the base. */
+/**
+ * What one discount takes off: the percent of the base (half up, the same rounding as the server) or the value typed, never more than the base. The percent may have two decimals; it is taken
+ * in hundredths of a percent and the half is found with integers, so 0,5% of R$ 1,00 never goes down by a float error.
+ */
 export function quantoTira(forma: FormaDoDesconto, numero: number, baseCentavos: number): number {
   const base = Math.max(0, baseCentavos);
-  const pedido = forma === "percentual" ? Math.round((base * numero) / 100) : numero;
+  const pedido = forma === "percentual" ? Math.floor((base * Math.round(numero * 100) + 5000) / 10_000) : numero;
   return Math.min(Math.max(0, pedido), base);
 }
 
-/** A percent is a whole number from 1 to 100; a value is at least one cent. */
+/** A percent is above 0 and up to 100 with at most two decimals; a value is at least one cent. */
 export function numeroValido(forma: FormaDoDesconto, numero: number): boolean {
-  return forma === "percentual" ? Number.isInteger(numero) && numero >= 1 && numero <= 100 : numero >= 1;
+  return forma === "percentual"
+    ? numero > 0 && numero <= 100 && Math.round(numero * 100) / 100 === numero
+    : numero >= 1;
+}
+
+/**
+ * The percent being typed, as a string with "." (what `Number` reads and the request carries). Up to three digits before the separator and two after; "," or "." starts the decimals once
+ * ("0," when nothing was typed); a leading zero never stays ("05" is "5").
+ */
+export function digitarPercentual(atual: string, tecla: string): string {
+  if (tecla === "," || tecla === ".") {
+    return atual.includes(".") ? atual : `${atual === "" ? "0" : atual}.`;
+  }
+
+  const [inteiro = "", decimais] = atual.split(".");
+  if (decimais !== undefined) {
+    return decimais.length >= 2 ? atual : `${atual}${tecla}`;
+  }
+
+  return `${inteiro}${tecla}`.replace(/^0+/, "").slice(0, 3);
+}
+
+/** The percent as shown on the keypad: decimal comma, "0" while nothing was typed. */
+export function percentualNaTela(digitos: string): string {
+  return `${digitos === "" ? "0" : digitos.replace(".", ",")}%`;
 }
 
 export interface PreviaDaConta {
