@@ -188,6 +188,25 @@ test("a decimal percent (7,5%) is typed with the comma, previewed, and the bill 
   await expect(page.getByLabel("Total da conta")).toContainText("25,43");
 });
 
+test("the value mode (R$) is typed, previewed and shot in both themes", async ({ page, request, baseURL }) => {
+  const nome = `DescValor ${Date.now() % 100000}`;
+  await comandaDoGarcom(request, baseURL!, nome);
+  await entrarComoDono(page);
+  await abrirDaLista(page, nome);
+
+  await page.getByRole("button", { name: "Desconto em Chopp 300ml" }).click();
+  const folha = page.getByRole("dialog", { name: "Desconto, cortesia ou brinde" });
+  await folha.getByRole("button", { name: "Valor" }).click();
+  await digitar(page, "250");
+  await expect(folha.getByLabel("Desconto digitado")).toContainText("2,50");
+  await folha.getByRole("button", { name: "Cliente frequente" }).click();
+  await expect(folha.getByLabel("Prévia da conta")).toBeInViewport();
+  await expect(folha.getByLabel("Desconto digitado")).toBeInViewport();
+  await semHorizontal(page);
+  await shootNosTemas(page, "desconto-valor");
+  await semViolacoes(page, "desconto-valor");
+});
+
 test("a failed request is told, keeps the sheet and the typed value, and the retry goes through", async ({
   page,
   request,

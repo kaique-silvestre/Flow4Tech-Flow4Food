@@ -374,6 +374,8 @@ describe("needs a connection", () => {
     await user.click(f.getByRole("button", { name: "Cliente frequente" }));
 
     expect(f.getByText(/precisam do servidor e não ficam na fila/)).toBeInTheDocument();
+    // The reason sits in the pinned footer, next to the disabled button, so scrolling never hides it.
+    expect(f.getByText(/precisam do servidor e não ficam na fila/).closest(".f4-sheet-footer")).not.toBeNull();
     expect(f.getByRole("button", { name: "Aplicar desconto" })).toBeDisabled();
     expect(lerFila()).toHaveLength(0);
   });

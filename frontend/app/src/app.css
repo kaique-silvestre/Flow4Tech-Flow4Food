@@ -904,18 +904,38 @@ a.comanda-row:focus-visible {
 
 /* Discount, courtesy and gift sheet */
 .desconto-linha {
-  position: relative;
+  /* Pinned to the top of the scrolling sheet: the typed value stays readable while the reasons are scrolled into view. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--f4-surface);
 }
 
-.desconto-virgula {
+.desconto-virgula.f4-key[data-kind="action"] {
   position: absolute;
   right: 0;
   min-width: 56px;
   min-height: 48px;
+  color: var(--f4-ink);
   font-size: var(--f4-text-sheet-title);
+  font-weight: 600;
+}
+
+.desconto-bloqueio {
+  margin: 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.fechar-conta > .fechar-cortesia {
+  align-items: baseline;
+}
+
+.f4-notice-action a {
+  color: var(--f4-accent);
 }
 
 .desconto-valor {

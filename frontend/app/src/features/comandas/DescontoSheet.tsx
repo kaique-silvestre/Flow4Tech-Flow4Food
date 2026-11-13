@@ -1,4 +1,4 @@
-import { BottomSheet, Button, Chip, formatBRL, Keypad, Notice, TextField } from "@flow4tech/design-system";
+import { BottomSheet, Button, Chip, formatBRL, Keypad, TextField } from "@flow4tech/design-system";
 import { useEffect, useState } from "react";
 import {
   type AcaoDeDesconto,
@@ -99,6 +99,11 @@ export function DescontoSheet({ alvo, onOpenChange, conta, acoes, bloqueio, envi
       loading={enviando}
       footer={
         <div className="desconto-rodape">
+          {bloqueio ? (
+            <p role="status" className="desconto-bloqueio">
+              {bloqueio}
+            </p>
+          ) : null}
           {erro ? (
             <p role="alert" className="f4-field-error">
               {erro}
@@ -125,7 +130,6 @@ export function DescontoSheet({ alvo, onOpenChange, conta, acoes, bloqueio, envi
         </div>
       }
     >
-      {bloqueio ? <Notice tone="info">{bloqueio}</Notice> : null}
       {item ? (
         <div className="motivos" role="group" aria-label="O que dar">
           {ACOES.filter((a) => acoes.includes(a.acao)).map((a) => (
