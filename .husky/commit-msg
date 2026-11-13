@@ -1,12 +1,12 @@
-# Conventional Commits com o ID do ticket como escopo: tipo(F4-NNNN): descrição (ADR-016).
+# Conventional Commits com a área como escopo e o ID do ticket no começo da descrição: tipo(área): F4-NNNN descrição (ADR-016).
 msg=$(head -n1 "$1")
 case "$msg" in
   Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
 esac
-if ! printf '%s' "$msg" | grep -Eq '^(feat|fix|refactor|perf|test|docs|build|ci|chore)\(F4-[0-9]{4}\): .{3,}'; then
+if ! printf '%s' "$msg" | grep -Eq '^(feat|fix|refactor|perf|test|docs|build|ci|chore)\((salao|identidade|autorizacao|organizacao|auditoria|dados|front|ci|docs)\): F4-[0-9]{4} .{3,}'; then
   echo "ERRO: mensagem de commit fora do padrão." >&2
-  echo "  esperado: tipo(F4-NNNN): descrição   ex.: feat(F4-0013): fila de ações pendentes" >&2
-  echo "  tipos: feat fix refactor perf test docs build ci chore. Registre o ID em docs/tickets.md." >&2
+  echo "  esperado: tipo(área): F4-NNNN descrição   ex.: feat(salao): F4-0013 fila de ações pendentes" >&2
+  echo "  tipos: feat fix refactor perf test docs build ci chore. áreas: salao identidade autorizacao organizacao auditoria dados front ci docs. Registre o ID em docs/tickets.md." >&2
   echo "  recebido: $msg" >&2
   exit 1
 fi

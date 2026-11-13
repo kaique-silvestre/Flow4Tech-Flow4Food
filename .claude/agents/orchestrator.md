@@ -59,7 +59,7 @@ Round counter starts at 1. Failure-signature counter per fingerprint set.
 
 1. Worktree: `worktree.sh merge <F4-NNNN>` (serialized by its lock) → then in base: `git add -A -- <files from closeout>` and commit. No worktree: stage the closeout's files, commit. Commit message Conventional Commits, English, one squash per ticket:
    ```
-   feat(F4-NNNN): <ticket title>
+   feat(<area>): F4-NNNN <ticket title>
 
    Ticket F4-NNNN. <one line of what it proves>
 

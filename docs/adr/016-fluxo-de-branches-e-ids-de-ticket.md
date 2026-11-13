@@ -20,7 +20,7 @@ O repositório tem branches de sessão (`claude/...`), planejamento (`refactor-v
 
 **Nome de branch de trabalho:** `<tipo>/F4-NNNN-<resumo-em-kebab>`, a partir de `dev-v2`. Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Exemplo: `feat/F4-0013-fila-offline`. A barra agrupa branches no Git; parênteses ficam só em commit e título de PR. Uma branch por ticket, vida curta (dias). Manutenção sem ticket de produto abre um ticket antes (mesmo contador).
 
-**Commits e PRs:** commit `tipo(F4-NNNN): descrição` (Conventional Commits), por exemplo `feat(F4-0013): fila de ações pendentes`. Título do PR igual ao do commit principal, e o corpo cita o ID, o arquivo do ticket e o que foi verificado. Merge de feature em `dev-v2` por squash (um commit por ticket, com o ID no título); `dev-v2` -> `main-v2` por merge commit (preserva a lista de tickets de cada entrega).
+**Commits e PRs:** commit `tipo(área): F4-NNNN descrição` (Conventional Commits; ver a emenda de 2026-11-13), por exemplo `feat(salao): F4-0013 fila de ações pendentes`. Título do PR igual ao do commit principal, e o corpo cita o ID, o arquivo do ticket e o que foi verificado. Merge de feature em `dev-v2` por squash (um commit por ticket, com o ID no título); `dev-v2` -> `main-v2` por merge commit (preserva a lista de tickets de cada entrega).
 
 **Rastreio:** `git log --grep "F4-0013"` ou a busca de PRs por `F4-0013` devolve tudo de um ticket; `git branch -a | grep F4-0013` acha a branch; o índice mostra o resto. Um check no CI (a decidir) reprova PR cuja branch ou título não tenha ID.
 
@@ -37,3 +37,9 @@ O repositório tem branches de sessão (`claude/...`), planejamento (`refactor-v
 - `main-v2` só recebe PR de `dev-v2`; o CI roda no PR e de novo no merge commit.
 - Deploy do sistema novo ainda não existe. Quando existir (projeto Railway próprio, ver `docs/runbooks/deploy.md`): `dev-v2` verde -> `staging` automático; `main-v2` verde -> `production` manual com aprovação. O deploy sai do commit exato que o CI validou.
 - Classes de teste que sobem banco devem ter `Endpoints` ou `Integration` no nome (o CI separa por nome); `ClassificacaoDeTestesTests` falha se não tiverem (F4-0076).
+
+## Emenda 2026-11-13 (F4-0120): a área é o escopo do commit
+- O escopo do commit passa a ser a área tocada, e o ID do ticket vai no começo da descrição: `tipo(área): F4-NNNN descrição`, por exemplo `feat(salao): F4-0059 discount, courtesy and gift screens`. Motivo: o escopo `(F4-NNNN)` só repetia o ID, que o índice já mapeia; a área diz de relance onde a mudança caiu, que é o uso padrão do Conventional Commits.
+- Áreas permitidas (validadas por `.husky/commit-msg`): `salao`, `identidade`, `autorizacao`, `organizacao`, `auditoria`, `dados`, `front`, `ci`, `docs`. Área nova entra no hook e nesta lista.
+- O ID continua obrigatório e rastreável: `git log --grep "F4-0013"` segue achando tudo. Título de PR igual ao commit principal.
+- Commits anteriores (`tipo(F4-NNNN): ...`) não são reescritos; o log tem os dois formatos.
