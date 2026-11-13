@@ -16,6 +16,14 @@ function useAgora(intervaloMs = 30_000) {
   return agora;
 }
 
+/** The comanda screen is the waiter's main path and a separate download: it is fetched as soon as the list is on screen (the service worker keeps it for the next time without signal), so opening a comanda waits for nothing. Failing to fetch it is not an error here: opening it will say so. */
+function useAquecerComanda() {
+  useEffect(() => {
+    const timer = window.setTimeout(() => void import("./ComandaPage").catch(() => undefined), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+}
+
 /** The landing of /salao: the open comandas of the waiter (all of the unit for who may see others'), with search, elapsed time and one accent action: Nova comanda. */
 export function ComandasPage() {
   const permissoes = usePermissoes();
@@ -23,6 +31,7 @@ export function ComandasPage() {
   const comandas = useComandas(pode);
   const mesas = useMesas(pode && permissoes.pode("comanda:abrir"));
   const agora = useAgora();
+  useAquecerComanda();
   const online = useOnline();
   const [busca, setBusca] = useState("");
   const [nova, setNova] = useState(false);

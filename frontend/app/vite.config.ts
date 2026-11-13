@@ -40,6 +40,8 @@ export default defineConfig({
       },
     }),
   ],
+  // One CSS file (7.5 kB gzip) instead of one per screen: no unstyled flash when a screen arrives, and the budget keeps its CSS limit.
+  build: { cssCodeSplit: false },
   server: { proxy },
   preview: { proxy },
   test: {

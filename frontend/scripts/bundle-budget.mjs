@@ -1,4 +1,6 @@
-// Bundle budget (F4-0110): measures the gzip size of the built JS and CSS of an app and fails above the limits of its bundle-budget.json.
+// Bundle budget (F4-0110, F4-0111): measures the gzip size of the built JS and CSS of an app and fails above the limits of its bundle-budget.json.
+// The app is split by route (F4-0111): the ENTRY chunk (the script index.html loads) is what every first visit downloads before anything shows, so it has its own limit;
+// the total is what the service worker precaches (all chunks), and the largest file keeps any one chunk (entry or screen) from growing back into a monolith.
 // Usage (from the app folder, after `vite build`): node ../scripts/bundle-budget.mjs
 import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,7 +32,16 @@ const kb = (n) => `${(n / 1024).toFixed(1)} kB`;
 const soma = (tipo) => medidas.filter((m) => m.tipo === tipo).reduce((total, m) => total + m.gzip, 0);
 const maiorJs = Math.max(0, ...medidas.filter((m) => m.tipo === "js").map((m) => m.gzip));
 
+const html = readFileSync(join(dist, "index.html"), "utf8");
+const entradaSrc = /<script[^>]*type="module"[^>]*src="\/([^"]+)"/.exec(html)?.[1];
+const entrada = medidas.find((m) => m.arquivo === entradaSrc);
+if (!entrada) {
+  console.error("Chunk de entrada nao encontrado em dist/index.html.");
+  process.exit(1);
+}
+
 const checagens = [
+  { nome: "JS de entrada (gzip)", valor: entrada.gzip, limite: budget.jsEntradaGzipKb * 1024 },
   { nome: "JS total (gzip)", valor: soma("js"), limite: budget.jsTotalGzipKb * 1024 },
   { nome: "maior arquivo JS (gzip)", valor: maiorJs, limite: budget.jsMaiorArquivoGzipKb * 1024 },
   { nome: "CSS total (gzip)", valor: soma("css"), limite: budget.cssTotalGzipKb * 1024 },
