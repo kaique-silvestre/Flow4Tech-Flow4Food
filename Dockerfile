@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb AS build
 WORKDIR /src
 COPY backend/ backend/
 # One image, two entrypoints: the API (default) and the deploy-time migrator (dotnet Flow4Tech.Migrator.dll).
@@ -9,14 +9,14 @@ RUN dotnet publish backend/src/Api/Flow4Tech.Api.csproj -c Release -o /out \
 FROM build AS e2e-seed-build
 RUN dotnet publish backend/tools/E2eSeed/Flow4Tech.E2eSeed.csproj -c Release -o /seed
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS e2e-seed
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e AS e2e-seed
 WORKDIR /seed
 # Npgsql probes for Kerberos (libgssapi_krb5.so.2), absent from the aspnet runtime image; harmless noise but silenced here, in this local-only stage.
 RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 COPY --from=e2e-seed-build /seed .
 ENTRYPOINT ["dotnet", "Flow4Tech.E2eSeed.dll"]
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e
 WORKDIR /app
 COPY --from=build /out .
 # Versioned SQL migrations travel with the image (MIGRATIONS_DIR defaults to /app/migrations).
