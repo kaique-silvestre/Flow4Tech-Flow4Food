@@ -27,6 +27,7 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 - lint/format: `dotnet format backend/Flow4Tech.sln` (add `--verify-no-changes` to check only); front: `pnpm lint` (Biome, check only, same as CI) and `pnpm lint:fix` (applies format and safe fixes). Config `biome.jsonc` at the root, covers `frontend/**` except the generated `schema.ts`.
 - dev: `docker compose up --build` (PostgreSQL + API; `docker compose down` to stop)
 - port: API `http://localhost:8080` (`GET /health/live`, `GET /health/ready`), PostgreSQL `localhost:5432` (user/password/db `flow4tech`)
+- front architecture: `pnpm arch:front` (dependency-cruiser, `.dependency-cruiser.cjs`; rules in `docs/agents/ci-gates.md`)
 - contract: after changing any API route/DTO, regenerate and commit both outputs: `dotnet build backend/src/Api/Flow4Tech.Api.csproj -p:GenerateContract=true` (writes `backend/src/Api/openapi.json`) then `pnpm --filter @flow4tech/api-client generate` (writes `frontend/packages/api-client/src/schema.ts`, never edit by hand). Give every route a stable `.WithName("...")` (becomes the operationId) and typed responses (`TypedResults`/`.Produces<T>()`).
 - client tests: `pnpm -r --if-present test`
 - config (variáveis de ambiente), backup (produção NÃO tem backup de banco; faça `pg_dump` manual antes de mudança arriscada) e deploy (Railway/Vercel): `docs/agents/project.md`, seção "Config, backup e deploy".
@@ -53,7 +54,7 @@ Leia o arquivo ANTES de mexer na área; a raiz guarda só o que vale para todo a
 - Warnings são erros; corrija a causa em vez de suprimir a regra.
 
 ## CI gates (resumo)
-Um pipeline em todo PR e em todo push em `dev-v2`/`main-v2`/`main`; o merge exige o job agregado `gates` verde. Bloqueiam: build + `dotnet format`, typecheck, lint (Biome), testes unitários, de integração (PostgreSQL real), de arquitetura e por módulo, `frontend-tests` (piso de cobertura), `bundle-budget`, `mutation-tests` (piso por domínio), `frontend-e2e` (inclui axe), gitleaks, trivy, `openapi-contract`, auditoria de dependências. Informativos: cobertura do back, DAST. Cada job, limite e comando local: `docs/agents/ci-gates.md`.
+Um pipeline em todo PR e em todo push em `dev-v2`/`main-v2`/`main`; o merge exige o job agregado `gates` verde. Bloqueiam: build + `dotnet format`, typecheck, lint (Biome), testes unitários, de integração (PostgreSQL real), de arquitetura (back e front, `architecture-frontend`) e por módulo, `frontend-tests` (piso de cobertura), `bundle-budget`, `mutation-tests` (piso por domínio), `frontend-e2e` (inclui axe), gitleaks, trivy, `openapi-contract`, auditoria de dependências. Informativos: cobertura do back, DAST. Cada job, limite e comando local: `docs/agents/ci-gates.md`.
 
 ## Module-boundary rules
 - Layers: Domain -> Kernel only; Application -> Domain; Infrastructure and Interface -> Application. Never the reverse.

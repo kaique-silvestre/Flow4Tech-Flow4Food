@@ -1,6 +1,6 @@
 import { BottomSheet, Button, formatBRL, MoneyField, Notice, TextField } from "@flow4tech/design-system";
 import { useState } from "react";
-import type { Resultado } from "./CardapioPage";
+import type { Resultado } from "./dados";
 import {
   deInputLocal,
   type ErrosDePreco,

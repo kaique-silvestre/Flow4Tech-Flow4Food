@@ -3,15 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-import { CHAVE_DA_GESTAO, carregarGestao, type DadosDaGestao, Recusado } from "./dados";
+import { CHAVE_DA_GESTAO, carregarGestao, type DadosDaGestao, Recusado, type Resultado } from "./dados";
 import { FolhaDePreco } from "./FolhaDePreco";
 import { agrupar, corpoDaAlteracao, filtrar, type Mudanca, type ProdutoGestao, paraProdutoGestao } from "./logica";
 import "./cardapio.css";
 
 export const SEM_PERMISSAO = "Você não tem permissão para isso.";
-
-/** The answer of one change: the product as the server now holds it, or the sentence to show (never a reason for a refusal by right). */
-export type Resultado = { ok: true } | { ok: false; mensagem: string };
 
 function EsqueletoDoCardapio() {
   return (

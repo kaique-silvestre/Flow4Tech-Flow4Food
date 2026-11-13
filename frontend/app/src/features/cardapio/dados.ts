@@ -4,6 +4,9 @@ import { type CategoriaGestao, type ProdutoGestao, paraCategoriaGestao, paraProd
 /** A refusal by right is a bare 403: the screen says "sem permissão" and never why. */
 export class Recusado extends Error {}
 
+/** The answer of one change: the product as the server now holds it, or the sentence to show (never a reason for a refusal by right). */
+export type Resultado = { ok: true } | { ok: false; mensagem: string };
+
 export interface DadosDaGestao {
   produtos: ProdutoGestao[];
   categorias: CategoriaGestao[];

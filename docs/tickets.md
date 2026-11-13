@@ -131,3 +131,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0111 | Dividir o bundle do app por rota (import dinamico) e baixar os limites do orcamento | governanca | - | `.scratch/governanca/pendencias.md` | - | - | pendente |
 | F4-0112 | Dividir o CLAUDE.md: raiz enxuta (indice, regras que valem sempre) e detalhe por tema em `docs/agents/`; teste de arquitetura trava o tamanho | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0113 | Arquivos de ticket e packet com o ID global: `F4-NNNN-<resumo>.md` nas fatias S-01 a S-04, titulos e `Blocked by` com o ID, teste de arquitetura | governanca | - | - | `dev-v2` (commit direto) | - | feito |
+| F4-0114 | Arquitetura do front com dependency-cruiser: ciclos, camadas entre app/control/design-system/api-client, sessao como base, sem devDependency em producao; job `architecture-frontend` bloqueante e pre-push | governanca | - | - | `dev-v2` (commit direto) | - | feito |
