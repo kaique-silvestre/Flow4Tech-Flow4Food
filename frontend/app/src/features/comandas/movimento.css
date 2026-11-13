@@ -1,0 +1,210 @@
+/* Transfer, separate, merge and split sheets (F4-0062). Tokens only; every row is a 52px touch target. */
+.mov-rotulo {
+  margin: var(--f4-space-3) 0 var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.mov-lista {
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.mov-linha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-3);
+  min-height: 52px;
+  padding: 0 var(--f4-space-1);
+  border-bottom: 1px solid var(--f4-border);
+  cursor: pointer;
+}
+
+/* The real input covers the whole row (a 52px target, keyboard and screen readers keep the native control); the mark is only its picture. */
+.mov-linha input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mov-marca {
+  flex: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--f4-border-strong);
+  border-radius: 6px;
+  background: var(--f4-surface);
+}
+
+.mov-marca[data-forma="radio"] {
+  border-radius: 50%;
+}
+
+input:checked + .mov-marca {
+  border-color: var(--f4-accent);
+  background: var(--f4-accent);
+}
+
+input:checked + .mov-marca::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  margin-top: -2px;
+  border-left: 2px solid var(--f4-accent-ink);
+  border-bottom: 2px solid var(--f4-accent-ink);
+  transform: rotate(-45deg);
+}
+
+input:checked + .mov-marca[data-forma="radio"]::after {
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--f4-accent-ink);
+  transform: none;
+}
+
+.mov-linha:has(input:focus-visible) {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.mov-nome {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mov-num {
+  flex: none;
+  color: var(--f4-ink-muted);
+}
+
+.mov-vazio {
+  margin: 0 0 var(--f4-space-3);
+  color: var(--f4-ink-muted);
+}
+
+.mov-rodape {
+  display: flex;
+  flex-direction: column;
+  gap: var(--f4-space-2);
+}
+
+.mov-resumo {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mov-bloqueio {
+  margin: 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.mov-botoes {
+  display: flex;
+  gap: var(--f4-space-2);
+}
+
+.mov-botoes > * {
+  flex: 1;
+}
+
+/* Split sheet */
+.div-modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+  margin-bottom: var(--f4-space-3);
+}
+
+.div-partes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--f4-space-3);
+}
+
+.div-ajuda {
+  margin: 0 0 var(--f4-space-3);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.div-item {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-3);
+  min-height: 52px;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.div-item select {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--f4-space-2);
+  border: 1px solid var(--f4-border-strong);
+  border-radius: var(--f4-radius-sm);
+  background: var(--f4-surface);
+  color: var(--f4-ink);
+  font: inherit;
+}
+
+.div-previa {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.div-previa li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-1) 0;
+}
+
+.div-previa-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--f4-space-1);
+  font-weight: 600;
+}
+
+.div-aviso {
+  margin: 0;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+/* Split preview lives in the pinned footer: a compact grid so up to five parts stay in view with the reason and the confirm button. */
+.div-previa {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--f4-space-4);
+}
+
+.div-previa li {
+  font-size: var(--f4-text-secondary);
+}
+
+/* Comanda menu: the account actions and the edit actions are two groups, with room at the end of the list. */
+.menu-lista {
+  padding-bottom: var(--f4-space-2);
+}
+
+.menu-lista li[data-grupo-novo="true"] {
+  margin-top: var(--f4-space-3);
+  border-top: 1px solid var(--f4-border-strong);
+}

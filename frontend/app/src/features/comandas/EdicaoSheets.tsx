@@ -1,10 +1,21 @@
 import { BottomSheet, Button, Chip, Notice, Skeleton, Stepper, TextField } from "@flow4tech/design-system";
 import { useEffect, useState } from "react";
+import "./movimento.css";
 import { type EventoDoHistorico, type Garcom, horaDoEvento, linhaDoHistorico } from "./historico";
 import { type CodigoDeMotivo, type ItemDaConta, MOTIVOS } from "./rodada";
 import type { Comanda } from "./tipos";
 
-export type AcaoDoMenu = "desconto" | "renomear" | "dados" | "garcom" | "historico" | "cancelar";
+export type AcaoDoMenu =
+  | "desconto"
+  | "transferir"
+  | "separar"
+  | "juntar"
+  | "dividir"
+  | "renomear"
+  | "dados"
+  | "garcom"
+  | "historico"
+  | "cancelar";
 
 interface MenuProps {
   open: boolean;
@@ -16,6 +27,10 @@ interface MenuProps {
 
 const ROTULOS: Record<AcaoDoMenu, string> = {
   desconto: "Desconto na comanda",
+  transferir: "Transferir itens",
+  separar: "Separar itens",
+  juntar: "Juntar comandas",
+  dividir: "Dividir a conta",
   renomear: "Renomear comanda",
   dados: "Pessoas e observação",
   garcom: "Trocar de garçom",
@@ -23,13 +38,15 @@ const ROTULOS: Record<AcaoDoMenu, string> = {
   cancelar: "Cancelar comanda",
 };
 
+const DA_CONTA: ReadonlySet<AcaoDoMenu> = new Set(["desconto", "transferir", "separar", "juntar", "dividir"]);
+
 /** The comanda menu: one row per action the caller may do. */
 export function MenuDaComandaSheet({ open, onOpenChange, acoes, onEscolher }: MenuProps) {
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Mais ações">
       <ul className="menu-lista" aria-label="Ações da comanda">
-        {acoes.map((acao) => (
-          <li key={acao}>
+        {acoes.map((acao, i) => (
+          <li key={acao} data-grupo-novo={i > 0 && DA_CONTA.has(acoes[i - 1] as AcaoDoMenu) && !DA_CONTA.has(acao)}>
             <button type="button" className="menu-linha" data-acao={acao} onClick={() => onEscolher(acao)}>
               {ROTULOS[acao]}
             </button>

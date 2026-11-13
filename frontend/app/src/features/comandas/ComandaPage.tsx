@@ -37,6 +37,7 @@ import {
 } from "./cardapio";
 import { useComandas, useUltimaVez } from "./consultas";
 import { DescontoSheet } from "./DescontoSheet";
+import { DividirSheet } from "./DividirSheet";
 import { useConta, useItens, useRegrasDeDesconto } from "./dadosDaComanda";
 import { ACOES_DE_DESCONTO, type PedidoDeDesconto, textoDaFalha } from "./desconto";
 import {
@@ -53,6 +54,8 @@ import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet, RepetirRodadaSheet } from "./Folhas";
 import { useGarcons, useHistorico } from "./historico";
 import { type EscolhaDoItem, ItemSheet } from "./ItemSheet";
+import { JuntarSheet, TransferirSheet } from "./MovimentoSheets";
+import { bloqueioDaOperacao } from "./movimento";
 import { exigeEscolha, resumoDasOpcoes } from "./opcoes";
 import { Picker } from "./Picker";
 import { lerIgnorados, previaDaRepeticao, textoDosIgnorados } from "./repetir";
@@ -142,6 +145,7 @@ export function ComandaPage() {
   const [alvoDoDesconto, setAlvoDoDesconto] = useState<{ item: ItemDaConta | null } | null>(null);
   const [aplicandoDesconto, setAplicandoDesconto] = useState(false);
   const [erroDoDesconto, setErroDoDesconto] = useState<string | undefined>(undefined);
+  const [folhaMovimento, setFolhaMovimento] = useState<"transferir" | "separar" | "juntar" | "dividir" | null>(null);
   const [folhaNome, setFolhaNome] = useState(false);
   const [folhaDados, setFolhaDados] = useState(false);
   const [folhaGarcom, setFolhaGarcom] = useState(false);
@@ -416,6 +420,8 @@ export function ComandaPage() {
     if (acao === "desconto") {
       setErroDoDesconto(undefined);
       setAlvoDoDesconto({ item: null });
+    } else if (acao === "transferir" || acao === "separar" || acao === "juntar" || acao === "dividir") {
+      setFolhaMovimento(acao);
     } else if (acao === "renomear") {
       setFolhaNome(true);
     } else if (acao === "dados") {
@@ -484,6 +490,13 @@ export function ComandaPage() {
     } finally {
       setAplicandoDesconto(false);
     }
+  }
+
+  /** A transfer, separation or merge went through: the sheet closes, the tables may have changed state, and the screen says what happened. */
+  function terminouMovimento(mensagem: string) {
+    setFolhaMovimento(null);
+    void queryClient.invalidateQueries({ queryKey: ["mesas"] });
+    setAviso(mensagem);
   }
 
   /** Cancelling the whole comanda needs the server now (it is never queued): the answer decides what the screen does next. */
@@ -754,6 +767,10 @@ export function ComandaPage() {
   const acoesDoMenu: AcaoDoMenu[] = (
     [
       ["desconto", "comanda:ver"],
+      ["transferir", "comanda:transferir-item"],
+      ["separar", "comanda:transferir-item"],
+      ["juntar", "comanda:juntar"],
+      ["dividir", "comanda:dividir"],
       ["renomear", "comanda:renomear"],
       ["dados", "comanda:alterar-dados"],
       ["garcom", "comanda:trocar-garcom"],
@@ -762,7 +779,11 @@ export function ComandaPage() {
     ] as const
   )
     .filter(([acao, permissao]) =>
-      acao === "desconto" ? comandaAberta && regras.desconto : permissoes.pode(permissao),
+      acao === "desconto"
+        ? comandaAberta && regras.desconto
+        : acao === "transferir" || acao === "separar" || acao === "juntar" || acao === "dividir"
+          ? comandaAberta && permissoes.pode(permissao)
+          : permissoes.pode(permissao),
     )
     .map(([acao]) => acao);
   const podeDesfazer = permissoes.pode("comanda:desfazer-rodada");
@@ -772,6 +793,9 @@ export function ComandaPage() {
   const previa = previaDaRepeticao(ultima ?? [], produtos.data ?? []);
   const filaDaComanda = filaAgora.some((a) => a.comandaId === comandaId && a.estado !== "falhou");
   const faltaUnidades = unidades(emPreparo);
+  // Transfer, separate, merge and split need the server now (never queued): no signal, or an earlier action of this comanda still waiting in the queue, blocks them.
+  const bloqueioDoMovimento = (oQue: string) => bloqueioDaOperacao(navigator.onLine, filaDaComanda, oQue);
+  const outrasComandas = (comandas.data ?? []).filter((c) => c.id !== comandaId && c.estado === "aberta");
 
   return (
     <section className="comanda" aria-labelledby="comanda-titulo">
@@ -1105,6 +1129,59 @@ export function ComandaPage() {
         erro={erroDoDesconto}
         onAplicar={(pedido) => void aplicarDesconto(pedido)}
       />
+      {permissoes.pode("comanda:transferir-item") ? (
+        <TransferirSheet
+          open={folhaMovimento === "transferir" || folhaMovimento === "separar"}
+          onOpenChange={(aberto) => {
+            if (!aberto) {
+              setFolhaMovimento(null);
+            }
+          }}
+          modo={folhaMovimento === "separar" ? "separar" : "transferir"}
+          comandaId={comandaId}
+          nome={nomeExibido(comanda)}
+          versao={versao}
+          itens={lancados}
+          outras={outrasComandas}
+          bloqueio={bloqueioDoMovimento(folhaMovimento === "separar" ? "Separar itens" : "Transferir itens")}
+          onAtualizar={atualizarDados}
+          onFeito={terminouMovimento}
+        />
+      ) : null}
+      {permissoes.pode("comanda:juntar") ? (
+        <JuntarSheet
+          open={folhaMovimento === "juntar"}
+          onOpenChange={(aberto) => {
+            if (!aberto) {
+              setFolhaMovimento(null);
+            }
+          }}
+          comandaId={comandaId}
+          nome={nomeExibido(comanda)}
+          versao={versao}
+          outras={outrasComandas}
+          bloqueio={bloqueioDoMovimento("Juntar comandas")}
+          onAtualizar={atualizarDados}
+          onFeito={terminouMovimento}
+        />
+      ) : null}
+      {permissoes.pode("comanda:dividir") ? (
+        <DividirSheet
+          open={folhaMovimento === "dividir"}
+          onOpenChange={(aberto) => {
+            if (!aberto) {
+              setFolhaMovimento(null);
+            }
+          }}
+          comandaId={comandaId}
+          nome={nomeExibido(comanda)}
+          conta={conta.data}
+          itens={lancados}
+          versao={versao}
+          bloqueio={bloqueioDoMovimento("Dividir a conta")}
+          onAtualizar={atualizarDados}
+        />
+      ) : null}
       <CancelarComandaSheet
         open={folhaCancelarComanda}
         onOpenChange={setFolhaCancelarComanda}
