@@ -8,7 +8,7 @@ import { FolhaDePreco } from "./FolhaDePreco";
 import { agrupar, corpoDaAlteracao, filtrar, type Mudanca, type ProdutoGestao, paraProdutoGestao } from "./logica";
 import "./cardapio.css";
 
-export const SEM_PERMISSAO = "Você não tem permissão para isso.";
+const SEM_PERMISSAO = "Você não tem permissão para isso.";
 
 function EsqueletoDoCardapio() {
   return (

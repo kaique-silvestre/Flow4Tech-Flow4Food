@@ -3,7 +3,7 @@ import type { UltimaVez } from "./consultas";
 import { quandoFechou } from "./repetir";
 
 /** One line of the card: "2× Chopp 300ml, 1× Porção de batata" (add-ons are not listed here, they come along when the items are added). */
-export function resumoDaUltimaVez(itens: UltimaVez["itens"]): string {
+function resumoDaUltimaVez(itens: UltimaVez["itens"]): string {
   return itens.map((i) => `${i.quantidade}× ${i.produtoNome}`).join(", ");
 }
 

@@ -88,6 +88,23 @@ jobs:
       # Cycles, layer edges between app/control/design-system/api-client, features -> shell, sessao as base, dev deps in prod code (.dependency-cruiser.cjs, F4-0114).
       - run: pnpm arch:front
 
+  dead-code-frontend:
+    name: dead code (knip)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Unused files, exports, types and dependencies, plus undeclared or unresolved imports (knip.jsonc, F4-0115).
+      - run: pnpm dead:front
+
   frontend-tests:
     name: front tests (vitest)
     runs-on: ubuntu-latest
@@ -624,6 +641,7 @@ jobs:
       - typecheck-frontend
       - lint-frontend
       - architecture-frontend
+      - dead-code-frontend
       - frontend-tests
       - bundle-budget
       - mutation-tests

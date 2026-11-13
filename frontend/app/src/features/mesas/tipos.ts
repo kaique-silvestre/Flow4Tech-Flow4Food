@@ -12,7 +12,7 @@ export interface MesaDoMapa {
   abertaDesde: string | null;
 }
 
-export interface AreaDoMapa {
+interface AreaDoMapa {
   id: string;
   nome: string;
   mesas: MesaDoMapa[];

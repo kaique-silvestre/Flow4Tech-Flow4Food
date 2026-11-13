@@ -29,6 +29,7 @@ if command -v pnpm >/dev/null 2>&1; then
   echo "pre-push: biome, typecheck e testes do front"
   pnpm lint
   pnpm arch:front
+  pnpm dead:front
   pnpm -r typecheck
   pnpm -r --if-present test
 else

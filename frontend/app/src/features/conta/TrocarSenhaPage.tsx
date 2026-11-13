@@ -7,7 +7,7 @@ import { z } from "zod";
 import { aceitarSessao, api, destinoDaSessao, lerSessao, sair } from "../sessao/sessao";
 
 export const SENHA_MINIMO = 10;
-export const SENHA_MAXIMO = 256;
+const SENHA_MAXIMO = 256;
 
 export const trocarSenhaSchema = z
   .object({

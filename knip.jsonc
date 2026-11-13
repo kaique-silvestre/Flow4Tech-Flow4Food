@@ -1,0 +1,22 @@
+// Codigo morto no front (F4-0115). Rodar na raiz: `pnpm dead:front`. Excecao so aqui, com o motivo ao lado; nunca desligar a regra.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // `typecheck` e o script do pnpm (pnpm -r typecheck), nao um binario instalado.
+  "ignoreBinaries": ["typecheck"],
+  "workspaces": {
+    ".": { "entry": [], "project": [] },
+    "frontend/app": {},
+    "frontend/control": {
+      // Casca ainda sem tela; o design-system entra quando a primeira tela existir.
+      "ignoreDependencies": ["@flow4tech/design-system"]
+    },
+    "frontend/design-system": {
+      // Usada por `@import` em styles.css, que o Knip nao le como import.
+      "ignoreDependencies": ["@fontsource-variable/geist"]
+    },
+    "frontend/packages/api-client": {
+      // Gerado por openapi-typescript (webhooks, $defs, operations); nunca editado a mao.
+      "ignore": ["src/schema.ts"]
+    }
+  }
+}

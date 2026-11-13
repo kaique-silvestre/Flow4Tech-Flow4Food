@@ -45,7 +45,7 @@ export interface ItemEmPreparo {
 }
 
 export const QUANTIDADE_MAXIMA = 999;
-export const ITENS_MAXIMOS_POR_RODADA = 50;
+const ITENS_MAXIMOS_POR_RODADA = 50;
 export const OBSERVACAO_MAXIMA = 200;
 
 /** The note as the server stores it: trimmed, no control characters, null when blank. */
@@ -55,7 +55,7 @@ export function normalizarObservacao(texto: string | null | undefined): string |
   return limpo === "" ? null : limpo.slice(0, OBSERVACAO_MAXIMA);
 }
 
-export function chaveDoItem(produtoId: string, opcoes: readonly OpcaoEscolhida[], observacao: string | null): string {
+function chaveDoItem(produtoId: string, opcoes: readonly OpcaoEscolhida[], observacao: string | null): string {
   if (opcoes.length === 0 && observacao === null) {
     return produtoId;
   }

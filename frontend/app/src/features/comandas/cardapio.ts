@@ -171,7 +171,7 @@ export interface OpcaoFrequente {
 }
 
 /** Only what a waiter can still pick: active groups with their active add-ons; a group with none left is dropped. */
-export function gruposDisponiveis(
+function gruposDisponiveis(
   grupos: readonly {
     id: unknown;
     nome: unknown;

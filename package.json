@@ -6,12 +6,14 @@
     "prepare": "husky || true",
     "lint": "biome ci .",
     "lint:fix": "biome check --write .",
-    "arch:front": "depcruise frontend/app/src frontend/control/src frontend/design-system/src frontend/packages/api-client/src --config .dependency-cruiser.cjs"
+    "arch:front": "depcruise frontend/app/src frontend/control/src frontend/design-system/src frontend/packages/api-client/src --config .dependency-cruiser.cjs",
+    "dead:front": "knip"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "dependency-cruiser": "18.7.2",
     "husky": "^9.1.7",
+    "knip": "6.45.1",
     "railway": "^3.16.0"
   }
 }

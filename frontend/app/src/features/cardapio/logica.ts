@@ -4,7 +4,7 @@ type ProdutoDto = components["schemas"]["ProdutoDto"];
 type CategoriaDto = components["schemas"]["CategoriaDto"];
 type AlterarProdutoRequest = components["schemas"]["AlterarProdutoRequest"];
 
-export interface Promocao {
+interface Promocao {
   precoCentavos: number;
   /** ISO instant (UTC). The promotion holds in [inicio, fim). */
   inicio: string;

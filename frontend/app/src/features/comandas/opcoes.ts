@@ -2,7 +2,7 @@ import type { GrupoDeOpcao, Opcao, OpcaoFrequente } from "./cardapio";
 import type { OpcaoEscolhida } from "./rodada";
 
 /** How many add-ons the "mais usados" row offers: what fits on one phone line pair without scrolling the sheet. */
-export const MAIS_USADOS_MAXIMOS = 4;
+const MAIS_USADOS_MAXIMOS = 4;
 
 /** A group never demands more than it still offers (an add-on that ran out must not block the service), the same rule the server applies. */
 export function minimoEfetivo(grupo: GrupoDeOpcao): number {
@@ -14,7 +14,7 @@ export function exigeEscolha(grupos: readonly GrupoDeOpcao[]): boolean {
   return grupos.some((g) => minimoEfetivo(g) >= 1);
 }
 
-export function paraEscolhida(grupo: GrupoDeOpcao, opcao: Opcao): OpcaoEscolhida {
+function paraEscolhida(grupo: GrupoDeOpcao, opcao: Opcao): OpcaoEscolhida {
   return { id: opcao.id, grupoId: grupo.id, nome: opcao.nome, precoCentavos: opcao.precoCentavos };
 }
 

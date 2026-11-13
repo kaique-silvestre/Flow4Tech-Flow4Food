@@ -2,7 +2,7 @@ import type { Produto } from "./cardapio";
 import type { ItemDaConta } from "./rodada";
 
 /** A line of the last round the preview shows, with the price the menu charges now (the server rereads it too). */
-export interface LinhaDaPrevia {
+interface LinhaDaPrevia {
   item: ItemDaConta;
   /** One unit with its add-ons, at the menu price of now. */
   unitarioCentavos: number;
