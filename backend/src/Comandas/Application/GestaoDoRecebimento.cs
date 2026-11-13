@@ -37,10 +37,29 @@ public enum ResultadoDoRecebimento
 
     /// <summary>Removing the fee would put the bill below what was already received.</summary>
     ValorJaRecebido,
+
+    /// <summary>A method of the receipt is deactivated by the organization.</summary>
+    MetodoInativo,
+
+    /// <summary>The non-cash lines pass the balance (only cash gives change), or a line would apply nothing.</summary>
+    ExcedeSaldo,
+
+    /// <summary>The lines paying a part of a split would pass what that part owes.</summary>
+    ExcedeParte,
+
+    /// <summary>The comanda changed after the split a line points to was recorded.</summary>
+    DivisaoInvalida,
 }
 
 /// <summary><c>Versao</c> is the comanda version after the write (the one the round produced, on a repeat); <c>VersaoAtual</c> is set on a stale version; <c>Conta</c> is the bill after the write.</summary>
-public sealed record ResultadoDoRecebimentoComConta(ResultadoDoRecebimento Resultado, PagamentoRecebido? Pagamento = null, ContaDaComanda? Conta = null, int? Versao = null, int? VersaoAtual = null, EstadoDaComanda? Estado = null);
+public sealed record ResultadoDoRecebimentoComConta(
+    ResultadoDoRecebimento Resultado,
+    PagamentoRecebido? Pagamento = null,
+    ContaDaComanda? Conta = null,
+    int? Versao = null,
+    int? VersaoAtual = null,
+    EstadoDaComanda? Estado = null,
+    IReadOnlyList<PagamentoRecebido>? Pagamentos = null);
 
 /// <summary>
 /// The cashier's side of a comanda: seeing the bill, receiving cash, removing the service fee and closing. Each write is ONE unit of work: the version bump, the rows, the shift movement (through the
@@ -52,6 +71,7 @@ public sealed class GestaoDoRecebimento(
     IComandasStore comandas,
     IRodadasStore rodadas,
     IDescontosStore descontos,
+    IDivisoesStore divisoes,
     GestaoDePagamentos pagamentos,
     IAuditLog audit,
     IEventosDeComandas eventos,
@@ -95,73 +115,159 @@ public sealed class GestaoDoRecebimento(
             cancellationToken);
     }
 
+    /// <summary>The single cash payment (the original route): one cash line, no tip, no split.</summary>
     public async Task<ResultadoDoRecebimentoComConta> ReceberAsync(IRequestContext request, Guid comandaId, Guid pagamentoId, long recebidoCentavos, int versao, CancellationToken cancellationToken = default)
     {
+        var r = await ReceberLinhasAsync(request, comandaId, versao, [new LinhaDoRecebimento(pagamentoId, null, recebidoCentavos, 0, null, null)], cancellationToken);
+        return r.Pagamentos is { Count: 1 } ? r with { Pagamento = r.Pagamentos[0], Pagamentos = null } : r;
+    }
+
+    /// <summary>
+    /// A partial, split or mixed payment: one or more method lines of one payer, in ONE unit of work (the permission decisions, the shift, the version bump, the rows, the audit and the events). Each line
+    /// carries its own client id; repeating them answers what was stored and writes nothing. More than one line, or a line paying a part of a split, also needs <c>pagamento:dividir</c>; a tip needs
+    /// <c>pagamento:registrar-gorjeta</c>. The applied total never passes the balance, and the version bump is the lock that keeps two simultaneous receipts from passing it together.
+    /// </summary>
+    public async Task<ResultadoDoRecebimentoComConta> ReceberLinhasAsync(IRequestContext request, Guid comandaId, int versao, IReadOnlyList<LinhaDoRecebimento> linhas, CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(linhas);
         try
         {
-            return await unitOfWork.ExecuteAsync(
-                request,
-                async ct =>
-                {
-                    if (pagamentoId == Guid.Empty || versao < 1 || !RegrasDeRecebimento.RecebidoValido(recebidoCentavos))
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Invalido);
-                    }
-
-                    if (!await permissoes.PodeAsync(request, PagamentosPermissions.Registrar, ct))
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Negado);
-                    }
-
-                    var org = request.Organization;
-                    var comanda = await AcharVisivelAsync(request, comandaId, ct);
-                    if (comanda is null)
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
-                    }
-
-                    if (await pagamentos.AcharAsync(request, pagamentoId, ct) is { } existente)
-                    {
-                        return Repetido(existente, comandaId);
-                    }
-
-                    if (comanda.Estado != EstadoDaComanda.Aberta)
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoAberta);
-                    }
-
-                    var contexto = await pagamentos.PrepararAsync(request, ct);
-                    if (contexto.CaixaExigido && contexto.TurnoId is null)
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.CaixaFechado);
-                    }
-
-                    var conta = await CarregarContaAsync(request, comanda, ct);
-                    if (conta.SaldoCentavos <= 0)
-                    {
-                        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.SemSaldo);
-                    }
-
-                    if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
-                    {
-                        // Lost the race on the row lock (or the caller is stale). A concurrent repeat of THIS payment id is not a conflict: it gets the stored result.
-                        return await pagamentos.AcharAsync(request, pagamentoId, ct) is { } agora ? Repetido(agora, comandaId) : await FalhaDeVersaoAsync(org, comandaId, ct);
-                    }
-
-                    var aplicado = RegrasDeRecebimento.Aplicado(recebidoCentavos, conta.SaldoCentavos);
-                    var novaVersao = versao + 1;
-                    var pagamento = await pagamentos.RegistrarAsync(request, pagamentoId, comandaId, contexto.TurnoId, recebidoCentavos, aplicado, conta.SaldoCentavos - aplicado, novaVersao, ct);
-                    var depois = RegrasDeComanda.Conta(conta.ConsumoCentavos, conta.TaxaServicoPercentual, conta.TaxaServicoRemovida, conta.PagoCentavos + aplicado, conta.DescontoCentavos);
-                    return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Ok, pagamento, depois, novaVersao, Estado: comanda.Estado);
-                },
-                cancellationToken);
+            return await unitOfWork.ExecuteAsync(request, ct => ReceberDentroAsync(request, comandaId, versao, linhas, ct), cancellationToken);
         }
         catch (TurnoEncerradoException)
         {
             // The shift closed between the check and the movement: everything of this payment rolled back.
             return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.CaixaFechado);
         }
+    }
+
+    private async Task<ResultadoDoRecebimentoComConta> ReceberDentroAsync(IRequestContext request, Guid comandaId, int versao, IReadOnlyList<LinhaDoRecebimento> linhas, CancellationToken ct)
+    {
+        if (versao < 1 || linhas.Count is < 1 or > 10 || linhas.Any(l => l.PagamentoId == Guid.Empty || (l.DivisaoId is null) != (l.DivisaoParte is null) || l.DivisaoParte < 1) || linhas.Select(l => l.PagamentoId).Distinct().Count() != linhas.Count
+            || linhas.Select(l => (l.DivisaoId, l.DivisaoParte)).Distinct().Count() != 1)
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Invalido);
+        }
+
+        if (!await permissoes.PodeAsync(request, PagamentosPermissions.Registrar, ct)
+            || ((linhas.Count > 1 || linhas.Any(l => l.DivisaoId is not null)) && !await permissoes.PodeAsync(request, PagamentosPermissions.Dividir, ct))
+            || (linhas.Any(l => l.GorjetaCentavos != 0) && !await permissoes.PodeAsync(request, PagamentosPermissions.RegistrarGorjeta, ct)))
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Negado);
+        }
+
+        var org = request.Organization;
+        var comanda = await AcharVisivelAsync(request, comandaId, ct);
+        if (comanda is null)
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoEncontrada);
+        }
+
+        if (await GravadosAsync(request, comandaId, linhas, ct) is { } gravados)
+        {
+            return gravados;
+        }
+
+        if (comanda.Estado != EstadoDaComanda.Aberta)
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.ComandaNaoAberta);
+        }
+
+        var contexto = await pagamentos.PrepararAsync(request, ct);
+        if (contexto.CaixaExigido && contexto.TurnoId is null)
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.CaixaFechado);
+        }
+
+        var conta = await CarregarContaAsync(request, comanda, ct);
+        if (conta.SaldoCentavos <= 0)
+        {
+            return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.SemSaldo);
+        }
+
+        // A receipt that pays a part of a split pays only that part: its balance is what the part still owes (when that is less than the bill's).
+        var (recusaDaParte, restanteDaParte) = await ParteAsync(request, comanda, linhas[0], ct);
+        if (recusaDaParte is { } recusada)
+        {
+            return new ResultadoDoRecebimentoComConta(recusada);
+        }
+
+        var saldoEfetivo = Math.Min(conta.SaldoCentavos, restanteDaParte ?? long.MaxValue);
+        var plano = await pagamentos.PlanejarAsync(request, saldoEfetivo, linhas, ct);
+        if (plano.Recusa != RecusaDoPlano.Nenhuma)
+        {
+            return new ResultadoDoRecebimentoComConta(plano.Recusa switch
+            {
+                RecusaDoPlano.MetodoInativo => ResultadoDoRecebimento.MetodoInativo,
+                RecusaDoPlano.ExcedeSaldo => restanteDaParte < conta.SaldoCentavos ? ResultadoDoRecebimento.ExcedeParte : ResultadoDoRecebimento.ExcedeSaldo,
+                _ => ResultadoDoRecebimento.Invalido,
+            });
+        }
+
+        if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+        {
+            // Lost the race on the row lock (or the caller is stale). A concurrent repeat of THESE payment ids is not a conflict: it gets the stored result.
+            return await GravadosAsync(request, comandaId, linhas, ct) ?? await FalhaDeVersaoAsync(org, comandaId, ct);
+        }
+
+        var novaVersao = versao + 1;
+        var registrados = await pagamentos.RegistrarAsync(request, comandaId, contexto.TurnoId, conta.SaldoCentavos, novaVersao, plano.Linhas, ct);
+        var depois = RegrasDeComanda.Conta(conta.ConsumoCentavos, conta.TaxaServicoPercentual, conta.TaxaServicoRemovida, conta.PagoCentavos + plano.Linhas.Sum(l => l.AplicadoCentavos), conta.DescontoCentavos);
+        return new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Ok, Conta: depois, Versao: novaVersao, Estado: comanda.Estado, Pagamentos: registrados);
+    }
+
+    /// <summary>The payments already stored under these client ids: all of them (answered as a repeat), none (null, go on) or only some or another comanda's (invalid).</summary>
+    private async Task<ResultadoDoRecebimentoComConta?> GravadosAsync(IRequestContext request, Guid comandaId, IReadOnlyList<LinhaDoRecebimento> linhas, CancellationToken ct)
+    {
+        var achados = new List<PagamentoRecebido>(linhas.Count);
+        foreach (var linha in linhas)
+        {
+            if (await pagamentos.AcharAsync(request, linha.PagamentoId, ct) is { } existente)
+            {
+                achados.Add(existente);
+            }
+        }
+
+        if (achados.Count == 0)
+        {
+            return null;
+        }
+
+        return achados.Count == linhas.Count && achados.All(a => a.ComandaId == comandaId)
+            ? new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Repetida, Versao: achados.Max(a => a.ComandaVersao), Pagamentos: achados)
+            : new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Invalido);
+    }
+
+    /// <summary>
+    /// The part of a split the receipt pays (all its lines point to the same one): the split must be of this comanda and still match it, the part must exist, and it must still owe something. Returns what the
+    /// part still owes (its total minus what was applied to it), or null when the receipt pays no part.
+    /// </summary>
+    private async Task<(ResultadoDoRecebimento? Recusa, long? Restante)> ParteAsync(IRequestContext request, Comanda comanda, LinhaDoRecebimento linha, CancellationToken ct)
+    {
+        if (linha.DivisaoId is not { } divisaoId || linha.DivisaoParte is not { } numero)
+        {
+            return (null, null);
+        }
+
+        var org = request.Organization;
+        var divisao = await divisoes.AcharAsync(org.OrganizationId, divisaoId, ct);
+        var parte = divisao?.Partes.FirstOrDefault(p => p.Numero == numero);
+        if (divisao is null || divisao.ComandaId != comanda.Id || parte is null)
+        {
+            return (ResultadoDoRecebimento.Invalido, null);
+        }
+
+        var itens = await rodadas.ListarItensAsync(org.OrganizationId, comanda.Id, ct);
+        var dados = await descontos.ListarAsync(org.OrganizationId, comanda.Id, ct);
+        if (divisao.Assinatura != RegrasDeDivisao.Assinatura(itens, dados, comanda.TaxaServicoPercentual, comanda.TaxaServicoRemovida))
+        {
+            return (ResultadoDoRecebimento.DivisaoInvalida, null);
+        }
+
+        var jaPago = (await pagamentos.SomaAplicadaPorParteAsync(request, comanda.Id, ct)).GetValueOrDefault((divisaoId, numero));
+        var restante = parte.TotalCentavos - jaPago;
+        return restante <= 0 ? (ResultadoDoRecebimento.ExcedeParte, null) : (null, restante);
     }
 
     public Task<ResultadoDoRecebimentoComConta> RemoverTaxaServicoAsync(IRequestContext request, Guid comandaId, int versao, CancellationToken cancellationToken = default)
@@ -275,11 +381,6 @@ public sealed class GestaoDoRecebimento(
             },
             cancellationToken);
     }
-
-    private static ResultadoDoRecebimentoComConta Repetido(PagamentoRecebido existente, Guid comandaId) =>
-        existente.ComandaId == comandaId
-            ? new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Repetida, existente, Versao: existente.ComandaVersao)
-            : new ResultadoDoRecebimentoComConta(ResultadoDoRecebimento.Invalido);
 
     /// <summary>The comanda when the caller may see it (their own, or any with <c>comanda:ver-comandas-de-outros</c>); null otherwise, so paying, closing and removing the fee answer as for a comanda that does not exist.</summary>
     private async Task<Comanda?> AcharVisivelAsync(IRequestContext request, Guid comandaId, CancellationToken ct)

@@ -43,6 +43,8 @@ grupo-opcao:alterar
 grupo-opcao:criar
 mesa:criar
 mesa:definir-area
+metodo-pagamento:alterar
+metodo-pagamento:criar
 pagamento:registrar
 perfil:atribuir
 perfil:criar

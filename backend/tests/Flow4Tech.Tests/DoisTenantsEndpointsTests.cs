@@ -194,6 +194,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("pagamentos", tables);
         Assert.Contains("turnos_caixa", tables);
         Assert.Contains("produtos_preco_unidade", tables);
+        Assert.Contains("metodos_pagamento", tables);
         Assert.Contains("grupos_opcao", tables);
         Assert.Contains("item_opcoes", tables);
         Assert.Contains("opcoes_frequencia", tables);
@@ -211,6 +212,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.True((await QueryAsync(tenant, "SELECT count(*) FROM sessoes", r => r.GetInt64(0))).Single() >= 1);
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
+            Assert.Equal(7L, (await QueryAsync(tenant, "SELECT count(*) FROM metodos_pagamento", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
             foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia", "produtos_frequencia_garcom" })
             {
@@ -526,6 +528,87 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
 
         Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM divisoes", r => r.GetInt64(0))).Single());
         Assert.Equal(1L, (await QueryAsync(b, "SELECT count(*) FROM divisoes", r => r.GetInt64(0))).Single());
+    }
+
+    [Fact]
+    public async Task Receiving_with_several_methods_runs_in_each_organization_with_its_own_methods_and_one_cannot_read_pay_or_rename_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var recebidoA = await RunRecebimentoMistoAsync(client, salaoA);
+        var recebidoB = await RunRecebimentoMistoAsync(client, salaoB);
+
+        // Each organization ends with its own methods (the 7 of the factory plus its own "Cheque"), its own receipt of three lines and its own expected cash (only the cash applied).
+        foreach (var (tenant, recebido) in new[] { (a, recebidoA), (b, recebidoB) })
+        {
+            Assert.Equal((8L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM metodos_pagamento), (SELECT count(*) FROM metodos_pagamento WHERE nome = 'Pix QR'), (SELECT count(*) FROM metodos_pagamento WHERE nome = 'Cheque')", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
+            Assert.Equal((4L, 3L, 200L), (await QueryAsync(tenant, "SELECT count(*), count(*) FILTER (WHERE comanda_id = @c), coalesce(sum(gorjeta_centavos), 0)::bigint FROM pagamentos", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)), ("c", recebido.ComandaId))).Single());
+            Assert.Equal(3L, (await QueryAsync(tenant, "SELECT count(*) FROM outbox_eventos WHERE tipo = 'pagamento.registrado' AND payload->>'ComandaId' = @c", r => r.GetInt64(0), ("c", recebido.ComandaId.ToString()))).Single());
+            Assert.Equal(recebido.CashApplied, (await QueryAsync(tenant, "SELECT coalesce(sum(recebido_dinheiro_centavos), 0)::bigint FROM turnos_caixa WHERE fechado_em IS NULL", r => r.GetInt64(0))).Single());
+        }
+
+        // Across the line: no reading the other's payments, no paying its comanda, no renaming its methods.
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, recebidoA), (salaoA.Token, recebidoB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.ComandaId}/pagamentos", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.ComandaId}/recebimentos", intruso, new { versao = alvo.Versao, linhas = new[] { new { pagamentoId = Guid.CreateVersion7(), metodoId = alvo.Dinheiro, recebidoCentavos = 100, gorjetaCentavos = (long?)null, divisaoId = (Guid?)null, divisaoParte = (int?)null } } }));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Put, $"/pagamentos/metodos/{alvo.Dinheiro}", intruso, new { nome = "Roubado", ativo = false }));
+        }
+
+        Assert.Equal(4L, (await QueryAsync(a, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
+        Assert.Equal(4L, (await QueryAsync(b, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
+    }
+
+    private sealed record Recebido(Guid ComandaId, int Versao, Guid Dinheiro, long CashApplied);
+
+    /// <summary>One organization as its founder: a new shift, a comanda of R$ 29,70, the Pix renamed and an own method "Cheque" added, then ONE receipt of card (R$ 10,00 and R$ 2,00 tip), Cheque (R$ 5,00) and cash (R$ 20,00).</summary>
+    private static async Task<Recebido> RunRecebimentoMistoAsync(HttpClient client, Salao salao)
+    {
+        async Task<System.Text.Json.JsonElement> CallAsync(HttpMethod metodo, string caminho, object? corpo, HttpStatusCode esperado)
+        {
+            using var response = await SendAsync(client, metodo, caminho, salao.Token, corpo);
+            Assert.Equal(esperado, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        }
+
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", salao.Token, new { fundoCentavos = 1_000 }));
+        var metodos = (await CallAsync(HttpMethod.Get, "/pagamentos/metodos", null, HttpStatusCode.OK)).EnumerateArray().ToList();
+        Guid Id(string chave) => metodos.Single(m => m.GetProperty("chave").GetString() == chave).GetProperty("id").GetGuid();
+        await CallAsync(HttpMethod.Put, $"/pagamentos/metodos/{Id("pix")}", new { nome = "Pix QR", ativo = true }, HttpStatusCode.OK);
+        var cheque = (await CallAsync(HttpMethod.Post, "/pagamentos/metodos", new { nome = "Cheque" }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+
+        using var aberta = await SendAsync(client, HttpMethod.Post, "/comandas", salao.Token, new { identificacao = "Mista", mesaId = (Guid?)null, pessoas = (int?)null });
+        Assert.Equal(HttpStatusCode.Created, aberta.StatusCode);
+        var comanda = (await aberta.Content.ReadFromJsonAsync<ComandaCriadaDto>())!;
+        var rodada = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = comanda.Versao, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 2, opcaoIds = new[] { salao.OpcaoId } } } }, HttpStatusCode.Created);
+        var versao = rodada.GetProperty("comandaVersao").GetInt32();
+
+        // R$ 29,70: card 10,00 (+ 2,00 tip), cheque 5,00, cash 20,00 -> the cash applies 14,70 and gives 5,30 back.
+        var corpo = new
+        {
+            versao,
+            linhas = new object[]
+            {
+                new { pagamentoId = Guid.CreateVersion7(), metodoId = Id("credito"), recebidoCentavos = 1_000, gorjetaCentavos = 200, divisaoId = (Guid?)null, divisaoParte = (int?)null },
+                new { pagamentoId = Guid.CreateVersion7(), metodoId = cheque, recebidoCentavos = 500, gorjetaCentavos = (long?)null, divisaoId = (Guid?)null, divisaoParte = (int?)null },
+                new { pagamentoId = Guid.CreateVersion7(), metodoId = Id("dinheiro"), recebidoCentavos = 2_000, gorjetaCentavos = (long?)null, divisaoId = (Guid?)null, divisaoParte = (int?)null },
+            },
+        };
+        var recebimento = await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/recebimentos", corpo, HttpStatusCode.Created);
+        var linhas = recebimento.GetProperty("pagamentos").EnumerateArray().ToList();
+        Assert.Equal(["credito", "personalizado", "dinheiro"], linhas.Select(l => l.GetProperty("metodo").GetString()));
+        Assert.Equal(["Crédito", "Cheque", "Dinheiro"], linhas.Select(l => l.GetProperty("metodoNome").GetString()));
+        Assert.Equal([1_000L, 500L, 1_470L], linhas.Select(l => l.GetProperty("aplicadoCentavos").GetInt64()));
+        Assert.Equal([0L, 0L, 530L], linhas.Select(l => l.GetProperty("trocoCentavos").GetInt64()));
+        Assert.Equal((0L, versao + 1), (recebimento.GetProperty("conta").GetProperty("saldoCentavos").GetInt64(), recebimento.GetProperty("conta").GetProperty("versao").GetInt32()));
+        await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/recebimentos", corpo, HttpStatusCode.OK);
+        await CallAsync(HttpMethod.Post, $"/comandas/{comanda.Id}/fechar", new { versao = versao + 1 }, HttpStatusCode.OK);
+        return new Recebido(comanda.Id, versao + 1, Id("dinheiro"), 1_470);
     }
 
     private sealed record Dividido(Guid ComandaId, int Versao, long Total);

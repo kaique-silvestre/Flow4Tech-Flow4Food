@@ -58,6 +58,12 @@ const pagamentoOk = (
     comandaVersao: 5,
     registradoEm: new Date().toISOString(),
     operadorId: "o",
+    metodoId: null,
+    metodoNome: "Dinheiro",
+    gorjetaCentavos: 0,
+    estado: "confirmado",
+    divisaoId: null,
+    divisaoParte: null,
     ...extra,
   });
 const contaFechada = () =>

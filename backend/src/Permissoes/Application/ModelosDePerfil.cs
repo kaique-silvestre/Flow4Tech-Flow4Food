@@ -23,7 +23,7 @@ public static class ModelosDePerfil
     private static readonly string[] Caixa =
     [
         "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir",
-        "pagamento:registrar", "pagamento:ver", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver",
+        "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver",
     ];
 
     // The manager does everything of the salão except managing profiles and permissions (an owner-only decision until the owner says otherwise).
@@ -32,7 +32,7 @@ public static class ModelosDePerfil
         "comanda:abrir", "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada",
         "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados",
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
-        "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
+        "pagamento:dividir", "pagamento:registrar-gorjeta", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
         "comanda:desconto", "comanda:cortesia", "comanda:brinde",
     ];
 

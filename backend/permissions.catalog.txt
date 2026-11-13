@@ -29,10 +29,13 @@ conta:gerir-google
 convite:aceitar
 mesa:gerenciar
 mesa:ver
+metodo-pagamento:gerenciar
 organizacao:configurar
 organizacao:trocar-unidade
 organizacao:ver-unidades
+pagamento:dividir
 pagamento:registrar
+pagamento:registrar-gorjeta
 pagamento:ver
 perfil:gerir
 perfil:ver

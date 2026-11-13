@@ -66,6 +66,12 @@ const pagamento = (
   comandaVersao: 3,
   registradoEm: new Date().toISOString(),
   operadorId: "o",
+  metodoId: null,
+  metodoNome: "Dinheiro",
+  gorjetaCentavos: 0,
+  estado: "confirmado",
+  divisaoId: null,
+  divisaoParte: null,
   ...extra,
 });
 

@@ -4325,6 +4325,94 @@
         "x-permission": "comanda:dividir"
       }
     },
+    "/comandas/{comandaId}/recebimentos": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "receberRecebimentoDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceberLinhasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecebimentoDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecebimentoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:receber-pagamento"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [
@@ -4689,6 +4777,169 @@
           }
         },
         "x-permission": "mesa:ver"
+      }
+    },
+    "/pagamentos/metodos": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listMetodosDePagamento",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MetodoDePagamentoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "pagamento:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarMetodoDePagamento",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarMetodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoDePagamentoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "metodo-pagamento:gerenciar"
+      }
+    },
+    "/pagamentos/metodos/{metodoId}": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "alterarMetodoDePagamento",
+        "parameters": [
+          {
+            "name": "metodoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlterarMetodoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoDePagamentoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetodoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "metodo-pagamento:gerenciar"
       }
     },
     "/perfis/modelos": {
@@ -5309,6 +5560,24 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "AlterarMetodoRequest": {
+        "required": [
+          "nome",
+          "ativo"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ativo": {
+            "type": "boolean"
           }
         }
       },
@@ -6127,6 +6396,20 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "CriarMetodoRequest": {
+        "required": [
+          "nome"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -7017,6 +7300,60 @@
           }
         }
       },
+      "LinhaDeRecebimentoRequest": {
+        "required": [
+          "pagamentoId",
+          "metodoId",
+          "recebidoCentavos",
+          "gorjetaCentavos",
+          "divisaoId",
+          "divisaoParte"
+        ],
+        "type": "object",
+        "properties": {
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metodoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recebidoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "gorjetaCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "divisaoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "divisaoParte": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "organizacaoDoLogin",
@@ -7189,6 +7526,57 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "MetodoDePagamentoDto": {
+        "required": [
+          "id",
+          "chave",
+          "nome",
+          "dinheiro",
+          "ativo",
+          "ordem"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chave": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nome": {
+            "type": "string"
+          },
+          "dinheiro": {
+            "type": "boolean"
+          },
+          "ativo": {
+            "type": "boolean"
+          },
+          "ordem": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "MetodoErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
           }
         }
       },
@@ -7405,7 +7793,13 @@
           "saldoRestanteCentavos",
           "comandaVersao",
           "registradoEm",
-          "operadorId"
+          "operadorId",
+          "metodoId",
+          "metodoNome",
+          "gorjetaCentavos",
+          "estado",
+          "divisaoId",
+          "divisaoParte"
         ],
         "type": "object",
         "properties": {
@@ -7474,6 +7868,43 @@
           "operadorId": {
             "type": "string",
             "format": "uuid"
+          },
+          "metodoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "metodoNome": {
+            "type": "string"
+          },
+          "gorjetaCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "divisaoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "divisaoParte": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -7876,6 +8307,29 @@
           }
         }
       },
+      "ReceberLinhasRequest": {
+        "required": [
+          "versao",
+          "linhas"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "linhas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinhaDeRecebimentoRequest"
+            }
+          }
+        }
+      },
       "ReceberPagamentoRequest": {
         "required": [
           "pagamentoId",
@@ -7903,6 +8357,24 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "RecebimentoDto": {
+        "required": [
+          "pagamentos",
+          "conta"
+        ],
+        "type": "object",
+        "properties": {
+          "pagamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PagamentoDto"
+            }
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ContaDto"
           }
         }
       },
