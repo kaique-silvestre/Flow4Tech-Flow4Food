@@ -97,8 +97,8 @@ public sealed class GestaoDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IAu
                 }
 
                 var mesas = await store.ListarAtivasAsync(org.OrganizationId, org.UnitId, ct);
-                var ocupadas = await store.OcupadasAsync(org.OrganizationId, org.UnitId, ct);
-                return (IReadOnlyList<MesaComStatus>)mesas.Select(m => new MesaComStatus(m, RegrasDeMesa.Status(ocupadas.Contains(m.Id) ? 1 : 0))).ToList();
+                var ocupacao = await store.OcupacaoAsync(org.OrganizationId, org.UnitId, ct);
+                return (IReadOnlyList<MesaComStatus>)mesas.Select(m => new MesaComStatus(m, ocupacao.TryGetValue(m.Id, out var o) ? RegrasDeMesa.Status(o.ComandasAbertas, o.AguardandoConta) : RegrasDeMesa.Status(0))).ToList();
             },
             cancellationToken);
     }
