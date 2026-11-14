@@ -67,7 +67,9 @@ async function comandaDoGarcom(request: APIRequestContext, baseURL: string, nome
 
 async function abrirComanda(page: Page, nome: string) {
   await page.getByRole("link", { name: "Comandas", exact: true }).first().click();
-  await expect(page.getByRole("heading", { level: 2, name: "Comandas abertas" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /^(Comandas abertas|Minhas comandas)$/ })).toBeVisible({
+    timeout: 5000,
+  });
   await page.getByText(nome).first().click();
   await expect(page.getByRole("heading", { level: 2, name: nome })).toBeVisible();
 }

@@ -145,3 +145,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0125 | Atualizar os digests das imagens base do Dockerfile (aspnet e sdk 10.0): o runtime 10.0.14 fixado tem 3 CVEs HIGH corrigidas na 10.0.15 e o job trivy reprova | governanca | `docs/runbooks/sast.md` | - | `dev-v2` (commit direto) | - | feito |
 | F4-0127 | Regra de resposta curta ao dono no CLAUDE.md (portugues, ate ~8 linhas, estado e proxima acao) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0126 | Timeout de 60 s nos testes e2e de captura (o padrao de 30 s e curto em runner de CI carregado) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
+| F4-0128 | Corrigir o CI do PR 48: timeout do job de integracao, orcamento de bundle, specs e2e do Marco 2A que falhavam e `cardapio:importar` ausente em /sessao/permissoes | governanca | - | - | `claude/s04-marco-2a` | - | feito |

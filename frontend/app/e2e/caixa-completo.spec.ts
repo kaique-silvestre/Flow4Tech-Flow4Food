@@ -17,7 +17,10 @@ async function shoot(page: Page, name: string) {
 async function entrarComo(page: Page, usuario: string) {
   await page.goto("/salao/entrar");
   await page.getByLabel("Usuário ou e-mail").fill(usuario);
-  await page.getByLabel("Código da organização").fill(seed?.organizacaoA ?? "");
+  if (!usuario.includes("@")) {
+    await page.getByLabel("Código da organização").fill(seed?.organizacaoA ?? "");
+  }
+
   await page.getByLabel("Senha").fill(SENHA);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Salão" })).toBeVisible();

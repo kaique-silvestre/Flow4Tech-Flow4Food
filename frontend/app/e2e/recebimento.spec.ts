@@ -228,7 +228,7 @@ test("a partial payment leaves the comanda open with what remains, and the rest 
 
   await chip(folha, "Pix").click();
   await digitar(folha, "1000", (alvo) => alvo.click());
-  await expect(folha.getByLabel("Resumo do recebimento")).toContainText(/falta R\$ 1[57],\d0/);
+  await expect(folha.getByLabel("Resumo do recebimento")).toContainText(/falta R\$\s1[57],\d0/);
   await folha.getByRole("button", { name: "Receber", exact: true }).click();
   const registrado = page.getByRole("dialog", { name: "Recebimento registrado" });
   await expect(registrado.getByText("A comanda segue aberta.")).toBeVisible();
