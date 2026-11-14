@@ -13,6 +13,8 @@ export default defineConfig({
   outputDir: "e2e-results/artifacts",
   fullyParallel: false,
   workers: 1,
+  // Screenshot tests shoot several states in two themes; 30 s (the default) is too tight on a loaded CI runner (F4-0126).
+  timeout: 60_000,
   reporter: [["list"]],
   use: {
     baseURL: "http://127.0.0.1:4173",
