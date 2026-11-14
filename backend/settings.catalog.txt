@@ -5,7 +5,10 @@ bloqueio.falhas-operacional|Inteiro|SomenteSistema|8
 bloqueio.falhas-por-ip|Inteiro|SomenteSistema|30
 bloqueio.ips-por-conta|Inteiro|SomenteSistema|5
 bloqueio.maximo-minutos|Numero|SomenteSistema|15
+caixa.conferencia-cega|Booleano|OrganizacaoEUnidade|false
 caixa.exigir-caixa-aberto|Booleano|OrganizacaoEUnidade|true
+caixa.permitir-autoaprovacao|Booleano|OrganizacaoEUnidade|false
+caixa.tolerancia-diferenca-centavos|Inteiro|OrganizacaoEUnidade|500
 comanda.janela-desfazer-segundos|Inteiro|SomenteSistema|8
 dia-operacional.fuso|Texto|OrganizacaoEUnidade|America/Sao_Paulo
 dia-operacional.virada|Hora|OrganizacaoEUnidade|05:00

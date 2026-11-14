@@ -16,7 +16,37 @@ public sealed record Turno(
     long? ContadoCentavos,
     long? EsperadoCentavos,
     long? DiferencaCentavos,
-    long RecebidoDinheiroCentavos = 0);
+    long RecebidoDinheiroCentavos = 0,
+    long? SuprimentosCentavos = null,
+    long? SangriasCentavos = null,
+    SituacaoDaConferencia? Situacao = null,
+    bool EsperadoOculto = false);
+
+/// <summary>Outcome of the count of a closed shift: <c>Concluida</c> (inside the tolerance, or closed before approvals existed), <c>Pendente</c> (waiting for an approver) or <c>Aprovada</c>.</summary>
+public enum SituacaoDaConferencia
+{
+    Concluida,
+
+    Pendente,
+
+    Aprovada,
+}
+
+public enum TipoDeMovimento
+{
+    Suprimento,
+
+    Sangria,
+}
+
+/// <summary>Money put in (supply) or taken out (withdrawal) of the drawer during a shift. Append-only.</summary>
+public sealed record MovimentoDoCaixa(Guid Id, Guid TurnoId, Guid UnidadeId, TipoDeMovimento Tipo, long ValorCentavos, string Motivo, string? Destino, Guid OperadorId, DateTimeOffset CriadoEm);
+
+/// <summary>The count of one non-cash payment method of a shift against what the system recorded for it.</summary>
+public sealed record ContagemDoMetodo(Guid MetodoId, string MetodoNome, long ContadoCentavos, long EsperadoCentavos)
+{
+    public long DiferencaCentavos => ContadoCentavos - EsperadoCentavos;
+}
 
 /// <summary>Pure rules of the shift. The float is change money, not a sale; it only enters the expected cash at closing.</summary>
 public static class RegrasDoCaixa
@@ -27,8 +57,48 @@ public static class RegrasDoCaixa
     /// <summary>A float or a cash count: zero is allowed, negative is not.</summary>
     public static bool ValorValido(long centavos) => centavos is >= 0 and <= ValorMaximoCentavos;
 
-    /// <summary>Cash that should be in the drawer: the float plus the cash payments applied during the shift (no supply, bleed or refund in this slice).</summary>
-    public static long Esperado(long fundoCentavos, long recebimentosEmDinheiroCentavos) => fundoCentavos + recebimentosEmDinheiroCentavos;
+    /// <summary>Upper bound of a reason (supply, withdrawal, approval).</summary>
+    public const int MotivoMaximo = 200;
+
+    /// <summary>Upper bound of the destination of a withdrawal.</summary>
+    public const int DestinoMaximo = 80;
+
+    /// <summary>Cash that should be in the drawer: the float plus the cash payments applied during the shift plus supplies minus withdrawals.</summary>
+    public static long Esperado(long fundoCentavos, long recebimentosEmDinheiroCentavos, long suprimentosCentavos = 0, long sangriasCentavos = 0) =>
+        fundoCentavos + recebimentosEmDinheiroCentavos + suprimentosCentavos - sangriasCentavos;
+
+    /// <summary>A supply or a withdrawal: at least one cent, up to the typo guard.</summary>
+    public static bool MovimentoValido(long centavos) => centavos is >= 1 and <= ValorMaximoCentavos;
+
+    /// <summary>A free text that is required: trimmed, not empty, at most <paramref name="maximo"/> characters.</summary>
+    public static bool TextoValido(string? texto, int maximo, out string? limpo)
+    {
+        limpo = texto?.Trim();
+        if (string.IsNullOrEmpty(limpo) || limpo.Length > maximo)
+        {
+            limpo = null;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>A withdrawal never takes more than the drawer holds (the expected cash would go negative).</summary>
+    public static bool PodeSangrar(long saldoDaGavetaCentavos, long valorCentavos) => valorCentavos >= 1 && valorCentavos <= saldoDaGavetaCentavos;
+
+    /// <summary>The difference of a shift for the tolerance and the approval limit: the sum of the absolute differences of the cash and of each counted method.</summary>
+    public static long DiferencaTotal(long diferencaDinheiroCentavos, IEnumerable<long> diferencasPorMetodoCentavos)
+    {
+        ArgumentNullException.ThrowIfNull(diferencasPorMetodoCentavos);
+        return Math.Abs(diferencaDinheiroCentavos) + diferencasPorMetodoCentavos.Sum(Math.Abs);
+    }
+
+    /// <summary>Inside the tolerance (limit included) the count concludes alone; above it the shift waits for an approver.</summary>
+    public static SituacaoDaConferencia Situacao(long diferencaTotalCentavos, long toleranciaCentavos) =>
+        diferencaTotalCentavos <= toleranciaCentavos ? SituacaoDaConferencia.Concluida : SituacaoDaConferencia.Pendente;
+
+    /// <summary>Separation of duties: the person who closed the shift approves its difference only when self-approval is on.</summary>
+    public static bool PodeAprovar(bool aprovadorFechouOTurno, bool autoaprovacaoPermitida) => !aprovadorFechouOTurno || autoaprovacaoPermitida;
 
     /// <summary>Counted minus expected: negative is a shortage, positive a surplus.</summary>
     public static long Diferenca(long contadoCentavos, long esperadoCentavos) => contadoCentavos - esperadoCentavos;

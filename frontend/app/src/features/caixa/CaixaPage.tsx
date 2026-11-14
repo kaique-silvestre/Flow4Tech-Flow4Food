@@ -1,54 +1,15 @@
-import type { components } from "@flow4tech/api-client";
-import {
-  BottomSheet,
-  Button,
-  centsFromDigits,
-  formatBRL,
-  MoneyField,
-  Notice,
-  Skeleton,
-  ToneBadge,
-} from "@flow4tech/design-system";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, centsFromDigits, formatBRL, MoneyField, Notice, Skeleton } from "@flow4tech/design-system";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-
-interface Turno {
-  id: string;
-  abertoEm: string;
-  fundoCentavos: number;
-  recebidoDinheiroCentavos: number;
-  contadoCentavos: number | null;
-  esperadoCentavos: number | null;
-  diferencaCentavos: number | null;
-  diferencaTexto: string | null;
-}
-
-type Leitura = { tipo: "turno"; turno: Turno } | { tipo: "fechado" } | { tipo: "semPermissao" };
-
-function paraTurno(t: components["schemas"]["TurnoDto"]): Turno {
-  const n = (v: number | string | null | undefined) => (v === null || v === undefined ? null : Number(v));
-  return {
-    id: t.id,
-    abertoEm: t.abertoEm,
-    fundoCentavos: Number(t.fundoCentavos),
-    recebidoDinheiroCentavos: Number(t.recebidoDinheiroCentavos),
-    contadoCentavos: n(t.contadoCentavos),
-    esperadoCentavos: n(t.esperadoCentavos),
-    diferencaCentavos: n(t.diferencaCentavos),
-    diferencaTexto: t.diferencaTexto ?? null,
-  };
-}
-
-function hora(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
-
-/** Tone of the difference in words: exact is calm, a shortage is an alert, a surplus is a warning. Never color alone: the word is always there. */
-export function tomDaDiferenca(diferencaCentavos: number): "success" | "alert" | "warning" {
-  return diferencaCentavos === 0 ? "success" : diferencaCentavos < 0 ? "alert" : "warning";
-}
+import "./caixa.css";
+import { useLeituraDoCaixa, useMovimentos } from "./dados";
+import { FecharCaixaSheet } from "./FecharCaixaSheet";
+import { esperadoDaGaveta, hora, type TipoDeMovimento } from "./logica";
+import { MovimentoSheet } from "./MovimentoSheet";
+import { Movimentos } from "./Movimentos";
+import { Pendentes } from "./Pendentes";
 
 export function CaixaPage() {
   const queryClient = useQueryClient();
@@ -57,30 +18,13 @@ export function CaixaPage() {
   const [abrindo, setAbrindo] = useState(false);
   const [erroAbrir, setErroAbrir] = useState<{ texto: string; atualizar: boolean } | null>(null);
   const [fechando, setFechando] = useState(false);
-  const [contagem, setContagem] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [erroFechar, setErroFechar] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<Turno | null>(null);
+  const [movimento, setMovimento] = useState<TipoDeMovimento | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
-  const leitura = useQuery<Leitura>({
-    queryKey: ["caixa", "atual"],
-    queryFn: async () => {
-      const { data, response } = await api.GET("/caixa/turnos/atual");
-      if (data) {
-        return { tipo: "turno", turno: paraTurno(data) };
-      }
-
-      if (response.status === 404) {
-        return { tipo: "fechado" };
-      }
-
-      if (response.status === 403) {
-        return { tipo: "semPermissao" };
-      }
-
-      throw new Error("caixa");
-    },
-  });
+  const leitura = useLeituraDoCaixa();
+  const aberto = leitura.data?.tipo === "turno";
+  const movimentos = useMovimentos(aberto);
+  const atualizar = () => queryClient.invalidateQueries({ queryKey: ["caixa"] });
 
   async function abrir() {
     setErroAbrir(null);
@@ -89,7 +33,7 @@ export function CaixaPage() {
       const { data, response } = await api.POST("/caixa/turnos", { body: { fundoCentavos: centsFromDigits(fundo) } });
       if (data) {
         setFundo("");
-        await queryClient.invalidateQueries({ queryKey: ["caixa"] });
+        await atualizar();
       } else if (response.status === 409) {
         setErroAbrir({ texto: "Você já tem um caixa aberto nesta unidade.", atualizar: true });
       } else if (response.status === 403) {
@@ -102,36 +46,6 @@ export function CaixaPage() {
     } finally {
       setAbrindo(false);
     }
-  }
-
-  async function fechar() {
-    setErroFechar(null);
-    setEnviando(true);
-    try {
-      const { data, response } = await api.POST("/caixa/turnos/atual/fechar", {
-        body: { contadoCentavos: centsFromDigits(contagem) },
-      });
-      if (data) {
-        setResultado(paraTurno(data));
-      } else if (response.status === 404) {
-        setErroFechar("Este caixa já foi fechado. Atualize a tela.");
-      } else if (response.status === 403) {
-        setErroFechar("Você não tem permissão para fechar o caixa.");
-      } else {
-        setErroFechar("Não foi possível fechar o caixa. Tente de novo.");
-      }
-    } catch {
-      setErroFechar("Sem conexão. Tente de novo.");
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  async function concluir() {
-    setFechando(false);
-    setResultado(null);
-    setContagem("");
-    await queryClient.invalidateQueries({ queryKey: ["caixa"] });
   }
 
   if (leitura.isPending || !permissoes.carregado) {
@@ -152,6 +66,9 @@ export function CaixaPage() {
       </Notice>
     );
   }
+
+  // Managers see the differences waiting for a decision whatever the state of their own shift.
+  const pendentes = permissoes.pode("caixa:ver-todos") ? <Pendentes /> : null;
 
   if (leitura.data.tipo === "semPermissao") {
     return <Notice tone="info">Você não tem permissão para ver o caixa.</Notice>;
@@ -184,10 +101,7 @@ export function CaixaPage() {
                 tone="error"
                 action={
                   erroAbrir.atualizar ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => void queryClient.invalidateQueries({ queryKey: ["caixa"] })}
-                    >
+                    <Button variant="secondary" onClick={() => void atualizar()}>
                       Atualizar
                     </Button>
                   ) : undefined
@@ -202,12 +116,14 @@ export function CaixaPage() {
             {fundo === "" ? <p className="f4-field-hint">Informe o fundo (pode ser R$ 0,00).</p> : null}
           </form>
         ) : null}
+        {pendentes}
       </section>
     );
   }
 
-  const turno = leitura.data.turno;
-  const esperado = turno.fundoCentavos + turno.recebidoDinheiroCentavos;
+  const resumo = leitura.data.resumo;
+  const turno = resumo.turno;
+  const esperado = esperadoDaGaveta(resumo);
   return (
     <section className="caixa" aria-labelledby="caixa-titulo">
       <h2 id="caixa-titulo" className="app-empty-title">
@@ -219,64 +135,76 @@ export function CaixaPage() {
           <dt>Fundo de troco</dt>
           <dd className="f4-num">{formatBRL(turno.fundoCentavos)}</dd>
         </div>
+        {esperado === null ? null : (
+          <div>
+            <dt>Recebido em dinheiro</dt>
+            <dd className="f4-num">{formatBRL(turno.recebidoDinheiroCentavos)}</dd>
+          </div>
+        )}
         <div>
-          <dt>Recebido em dinheiro</dt>
-          <dd className="f4-num">{formatBRL(turno.recebidoDinheiroCentavos)}</dd>
+          <dt>Suprimentos</dt>
+          <dd className="f4-num">{formatBRL(resumo.suprimentosCentavos)}</dd>
+        </div>
+        <div>
+          <dt>Sangrias</dt>
+          <dd className="f4-num">{formatBRL(resumo.sangriasCentavos)}</dd>
         </div>
         <div className="caixa-total">
           <dt>Esperado na gaveta</dt>
-          <dd className="f4-num">{formatBRL(esperado)}</dd>
+          <dd className="f4-num">{esperado === null ? "Oculto até o fechamento" : formatBRL(esperado)}</dd>
         </div>
       </dl>
-      <p className="f4-field-hint">O fundo não é venda: ele só entra na conta do esperado.</p>
+      <p className="f4-field-hint">
+        {esperado === null
+          ? "Conferência cega: o valor esperado aparece depois que você enviar a contagem."
+          : "O fundo não é venda: ele só entra na conta do esperado."}
+      </p>
+      {aviso ? (
+        <Notice tone="info">
+          {aviso}{" "}
+          <Button variant="secondary" onClick={() => setAviso(null)}>
+            Ok
+          </Button>
+        </Notice>
+      ) : null}
+      <div className="caixa-acoes">
+        <Button variant="secondary" onClick={() => setMovimento("suprimento")}>
+          Suprimento
+        </Button>
+        <Button variant="secondary" onClick={() => setMovimento("sangria")}>
+          Sangria
+        </Button>
+      </div>
       {permissoes.pode("caixa:fechar") ? (
         <Button className="entry-submit" onClick={() => setFechando(true)}>
           Fechar caixa
         </Button>
       ) : null}
+      <Movimentos consulta={movimentos} />
+      {pendentes}
 
-      <BottomSheet
-        open={fechando}
-        onOpenChange={(aberto) => {
-          if (!aberto) {
-            void concluir();
+      <MovimentoSheet
+        tipo={movimento ?? "suprimento"}
+        open={movimento !== null}
+        onOpenChange={(aberta) => {
+          if (!aberta) {
+            setMovimento(null);
           }
         }}
-        title={resultado ? "Caixa fechado" : "Fechar caixa"}
-        description={resultado ? undefined : "Conte o dinheiro da gaveta e informe o total. Pode ser R$ 0,00."}
-        error={erroFechar ?? undefined}
-        loading={enviando}
-        footer={
-          resultado ? (
-            <Button onClick={() => void concluir()}>Concluir</Button>
-          ) : (
-            <>
-              <Button variant="secondary" onClick={() => setFechando(false)} disabled={enviando}>
-                Voltar
-              </Button>
-              <Button loading={enviando} disabled={contagem === ""} onClick={() => void fechar()}>
-                Fechar caixa
-              </Button>
-            </>
-          )
-        }
-      >
-        {resultado ? (
-          <div className="caixa-resultado">
-            <p className="caixa-resultado-linha">
-              Esperado <strong className="f4-num">{formatBRL(resultado.esperadoCentavos ?? 0)}</strong>
-            </p>
-            <p className="caixa-resultado-linha">
-              Contado <strong className="f4-num">{formatBRL(resultado.contadoCentavos ?? 0)}</strong>
-            </p>
-            <ToneBadge tone={tomDaDiferenca(resultado.diferencaCentavos ?? 0)}>
-              {resultado.diferencaTexto ?? "Confere"}
-            </ToneBadge>
-          </div>
-        ) : (
-          <MoneyField label="Dinheiro contado" digits={contagem} onDigitsChange={setContagem} disabled={enviando} />
-        )}
-      </BottomSheet>
+        onAtualizar={atualizar}
+        onFeito={(mensagem) => {
+          setMovimento(null);
+          setAviso(mensagem);
+        }}
+      />
+      <FecharCaixaSheet
+        resumo={resumo}
+        open={fechando}
+        onClose={() => {
+          setFechando(false);
+          void atualizar();
+        }}
+      />
     </section>
   );
 }

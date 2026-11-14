@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Template description and a parser for CSV and XLSX behind one interface (format confirmed with the owner; question Q7 in the spec); size and row limits; no formulas executed, no macros.
 - [ ] Validation returns per-row errors (line, column, message) and a preview of creates/updates; nothing is written in the preview.

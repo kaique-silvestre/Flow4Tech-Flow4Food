@@ -24,6 +24,7 @@ import {
 } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
+import { ReciboDaComanda } from "./Comprovante";
 import {
   buscarGruposDoProduto,
   chaveDosGrupos,
@@ -58,6 +59,7 @@ import { JuntarSheet, TransferirSheet } from "./MovimentoSheets";
 import { bloqueioDaOperacao } from "./movimento";
 import { exigeEscolha, resumoDasOpcoes } from "./opcoes";
 import { Picker } from "./Picker";
+import { PreContaSheet } from "./PreContaSheet";
 import { lerIgnorados, previaDaRepeticao, textoDosIgnorados } from "./repetir";
 import {
   adicionar,
@@ -136,6 +138,8 @@ export function ComandaPage() {
   const [desfazer, setDesfazer] = useState<Desfazer | null>(null);
   const [desfazendo, setDesfazendo] = useState(false);
   const [folhaFechar, setFolhaFechar] = useState(false);
+  const [folhaPreConta, setFolhaPreConta] = useState(false);
+  const [reciboAberto, setReciboAberto] = useState(false);
   const [folhaRepetir, setFolhaRepetir] = useState(false);
   const [repetindo, setRepetindo] = useState(false);
   const [erroRepetir, setErroRepetir] = useState<string | undefined>(undefined);
@@ -723,6 +727,18 @@ export function ComandaPage() {
     return <Notice tone="info">Você não tem permissão para ver as comandas.</Notice>;
   }
 
+  // A closed comanda (just closed here, or reached by link) shows its receipt to whoever may reissue it; the server decides (403/404/409) and the screen words each refusal.
+  const podeRecibo = permissoes.pode("comanda:reimprimir");
+  const saiuDaLista = comandas.data !== undefined && !comandas.data.some((c) => c.id === comandaId);
+  if (podeRecibo && !folhaFechar && (reciboAberto || saiuDaLista || conta.data?.estado === "fechada")) {
+    return (
+      <ReciboDaComanda
+        comandaId={comandaId}
+        nome={comandas.data?.find((c) => c.id === comandaId)?.identificacao ?? ""}
+      />
+    );
+  }
+
   if (comandas.data === undefined || conta.data === undefined || itens.data === undefined) {
     if (!(comandas.isError || conta.isError || itens.isError)) {
       return <Skeleton rows={4} label="Carregando a comanda" />;
@@ -812,7 +828,10 @@ export function ComandaPage() {
           </p>
         </div>
         <div className="comanda-status-linha">
-          <StatusBadge status="aberta" detail={tempoDecorrido(comanda.abertaEm, Date.now())} />
+          <StatusBadge
+            status={comanda.contaPedidaEm ? "aguardando-conta" : "aberta"}
+            detail={tempoDecorrido(comanda.abertaEm, Date.now())}
+          />
           {acoesDoMenu.length > 0 ? (
             <Button variant="secondary" onClick={() => setFolhaMenu(true)}>
               Mais
@@ -969,6 +988,14 @@ export function ComandaPage() {
         </div>
       ) : null}
 
+      {comandaAberta && faltaUnidades === 0 ? (
+        <div className="comanda-fechar">
+          <Button variant="secondary" onClick={() => setFolhaPreConta(true)}>
+            {comanda.contaPedidaEm ? "Ver pré-conta · conta pedida" : "Ver pré-conta"}
+          </Button>
+        </div>
+      ) : null}
+
       {podeFechar && faltaUnidades === 0 ? (
         <div className="comanda-fechar">
           <Button variant="secondary" onClick={() => setFolhaFechar(true)}>
@@ -976,6 +1003,15 @@ export function ComandaPage() {
           </Button>
         </div>
       ) : null}
+
+      <PreContaSheet
+        open={folhaPreConta}
+        onOpenChange={setFolhaPreConta}
+        comandaId={comandaId}
+        nome={nomeExibido(comanda)}
+        podePedir={permissoes.pode("comanda:ver")}
+        contaPedidaEm={comanda.contaPedidaEm}
+      />
 
       {desfazer && podeDesfazer ? (
         <UndoToast
@@ -998,6 +1034,14 @@ export function ComandaPage() {
           itens={lancados}
           versao={versao}
           onAtualizar={atualizarDados}
+          {...(podeRecibo
+            ? {
+                onVerRecibo: () => {
+                  setReciboAberto(true);
+                  void queryClient.invalidateQueries({ queryKey: ["comandas"] });
+                },
+              }
+            : {})}
         />
       ) : null}
       {folhaDoItem ? (

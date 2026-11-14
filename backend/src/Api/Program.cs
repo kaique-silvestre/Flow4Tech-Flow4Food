@@ -73,6 +73,7 @@ builder.Services.AddCaixa();
 builder.Services.AddPagamentos();
 builder.Services.AddComandas();
 builder.Services.AddSingleton<IPermissaoDoOperador, PermissaoDoOperador>();
+builder.Services.AddSingleton<IDecisaoDeCaixa, DecisaoDeCaixaDoOperador>();
 builder.Services.AddSingleton<IDecisaoDePreco, DecisaoDePrecoDoCardapio>();
 builder.Services.AddSingleton<IDecisaoDeDesconto, DecisaoDeDescontoDaComanda>();
 builder.Services.AddSingleton<IPermissaoDaComanda, PermissaoDoOperador>();

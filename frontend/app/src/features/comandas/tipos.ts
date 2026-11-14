@@ -10,6 +10,8 @@ export interface Comanda {
   garcomId: string;
   pessoas: number | null;
   observacao: string | null;
+  /** When the bill was requested ("conta pedida"), or null. */
+  contaPedidaEm: string | null;
 }
 
 export interface Mesa {
@@ -31,6 +33,7 @@ export function paraComanda(c: Record<string, unknown>): Comanda {
     garcomId: String(c["garcomId"] ?? ""),
     pessoas: typeof c["pessoas"] === "number" ? c["pessoas"] : null,
     observacao: typeof c["observacao"] === "string" ? c["observacao"] : null,
+    contaPedidaEm: typeof c["contaPedidaEm"] === "string" ? c["contaPedidaEm"] : null,
   };
 }
 

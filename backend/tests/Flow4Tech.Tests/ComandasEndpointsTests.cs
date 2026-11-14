@@ -547,7 +547,7 @@ public sealed partial class ComandasEndpointsTests : IAsyncLifetime
 
         var list = PostgresComandasStore.Abertas(context, UnitA, Garcom).ToQueryString();
         var all = PostgresComandasStore.Abertas(context, UnitA, null).ToQueryString();
-        var occupied = PostgresMesasStore.Ocupadas(context, UnitA).ToQueryString();
+        var occupied = PostgresMesasStore.Ocupacao(context, UnitA).ToQueryString();
 
         Assert.Contains("FROM comandas AS", list, StringComparison.Ordinal);
         Assert.Contains("c.unidade_id = @", list, StringComparison.Ordinal);
@@ -557,7 +557,7 @@ public sealed partial class ComandasEndpointsTests : IAsyncLifetime
         Assert.Contains("ORDER BY", list, StringComparison.Ordinal);
         Assert.Contains("FROM comandas AS", occupied, StringComparison.Ordinal);
         Assert.Contains("c.estado = 'aberta'", occupied, StringComparison.Ordinal);
-        Assert.Contains("DISTINCT", occupied, StringComparison.Ordinal);
+        Assert.Contains("GROUP BY", occupied, StringComparison.Ordinal);
         Assert.DoesNotContain("organizacao_id =", list + all + occupied, StringComparison.Ordinal);
         Assert.Empty(await SchemaDrift.FindAsync(context));
     }

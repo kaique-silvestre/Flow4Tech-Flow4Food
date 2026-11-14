@@ -34,6 +34,10 @@ public static class ComandasAuditActions
 
     public const string DividirConta = "comanda:dividir";
 
+    public const string PedirConta = "comanda:pedir-conta";
+
+    public const string ReimprimirRecibo = "comanda:reimprimir";
+
     public const string AbrirComanda = "comanda:abrir";
 
     public const string LancarRodada = "comanda:lancar-rodada";
@@ -89,9 +93,6 @@ public interface IMesasStore
 
     /// <summary>The table of the unit with this id, retired or not; null when unknown or of another unit.</summary>
     Task<Mesa?> AcharAsync(Guid organizationId, Guid unitId, Guid mesaId, CancellationToken cancellationToken);
-
-    /// <summary>Ids of the tables of the unit held by at least one open comanda.</summary>
-    Task<IReadOnlySet<Guid>> OcupadasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
 
     /// <summary>For each table of the unit held by an open comanda: how many, and when the first opened. Tables with none are absent.</summary>
     Task<IReadOnlyDictionary<Guid, OcupacaoDaMesa>> OcupacaoAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken);
