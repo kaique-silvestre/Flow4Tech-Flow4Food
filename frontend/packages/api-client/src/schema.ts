@@ -612,6 +612,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cardapio/importacao/modelo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["modeloDaImportacaoDoCardapio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cardapio/importacao/previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previaDaImportacaoDoCardapio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cardapio/importacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["importarCardapio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/caixa/turnos/atual": {
         parameters: {
             query?: never;
@@ -1389,6 +1437,12 @@ export interface components {
             valorCentavos: null | number | string;
             motivo: string;
         };
+        AplicarImportacaoRequest: {
+            /** Format: uuid */
+            importacaoId: string;
+            formato: null | string;
+            conteudoBase64: null | string;
+        };
         AreaDto: {
             /** Format: uuid */
             id: string;
@@ -1653,6 +1707,12 @@ export interface components {
             /** Format: int32 */
             versaoAtual?: null | number | string;
         };
+        ErroDeLinhaDto: {
+            /** Format: int32 */
+            linha: number | string;
+            coluna: string;
+            mensagem: string;
+        };
         EventoDoHistoricoDto: {
             /** Format: uuid */
             id: string;
@@ -1699,6 +1759,17 @@ export interface components {
         HistoricoDaComandaDto: {
             eventos: components["schemas"]["EventoDoHistoricoDto"][];
         };
+        ImportacaoAplicadaDto: {
+            /** Format: uuid */
+            importacaoId: string;
+            jaAplicada: boolean;
+            resumo: components["schemas"]["ResumoDaImportacaoDto"];
+        };
+        ImportacaoErro: {
+            codigo: string;
+            /** Format: int32 */
+            linha?: null | number | string;
+        };
         IniciarGoogleResponse: {
             url: string;
         };
@@ -1715,6 +1786,13 @@ export interface components {
         ItemDadoDto: {
             item: components["schemas"]["ItemDto"];
             conta: components["schemas"]["ContaDto"];
+        };
+        ItemDaPreviaDto: {
+            tipo: string;
+            chave: string;
+            acao: string;
+            /** Format: int32 */
+            linha: number | string;
         };
         ItemDto: {
             /** Format: uuid */
@@ -1833,6 +1911,16 @@ export interface components {
             criado: boolean;
             /** Format: uuid */
             perfilId: null | string;
+        };
+        ModeloDaImportacaoDto: {
+            colunas: string[];
+            tipos: string[];
+            formatos: string[];
+            exemploCsv: string;
+            /** Format: int32 */
+            linhasMaximas: number | string;
+            /** Format: int32 */
+            bytesMaximos: number | string;
         };
         MovimentoDeItensDto: {
             origem: components["schemas"]["ComandaDto"];
@@ -1961,6 +2049,16 @@ export interface components {
             gorjetaCentavos: number | string;
             partes: components["schemas"]["ParteDaDivisaoDto"][];
         };
+        PreviaDaImportacaoDto: {
+            valida: boolean;
+            erros: components["schemas"]["ErroDeLinhaDto"][];
+            itens: components["schemas"]["ItemDaPreviaDto"][];
+            resumo: components["schemas"]["ResumoDaImportacaoDto"];
+        };
+        PreviaDaImportacaoRequest: {
+            formato: null | string;
+            conteudoBase64: null | string;
+        };
         ProdutoDto: {
             /** Format: uuid */
             id: string;
@@ -2042,6 +2140,24 @@ export interface components {
             /** Format: date-time */
             vigenteAPartirDe: null | string;
             motivo: null | string;
+        };
+        ResumoDaImportacaoDto: {
+            /** Format: int32 */
+            categoriasCriadas: number | string;
+            /** Format: int32 */
+            categoriasAtualizadas: number | string;
+            /** Format: int32 */
+            produtosCriados: number | string;
+            /** Format: int32 */
+            produtosAtualizados: number | string;
+            /** Format: int32 */
+            gruposCriados: number | string;
+            /** Format: int32 */
+            gruposAtualizados: number | string;
+            /** Format: int32 */
+            opcoesCriadas: number | string;
+            /** Format: int32 */
+            opcoesAtualizadas: number | string;
         };
         RodadaDto: {
             /** Format: uuid */
@@ -4251,6 +4367,161 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CardapioErro"];
+                };
+            };
+        };
+    };
+    modeloDaImportacaoDoCardapio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeloDaImportacaoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    previaDaImportacaoDoCardapio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviaDaImportacaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviaDaImportacaoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    importarCardapio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AplicarImportacaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoAplicadaDto"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoAplicadaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportacaoErro"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviaDaImportacaoDto"];
                 };
             };
         };

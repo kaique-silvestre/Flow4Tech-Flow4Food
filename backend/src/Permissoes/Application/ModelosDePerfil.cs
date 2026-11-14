@@ -33,7 +33,7 @@ public static class ModelosDePerfil
         "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados",
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
         "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
-        "comanda:desconto", "comanda:cortesia", "comanda:brinde",
+        "comanda:desconto", "comanda:cortesia", "comanda:brinde", "cardapio:importar",
     ];
 
     // Default limits of the manager (F4-0118; the owner is the factory profile, uncapped). Discount: up to 20% and R$ 150,00 per discount. Courtesy and gift are always measured at 100%,

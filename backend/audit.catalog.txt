@@ -5,6 +5,7 @@ autenticacao:bloquear
 autenticacao:falhar
 caixa:abrir
 caixa:fechar
+cardapio:importar
 categoria:alterar
 categoria:criar
 comanda:abrir

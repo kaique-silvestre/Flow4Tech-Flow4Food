@@ -1983,6 +1983,157 @@
         "x-permission": "produto:ver"
       }
     },
+    "/cardapio/importacao/modelo": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "modeloDaImportacaoDoCardapio",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeloDaImportacaoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
+    "/cardapio/importacao/previa": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "previaDaImportacaoDoCardapio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviaDaImportacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaDaImportacaoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
+    "/cardapio/importacao": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "importarCardapio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AplicarImportacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoAplicadaDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoAplicadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaDaImportacaoDto"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
     "/caixa/turnos/atual": {
       "get": {
         "tags": [
@@ -5422,6 +5573,32 @@
           }
         }
       },
+      "AplicarImportacaoRequest": {
+        "required": [
+          "importacaoId",
+          "formato",
+          "conteudoBase64"
+        ],
+        "type": "object",
+        "properties": {
+          "importacaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formato": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conteudoBase64": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AreaDto": {
         "required": [
           "id",
@@ -6490,6 +6667,30 @@
           }
         }
       },
+      "ErroDeLinhaDto": {
+        "required": [
+          "linha",
+          "coluna",
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "coluna": {
+            "type": "string"
+          },
+          "mensagem": {
+            "type": "string"
+          }
+        }
+      },
       "EventoDoHistoricoDto": {
         "required": [
           "id",
@@ -6662,6 +6863,46 @@
           }
         }
       },
+      "ImportacaoAplicadaDto": {
+        "required": [
+          "importacaoId",
+          "jaAplicada",
+          "resumo"
+        ],
+        "type": "object",
+        "properties": {
+          "importacaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jaAplicada": {
+            "type": "boolean"
+          },
+          "resumo": {
+            "$ref": "#/components/schemas/ResumoDaImportacaoDto"
+          }
+        }
+      },
+      "ImportacaoErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "IniciarGoogleResponse": {
         "required": [
           "url"
@@ -6725,6 +6966,34 @@
           },
           "conta": {
             "$ref": "#/components/schemas/ContaDto"
+          }
+        }
+      },
+      "ItemDaPreviaDto": {
+        "required": [
+          "tipo",
+          "chave",
+          "acao",
+          "linha"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "chave": {
+            "type": "string"
+          },
+          "acao": {
+            "type": "string"
+          },
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -7216,6 +7485,56 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "ModeloDaImportacaoDto": {
+        "required": [
+          "colunas",
+          "tipos",
+          "formatos",
+          "exemploCsv",
+          "linhasMaximas",
+          "bytesMaximos"
+        ],
+        "type": "object",
+        "properties": {
+          "colunas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tipos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "formatos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exemploCsv": {
+            "type": "string"
+          },
+          "linhasMaximas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "bytesMaximos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -7765,6 +8084,56 @@
           }
         }
       },
+      "PreviaDaImportacaoDto": {
+        "required": [
+          "valida",
+          "erros",
+          "itens",
+          "resumo"
+        ],
+        "type": "object",
+        "properties": {
+          "valida": {
+            "type": "boolean"
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErroDeLinhaDto"
+            }
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDaPreviaDto"
+            }
+          },
+          "resumo": {
+            "$ref": "#/components/schemas/ResumoDaImportacaoDto"
+          }
+        }
+      },
+      "PreviaDaImportacaoRequest": {
+        "required": [
+          "formato",
+          "conteudoBase64"
+        ],
+        "type": "object",
+        "properties": {
+          "formato": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conteudoBase64": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ProdutoDto": {
         "required": [
           "id",
@@ -8109,6 +8478,85 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ResumoDaImportacaoDto": {
+        "required": [
+          "categoriasCriadas",
+          "categoriasAtualizadas",
+          "produtosCriados",
+          "produtosAtualizados",
+          "gruposCriados",
+          "gruposAtualizados",
+          "opcoesCriadas",
+          "opcoesAtualizadas"
+        ],
+        "type": "object",
+        "properties": {
+          "categoriasCriadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "categoriasAtualizadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "produtosCriados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "produtosAtualizados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposCriados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposAtualizados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoesCriadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoesAtualizadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
