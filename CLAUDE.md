@@ -52,6 +52,7 @@ Leia o arquivo ANTES de mexer na área; a raiz guarda só o que vale para todo a
 - Código nunca ramifica por nome de perfil; a decisão é do `IAuthorizationEngine`.
 - Migração aplicada nunca é editada; crie um arquivo novo. Segredos só por variável de ambiente.
 - Warnings são erros; corrija a causa em vez de suprimir a regra.
+- Respostas ao dono: português, curtas (até ~8 linhas), só estado e próxima ação; detalhe só se pedido. Sem tabelas nem lista do que já foi enviado.
 
 ## CI gates (resumo)
 Um pipeline em todo PR e em todo push em `dev-v2`/`main-v2`/`main`; o merge exige o job agregado `gates` verde. Bloqueiam: build + `dotnet format`, typecheck, lint (Biome), testes unitários, de integração (PostgreSQL real), de arquitetura (back e front, `architecture-frontend`, `dead-code-frontend`) e por módulo, `frontend-tests` (piso de cobertura), `bundle-budget`, `mutation-tests` (piso por domínio), `frontend-e2e` (inclui axe), gitleaks, trivy, `openapi-contract`, auditoria de dependências. Informativos: cobertura do back, DAST. Cada job, limite e comando local: `docs/agents/ci-gates.md`.
