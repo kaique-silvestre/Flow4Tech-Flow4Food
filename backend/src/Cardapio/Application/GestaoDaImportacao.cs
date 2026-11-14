@@ -27,16 +27,18 @@ public sealed class GestaoDaImportacao(
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(conteudo);
+
+        // The file is untrusted and is read BEFORE the unit of work opens: a slow or hostile sheet never holds a tenant transaction.
+        var leitura = leitor.Ler(formato, conteudo);
+        if (leitura.Erro != ErroDeLeitura.Nenhum)
+        {
+            return Task.FromResult(new ResultadoDaValidacao(ResultadoDaImportacao.ArquivoInvalido, leitura));
+        }
+
         return unitOfWork.ExecuteAsync(
             request,
             async ct =>
             {
-                var leitura = leitor.Ler(formato, conteudo);
-                if (leitura.Erro != ErroDeLeitura.Nenhum)
-                {
-                    return new ResultadoDaValidacao(ResultadoDaImportacao.ArquivoInvalido, leitura);
-                }
-
                 var plano = RegrasDaImportacao.Planejar(leitura.Linhas, await EstadoAtualAsync(request.Organization.OrganizationId, request.Organization.UnitId, ct));
                 return new ResultadoDaValidacao(plano.Valido ? ResultadoDaImportacao.Ok : ResultadoDaImportacao.ComErros, leitura, plano);
             },
@@ -53,6 +55,7 @@ public sealed class GestaoDaImportacao(
         }
 
         var hash = Convert.ToHexString(SHA256.HashData(conteudo));
+        var leitura = leitor.Ler(formato, conteudo);
         try
         {
             return await unitOfWork.ExecuteAsync(
@@ -65,7 +68,6 @@ public sealed class GestaoDaImportacao(
                         return Repetida(anterior, hash);
                     }
 
-                    var leitura = leitor.Ler(formato, conteudo);
                     if (leitura.Erro != ErroDeLeitura.Nenhum)
                     {
                         return new ResultadoDaAplicacao(ResultadoDaImportacao.ArquivoInvalido, Leitura: leitura);

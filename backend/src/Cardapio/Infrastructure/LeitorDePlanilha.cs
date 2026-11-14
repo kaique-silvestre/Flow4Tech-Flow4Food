@@ -15,7 +15,11 @@ namespace Flow4Tech.Cardapio.Infrastructure;
 /// </summary>
 public sealed class LeitorDePlanilha : ILeitorDePlanilha
 {
-    private const int LimiteDaParte = 8 * 1024 * 1024;
+    private const int LimiteDaParte = 2 * 1024 * 1024;
+
+    private const int LimiteTotal = 6 * 1024 * 1024;
+
+    private const int LetrasMaximas = 3;
 
     private const int ColunasMaximas = 40;
 
@@ -33,7 +37,7 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         {
             return formato == FormatoDePlanilha.Xlsx ? LerXlsx(conteudo) : LerCsv(conteudo);
         }
-        catch (Exception e) when (e is InvalidDataException or XmlException or FormatException or IOException or InvalidOperationException or OverflowException)
+        catch (Exception e) when (e is InvalidDataException or XmlException or FormatException or IOException or InvalidOperationException or OverflowException or ArgumentException)
         {
             return Falha(ErroDeLeitura.FormatoInvalido);
         }
@@ -142,25 +146,26 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
 
     private static LeituraDaPlanilha LerXlsx(byte[] conteudo)
     {
+        var gasto = new Gasto();
         using var zip = new ZipArchive(new MemoryStream(conteudo), ZipArchiveMode.Read);
         if (zip.Entries.Count > EntradasMaximas)
         {
             return Falha(ErroDeLeitura.FormatoInvalido);
         }
 
-        if (zip.Entries.Any(e => e.FullName.EndsWith("vbaProject.bin", StringComparison.OrdinalIgnoreCase)) || Texto(zip, "[Content_Types].xml")?.Contains("macroEnabled", StringComparison.OrdinalIgnoreCase) == true)
+        if (zip.Entries.Any(e => e.FullName.EndsWith("vbaProject.bin", StringComparison.OrdinalIgnoreCase)) || Texto(zip, "[Content_Types].xml", gasto)?.Contains("macroEnabled", StringComparison.OrdinalIgnoreCase) == true)
         {
             return Falha(ErroDeLeitura.ComMacro);
         }
 
-        var caminho = CaminhoDaPrimeiraPlanilha(zip);
-        var xml = caminho is null ? null : Documento(zip, caminho);
+        var caminho = CaminhoDaPrimeiraPlanilha(zip, gasto);
+        var xml = caminho is null ? null : Documento(zip, caminho, gasto);
         if (xml is null)
         {
             return Falha(ErroDeLeitura.FormatoInvalido);
         }
 
-        var compartilhadas = Documento(zip, "xl/sharedStrings.xml") is { } ss
+        var compartilhadas = Documento(zip, "xl/sharedStrings.xml", gasto) is { } ss
             ? ss.Descendants().Where(e => e.Name.LocalName == "si").Select(TextoDe).ToList()
             : [];
         var linhas = new List<LinhaDaPlanilha>();
@@ -237,7 +242,14 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         }
 
         var coluna = 0;
-        foreach (var c in referencia.TakeWhile(char.IsAsciiLetter))
+        var letras = referencia.TakeWhile(char.IsAsciiLetter).ToList();
+        if (letras.Count > LetrasMaximas)
+        {
+            // No template column is beyond "ZZZ"; a longer reference would overflow the arithmetic below.
+            throw new InvalidDataException("Cell reference too wide.");
+        }
+
+        foreach (var c in letras)
         {
             coluna = (coluna * 26) + (char.ToUpperInvariant(c) - 'A' + 1);
         }
@@ -245,12 +257,12 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         return coluna == 0 ? proxima : coluna - 1;
     }
 
-    private static string? CaminhoDaPrimeiraPlanilha(ZipArchive zip)
+    private static string? CaminhoDaPrimeiraPlanilha(ZipArchive zip, Gasto gasto)
     {
-        var relacao = Documento(zip, "xl/workbook.xml")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "sheet")?.Attributes().FirstOrDefault(a => a.Name.LocalName == "id")?.Value;
+        var relacao = Documento(zip, "xl/workbook.xml", gasto)?.Descendants().FirstOrDefault(e => e.Name.LocalName == "sheet")?.Attributes().FirstOrDefault(a => a.Name.LocalName == "id")?.Value;
         var destino = relacao is null
             ? null
-            : Documento(zip, "xl/_rels/workbook.xml.rels")?.Descendants().FirstOrDefault(e => e.Name.LocalName == "Relationship" && (string?)e.Attribute("Id") == relacao)?.Attribute("Target")?.Value;
+            : Documento(zip, "xl/_rels/workbook.xml.rels", gasto)?.Descendants().FirstOrDefault(e => e.Name.LocalName == "Relationship" && (string?)e.Attribute("Id") == relacao)?.Attribute("Target")?.Value;
         if (destino is null)
         {
             return zip.GetEntry("xl/worksheets/sheet1.xml") is null ? null : "xl/worksheets/sheet1.xml";
@@ -259,11 +271,11 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         return destino.StartsWith('/') ? destino[1..] : "xl/" + destino;
     }
 
-    private static string? Texto(ZipArchive zip, string caminho) => Bytes(zip, caminho) is { } b ? Encoding.UTF8.GetString(b) : null;
+    private static string? Texto(ZipArchive zip, string caminho, Gasto gasto) => Bytes(zip, caminho, gasto) is { } b ? Encoding.UTF8.GetString(b) : null;
 
-    private static XElement? Documento(ZipArchive zip, string caminho)
+    private static XElement? Documento(ZipArchive zip, string caminho, Gasto gasto)
     {
-        if (Bytes(zip, caminho) is not { } bytes)
+        if (Bytes(zip, caminho, gasto) is not { } bytes)
         {
             return null;
         }
@@ -273,8 +285,14 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         return XElement.Load(reader);
     }
 
+    /// <summary>Bytes inflated so far by one read of one workbook (all parts together).</summary>
+    private sealed class Gasto
+    {
+        public long Total { get; set; }
+    }
+
     /// <summary>The entry through a bounded buffer: more than the limit means the file inflates too much to be a menu sheet.</summary>
-    private static byte[]? Bytes(ZipArchive zip, string caminho)
+    private static byte[]? Bytes(ZipArchive zip, string caminho, Gasto gasto)
     {
         var entrada = zip.Entries.FirstOrDefault(e => string.Equals(e.FullName, caminho, StringComparison.OrdinalIgnoreCase));
         if (entrada is null)
@@ -289,7 +307,8 @@ public sealed class LeitorDePlanilha : ILeitorDePlanilha
         while ((lidos = origem.Read(buffer, 0, buffer.Length)) > 0)
         {
             destino.Write(buffer, 0, lidos);
-            if (destino.Length > LimiteDaParte)
+            gasto.Total += lidos;
+            if (destino.Length > LimiteDaParte || gasto.Total > LimiteTotal)
             {
                 throw new InvalidDataException("Sheet part too large.");
             }

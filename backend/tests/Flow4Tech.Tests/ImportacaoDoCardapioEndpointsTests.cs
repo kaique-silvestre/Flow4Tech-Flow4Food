@@ -31,11 +31,11 @@ public sealed partial class ComandasEndpointsTests
 
     private sealed record ItemDaPreviaBody(string Tipo, string Chave, string Acao, int Linha);
 
-    private sealed record ResumoBody(int CategoriasCriadas, int CategoriasAtualizadas, int ProdutosCriados, int ProdutosAtualizados, int GruposCriados, int GruposAtualizados, int OpcoesCriadas, int OpcoesAtualizadas);
+    private sealed record ResumoImportacaoBody(int CategoriasCriadas, int CategoriasAtualizadas, int ProdutosCriados, int ProdutosAtualizados, int GruposCriados, int GruposAtualizados, int OpcoesCriadas, int OpcoesAtualizadas);
 
-    private sealed record PreviaDaImportacaoBody(bool Valida, List<ErroDeLinhaBody> Erros, List<ItemDaPreviaBody> Itens, ResumoBody Resumo);
+    private sealed record PreviaDaImportacaoBody(bool Valida, List<ErroDeLinhaBody> Erros, List<ItemDaPreviaBody> Itens, ResumoImportacaoBody Resumo);
 
-    private sealed record ImportacaoAplicadaBody(Guid ImportacaoId, bool JaAplicada, ResumoBody Resumo);
+    private sealed record ImportacaoAplicadaBody(Guid ImportacaoId, bool JaAplicada, ResumoImportacaoBody Resumo);
 
     private sealed record ModeloBody(List<string> Colunas, List<string> Tipos, List<string> Formatos, string ExemploCsv, int LinhasMaximas, int BytesMaximos);
 
@@ -158,10 +158,10 @@ public sealed partial class ComandasEndpointsTests
 
         Assert.True(previa.Valida);
         Assert.Empty(previa.Erros);
-        Assert.Equal(new ResumoBody(2, 0, 2, 0, 1, 0, 2, 0), previa.Resumo);
+        Assert.Equal(new ResumoImportacaoBody(2, 0, 2, 0, 1, 0, 2, 0), previa.Resumo);
         Assert.Equal(7, previa.Itens.Count);
         Assert.All(previa.Itens, i => Assert.Equal("criar", i.Acao));
-        Assert.Equal(("produto", "CH01", 7), (previa.Itens[5].Tipo, previa.Itens[5].Chave, previa.Itens[5].Linha + 1));
+        Assert.Equal(("produto", "CH01", 7), (previa.Itens[5].Tipo, previa.Itens[5].Chave, previa.Itens[5].Linha));
         Assert.Equal(previa.Resumo, denovo.Resumo);
         Assert.Equal(0L, await CountAsync("produtos"));
         Assert.Equal(0L, await CountAsync("categorias"));
@@ -206,7 +206,7 @@ public sealed partial class ComandasEndpointsTests
 
         var r = await BodyAsync<ImportacaoAplicadaBody>(await ImportAsync(client, t.Dono, id, Base64(Planilha)), HttpStatusCode.Created);
 
-        Assert.Equal((id, false, new ResumoBody(2, 0, 2, 0, 1, 0, 2, 0)), (r.ImportacaoId, r.JaAplicada, r.Resumo));
+        Assert.Equal((id, false, new ResumoImportacaoBody(2, 0, 2, 0, 1, 0, 2, 0)), (r.ImportacaoId, r.JaAplicada, r.Resumo));
         Assert.Equal([("Bebidas", (Guid?)null), ("Cervejas", (Guid?)(await QueryAsync(OrgA, UnitA, "SELECT id FROM categorias WHERE nome = 'Bebidas'", x => x.GetGuid(0))).Single())], await QueryAsync(OrgA, UnitA, "SELECT nome, categoria_pai_id FROM categorias ORDER BY nome", x => (x.GetString(0), x.IsDBNull(1) ? (Guid?)null : x.GetGuid(1))));
         Assert.Equal([("CH01", "Chopp", 950L, "BRL", true, 1, "Cervejas"), ("SU01", "Suco de laranja", 800L, "BRL", true, 1, "Bebidas")], await QueryAsync(OrgA, UnitA, "SELECT p.codigo, p.nome, p.preco_centavos, p.moeda, p.ativo, p.versao, c.nome FROM produtos p JOIN categorias c ON c.id = p.categoria_id ORDER BY p.codigo", x => (x.GetString(0), x.GetString(1), x.GetInt64(2), x.GetString(3), x.GetBoolean(4), x.GetInt32(5), x.GetString(6))));
         Assert.Equal([("Grande", 350L, 2), ("Pequeno", 0L, 1)], await QueryAsync(OrgA, UnitA, "SELECT o.nome, o.preco_centavos, o.posicao FROM opcoes o JOIN grupos_opcao g ON g.id = o.grupo_id WHERE g.nome = 'Tamanho' ORDER BY o.nome", x => (x.GetString(0), x.GetInt64(1), x.GetInt32(2))));
@@ -275,8 +275,8 @@ public sealed partial class ComandasEndpointsTests
         var igual = await BodyAsync<ImportacaoAplicadaBody>(await ImportAsync(client, t.Dono, Guid.CreateVersion7(), Base64(Planilha)), HttpStatusCode.Created);
         var maisCaro = await BodyAsync<ImportacaoAplicadaBody>(await ImportAsync(client, t.Dono, Guid.CreateVersion7(), Base64(Planilha.Replace("9,50", "10,00", StringComparison.Ordinal).Replace("Pequeno;0", "Pequeno;0,50", StringComparison.Ordinal))), HttpStatusCode.Created);
 
-        Assert.Equal(new ResumoBody(0, 0, 0, 0, 0, 0, 0, 0), igual.Resumo);
-        Assert.Equal(new ResumoBody(0, 0, 0, 1, 0, 1, 0, 1), maisCaro.Resumo);
+        Assert.Equal(new ResumoImportacaoBody(0, 0, 0, 0, 0, 0, 0, 0), igual.Resumo);
+        Assert.Equal(new ResumoImportacaoBody(0, 0, 0, 1, 0, 1, 0, 1), maisCaro.Resumo);
         Assert.Equal((2L, 2L, 1L, 2L), (await CountAsync("categorias"), await CountAsync("produtos"), await CountAsync("grupos_opcao"), await CountAsync("opcoes")));
         Assert.Equal((chopp, 1000L, 2), (await QueryAsync(OrgA, UnitA, "SELECT id, preco_centavos, versao FROM produtos WHERE codigo = 'CH01'", x => (x.GetGuid(0), x.GetInt64(1), x.GetInt32(2)))).Single());
         Assert.Equal(50L, (await QueryAsync(OrgA, UnitA, "SELECT preco_centavos FROM opcoes WHERE nome = 'Pequeno'", x => x.GetInt64(0))).Single());
@@ -295,7 +295,7 @@ public sealed partial class ComandasEndpointsTests
         var relatorio = await BodyAsync<PreviaDaImportacaoBody>(await ImportAsync(client, t.Dono, id, Base64(Planilha + "produto;XX1;Sem preco;;Bebidas;;;\r\n")), HttpStatusCode.UnprocessableEntity);
 
         Assert.False(relatorio.Valida);
-        Assert.Equal([new ErroDeLinhaBody(8, "preco", "O preço é obrigatório.")], relatorio.Erros);
+        Assert.Equal([new ErroDeLinhaBody(9, "preco", "O preço é obrigatório.")], relatorio.Erros);
         Assert.Equal((0L, 0L, 0L, 0L), (await CountAsync("categorias"), await CountAsync("produtos"), await CountAsync("grupos_opcao"), await CountAsync("importacoes_cardapio")));
         Assert.Equal(0L, await CountAsync("auditoria_registros WHERE acao = 'cardapio:importar'"));
 
@@ -313,7 +313,7 @@ public sealed partial class ComandasEndpointsTests
 
         var r = await BodyAsync<ImportacaoAplicadaBody>(await ImportAsync(client, t.Dono, Guid.CreateVersion7(), Xlsx(PlanilhaEmXlsx()), "xlsx"), HttpStatusCode.Created);
 
-        Assert.Equal(new ResumoBody(1, 0, 2, 0, 0, 0, 0, 0), r.Resumo);
+        Assert.Equal(new ResumoImportacaoBody(1, 0, 2, 0, 0, 0, 0, 0), r.Resumo);
         Assert.Equal(910L, await PriceOfAsync("CH01"));
         Assert.Equal(1210L, await PriceOfAsync("SU01"));
     }
@@ -347,6 +347,59 @@ public sealed partial class ComandasEndpointsTests
     }
 
     [Fact]
+    public async Task A_small_zip_that_inflates_beyond_the_limit_or_an_xml_with_a_doctype_is_refused_without_being_read_whole()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+
+        // ~10 MiB of zeros deflates to a few KiB: far below the 1 MiB file limit, far above what a menu sheet can be.
+        var bomba = ZipComPartes(("xl/worksheets/sheet1.xml", "<worksheet><sheetData>" + new string(' ', 10 * 1024 * 1024) + "</sheetData></worksheet>"));
+        var entidade = ZipComPartes(("xl/worksheets/sheet1.xml", "<!DOCTYPE x [<!ENTITY a \"aaaa\">]><worksheet><sheetData><row r=\"1\"><c r=\"A1\" t=\"inlineStr\"><is><t>&a;</t></is></c></row></sheetData></worksheet>"));
+        Assert.True(Convert.FromBase64String(bomba).Length < 100_000);
+
+        using var inflada = await PreviewImportAsync(client, t.Dono, bomba, "xlsx");
+        using var doctype = await PreviewImportAsync(client, t.Dono, entidade, "xlsx");
+
+        await AssertErrorAsync(inflada, HttpStatusCode.BadRequest, "arquivo-invalido");
+        await AssertErrorAsync(doctype, HttpStatusCode.BadRequest, "arquivo-invalido");
+    }
+
+    [Fact]
+    public async Task A_cell_reference_with_absurd_letters_and_parts_that_add_up_beyond_the_total_are_refused_as_invalid_files()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+
+        var colunaAbsurda = ZipComPartes(("xl/worksheets/sheet1.xml", "<worksheet><sheetData><row r=\"1\"><c r=\"AAAAAAAAAAAAAAAA1\" t=\"inlineStr\"><is><t>x</t></is></c></row></sheetData></worksheet>"));
+        // Four parts of ~1.9 MiB each (under the 2 MiB per-part limit) read for one file: 7.6 MiB > the 6 MiB total.
+        var parte = "<worksheet><sheetData>" + new string(' ', 1_900_000) + "</sheetData></worksheet>";
+        var somaGrande = ZipComPartes(("[Content_Types].xml", "<Types>" + new string(' ', 1_900_000) + "</Types>"), ("xl/workbook.xml", "<workbook>" + new string(' ', 1_900_000) + "</workbook>"), ("xl/sharedStrings.xml", "<sst>" + new string(' ', 1_900_000) + "</sst>"), ("xl/worksheets/sheet1.xml", parte));
+
+        using var coluna = await PreviewImportAsync(client, t.Dono, colunaAbsurda, "xlsx");
+        using var soma = await PreviewImportAsync(client, t.Dono, somaGrande, "xlsx");
+
+        await AssertErrorAsync(coluna, HttpStatusCode.BadRequest, "arquivo-invalido");
+        await AssertErrorAsync(soma, HttpStatusCode.BadRequest, "arquivo-invalido");
+    }
+
+    private static string ZipComPartes(params (string Nome, string Conteudo)[] partes)
+    {
+        using var memoria = new MemoryStream();
+        using (var zip = new ZipArchive(memoria, ZipArchiveMode.Create, true))
+        {
+            foreach (var (nome, conteudo) in partes)
+            {
+                using var w = new StreamWriter(zip.CreateEntry(nome, CompressionLevel.SmallestSize).Open(), new UTF8Encoding(false));
+                w.Write(conteudo);
+            }
+        }
+
+        return Convert.ToBase64String(memoria.ToArray());
+    }
+
+    [Fact]
     public async Task A_semicolon_or_comma_csv_in_utf8_or_windows_1252_with_quoted_cells_is_read()
     {
         await using var api = new Api(_appConnection);
@@ -358,7 +411,7 @@ public sealed partial class ComandasEndpointsTests
         var latin1 = await BodyAsync<PreviaDaImportacaoBody>(await PreviewImportAsync(client, t.Dono, Convert.ToBase64String(Encoding.Latin1.GetBytes("tipo;nome;categoria;codigo;preco\r\ncategoria;Ação;;;\r\nproduto;Pão;Ação;PA01;5\r\n"))), HttpStatusCode.OK);
 
         Assert.Empty(utf8.Erros);
-        Assert.Equal(new ResumoBody(1, 0, 1, 0, 0, 0, 0, 0), utf8.Resumo);
+        Assert.Equal(new ResumoImportacaoBody(1, 0, 1, 0, 0, 0, 0, 0), utf8.Resumo);
         Assert.Equal(["Ação", "PA01"], new[] { latin1.Itens[0].Chave, latin1.Itens[1].Chave });
     }
 
@@ -424,7 +477,7 @@ public sealed partial class ComandasEndpointsTests
 
         // Inside the limit it applies; and creating new rows needs no price permission at all.
         using var dentro = await ImportAsync(client, comLimite, Guid.CreateVersion7(), Base64(Planilha.Replace("9,50", "9,90", StringComparison.Ordinal)));
-        using var soCria = await ImportAsync(client, semPermissao, Guid.CreateVersion7(), Base64(Planilha + "categoria;;Doces;;;;;\r\n"));
+        using var soCria = await ImportAsync(client, semPermissao, Guid.CreateVersion7(), Base64(Planilha.Replace("9,50", "9,90", StringComparison.Ordinal) + "categoria;;Doces;;;;;\r\n"));
         Assert.Equal((HttpStatusCode.Created, HttpStatusCode.Created), (dentro.StatusCode, soCria.StatusCode));
         Assert.Equal(990L, await PriceOfAsync("CH01"));
         Assert.Equal(3L, await CountAsync("categorias"));

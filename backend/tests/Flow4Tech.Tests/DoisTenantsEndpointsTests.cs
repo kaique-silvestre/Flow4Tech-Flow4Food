@@ -182,6 +182,12 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         // A unit price in each organization, so the sweep of the new table is not vacuous either.
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepA.ProdutoId}/preco-unidade", salaoSweepA.Token, new { precoCentavos = 1300 }));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepB.ProdutoId}/preco-unidade", salaoSweepB.Token, new { precoCentavos = 1400 }));
+        // One applied import in each organization (no option groups, so the option tables below keep their counts), so the sweep of the import record is not vacuous.
+        foreach (var salaoImportado in new[] { salaoSweepA, salaoSweepB })
+        {
+            Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoImportado.Token, PedidoDeImportacao(Guid.CreateVersion7(), PlanilhaDeImportacao)));
+        }
+
         _ = await api.Services.GetRequiredService<GestaoDePerfis>().CriarAsync(a.RequestOfOwner(), "Qualquer", [new RegraDeAcesso(RuleEffect.Allow, "organizacao:ver-unidades")]);
 
         // Tables are discovered, not listed: a new tenant table is swept without editing this test.
@@ -203,6 +209,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("grupos_opcao", tables);
         Assert.Contains("item_opcoes", tables);
         Assert.Contains("opcoes_frequencia", tables);
+        Assert.Contains("importacoes_cardapio", tables);
         Assert.Contains("produtos_frequencia_garcom", tables);
         foreach (var tenant in new[] { a, b })
         {
@@ -219,6 +226,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(7L, (await QueryAsync(tenant, "SELECT count(*) FROM metodos_pagamento", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM importacoes_cardapio", r => r.GetInt64(0))).Single());
             Assert.Equal((2L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM movimentos_caixa), (SELECT count(*) FROM contagens_turno), (SELECT count(*) FROM aprovacoes_diferenca)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
             foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia", "produtos_frequencia_garcom" })
             {
@@ -629,6 +637,40 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         }
 
         Assert.Equal((1L, 1L), (await QueryAsync(a, "SELECT (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:pedir-conta'), (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:reimprimir')", r => (r.GetInt64(0), r.GetInt64(1)))).Single());
+    }
+
+    private const string PlanilhaDeImportacao = "tipo;codigo;nome;preco;categoria\r\ncategoria;;Importados;;\r\nproduto;IMP01;Importado;12,50;Importados\r\n";
+
+    private static object PedidoDeImportacao(Guid id, string csv) => new { importacaoId = id, formato = "csv", conteudoBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(csv)) };
+
+    [Fact]
+    public async Task The_menu_import_runs_in_each_organization_with_the_same_import_id_and_codes_and_one_cannot_see_or_replay_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+        var id = Guid.CreateVersion7();
+
+        // The same import id and the same file in both organizations: the id is idempotent per organization, so each one applies its own.
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoA.Token, PedidoDeImportacao(id, PlanilhaDeImportacao)));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoB.Token, PedidoDeImportacao(id, PlanilhaDeImportacao)));
+        // A repeat answers 200 in its own organization and writes nothing; another file with the id is refused.
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoA.Token, PedidoDeImportacao(id, PlanilhaDeImportacao)));
+        Assert.Equal(HttpStatusCode.Conflict, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoB.Token, PedidoDeImportacao(id, PlanilhaDeImportacao.Replace("12,50", "13,00", StringComparison.Ordinal))));
+
+        foreach (var tenant in new[] { a, b })
+        {
+            Assert.Equal((1L, 1L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM importacoes_cardapio), (SELECT count(*) FROM produtos WHERE codigo = 'IMP01'), (SELECT count(*) FROM auditoria_registros WHERE acao = 'cardapio:importar'), (SELECT count(*) FROM outbox_eventos WHERE tipo = 'cardapio.importado')", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2), r.GetInt64(3)))).Single());
+        }
+
+        // A second import in A changes A's product in place; B's is untouched.
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", salaoA.Token, PedidoDeImportacao(Guid.CreateVersion7(), PlanilhaDeImportacao.Replace("12,50", "13,00", StringComparison.Ordinal))));
+        Assert.Equal(1300L, (await QueryAsync(a, "SELECT preco_centavos FROM produtos WHERE codigo = 'IMP01'", r => r.GetInt64(0))).Single());
+        Assert.Equal(1250L, (await QueryAsync(b, "SELECT preco_centavos FROM produtos WHERE codigo = 'IMP01'", r => r.GetInt64(0))).Single());
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM produtos WHERE codigo = 'IMP01'", r => r.GetInt64(0))).Single());
     }
 
     private sealed record Comprovantes(Guid Aberta, Guid Fechada);

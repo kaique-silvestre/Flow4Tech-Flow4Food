@@ -10,3 +10,5 @@
 - A mocked 409 `versaoAtual` (fake number) is adopted by the screen's version ref and poisons the next real write in the same e2e test -> reload the page after a mock that invents a version.
 - Postgres: `FOR UPDATE` and a SUM in ONE statement read the other rows with the snapshot from before the lock wait (two concurrent withdrawals both passed) → lock in statement 1, read in statement 2 (F4-0065, `SaldoDaGavetaTravandoAsync`).
 - Cloud without dotnet 10.0.404: `apt-get install dotnet-sdk-10.0` gives 10.0.115; temporarily edit `global.json` to match and revert it; `dotnet format` then shows pre-existing CA1515 on untouched test files.
+- `ComandasEndpointsTests` is a `partial` class shared by several files: a private nested record named like one in another partial (`ResumoBody`) fails CS0102/CS8863 -> prefix it with the feature (`ResumoImportacaoBody`). Also, `dotnet format` with the temporary SDK rewrites untouched Architecture/Organizacao tests (CA1515) -> `git checkout` them.
+- Local PG16 recipe: two Flow4Tech.Tests classes in one run flake at init (concurrent `CREATE DATABASE` from template1) -> one class per `dotnet test --filter` run.
