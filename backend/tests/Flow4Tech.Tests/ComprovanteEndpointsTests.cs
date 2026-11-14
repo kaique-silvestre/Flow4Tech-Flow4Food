@@ -287,4 +287,31 @@ public sealed partial class ComandasEndpointsTests
         await AssertErrorAsync(await ReceiptAsync(client, t.Dono, cancelada.Id), HttpStatusCode.Conflict, "comanda-nao-fechada");
         await AssertErrorAsync(await PreBillAsync(client, t.Dono, c.ComandaId), HttpStatusCode.Conflict, "comanda-nao-aberta");
     }
+
+    [Fact]
+    public async Task Asking_for_the_bill_while_the_comanda_is_cancelled_never_leaves_a_mark_on_a_closed_comanda_and_the_map_shows_waiting()
+    {
+        await using var api = new Api(_appConnection);
+        using var client = api.CreateClient();
+        var t = await SeedAsync(api);
+        var mesa = await CreateTableAsync(client, t.Dono, "9");
+        for (var i = 0; i < 6; i++)
+        {
+            var comanda = await OpenAsync(client, t.Garcom, new { mesaId = mesa.Id });
+            var respostas = await Task.WhenAll(AskForBillAsync(client, t.Garcom, comanda.Id), CancelComandaAsync(client, t.Dono, comanda.Id, comanda.Versao));
+            var (pedida, cancelada) = (respostas[0], respostas[1]);
+
+            // Whoever wins, the database never holds a mark on a closed comanda, and a lost ask answers a refusal (never a 500).
+            Assert.Equal(HttpStatusCode.OK, cancelada.StatusCode);
+            Assert.True(pedida.StatusCode is HttpStatusCode.Created or HttpStatusCode.Conflict, pedida.StatusCode.ToString());
+            Assert.Equal(0L, await CountAsync($"comandas WHERE id = '{comanda.Id:D}' AND conta_pedida_em IS NOT NULL"));
+            pedida.Dispose();
+            cancelada.Dispose();
+        }
+
+        var aberta = await OpenAsync(client, t.Garcom, new { mesaId = mesa.Id });
+        await BodyAsync<PedidaBody>(await AskForBillAsync(client, t.Garcom, aberta.Id), HttpStatusCode.Created);
+        using var mapa = await SendAsync(client, HttpMethod.Get, "/mesas/mapa", t.Garcom);
+        Assert.Contains("aguardando-conta", await mapa.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
 }

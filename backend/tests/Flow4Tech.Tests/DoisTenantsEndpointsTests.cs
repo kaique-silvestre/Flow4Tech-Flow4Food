@@ -598,6 +598,79 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(4L, (await QueryAsync(b, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
     }
 
+    [Fact]
+    public async Task The_pre_bill_the_bill_request_and_the_receipt_copy_run_in_each_organization_and_one_cannot_read_ask_or_reprint_the_others()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var comprovanteA = await RunComprovanteAsync(client, salaoA);
+        var comprovanteB = await RunComprovanteAsync(client, salaoB);
+
+        // Each organization ends with its own mark, one audit record and one event for the request, and one audited copy of its own receipt.
+        foreach (var (tenant, comprovante) in new[] { (a, comprovanteA), (b, comprovanteB) })
+        {
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas WHERE conta_pedida_em IS NOT NULL AND id = @c", r => r.GetInt64(0), ("c", comprovante.Aberta))).Single());
+            Assert.Equal((1L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:pedir-conta'), (SELECT count(*) FROM outbox_eventos WHERE tipo = 'comanda.conta-pedida'), (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:reimprimir')", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
+        }
+
+        // Across the line: no reading the other's pre-bill or receipt, no asking for its bill (nothing written).
+        foreach (var (intruso, alvo) in new[] { (salaoB.Token, comprovanteA), (salaoA.Token, comprovanteB) })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.Aberta}/pre-conta", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.Aberta}/pre-conta/texto", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/comandas/{alvo.Aberta}/pedir-conta", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.Fechada}/recibo", intruso));
+            Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{alvo.Fechada}/recibo/texto", intruso));
+        }
+
+        Assert.Equal((1L, 1L), (await QueryAsync(a, "SELECT (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:pedir-conta'), (SELECT count(*) FROM auditoria_registros WHERE acao = 'comanda:reimprimir')", r => (r.GetInt64(0), r.GetInt64(1)))).Single());
+    }
+
+    private sealed record Comprovantes(Guid Aberta, Guid Fechada);
+
+    /// <summary>One organization as its founder: an open comanda (pre-bill, then bill requested twice) and a closed one with a payment (second copy of the receipt, as data and as text).</summary>
+    private static async Task<Comprovantes> RunComprovanteAsync(HttpClient client, Salao salao)
+    {
+        async Task<System.Text.Json.JsonElement> CallAsync(HttpMethod metodo, string caminho, object? corpo, HttpStatusCode esperado)
+        {
+            using var response = await SendAsync(client, metodo, caminho, salao.Token, corpo);
+            Assert.Equal(esperado, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        }
+
+        async Task<(Guid Id, int Versao)> ComandaComItemAsync(string nome)
+        {
+            var criada = (await CallAsync(HttpMethod.Post, "/comandas", new { identificacao = nome, mesaId = (Guid?)null, pessoas = (int?)null }, HttpStatusCode.Created)).GetProperty("id").GetGuid();
+            var rodada = await CallAsync(HttpMethod.Post, $"/comandas/{criada}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = 1, itens = new[] { new { produtoId = salao.ProdutoId, quantidade = 2, opcaoIds = new[] { salao.OpcaoId } } } }, HttpStatusCode.Created);
+            return (criada, rodada.GetProperty("comandaVersao").GetInt32());
+        }
+
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", salao.Token, new { fundoCentavos = 1_000 }));
+        var (aberta, _) = await ComandaComItemAsync("Aberta");
+
+        // 2 x (12,50 + 1,00) = 27,00 + 10% = 29,70.
+        var pre = await CallAsync(HttpMethod.Get, $"/comandas/{aberta}/pre-conta", null, HttpStatusCode.OK);
+        Assert.Equal(("pre-conta", 2970L), (pre.GetProperty("tipo").GetString(), pre.GetProperty("conta").GetProperty("totalCentavos").GetInt64()));
+        await CallAsync(HttpMethod.Post, $"/comandas/{aberta}/pedir-conta", null, HttpStatusCode.Created);
+        await CallAsync(HttpMethod.Post, $"/comandas/{aberta}/pedir-conta", null, HttpStatusCode.OK);
+
+        var (fechada, versao) = await ComandaComItemAsync("Fechada");
+        var metodos = (await CallAsync(HttpMethod.Get, "/pagamentos/metodos", null, HttpStatusCode.OK)).EnumerateArray().ToList();
+        var pix = metodos.Single(m => m.GetProperty("chave").GetString() == "pix").GetProperty("id").GetGuid();
+        await CallAsync(HttpMethod.Post, $"/comandas/{fechada}/recebimentos", new { versao, linhas = new[] { new { pagamentoId = Guid.CreateVersion7(), metodoId = pix, recebidoCentavos = 2_970, gorjetaCentavos = (long?)null, divisaoId = (Guid?)null, divisaoParte = (int?)null } } }, HttpStatusCode.Created);
+        await CallAsync(HttpMethod.Post, $"/comandas/{fechada}/fechar", new { versao = versao + 1 }, HttpStatusCode.OK);
+
+        var recibo = await CallAsync(HttpMethod.Get, $"/comandas/{fechada}/recibo", null, HttpStatusCode.OK);
+        Assert.Equal(("recibo", true, 2970L, 0L), (recibo.GetProperty("tipo").GetString(), recibo.GetProperty("segundaVia").GetBoolean(), recibo.GetProperty("conta").GetProperty("pagoCentavos").GetInt64(), recibo.GetProperty("conta").GetProperty("saldoCentavos").GetInt64()));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{Guid.NewGuid()}/recibo", salao.Token));
+        return new Comprovantes(aberta, fechada);
+    }
+
     private sealed record Recebido(Guid ComandaId, int Versao, Guid Dinheiro, long CashApplied);
 
     /// <summary>One organization as its founder: a new shift, a comanda of R$ 29,70, the Pix renamed and an own method "Cheque" added, then ONE receipt of card (R$ 10,00 and R$ 2,00 tip), Cheque (R$ 5,00) and cash (R$ 20,00).</summary>
