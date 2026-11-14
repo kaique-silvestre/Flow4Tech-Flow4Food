@@ -6,6 +6,7 @@ caixa:sangria
 caixa:suprimento
 caixa:ver
 caixa:ver-todos
+cardapio:importar
 cardapio:preco-alterar
 comanda:abrir
 comanda:alterar-dados

@@ -166,6 +166,35 @@ internal sealed class OpcaoFrequenciaRow
     public long Lancamentos { get; set; }
 }
 
+internal sealed class ImportacaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public string ConteudoSha256 { get; set; } = "";
+
+    public int CategoriasCriadas { get; set; }
+
+    public int CategoriasAtualizadas { get; set; }
+
+    public int ProdutosCriados { get; set; }
+
+    public int ProdutosAtualizados { get; set; }
+
+    public int GruposCriados { get; set; }
+
+    public int GruposAtualizados { get; set; }
+
+    public int OpcoesCriadas { get; set; }
+
+    public int OpcoesAtualizadas { get; set; }
+
+    public Guid CriadoPor { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+}
+
 /// <summary>EF mapping of the menu (schema owned by <c>0015_cardapio.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
@@ -186,6 +215,8 @@ internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantD
     public DbSet<ProdutoFrequenciaGarcomRow> FrequenciaDoGarcom => Set<ProdutoFrequenciaGarcomRow>();
 
     public DbSet<OpcaoFrequenciaRow> OpcoesFrequencia => Set<OpcaoFrequenciaRow>();
+
+    public DbSet<ImportacaoRow> Importacoes => Set<ImportacaoRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -287,6 +318,24 @@ internal sealed class CardapioDbContext(TenantTransaction transaction) : TenantD
             e.Property(x => x.ProdutoId).HasColumnName("produto_id");
             e.Property(x => x.GrupoId).HasColumnName("grupo_id");
             e.Property(x => x.Posicao).HasColumnName("posicao");
+        });
+        modelBuilder.Entity<ImportacaoRow>(e =>
+        {
+            e.ToTable("importacoes_cardapio");
+            e.HasKey(x => new { x.OrganizacaoId, x.Id });
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.ConteudoSha256).HasColumnName("conteudo_sha256");
+            e.Property(x => x.CategoriasCriadas).HasColumnName("categorias_criadas");
+            e.Property(x => x.CategoriasAtualizadas).HasColumnName("categorias_atualizadas");
+            e.Property(x => x.ProdutosCriados).HasColumnName("produtos_criados");
+            e.Property(x => x.ProdutosAtualizados).HasColumnName("produtos_atualizados");
+            e.Property(x => x.GruposCriados).HasColumnName("grupos_criados");
+            e.Property(x => x.GruposAtualizados).HasColumnName("grupos_atualizados");
+            e.Property(x => x.OpcoesCriadas).HasColumnName("opcoes_criadas");
+            e.Property(x => x.OpcoesAtualizadas).HasColumnName("opcoes_atualizadas");
+            e.Property(x => x.CriadoPor).HasColumnName("criado_por");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
         });
         modelBuilder.Entity<OpcaoFrequenciaRow>(e =>
         {
@@ -549,6 +598,13 @@ public sealed class PostgresOpcoesStore : IOpcoesStore
         return await context.Grupos.AsNoTracking().CountAsync(g => lista.Contains(g.Id), cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> VinculosDosProdutosAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var vinculos = await context.ProdutoGrupos.AsNoTracking().OrderBy(v => v.Posicao).ToListAsync(cancellationToken);
+        return vinculos.GroupBy(v => v.ProdutoId).ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)[.. g.Select(v => v.GrupoId)]);
+    }
+
     public async Task DefinirGruposDoProdutoAsync(Guid organizationId, Guid produtoId, IReadOnlyList<Guid> grupoIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(grupoIds);
@@ -595,6 +651,34 @@ public sealed class PostgresOpcoesStore : IOpcoesStore
         new(g.Id, g.Nome, g.Minimo, g.Maximo, g.Ativo, g.Versao, opcoes.OrderBy(o => o.Posicao).Select(o => new Opcao(o.Id, o.Nome, o.PrecoCentavos, o.Ativa)).ToList());
 }
 
+/// <summary>The record of applied imports on PostgreSQL: append-only (the application credential has SELECT and INSERT), one row per import id.</summary>
+public sealed class PostgresImportacoesStore : IImportacoesDoCardapioStore
+{
+    public async Task<ImportacaoRegistrada?> AcharAsync(Guid organizationId, Guid id, CancellationToken cancellationToken)
+    {
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var r = await context.Importacoes.AsNoTracking().Where(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+        return r is null
+            ? null
+            : new ImportacaoRegistrada(r.Id, r.ConteudoSha256, new ResumoDaImportacao(r.CategoriasCriadas, r.CategoriasAtualizadas, r.ProdutosCriados, r.ProdutosAtualizados, r.GruposCriados, r.GruposAtualizados, r.OpcoesCriadas, r.OpcoesAtualizadas), r.CriadoPor, r.CriadoEm);
+    }
+
+    public async Task<bool> RegistrarAsync(Guid organizationId, ImportacaoRegistrada importacao, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(importacao);
+        var r = importacao.Resumo;
+        await using var context = new CardapioDbContext(TenantUnitOfWork.Require(organizationId));
+        var linhas = await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO importacoes_cardapio (id, organizacao_id, conteudo_sha256, categorias_criadas, categorias_atualizadas, produtos_criados, produtos_atualizados, grupos_criados, grupos_atualizados, opcoes_criadas, opcoes_atualizadas, criado_por, criado_em)
+            VALUES ({importacao.Id}, {organizationId}, {importacao.Hash}, {r.CategoriasCriadas}, {r.CategoriasAtualizadas}, {r.ProdutosCriados}, {r.ProdutosAtualizados}, {r.GruposCriados}, {r.GruposAtualizados}, {r.OpcoesCriadas}, {r.OpcoesAtualizadas}, {importacao.CriadoPor}, {importacao.CriadoEm})
+            ON CONFLICT (organizacao_id, id) DO NOTHING
+            """,
+            cancellationToken);
+        return linhas == 1;
+    }
+}
+
 /// <summary>Menu events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDoCardapio(OutboxWriter outbox) : IEventosDoCardapio
 {
@@ -617,6 +701,9 @@ public static class CardapioServices
         services.AddSingleton<GestaoDoCardapio>();
         services.AddSingleton<IOpcoesStore, PostgresOpcoesStore>();
         services.AddSingleton<GestaoDeOpcoes>();
+        services.AddSingleton<IImportacoesDoCardapioStore, PostgresImportacoesStore>();
+        services.AddSingleton<ILeitorDePlanilha, LeitorDePlanilha>();
+        services.AddSingleton<GestaoDaImportacao>();
         return services;
     }
 }

@@ -9,6 +9,7 @@ caixa:fechar
 caixa:recontar-diferenca
 caixa:sangria
 caixa:suprimento
+cardapio:importar
 categoria:alterar
 categoria:criar
 comanda:abrir
