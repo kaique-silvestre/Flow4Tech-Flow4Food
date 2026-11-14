@@ -12,7 +12,7 @@ afterEach(() => {
 const pronta = {
   "POST /refresh": json(sessaoJson()),
   "GET /comandas": json([]),
-  "GET /caixa/turnos/atual": new Response(null, { status: 404 }),
+  "GET /caixa/turnos/atual/resumo": new Response(null, { status: 404 }),
 };
 
 describe("salão shell (signed in)", () => {

@@ -1,0 +1,87 @@
+/* Importação do cardápio no celular */
+.imp-voltar {
+  margin: 0 0 var(--f4-space-2);
+}
+
+.imp-voltar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.imp-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-3);
+  margin: var(--f4-space-4) 0;
+}
+
+.imp-acoes > .f4-btn {
+  flex: 1 1 12rem;
+}
+
+.imp-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.imp-subtitulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--f4-space-2);
+  margin: var(--f4-space-4) 0 var(--f4-space-2);
+  font-size: var(--f4-text-row);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.imp-progresso {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.imp-contagens,
+.imp-erros {
+  margin: 0 0 var(--f4-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.imp-contagem {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--f4-space-2);
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border-strong);
+}
+
+.imp-erro {
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border-strong);
+}
+
+.imp-erro ul {
+  margin: var(--f4-space-1) 0 0;
+  padding-left: var(--f4-space-4);
+  overflow-wrap: anywhere;
+}
+
+.imp-erro-linha {
+  font-variant-numeric: tabular-nums;
+}
+
+.imp-erro-coluna {
+  font-weight: 600;
+}
+
+.gestao-importar {
+  margin-bottom: var(--f4-space-3);
+}
