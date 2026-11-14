@@ -4,7 +4,12 @@ area:criar
 autenticacao:bloquear
 autenticacao:falhar
 caixa:abrir
+caixa:aprovar-diferenca
 caixa:fechar
+caixa:recontar-diferenca
+caixa:sangria
+caixa:suprimento
+cardapio:importar
 categoria:alterar
 categoria:criar
 comanda:abrir
@@ -20,6 +25,8 @@ comanda:dividir
 comanda:fechar
 comanda:juntar
 comanda:lancar-rodada
+comanda:pedir-conta
+comanda:reimprimir
 comanda:remover-taxa-servico
 comanda:renomear
 comanda:transferir-item

@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Pre-bill route: items, frozen prices, discounts, fee, total, per split part when a split exists; second copy of the receipt for a closed comanda; no fiscal document and no printing.
 - [ ] 'Bill requested' mark on an open comanda (idempotent, audited, event `comanda.conta-pedida`), cleared by closing or cancelling; the table map status uses it.

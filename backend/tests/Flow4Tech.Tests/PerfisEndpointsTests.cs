@@ -584,7 +584,7 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
     {
         await using var api = new Api(_appConnection);
         using var client = api.CreateClient();
-        await GiveAsync(api, Gerente, "Perfis", "perfil:ver", "perfil:gerir", "permissao:atribuir");
+        await GiveAsync(api, Gerente, "Perfis", "perfil:ver", "perfil:gerir", "permissao:atribuir", "cardapio:importar");
         await GiveAsync(api, Garcom, "So ver perfis", "perfil:ver");
         var gerente = await TokenAsync(api, Gerente, OrgA, UnitA);
         var garcom = await TokenAsync(api, Garcom, OrgA, UnitA);
@@ -601,6 +601,8 @@ public sealed class PerfisEndpointsTests : IAsyncLifetime
         Assert.Contains("perfil:ver", someBody.Permissoes);
         Assert.DoesNotContain("perfil:gerir", someBody.Permissoes);
         Assert.DoesNotContain("permissao:atribuir", someBody.Permissoes);
+        Assert.Contains("cardapio:importar", allBody.Permissoes); // the menu import link on the phone needs it exposed
+        Assert.DoesNotContain("cardapio:importar", someBody.Permissoes);
     }
 
     private sealed record ContaBody(Guid Id, string Nome, string? Usuario, bool Dono, bool Ativa, List<Guid> UnidadeIds, List<Guid> PerfilIds);

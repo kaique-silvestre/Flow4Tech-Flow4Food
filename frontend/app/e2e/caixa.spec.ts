@@ -123,7 +123,7 @@ test("a second open from a stale screen is refused by the server and shown as an
 
   // The screen of another device still shows the register closed: the read answers "no shift" once, the open is real.
   await page.route(
-    "**/caixa/turnos/atual",
+    "**/caixa/turnos/atual/resumo",
     (route) => route.fulfill({ status: 404, json: { codigo: "sem-turno-aberto" } }),
     { times: 1 },
   );

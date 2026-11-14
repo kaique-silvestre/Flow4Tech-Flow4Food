@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] File picker, template download, upload progress, error list by line, preview counts, confirm.
 - [ ] Result summary and a link to the menu management screen; a repeat of the same import shows 'nothing to change'.

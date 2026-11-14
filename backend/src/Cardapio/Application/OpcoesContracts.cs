@@ -67,6 +67,9 @@ public interface IOpcoesStore
     /// <summary>How many of <paramref name="ids"/> exist as groups.</summary>
     Task<int> ContarGruposAsync(Guid organizationId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
 
+    /// <summary>The group ids linked to every product that has any, in the order of the link (the import compares a sheet with them).</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> VinculosDosProdutosAsync(Guid organizationId, CancellationToken cancellationToken);
+
     /// <summary>Replaces the links of a product, keeping the order of <paramref name="grupoIds"/>.</summary>
     Task DefinirGruposDoProdutoAsync(Guid organizationId, Guid produtoId, IReadOnlyList<Guid> grupoIds, CancellationToken cancellationToken);
 

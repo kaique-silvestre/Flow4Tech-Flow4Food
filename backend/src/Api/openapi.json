@@ -1983,6 +1983,157 @@
         "x-permission": "produto:ver"
       }
     },
+    "/cardapio/importacao/modelo": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "modeloDaImportacaoDoCardapio",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeloDaImportacaoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
+    "/cardapio/importacao/previa": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "previaDaImportacaoDoCardapio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviaDaImportacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaDaImportacaoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
+    "/cardapio/importacao": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "importarCardapio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AplicarImportacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoAplicadaDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoAplicadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacaoErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaDaImportacaoDto"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cardapio:importar"
+      }
+    },
     "/caixa/turnos/atual": {
       "get": {
         "tags": [
@@ -2160,6 +2311,497 @@
           }
         },
         "x-permission": "caixa:fechar"
+      }
+    },
+    "/caixa/turnos/atual/resumo": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getResumoDoTurno",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoDoTurnoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/turnos/atual/movimentos": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listMovimentosDoTurno",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovimentoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/turnos/atual/suprimentos": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "suprirCaixa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovimentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovimentoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/turnos/atual/sangrias": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "sangrarCaixa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovimentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovimentoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/historico": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getHistoricoDoCaixa",
+        "parameters": [
+          {
+            "name": "operadorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "de",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurnoDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/turnos/pendentes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listTurnosPendentes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurnoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "caixa:ver-todos"
+      }
+    },
+    "/caixa/turnos/{id}": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getTurno",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoDetalheDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver"
+      }
+    },
+    "/caixa/turnos/{id}/diferenca/aprovar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "aprovarDiferenca",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AprovarDiferencaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver-todos"
+      }
+    },
+    "/caixa/turnos/{id}/diferenca/recontar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "recontarDiferenca",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecontarDiferencaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaixaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "caixa:ver-todos"
       }
     },
     "/comandas": {
@@ -4413,6 +5055,306 @@
         "x-permission": "comanda:receber-pagamento"
       }
     },
+    "/comandas/{comandaId}/pre-conta": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getPreContaDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprovanteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/pre-conta/texto": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getPreContaEmTextoDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/pedir-conta": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "pedirContaDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaDto"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
+    "/comandas/{comandaId}/recibo": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getReciboDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprovanteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:reimprimir"
+      }
+    },
+    "/comandas/{comandaId}/recibo/texto": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getReciboEmTextoDaComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "comanda:reimprimir"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [
@@ -5691,6 +6633,94 @@
           }
         }
       },
+      "AplicarImportacaoRequest": {
+        "required": [
+          "importacaoId",
+          "formato",
+          "conteudoBase64"
+        ],
+        "type": "object",
+        "properties": {
+          "importacaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formato": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conteudoBase64": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AprovacaoDto": {
+        "required": [
+          "id",
+          "tipo",
+          "aprovadorId",
+          "motivo",
+          "diferencaAntesCentavos",
+          "diferencaDepoisCentavos",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "aprovadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "diferencaAntesCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "diferencaDepoisCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AprovarDiferencaRequest": {
+        "required": [
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AreaDto": {
         "required": [
           "id",
@@ -5986,6 +7016,13 @@
               "null",
               "string"
             ]
+          },
+          "contaPedidaEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -6006,6 +7043,390 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ComprovanteContaDto": {
+        "required": [
+          "consumoCentavos",
+          "descontoCentavos",
+          "taxaServicoCentavos",
+          "taxaServicoRemovida",
+          "taxaServicoPercentual",
+          "totalCentavos",
+          "pagoCentavos",
+          "saldoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "consumoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "descontoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxaServicoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxaServicoRemovida": {
+            "type": "boolean"
+          },
+          "taxaServicoPercentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "totalCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pagoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "saldoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ComprovanteDescontoDto": {
+        "required": [
+          "alvo",
+          "forma",
+          "percentual",
+          "aplicadoCentavos",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "alvo": {
+            "type": "string"
+          },
+          "forma": {
+            "type": "string"
+          },
+          "percentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "aplicadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
+      "ComprovanteDto": {
+        "required": [
+          "tipo",
+          "segundaVia",
+          "aviso",
+          "numero",
+          "numeroTexto",
+          "identificacao",
+          "diaOperacional",
+          "abertaEm",
+          "fechadaEm",
+          "contaPedidaEm",
+          "geradaEm",
+          "itens",
+          "descontos",
+          "conta",
+          "pagamentos",
+          "partes"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "segundaVia": {
+            "type": "boolean"
+          },
+          "aviso": {
+            "type": "string"
+          },
+          "numero": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "numeroTexto": {
+            "type": "string"
+          },
+          "identificacao": {
+            "type": "string"
+          },
+          "diaOperacional": {
+            "type": "string",
+            "format": "date"
+          },
+          "abertaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fechadaEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "contaPedidaEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "geradaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComprovanteItemDto"
+            }
+          },
+          "descontos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComprovanteDescontoDto"
+            }
+          },
+          "conta": {
+            "$ref": "#/components/schemas/ComprovanteContaDto"
+          },
+          "pagamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComprovantePagamentoDto"
+            }
+          },
+          "partes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ComprovanteParteDto"
+            }
+          }
+        }
+      },
+      "ComprovanteItemDto": {
+        "required": [
+          "descricao",
+          "quantidade",
+          "unitarioCentavos",
+          "totalCentavos",
+          "tipo",
+          "observacao",
+          "opcoes"
+        ],
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "quantidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "unitarioCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "opcoes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ComprovantePagamentoDto": {
+        "required": [
+          "metodoNome",
+          "aplicadoCentavos",
+          "trocoCentavos",
+          "gorjetaCentavos",
+          "registradoEm",
+          "divisaoParte"
+        ],
+        "type": "object",
+        "properties": {
+          "metodoNome": {
+            "type": "string"
+          },
+          "aplicadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "trocoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "gorjetaCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "registradoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "divisaoParte": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ComprovanteParteDto": {
+        "required": [
+          "numero",
+          "consumoCentavos",
+          "taxaServicoCentavos",
+          "totalCentavos",
+          "gorjetaCentavos",
+          "pagoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "numero": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "consumoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "taxaServicoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "gorjetaCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "pagoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -6205,6 +7626,70 @@
             "type": "string"
           },
           "descontoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ContagemDto": {
+        "required": [
+          "metodoId",
+          "metodoNome",
+          "contadoCentavos",
+          "esperadoCentavos",
+          "diferencaCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "metodoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metodoNome": {
+            "type": "string"
+          },
+          "contadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "esperadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "diferencaCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ContagemRequest": {
+        "required": [
+          "metodoId",
+          "contadoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "metodoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contadoCentavos": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6773,6 +8258,56 @@
           }
         }
       },
+      "ErroDeLinhaDto": {
+        "required": [
+          "linha",
+          "coluna",
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "coluna": {
+            "type": "string"
+          },
+          "mensagem": {
+            "type": "string"
+          }
+        }
+      },
+      "EsperadoDoMetodoDto": {
+        "required": [
+          "metodoId",
+          "metodoNome",
+          "esperadoCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "metodoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metodoNome": {
+            "type": "string"
+          },
+          "esperadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "EventoDoHistoricoDto": {
         "required": [
           "id",
@@ -6837,6 +8372,15 @@
               "string"
             ],
             "format": "int64"
+          },
+          "contagens": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ContagemRequest"
+            }
           }
         }
       },
@@ -6945,6 +8489,46 @@
           }
         }
       },
+      "ImportacaoAplicadaDto": {
+        "required": [
+          "importacaoId",
+          "jaAplicada",
+          "resumo"
+        ],
+        "type": "object",
+        "properties": {
+          "importacaoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jaAplicada": {
+            "type": "boolean"
+          },
+          "resumo": {
+            "$ref": "#/components/schemas/ResumoDaImportacaoDto"
+          }
+        }
+      },
+      "ImportacaoErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "IniciarGoogleResponse": {
         "required": [
           "url"
@@ -7008,6 +8592,34 @@
           },
           "conta": {
             "$ref": "#/components/schemas/ContaDto"
+          }
+        }
+      },
+      "ItemDaPreviaDto": {
+        "required": [
+          "tipo",
+          "chave",
+          "acao",
+          "linha"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "chave": {
+            "type": "string"
+          },
+          "acao": {
+            "type": "string"
+          },
+          "linha": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -7607,6 +9219,56 @@
           }
         }
       },
+      "ModeloDaImportacaoDto": {
+        "required": [
+          "colunas",
+          "tipos",
+          "formatos",
+          "exemploCsv",
+          "linhasMaximas",
+          "bytesMaximos"
+        ],
+        "type": "object",
+        "properties": {
+          "colunas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tipos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "formatos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exemploCsv": {
+            "type": "string"
+          },
+          "linhasMaximas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "bytesMaximos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "MovimentoDeItensDto": {
         "required": [
           "origem",
@@ -7628,6 +9290,57 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "MovimentoDto": {
+        "required": [
+          "id",
+          "turnoId",
+          "tipo",
+          "valorCentavos",
+          "motivo",
+          "destino",
+          "operadorId",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "turnoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "destino": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "operadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -7655,6 +9368,37 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "MovimentoRequest": {
+        "required": [
+          "valorCentavos",
+          "motivo",
+          "destino"
+        ],
+        "type": "object",
+        "properties": {
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "destino": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -8196,6 +9940,56 @@
           }
         }
       },
+      "PreviaDaImportacaoDto": {
+        "required": [
+          "valida",
+          "erros",
+          "itens",
+          "resumo"
+        ],
+        "type": "object",
+        "properties": {
+          "valida": {
+            "type": "boolean"
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErroDeLinhaDto"
+            }
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDaPreviaDto"
+            }
+          },
+          "resumo": {
+            "$ref": "#/components/schemas/ResumoDaImportacaoDto"
+          }
+        }
+      },
+      "PreviaDaImportacaoRequest": {
+        "required": [
+          "formato",
+          "conteudoBase64"
+        ],
+        "type": "object",
+        "properties": {
+          "formato": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conteudoBase64": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ProdutoDto": {
         "required": [
           "id",
@@ -8375,6 +10169,40 @@
           },
           "conta": {
             "$ref": "#/components/schemas/ContaDto"
+          }
+        }
+      },
+      "RecontarDiferencaRequest": {
+        "required": [
+          "contadoCentavos",
+          "motivo",
+          "contagens"
+        ],
+        "type": "object",
+        "properties": {
+          "contadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contagens": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ContagemRequest"
+            }
           }
         }
       },
@@ -8581,6 +10409,135 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ResumoDaImportacaoDto": {
+        "required": [
+          "categoriasCriadas",
+          "categoriasAtualizadas",
+          "produtosCriados",
+          "produtosAtualizados",
+          "gruposCriados",
+          "gruposAtualizados",
+          "opcoesCriadas",
+          "opcoesAtualizadas"
+        ],
+        "type": "object",
+        "properties": {
+          "categoriasCriadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "categoriasAtualizadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "produtosCriados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "produtosAtualizados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposCriados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "gruposAtualizados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoesCriadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "opcoesAtualizadas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ResumoDoTurnoDto": {
+        "required": [
+          "turno",
+          "cego",
+          "suprimentosCentavos",
+          "sangriasCentavos",
+          "esperadoCentavos",
+          "porMetodo"
+        ],
+        "type": "object",
+        "properties": {
+          "turno": {
+            "$ref": "#/components/schemas/TurnoDto"
+          },
+          "cego": {
+            "type": "boolean"
+          },
+          "suprimentosCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "sangriasCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "esperadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "porMetodo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsperadoDoMetodoDto"
+            }
           }
         }
       },
@@ -8928,6 +10885,38 @@
           }
         }
       },
+      "TurnoDetalheDto": {
+        "required": [
+          "turno",
+          "contagens",
+          "movimentos",
+          "aprovacoes"
+        ],
+        "type": "object",
+        "properties": {
+          "turno": {
+            "$ref": "#/components/schemas/TurnoDto"
+          },
+          "contagens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContagemDto"
+            }
+          },
+          "movimentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MovimentoDto"
+            }
+          },
+          "aprovacoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AprovacaoDto"
+            }
+          }
+        }
+      },
       "TurnoDto": {
         "required": [
           "id",
@@ -9015,6 +11004,43 @@
               "string"
             ],
             "format": "int64"
+          },
+          "situacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suprimentosCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "sangriasCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "esperadoOculto": {
+            "type": "boolean",
+            "default": false
+          },
+          "contagens": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ContagemDto"
+            }
           }
         }
       },

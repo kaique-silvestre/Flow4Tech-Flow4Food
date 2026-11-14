@@ -1,7 +1,12 @@
 caixa:abrir
+caixa:aprovar-diferenca
 caixa:fechar
+caixa:fechar-cego
+caixa:sangria
+caixa:suprimento
 caixa:ver
 caixa:ver-todos
+cardapio:importar
 cardapio:preco-alterar
 comanda:abrir
 comanda:alterar-dados
@@ -17,6 +22,7 @@ comanda:fechar
 comanda:juntar
 comanda:lancar-item
 comanda:receber-pagamento
+comanda:reimprimir
 comanda:remover-taxa-servico
 comanda:renomear
 comanda:transferir-item

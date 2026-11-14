@@ -54,6 +54,8 @@ internal sealed class OcupacaoRow
     public int Abertas { get; set; }
 
     public DateTimeOffset PrimeiraAbertura { get; set; }
+
+    public int Aguardando { get; set; }
 }
 
 internal sealed class ComandaRow
@@ -95,6 +97,8 @@ internal sealed class ComandaRow
     public string? MotivoCancelamento { get; set; }
 
     public Guid? JuntadaNaComandaId { get; set; }
+
+    public DateTimeOffset? ContaPedidaEm { get; set; }
 }
 
 internal sealed class RodadaRow
@@ -331,6 +335,7 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.Observacao).HasColumnName("observacao");
             e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
             e.Property(x => x.JuntadaNaComandaId).HasColumnName("juntada_na_comanda_id");
+            e.Property(x => x.ContaPedidaEm).HasColumnName("conta_pedida_em");
         });
         modelBuilder.Entity<RodadaRow>(e =>
         {
@@ -488,8 +493,7 @@ public sealed class PostgresMesasStore : IMesasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await Ocupacao(context, unitId).ToListAsync(cancellationToken);
-        // Waiting for the bill needs the pre-bill (F4-0067): until it lands no comanda has asked for it.
-        return rows.ToDictionary(r => r.MesaId, r => new OcupacaoDaMesa(r.Abertas, 0, r.PrimeiraAbertura));
+        return rows.ToDictionary(r => r.MesaId, r => new OcupacaoDaMesa(r.Abertas, r.Aguardando, r.PrimeiraAbertura));
     }
 
     public async Task<IReadOnlyList<Area>> ListarAreasAtivasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
@@ -561,22 +565,12 @@ public sealed class PostgresMesasStore : IMesasStore
     private static Task<int> TravarAreasAsync(MesasDbContext context, Guid unitId, CancellationToken cancellationToken) =>
         context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"areas:" + unitId.ToString("D")}, 0))", cancellationToken);
 
-    public async Task<IReadOnlySet<Guid>> OcupadasAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
-    {
-        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
-        return (await Ocupadas(context, unitId).ToListAsync(cancellationToken)).ToHashSet();
-    }
-
-    /// <summary>Tables held by an open comanda, exposed so a test can assert its SQL text.</summary>
-    internal static IQueryable<Guid> Ocupadas(MesasDbContext context, Guid unitId) =>
-        context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.Estado == "aberta" && c.MesaId != null).Select(c => c.MesaId!.Value).Distinct();
-
     /// <summary>Open comandas per table (count and first opening), exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
     internal static IQueryable<OcupacaoRow> Ocupacao(MesasDbContext context, Guid unitId) =>
         context.Comandas.AsNoTracking()
             .Where(c => c.UnidadeId == unitId && c.Estado == "aberta" && c.MesaId != null)
             .GroupBy(c => c.MesaId!.Value)
-            .Select(g => new OcupacaoRow { MesaId = g.Key, Abertas = g.Count(), PrimeiraAbertura = g.Min(c => c.AbertaEm) });
+            .Select(g => new OcupacaoRow { MesaId = g.Key, Abertas = g.Count(), PrimeiraAbertura = g.Min(c => c.AbertaEm), Aguardando = g.Count(c => c.ContaPedidaEm != null) });
 
     /// <summary>The active areas of the unit by name, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
     internal static IQueryable<AreaRow> AreasAtivas(MesasDbContext context, Guid unitId) =>
@@ -646,7 +640,7 @@ public sealed class PostgresComandasStore : IComandasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Database.ExecuteSqlAsync(
-            $"UPDATE comandas SET estado = 'fechada', fechada_em = {fechadaEm} WHERE id = {comandaId} AND estado = 'aberta'",
+            $"UPDATE comandas SET estado = 'fechada', fechada_em = {fechadaEm}, conta_pedida_em = NULL, conta_pedida_por = NULL WHERE id = {comandaId} AND estado = 'aberta'",
             cancellationToken);
         return rows == 1;
     }
@@ -685,7 +679,7 @@ public sealed class PostgresComandasStore : IComandasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Database.ExecuteSqlAsync(
-            $"UPDATE comandas SET estado = 'cancelada', fechada_em = {quando}, motivo_cancelamento = {motivo}, cancelada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
+            $"UPDATE comandas SET estado = 'cancelada', fechada_em = {quando}, conta_pedida_em = NULL, conta_pedida_por = NULL, motivo_cancelamento = {motivo}, cancelada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
             cancellationToken);
         return rows == 1;
     }
@@ -694,7 +688,16 @@ public sealed class PostgresComandasStore : IComandasStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Database.ExecuteSqlAsync(
-            $"UPDATE comandas SET estado = 'juntada', fechada_em = {quando}, juntada_na_comanda_id = {destinoId}, juntada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
+            $"UPDATE comandas SET estado = 'juntada', fechada_em = {quando}, conta_pedida_em = NULL, conta_pedida_por = NULL, juntada_na_comanda_id = {destinoId}, juntada_por = {por} WHERE id = {comandaId} AND estado = 'aberta'",
+            cancellationToken);
+        return rows == 1;
+    }
+
+    public async Task<bool> MarcarContaPedidaAsync(Guid organizationId, Guid comandaId, Guid por, DateTimeOffset quando, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE comandas SET conta_pedida_em = {quando}, conta_pedida_por = {por} WHERE id = {comandaId} AND estado = 'aberta' AND conta_pedida_em IS NULL",
             cancellationToken);
         return rows == 1;
     }
@@ -723,7 +726,7 @@ public sealed class PostgresComandasStore : IComandasStore
     }
 
     private static Comanda ParaComanda(ComandaRow c) =>
-        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento, c.JuntadaNaComandaId);
+        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento, c.JuntadaNaComandaId, c.ContaPedidaEm);
 
     /// <summary>The last-closed query, exposed so a test can assert its SQL text (unit filter explicit, no organization filter: RLS does it).</summary>
     internal static IQueryable<ComandaRow> UltimaFechadaDaMesa(MesasDbContext context, Guid unitId, Guid mesaId, Guid? garcomId)
@@ -1187,6 +1190,7 @@ public static class ComandasServices
         services.AddSingleton<IDivisoesStore, PostgresDivisoesStore>();
         services.AddSingleton<GestaoDaDivisaoDaConta>();
         services.AddSingleton<GestaoDaTransferenciaDeItens>();
+        services.AddSingleton<GestaoDoComprovante>();
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDeGarcons>();
         services.AddSingleton<ConsultaDaUltimaVez>();

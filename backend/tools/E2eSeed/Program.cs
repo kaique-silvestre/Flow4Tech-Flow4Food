@@ -92,7 +92,7 @@ internal static class SeedMain
         var perfilCaixa = await perfis.CriarAsync(
             requestA,
             "Caixa",
-            Rules("comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir", "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver"));
+            Rules("comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir", "comanda:reimprimir", "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "produto:ver", "mesa:ver"));
         Expect(perfilGarcom.Resultado == ResultadoGestao.Ok && perfilCaixa.Resultado == ResultadoGestao.Ok, "profiles");
         Expect(await perfis.AtribuirAsync(requestA, garcom, perfilGarcom.Id!.Value) == ResultadoGestao.Ok, "assign garcom");
         Expect(await perfis.AtribuirAsync(requestA, caixa, perfilCaixa.Id!.Value) == ResultadoGestao.Ok, "assign caixa");

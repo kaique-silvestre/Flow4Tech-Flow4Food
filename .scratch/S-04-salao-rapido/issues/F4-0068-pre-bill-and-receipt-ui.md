@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] 'Ver pré-conta' with the server's numbers; share through the phone's share sheet (fallback: copy text).
 - [ ] 'Conta pedida' button with clear state; the table map shows 'aguardando conta'.

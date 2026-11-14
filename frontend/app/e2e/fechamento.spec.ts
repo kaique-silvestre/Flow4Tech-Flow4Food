@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
 import { lerSeed, SENHA } from "./seed";
 
 const shots = join(import.meta.dirname, "..", "e2e-results", "screenshots");
@@ -111,6 +111,14 @@ async function abrirComanda(page: Page, nome: string) {
   await expect(page.getByRole("heading", { level: 2, name: nome })).toBeVisible();
 }
 
+/** The numeric keypad of the sheet: one tap per digit, cents filling from the right. */
+async function digitarNoTeclado(folha: Locator, digitos: string) {
+  const teclado = folha.getByRole("group", { name: "Teclado numérico" });
+  for (const d of digitos) {
+    await teclado.getByRole("button", { name: d, exact: true }).click();
+  }
+}
+
 async function semHorizontal(page: Page) {
   const m = await page.evaluate(() => ({
     scroll: document.documentElement.scrollWidth,
@@ -147,7 +155,8 @@ test("the cashier receives a comanda in cash with change, partial first, then cl
   await page.getByRole("button", { name: "Fechar conta" }).click();
   let folha = page.getByRole("dialog", { name: "Fechar conta" });
   await expect(folha.getByText("Abra o caixa para receber.")).toBeVisible();
-  await expect(folha.getByRole("button", { name: "Dinheiro" })).toBeDisabled();
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await expect(folha.getByRole("button", { name: "Receber", exact: true })).toBeDisabled();
   await shoot(page, "14-caixa-fechado");
   await semHorizontal(page);
   await folha.getByRole("link", { name: "Ir para o caixa" }).click();
@@ -160,10 +169,12 @@ test("the cashier receives a comanda in cash with change, partial first, then cl
   await page.getByRole("button", { name: "Fechar conta" }).click();
   folha = page.getByRole("dialog", { name: "Fechar conta" });
 
-  // The structure of the sheet: only the Dinheiro method.
+  // The structure of the sheet: the active methods of the organization as chips (they come from the API), none chosen yet.
   await expect(folha.getByLabel("Valor a receber")).toContainText("27,50");
-  await expect(folha.getByRole("button")).toHaveText(["Remover serviço", "Voltar", "Dinheiro"]);
-  await expect(folha).not.toContainText(/Pix|Crédito|Débito|Voucher/);
+  const metodos = folha.getByRole("group", { name: /^Métodos/ });
+  await expect(metodos.getByRole("button", { name: "Dinheiro", exact: true })).toBeVisible();
+  await expect(metodos.getByRole("button", { name: "Pix" })).toBeVisible();
+  await expect(folha.getByRole("button", { name: "Receber", exact: true })).toBeDisabled();
   await shoot(page, "14-fechar-conta");
   await semHorizontal(page);
   expect(await alvosPequenos(page)).toEqual([]);
@@ -175,10 +186,11 @@ test("the cashier receives a comanda in cash with change, partial first, then cl
   await shoot(page, "14-servico-removido");
 
   // A partial payment of R$ 10,00 leaves R$ 15,00.
-  await folha.getByLabel("Dinheiro recebido").fill("1000");
-  await expect(folha.getByText(/Pagamento parcial/)).toBeVisible();
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await digitarNoTeclado(folha, "1000");
+  await expect(folha.getByLabel("Resumo do recebimento")).toContainText("falta R$ 15,00");
   await shoot(page, "14-pagamento-parcial");
-  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await folha.getByRole("button", { name: "Receber", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Recebimento registrado" })).toBeVisible();
   await expect(page.getByText(/Restam/)).toContainText("15,00");
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -188,10 +200,11 @@ test("the cashier receives a comanda in cash with change, partial first, then cl
   folha = page.getByRole("dialog", { name: "Fechar conta" });
   await expect(folha.getByLabel("Valor a receber")).toContainText("15,00");
   await expect(folha.getByText("Já recebido")).toBeVisible();
-  await folha.getByLabel("Dinheiro recebido").fill("2000");
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await digitarNoTeclado(folha, "2000");
   await expect(folha.locator(".fechar-troco-valor")).toContainText("5,00");
   await shoot(page, "14-troco");
-  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await folha.getByRole("button", { name: "Receber", exact: true }).click();
   const fechada = page.getByRole("dialog", { name: "Conta fechada" });
   await expect(fechada).toBeVisible();
   await expect(fechada.locator(".fechar-troco-valor")).toContainText("5,00");
@@ -237,7 +250,8 @@ test("a payment taken with the signal cut waits in the queue and is registered o
   await expect(folha.getByLabel("Valor a receber")).toContainText(/2[57],\d0/);
 
   await context.setOffline(true);
-  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await folha.getByRole("button", { name: "Receber", exact: true }).click();
   const naFila = page.getByRole("dialog", { name: "Recebimento na fila" });
   await expect(naFila).toBeVisible();
   await shoot(page, "14-recebimento-na-fila");
@@ -279,7 +293,8 @@ test("reopening the close sheet with a payment still in the queue is blocked: no
   await expect(folha.getByLabel("Valor a receber")).toContainText(/2[57],\d0/);
 
   await context.setOffline(true);
-  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await folha.getByRole("button", { name: "Receber", exact: true }).click();
   const naFila = page.getByRole("dialog", { name: "Recebimento na fila" });
   await expect(naFila).toBeVisible();
   await naFila.getByRole("button", { name: "Concluir" }).click();
@@ -289,7 +304,7 @@ test("reopening the close sheet with a payment still in the queue is blocked: no
   await page.getByRole("button", { name: "Fechar conta" }).click();
   folha = page.getByRole("dialog", { name: "Fechar conta" });
   await expect(folha.getByText(/esperando na fila/)).toBeVisible();
-  await expect(folha.getByRole("button", { name: "Dinheiro" })).toBeDisabled();
+  await expect(folha.getByRole("button", { name: "Receber", exact: true })).toBeDisabled();
   await congelarTransicoes(page);
   await expect(folha).toHaveCSS("transform", /none|matrix\(1, 0, 0, 1, 0, 0\)/);
   await shootNosTemas(page, "14-recebimento-bloqueado-pela-fila");
@@ -320,7 +335,8 @@ test("the queue bar shows the confirmation to remove a payment, the sending stat
   const folha = page.getByRole("dialog", { name: "Fechar conta" });
   await expect(folha.getByLabel("Valor a receber")).toContainText(/2[57],\d0/);
   await context.setOffline(true);
-  await folha.getByRole("button", { name: "Dinheiro" }).click();
+  await folha.getByRole("button", { name: "Dinheiro", exact: true }).click();
+  await folha.getByRole("button", { name: "Receber", exact: true }).click();
   await page.getByRole("dialog", { name: "Recebimento na fila" }).getByRole("button", { name: "Concluir" }).click();
   await congelarTransicoes(page);
 

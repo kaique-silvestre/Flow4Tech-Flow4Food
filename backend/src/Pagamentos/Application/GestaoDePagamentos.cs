@@ -202,7 +202,8 @@ public sealed class GestaoDePagamentos(
                     gravados.Add(PagamentoRecebido.De(pagamento));
                 }
 
-                if (turnoId is { } turno && dinheiro > 0 && !await caixa.RegistrarRecebimentoEmDinheiroAsync(org.OrganizationId, turno, dinheiro, ct))
+                // Every payment of a shift takes its row lock, cash or not (zero cents for a card or Pix): the closing waits for it and then counts it, and a closed shift refuses it.
+                if (turnoId is { } turno && !await caixa.RegistrarRecebimentoEmDinheiroAsync(org.OrganizationId, turno, dinheiro, ct))
                 {
                     throw new TurnoEncerradoException();
                 }

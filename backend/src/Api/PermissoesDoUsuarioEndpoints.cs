@@ -1,4 +1,5 @@
 using Flow4Tech.Caixa.Application;
+using Flow4Tech.Cardapio.Application;
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Permissoes.Application;
 
@@ -13,7 +14,7 @@ internal static class PermissoesDoUsuarioEndpoints
     private static readonly string[] Prefixos = ["comanda:", "caixa:", "mesa:", "produto:", "pagamento:"];
 
     /// <summary>The profile permissions the phone users screen needs, by exact name (the other <c>perfil:</c>/<c>permissao:</c> entries stay hidden).</summary>
-    private static readonly string[] Exatas = [PerfisPermissions.Ver, PerfisPermissions.Gerir, PerfisPermissions.Atribuir];
+    private static readonly string[] Exatas = [PerfisPermissions.Ver, PerfisPermissions.Gerir, PerfisPermissions.Atribuir, ImportacaoPermissions.Importar];
 
     public static void MapPermissoesDoUsuario(this IEndpointRouteBuilder app, IEnumerable<string> catalog)
     {

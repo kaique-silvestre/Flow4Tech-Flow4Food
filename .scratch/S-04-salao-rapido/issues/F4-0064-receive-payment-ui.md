@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Method chips from the API (no hard-coded list); one line per method; remaining balance live; change in large type for cash.
 - [ ] Partial and mixed payments leave the comanda open with what remains; payments still carry client ids and respect the fixes of ticket 02 (no double payment).

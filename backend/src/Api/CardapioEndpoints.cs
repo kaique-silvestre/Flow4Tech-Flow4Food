@@ -300,6 +300,8 @@ internal static class CardapioEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<CardapioErro>(StatusCodes.Status404NotFound);
+
+        app.MapImportacaoDoCardapio();
     }
 
     private static OpcaoDto Dto(Opcao o) => new(o.Id, o.Nome, o.PrecoCentavos, o.Ativa);

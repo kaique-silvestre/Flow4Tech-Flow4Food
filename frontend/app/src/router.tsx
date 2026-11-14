@@ -80,6 +80,12 @@ const cardapioRoute = createRoute({
   component: lazyRouteComponent(() => import("./features/cardapio/CardapioPage"), "CardapioPage"),
 });
 
+const importarCardapioRoute = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/salao/cardapio/importar",
+  component: lazyRouteComponent(() => import("./features/cardapio/ImportarPage"), "ImportarPage"),
+});
+
 const pessoasRoute = createRoute({
   getParentRoute: () => appLayout,
   path: "/salao/pessoas",
@@ -118,7 +124,15 @@ const unidadeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  appLayout.addChildren([salaoRoute, comandaRoute, mesasRoute, caixaRoute, cardapioRoute, pessoasRoute]),
+  appLayout.addChildren([
+    salaoRoute,
+    comandaRoute,
+    mesasRoute,
+    caixaRoute,
+    cardapioRoute,
+    importarCardapioRoute,
+    pessoasRoute,
+  ]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);
 

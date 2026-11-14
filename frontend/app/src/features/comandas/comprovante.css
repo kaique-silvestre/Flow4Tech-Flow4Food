@@ -1,0 +1,101 @@
+/* Pre-bill and receipt (F4-0068). Tokens only; every button is 44px or larger. */
+.comp {
+  margin: 0 0 var(--f4-space-3);
+}
+
+.comp-aviso {
+  margin: 0 0 var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.comp-via {
+  margin: 0 0 var(--f4-space-2);
+  font-weight: 600;
+}
+
+.comp-itens,
+.comp-partes {
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.comp-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-2) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.comp-detalhe {
+  display: block;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.comp-rotulo {
+  margin-left: var(--f4-space-2);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+}
+
+.comp-conta {
+  margin: 0 0 var(--f4-space-3);
+}
+
+.comp-conta > div,
+.comp-partes li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  padding: var(--f4-space-1) 0;
+}
+
+.comp-conta dt,
+.comp-conta dd {
+  margin: 0;
+}
+
+.comp-total {
+  font-weight: 700;
+  border-top: 1px solid var(--f4-border-strong);
+}
+
+.comp-sub {
+  margin: 0;
+  color: var(--f4-ink-muted);
+}
+
+.comp-status {
+  margin: 0;
+  color: var(--f4-ink-muted);
+}
+
+.comp-rodape,
+.comp-pagina {
+  display: flex;
+  flex-direction: column;
+  gap: var(--f4-space-3);
+}
+
+.comp-botoes,
+.comp-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+}
+
+.comp-botoes .f4-btn,
+.comp-acoes .f4-btn {
+  flex: 1 1 8rem;
+  min-height: 44px;
+}
+
+.comp-voltar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}

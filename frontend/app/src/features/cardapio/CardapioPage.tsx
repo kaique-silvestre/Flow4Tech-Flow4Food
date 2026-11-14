@@ -1,5 +1,6 @@
 import { Button, formatBRL, Notice, Switch, ToneBadge } from "@flow4tech/design-system";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
@@ -7,6 +8,7 @@ import { CHAVE_DA_GESTAO, carregarGestao, type DadosDaGestao, Recusado, type Res
 import { FolhaDePreco } from "./FolhaDePreco";
 import { agrupar, corpoDaAlteracao, filtrar, type Mudanca, type ProdutoGestao, paraProdutoGestao } from "./logica";
 import "./cardapio.css";
+import "./importacao.css";
 
 const SEM_PERMISSAO = "Você não tem permissão para isso.";
 
@@ -190,6 +192,12 @@ export function CardapioPage() {
         Cardápio
       </h2>
       <p className="gestao-lead">Marque o que acabou, desative o que saiu do cardápio e ajuste preços.</p>
+
+      {permissoes.pode("cardapio:importar") ? (
+        <Link to="/salao/cardapio/importar" className="f4-btn imp-link gestao-importar" data-variant="secondary">
+          Importar por planilha
+        </Link>
+      ) : null}
 
       {produtos.length > 0 ? (
         <div className="f4-field gestao-busca">
