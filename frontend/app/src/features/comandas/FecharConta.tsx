@@ -45,6 +45,8 @@ interface Props {
   /** The highest comanda version the screen knows; the sheet raises it with what its writes answer. */
   versao: { current: number };
   onAtualizar: () => Promise<void>;
+  /** Offered after the bill closes, to whoever may reissue the receipt (comanda:reimprimir). */
+  onVerRecibo?: () => void;
 }
 
 type Fase =
@@ -91,6 +93,7 @@ export function FecharContaSheet({
   itens = [],
   versao,
   onAtualizar,
+  onVerRecibo,
 }: Props) {
   const permissoes = usePermissoes();
   const navegar = useNavigate();
@@ -522,7 +525,22 @@ export function FecharContaSheet({
               : "Recebimento na fila"
         }
         description={nome}
-        footer={<Button onClick={concluir}>{fase.tipo === "parcial" ? "Continuar" : "Concluir"}</Button>}
+        footer={
+          <>
+            {fase.tipo === "fechada" && onVerRecibo ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  onOpenChange(false);
+                  onVerRecibo();
+                }}
+              >
+                Ver recibo
+              </Button>
+            ) : null}
+            <Button onClick={concluir}>{fase.tipo === "parcial" ? "Continuar" : "Concluir"}</Button>
+          </>
+        }
       >
         {fase.tipo === "naFila" ? (
           <Notice tone="info">

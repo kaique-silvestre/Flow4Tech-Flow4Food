@@ -1,6 +1,6 @@
 import type { components } from "@flow4tech/api-client";
 import { onlineManager } from "@tanstack/react-query";
-import { screen, within } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, jsonDoContrato, renderEm, sessaoJson, stubRede } from "../../test-utils";
@@ -142,6 +142,53 @@ describe("close the bill in cash", () => {
     const pago = chamadas.find((c) => c.method === "POST" && c.path.endsWith("/comandas/c1/pagamentos"));
     expect(pago!.body).toMatchObject({ recebidoCentavos: 3000, versao: 2 });
     expect(chamadas.some((c) => c.path.endsWith("/comandas/c1/fechar"))).toBe(true);
+  });
+
+  it("offers the receipt after closing only to who may reissue it, and opens it", async () => {
+    const fechar = {
+      "POST /comandas/c1/pagamentos": jsonDoContrato("post", "/comandas/{comandaId}/pagamentos", 201, pagamento()),
+      "POST /comandas/c1/fechar": jsonDoContrato(
+        "post",
+        "/comandas/{comandaId}/fechar",
+        200,
+        conta({ saldoCentavos: 0, pagoCentavos: 2750, versao: 4, estado: "fechada" }),
+      ),
+    };
+    const sem = await abrirFolha(fechar);
+    await digitar(sem.folha, "3000");
+    await userEvent.click(within(sem.folha).getByRole("button", { name: "Receber" }));
+    await screen.findByText("Conta fechada");
+    expect(screen.queryByRole("button", { name: "Ver recibo" })).toBeNull();
+    cleanup();
+
+    const recibo = {
+      tipo: "recibo",
+      segundaVia: true,
+      aviso: "Sem valor fiscal",
+      numero: 7,
+      numeroTexto: "#7",
+      identificacao: "Ana",
+      diaOperacional: "2026-11-14",
+      abertaEm: new Date().toISOString(),
+      fechadaEm: new Date().toISOString(),
+      contaPedidaEm: null,
+      geradaEm: new Date().toISOString(),
+      itens: [],
+      descontos: [],
+      conta: { ...conta(), descontoCentavos: 0 },
+      pagamentos: [],
+      partes: null,
+    };
+    const com = await abrirFolha({ ...fechar, "GET /comandas/c1/recibo": json(recibo) }, [
+      ...CAIXA,
+      "comanda:reimprimir",
+    ]);
+    await digitar(com.folha, "3000");
+    await userEvent.click(within(com.folha).getByRole("button", { name: "Receber" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Ver recibo" }));
+
+    expect(await screen.findByRole("heading", { level: 2, name: /Recibo/ })).toBeVisible();
+    expect(screen.getByText("2ª via")).toBeVisible();
   });
 
   it("turns an amount below the balance into a partial payment that leaves the comanda open", async () => {
