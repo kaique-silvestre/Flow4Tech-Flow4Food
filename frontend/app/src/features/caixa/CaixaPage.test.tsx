@@ -4,7 +4,6 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, jsonDoContrato, renderEm, sessaoJson, stubRede, TODAS_AS_PERMISSOES } from "../../test-utils";
-import { tomDaDiferenca } from "./CaixaPage";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -26,11 +25,28 @@ const turno = (extra: Partial<components["schemas"]["TurnoDto"]> = {}): componen
   recebidoDinheiroCentavos: 2_750,
   ...extra,
 });
+const resumo = (
+  t: components["schemas"]["TurnoDto"],
+  extra: Partial<components["schemas"]["ResumoDoTurnoDto"]> = {},
+): components["schemas"]["ResumoDoTurnoDto"] => ({
+  turno: t,
+  cego: false,
+  suprimentosCentavos: 0,
+  sangriasCentavos: 0,
+  esperadoCentavos: Number(t.fundoCentavos) + Number(t.recebidoDinheiroCentavos),
+  porMetodo: [],
+  ...extra,
+});
+const abertoComMovimentos = (t = turno()) => ({
+  "GET /caixa/turnos/atual/resumo": json(resumo(t)),
+  "GET /caixa/turnos/atual/movimentos": json([]),
+});
+const MOVS = { "GET /caixa/turnos/atual/movimentos": json([]) };
 const semTurno = new Response(JSON.stringify({ codigo: "sem-turno-aberto" }), { status: 404 });
 
 describe("caixa screen", () => {
   it("shows the closed state with the float field, explaining that the float is not a sale", async () => {
-    stubRede({ ...pronta, "GET /caixa/turnos/atual": semTurno });
+    stubRede({ ...pronta, "GET /caixa/turnos/atual/resumo": semTurno });
 
     await renderEm("/salao/caixa");
 
@@ -44,7 +60,9 @@ describe("caixa screen", () => {
     let aberto = false;
     const chamadas = stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": () => (aberto ? json(turno({ recebidoDinheiroCentavos: 0 })) : semTurno.clone()),
+      ...MOVS,
+      "GET /caixa/turnos/atual/resumo": () =>
+        aberto ? json(resumo(turno({ recebidoDinheiroCentavos: 0 }))) : semTurno.clone(),
       "POST /caixa/turnos": () => {
         aberto = true;
         return json(turno({ recebidoDinheiroCentavos: 0 }), { status: 201 });
@@ -65,7 +83,7 @@ describe("caixa screen", () => {
   it("lets a zero float open the shift", async () => {
     const chamadas = stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": semTurno,
+      "GET /caixa/turnos/atual/resumo": semTurno,
       "POST /caixa/turnos": jsonDoContrato("post", "/caixa/turnos", 201, turno()),
     });
     await renderEm("/salao/caixa");
@@ -83,7 +101,7 @@ describe("caixa screen", () => {
   it("shows a second open as an error the user can act on", async () => {
     stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": semTurno,
+      "GET /caixa/turnos/atual/resumo": semTurno,
       "POST /caixa/turnos": json({ codigo: "turno-ja-aberto" }, { status: 409 }),
     });
     await renderEm("/salao/caixa");
@@ -97,7 +115,7 @@ describe("caixa screen", () => {
   });
 
   it("shows the open shift: opened at, float, received and the expected cash; the float is not a sale", async () => {
-    stubRede({ ...pronta, "GET /caixa/turnos/atual": json(turno()) });
+    stubRede({ ...pronta, ...abertoComMovimentos() });
 
     await renderEm("/salao/caixa");
 
@@ -117,7 +135,7 @@ describe("caixa screen", () => {
   ])("closes with the count and tells the result in words: difference %i", async (diferenca, palavra, tom) => {
     stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": json(turno()),
+      ...abertoComMovimentos(),
       "POST /caixa/turnos/atual/fechar": (c) =>
         json(
           turno({
@@ -147,7 +165,7 @@ describe("caixa screen", () => {
   it("accepts a zero count and sends it", async () => {
     const chamadas = stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": json(turno({ recebidoDinheiroCentavos: 0 })),
+      ...abertoComMovimentos(turno({ recebidoDinheiroCentavos: 0 })),
       "POST /caixa/turnos/atual/fechar": json(
         turno({
           contadoCentavos: 0,
@@ -172,7 +190,8 @@ describe("caixa screen", () => {
     let fechado = false;
     stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": () => (fechado ? semTurno.clone() : json(turno())),
+      ...MOVS,
+      "GET /caixa/turnos/atual/resumo": () => (fechado ? semTurno.clone() : json(resumo(turno()))),
       "POST /caixa/turnos/atual/fechar": () => {
         fechado = true;
         return json(
@@ -194,7 +213,8 @@ describe("caixa screen", () => {
     let falhar = true;
     stubRede({
       ...pronta,
-      "GET /caixa/turnos/atual": () => (falhar ? new Response(null, { status: 500 }) : json(turno())),
+      ...MOVS,
+      "GET /caixa/turnos/atual/resumo": () => (falhar ? new Response(null, { status: 500 }) : json(resumo(turno()))),
     });
     await renderEm("/salao/caixa");
 
@@ -209,7 +229,7 @@ describe("caixa screen", () => {
     stubRede({
       ...pronta,
       "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }),
-      "GET /caixa/turnos/atual": semTurno,
+      "GET /caixa/turnos/atual/resumo": semTurno,
     });
     await renderEm("/salao/caixa");
 
@@ -220,7 +240,7 @@ describe("caixa screen", () => {
     stubRede({
       ...pronta,
       "GET /sessao/permissoes": json({ permissoes: ["caixa:ver", "comanda:ver"] }),
-      "GET /caixa/turnos/atual": json(turno()),
+      ...abertoComMovimentos(),
     });
     await renderEm("/salao/caixa");
     expect(await screen.findByRole("heading", { level: 2, name: "Caixa aberto" })).toBeVisible();
@@ -228,7 +248,7 @@ describe("caixa screen", () => {
   });
 
   it("says there is no permission when the server refuses to show the shift", async () => {
-    stubRede({ ...pronta, "GET /caixa/turnos/atual": new Response(null, { status: 403 }) });
+    stubRede({ ...pronta, "GET /caixa/turnos/atual/resumo": new Response(null, { status: 403 }) });
 
     await renderEm("/salao/caixa");
 
@@ -256,11 +276,8 @@ describe("tab bar by permission", () => {
   });
 });
 
-describe("difference tone", () => {
-  it("is calm when exact, an alert for a shortage and a warning for a surplus", () => {
-    expect(tomDaDiferenca(0)).toBe("success");
-    expect(tomDaDiferenca(-1)).toBe("alert");
-    expect(tomDaDiferenca(1)).toBe("warning");
+describe("test permissions", () => {
+  it("default to the three cash register permissions of the original screen", () => {
     expect(TODAS_AS_PERMISSOES).toContain("caixa:abrir");
   });
 });

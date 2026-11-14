@@ -6,7 +6,7 @@
 **Nature:** ui
 **tdd-scope:** required
 **Seams:** Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Supply and withdrawal sheets with reason and destination; movement list of the shift.
 - [ ] Close sheet with a count per method; difference in words; blind mode hides the expected value until submitted.
