@@ -32,6 +32,7 @@ public sealed class GestaoDaDiferenca(IUnitOfWork unitOfWork, ICaixaStore store,
     {
         ArgumentNullException.ThrowIfNull(request);
         var recontar = recontadoCentavos is not null;
+        var porAutoaprovacao = false;
         try
         {
             return await unitOfWork.ExecuteAsync(
@@ -49,15 +50,18 @@ public sealed class GestaoDaDiferenca(IUnitOfWork unitOfWork, ICaixaStore store,
                         return new ResultadoDoTurno(ResultadoDoCaixa.NaoEncontrado);
                     }
 
-                    if (turno.FechadoEm is null || turno.Situacao != SituacaoDaConferencia.Pendente)
+                    // The row lock comes first: of two approvers racing, one wins and the other finds the shift no longer pending, and whatever is read below is what the winner left.
+                    if (turno.FechadoEm is null || turno.Situacao != SituacaoDaConferencia.Pendente || !await store.TravarPendenteAsync(org.OrganizationId, turno.Id, ct))
                     {
                         return new ResultadoDoTurno(ResultadoDoCaixa.NaoPendente);
                     }
 
+                    turno = (await store.AcharAsync(org.OrganizationId, turnoId, ct))!;
                     var autoaprovacao = (await settings.ResolveAsync(CaixaSettings.PermitirAutoaprovacao, org.OrganizationId, org.UnitId, clock.UtcNow, ct)).AsBoolean();
                     if (!RegrasDoCaixa.PodeAprovar(turno.OperadorId == request.UserId, autoaprovacao))
                     {
-                        return new ResultadoDoTurno(ResultadoDoCaixa.AutoaprovacaoNegada);
+                        porAutoaprovacao = true;
+                        throw new DecisaoDeCaixaNegadaException();
                     }
 
                     var novas = recontar ? await ContagensDoTurno.MontarAsync(store, org.OrganizationId, turno.Id, recontagens, ct) : [];
@@ -69,7 +73,6 @@ public sealed class GestaoDaDiferenca(IUnitOfWork unitOfWork, ICaixaStore store,
                     var atuais = await store.ContagensAtuaisAsync(org.OrganizationId, turno.Id, ct);
                     var antes = RegrasDoCaixa.DiferencaTotal(turno.DiferencaCentavos!.Value, atuais.Select(a => a.DiferencaCentavos));
 
-                    // The transition takes the row lock: of two approvers racing, one wins and the other finds the shift no longer pending.
                     var transitou = recontar
                         ? await store.RecontarDinheiroAsync(org.OrganizationId, turno.Id, recontadoCentavos!.Value, ct)
                         : await store.AprovarAsync(org.OrganizationId, turno.Id, ct);
@@ -78,7 +81,7 @@ public sealed class GestaoDaDiferenca(IUnitOfWork unitOfWork, ICaixaStore store,
                         return new ResultadoDoTurno(ResultadoDoCaixa.NaoPendente);
                     }
 
-                    // The question comes after the row lock and measures the SERVER's number: the difference the shift was closed with.
+                    // The question comes after the row lock and measures the SERVER's number: the difference the shift has right now.
                     if (!await decisao.PodeAsync(request, CaixaPermissions.AprovarDiferenca, antes, ct))
                     {
                         throw new DecisaoDeCaixaNegadaException();
@@ -137,7 +140,7 @@ public sealed class GestaoDaDiferenca(IUnitOfWork unitOfWork, ICaixaStore store,
                 request,
                 new AuditEntry { Action = PlatformAuditActions.AcessoNegar, Result = AuditResult.Negado, ObjectType = "turno-caixa", ObjectId = turnoId.ToString("D"), After = new JsonObject { ["permissao"] = CaixaPermissions.AprovarDiferenca } },
                 cancellationToken);
-            return new ResultadoDoTurno(ResultadoDoCaixa.Negado);
+            return new ResultadoDoTurno(porAutoaprovacao ? ResultadoDoCaixa.AutoaprovacaoNegada : ResultadoDoCaixa.Negado);
         }
     }
 }

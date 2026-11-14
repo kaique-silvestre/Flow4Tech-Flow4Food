@@ -1,5 +1,9 @@
 caixa:abrir
+caixa:aprovar-diferenca
 caixa:fechar
+caixa:fechar-cego
+caixa:sangria
+caixa:suprimento
 caixa:ver
 caixa:ver-todos
 cardapio:preco-alterar

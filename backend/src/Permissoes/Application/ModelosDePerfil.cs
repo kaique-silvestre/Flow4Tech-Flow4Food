@@ -23,7 +23,7 @@ public static class ModelosDePerfil
     private static readonly string[] Caixa =
     [
         "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir",
-        "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "produto:ver", "mesa:ver",
+        "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "produto:ver", "mesa:ver",
     ];
 
     // The manager does everything of the salão except managing profiles and permissions (an owner-only decision until the owner says otherwise).
@@ -32,23 +32,35 @@ public static class ModelosDePerfil
         "comanda:abrir", "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada",
         "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados",
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
-        "pagamento:dividir", "pagamento:registrar-gorjeta", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
+        "pagamento:dividir", "pagamento:registrar-gorjeta", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "caixa:aprovar-diferenca", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
         "comanda:desconto", "comanda:cortesia", "comanda:brinde",
     ];
 
-    // Default limits of the manager (F4-0118; the owner is the factory profile, uncapped). Discount: up to 20% and R$ 150,00 per discount. Courtesy and gift are always measured at 100%,
-    // so they carry only a value cap, R$ 80,00 of table value. No daily cap by default. Numbers a restaurant is expected to edit.
+    // Default limits (numbers a restaurant is expected to edit; the owner is the factory profile, uncapped; no daily cap by default).
+    // Cashier (F4-0065): moves up to R$ 500,00 in and R$ 1.000,00 out per movement and closes blind when the unit asks for it. It does not approve a difference: the model that closes is not the one
+    // that approves (separation of duties).
+    private static readonly RegraDeAcesso[] LimitesDoCaixa =
+    [
+        new(RuleEffect.Allow, "caixa:suprimento", MaxValueCents: 50_000),
+        new(RuleEffect.Allow, "caixa:sangria", MaxValueCents: 100_000),
+    ];
+
+    // Manager. Discount (F4-0118): up to 20% and R$ 150,00 per discount; courtesy and gift are always measured at 100%, so they carry only a value cap, R$ 80,00 of table value. Cash register
+    // (F4-0065): moves up to R$ 5.000,00 per movement and approves a total difference up to R$ 200,00; above that only the owner decides.
     private static readonly RegraDeAcesso[] LimitesDoGerente =
     [
         new(RuleEffect.Allow, "comanda:desconto", MaxPercent: 20m, MaxValueCents: 15_000),
         new(RuleEffect.Allow, "comanda:cortesia", MaxValueCents: 8_000),
         new(RuleEffect.Allow, "comanda:brinde", MaxValueCents: 8_000),
+        new(RuleEffect.Allow, "caixa:suprimento", MaxValueCents: 500_000),
+        new(RuleEffect.Allow, "caixa:sangria", MaxValueCents: 500_000),
+        new(RuleEffect.Allow, "caixa:aprovar-diferenca", MaxValueCents: 20_000),
     ];
 
     public static IReadOnlyList<ModeloDePerfil> Todos { get; } =
     [
         new("garcom", "Garçom", Garcom, []),
-        new("caixa", "Caixa", Caixa, []),
+        new("caixa", "Caixa", Caixa, LimitesDoCaixa),
         new("gerente", "Gerente", Gerente, LimitesDoGerente),
     ];
 

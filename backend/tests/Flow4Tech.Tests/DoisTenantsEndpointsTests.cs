@@ -177,6 +177,8 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         // The salão tables hold rows of both organizations before the sweep, so the sweep is not vacuous for them.
         var salaoSweepA = await RunSalaoAsync(client, a);
         var salaoSweepB = await RunSalaoAsync(client, b);
+        _ = await RunCaixaCompletoAsync(client, salaoSweepA);
+        _ = await RunCaixaCompletoAsync(client, salaoSweepB);
         // A unit price in each organization, so the sweep of the new table is not vacuous either.
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepA.ProdutoId}/preco-unidade", salaoSweepA.Token, new { precoCentavos = 1300 }));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepB.ProdutoId}/preco-unidade", salaoSweepB.Token, new { precoCentavos = 1400 }));
@@ -193,6 +195,9 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("rodadas", tables);
         Assert.Contains("pagamentos", tables);
         Assert.Contains("turnos_caixa", tables);
+        Assert.Contains("movimentos_caixa", tables);
+        Assert.Contains("contagens_turno", tables);
+        Assert.Contains("aprovacoes_diferenca", tables);
         Assert.Contains("produtos_preco_unidade", tables);
         Assert.Contains("metodos_pagamento", tables);
         Assert.Contains("grupos_opcao", tables);
@@ -214,6 +219,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(7L, (await QueryAsync(tenant, "SELECT count(*) FROM metodos_pagamento", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+            Assert.Equal((2L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM movimentos_caixa), (SELECT count(*) FROM contagens_turno), (SELECT count(*) FROM aprovacoes_diferenca)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
             foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia", "produtos_frequencia_garcom" })
             {
                 Assert.Equal(1L, (await QueryAsync(tenant, $"SELECT count(*) FROM {optionTable}", r => r.GetInt64(0))).Single());
@@ -269,6 +275,34 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(10_000 + 2_970, salaoA.EsperadoCentavos);
         Assert.Equal(10_000 + 2_970, salaoB.EsperadoCentavos);
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, "/caixa/turnos/atual", salaoA.Token));
+    }
+
+    [Fact]
+    public async Task The_complete_cash_register_runs_in_each_organization_and_one_cannot_see_or_decide_the_shifts_of_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+        var salaoA = await RunSalaoAsync(client, a);
+        var salaoB = await RunSalaoAsync(client, b);
+
+        var turnoA = await RunCaixaCompletoAsync(client, salaoA);
+        var turnoB = await RunCaixaCompletoAsync(client, salaoB);
+
+        // Each organization holds its own movements, count and approval, and nothing of the other's.
+        foreach (var (tenant, turno) in new[] { (a, turnoA), (b, turnoB) })
+        {
+            Assert.Equal((2L, 1L, 1L, 1L), (await QueryAsync(tenant, $"SELECT (SELECT count(*) FROM movimentos_caixa WHERE turno_id = '{turno}'), (SELECT count(*) FROM contagens_turno WHERE turno_id = '{turno}'), (SELECT count(*) FROM aprovacoes_diferenca WHERE turno_id = '{turno}'), (SELECT count(*) FROM aprovacoes_diferenca)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2), r.GetInt64(3)))).Single());
+        }
+
+        // The other organization neither reads, approves nor recounts a shift that is not its own: always "not found".
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/caixa/turnos/{turnoA}", salaoB.Token));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/caixa/turnos/{turnoA}/diferenca/aprovar", salaoB.Token, new { motivo = "Invasao" }));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/caixa/turnos/{turnoA}/diferenca/recontar", salaoB.Token, new { contadoCentavos = 1, motivo = "Invasao" }));
+        using var historico = await SendAsync(client, HttpMethod.Get, "/caixa/historico", salaoB.Token);
+        Assert.DoesNotContain(turnoA, (await historico.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!.Select(t => t.GetProperty("id").GetGuid()));
+        Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM aprovacoes_diferenca", r => r.GetInt64(0))).Single());
     }
 
     [Fact]
@@ -891,6 +925,29 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(HttpStatusCode.OK, fechado.StatusCode);
         Assert.Equal(0, (await fechado.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("diferencaCentavos").GetInt64());
         return new Salao(token, comanda.Id, produtoId, esperado, grupoId, opcaoId);
+    }
+
+    /// <summary>
+    /// The complete cash register of one organization as its founder: a new shift of R$ 50,00, a supply of R$ 20,00, a withdrawal of R$ 15,00, closed counting R$ 65,00 against the R$ 55,00 expected
+    /// (R$ 10,00 over the tolerance, so it is pending) with a zero Pix count, then the difference approved (self-approval switched on for the organization). Returns the shift id.
+    /// </summary>
+    private static async Task<Guid> RunCaixaCompletoAsync(HttpClient client, Salao salao)
+    {
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, "/configuracoes/caixa.permitir-autoaprovacao", salao.Token, new { camada = "organizacao", valor = "true" }));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", salao.Token, new { fundoCentavos = 5_000 }));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos/atual/suprimentos", salao.Token, new { valorCentavos = 2_000, motivo = "Troco do banco" }));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos/atual/sangrias", salao.Token, new { valorCentavos = 1_500, motivo = "Deposito", destino = "Cofre" }));
+        using var metodos = await SendAsync(client, HttpMethod.Get, "/pagamentos/metodos", salao.Token);
+        var pix = (await metodos.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!.Single(m => m.GetProperty("chave").GetString() == "pix").GetProperty("id").GetGuid();
+
+        using var fechado = await SendAsync(client, HttpMethod.Post, "/caixa/turnos/atual/fechar", salao.Token, new { contadoCentavos = 6_500, contagens = new[] { new { metodoId = pix, contadoCentavos = 0 } } });
+        Assert.Equal(HttpStatusCode.OK, fechado.StatusCode);
+        var json = await fechado.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal((5_500L, 1_000L, "pendente"), (json.GetProperty("esperadoCentavos").GetInt64(), json.GetProperty("diferencaCentavos").GetInt64(), json.GetProperty("situacao").GetString()));
+        var turno = json.GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/caixa/turnos/{turno}/diferenca/aprovar", salao.Token, new { motivo = "Gorjeta no caixa" }));
+        return turno;
     }
 
     private ApiFactory Api() => new(_db.AppConnection);

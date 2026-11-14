@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Domain (pure); Real database (Testcontainers, app credential); Contract; Two tenants over HTTP (`DoisTenantsEndpointsTests` extended)
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Cash movements (supply/withdrawal) with reason and destination; append-only; included in expected cash: `fundo + cash received + supply - withdrawal` computed in SQL at close.
 - [ ] Close with a count per method; difference inside the configured tolerance concludes alone; above it the shift is closed as pending approval.

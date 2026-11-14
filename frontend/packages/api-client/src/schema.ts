@@ -660,6 +660,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/caixa/turnos/atual/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getResumoDoTurno"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/atual/movimentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listMovimentosDoTurno"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/atual/suprimentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["suprirCaixa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/atual/sangrias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sangrarCaixa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/historico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getHistoricoDoCaixa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/pendentes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listTurnosPendentes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTurno"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/{id}/diferenca/aprovar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["aprovarDiferenca"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/caixa/turnos/{id}/diferenca/recontar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["recontarDiferenca"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas": {
         parameters: {
             query?: never;
@@ -1441,6 +1585,23 @@ export interface components {
             valorCentavos: null | number | string;
             motivo: string;
         };
+        AprovacaoDto: {
+            /** Format: uuid */
+            id: string;
+            tipo: string;
+            /** Format: uuid */
+            aprovadorId: string;
+            motivo: string;
+            /** Format: int64 */
+            diferencaAntesCentavos: number | string;
+            /** Format: int64 */
+            diferencaDepoisCentavos: number | string;
+            /** Format: date-time */
+            criadoEm: string;
+        };
+        AprovarDiferencaRequest: {
+            motivo: null | string;
+        };
         AreaDto: {
             /** Format: uuid */
             id: string;
@@ -1568,6 +1729,23 @@ export interface components {
             estado: string;
             /** Format: int64 */
             descontoCentavos: number | string;
+        };
+        ContagemDto: {
+            /** Format: uuid */
+            metodoId: string;
+            metodoNome: string;
+            /** Format: int64 */
+            contadoCentavos: number | string;
+            /** Format: int64 */
+            esperadoCentavos: number | string;
+            /** Format: int64 */
+            diferencaCentavos: number | string;
+        };
+        ContagemRequest: {
+            /** Format: uuid */
+            metodoId: string;
+            /** Format: int64 */
+            contadoCentavos: number | string;
         };
         ConviteRequest: {
             email: null | string;
@@ -1708,6 +1886,13 @@ export interface components {
             /** Format: int32 */
             versaoAtual?: null | number | string;
         };
+        EsperadoDoMetodoDto: {
+            /** Format: uuid */
+            metodoId: string;
+            metodoNome: string;
+            /** Format: int64 */
+            esperadoCentavos: null | number | string;
+        };
         EventoDoHistoricoDto: {
             /** Format: uuid */
             id: string;
@@ -1727,6 +1912,7 @@ export interface components {
         FecharTurnoRequest: {
             /** Format: int64 */
             contadoCentavos: null | number | string;
+            contagens?: null | components["schemas"]["ContagemRequest"][];
         };
         GarcomDto: {
             /** Format: uuid */
@@ -1922,12 +2108,33 @@ export interface components {
             /** Format: int32 */
             itensMovidos: number | string;
         };
+        MovimentoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            turnoId: string;
+            tipo: string;
+            /** Format: int64 */
+            valorCentavos: number | string;
+            motivo: string;
+            destino: null | string;
+            /** Format: uuid */
+            operadorId: string;
+            /** Format: date-time */
+            criadoEm: string;
+        };
         MovimentoErro: {
             codigo: string;
             /** Format: uuid */
             comandaId?: null | string;
             /** Format: int32 */
             versaoAtual?: null | number | string;
+        };
+        MovimentoRequest: {
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            motivo: null | string;
+            destino: null | string;
         };
         OpcaoDoItemDto: {
             /** Format: uuid */
@@ -2098,6 +2305,12 @@ export interface components {
             pagamentos: components["schemas"]["PagamentoDto"][];
             conta: components["schemas"]["ContaDto"];
         };
+        RecontarDiferencaRequest: {
+            /** Format: int64 */
+            contadoCentavos: null | number | string;
+            motivo: null | string;
+            contagens: null | components["schemas"]["ContagemRequest"][];
+        };
         RedefinirSenhaRequest: {
             token: null | string;
             novaSenha: null | string;
@@ -2143,6 +2356,17 @@ export interface components {
             /** Format: date-time */
             vigenteAPartirDe: null | string;
             motivo: null | string;
+        };
+        ResumoDoTurnoDto: {
+            turno: components["schemas"]["TurnoDto"];
+            cego: boolean;
+            /** Format: int64 */
+            suprimentosCentavos: number | string;
+            /** Format: int64 */
+            sangriasCentavos: number | string;
+            /** Format: int64 */
+            esperadoCentavos: null | number | string;
+            porMetodo: components["schemas"]["EsperadoDoMetodoDto"][];
         };
         RodadaDto: {
             /** Format: uuid */
@@ -2233,6 +2457,12 @@ export interface components {
             /** Format: uuid */
             unidadeDestinoId: string;
         };
+        TurnoDetalheDto: {
+            turno: components["schemas"]["TurnoDto"];
+            contagens: components["schemas"]["ContagemDto"][];
+            movimentos: components["schemas"]["MovimentoDto"][];
+            aprovacoes: components["schemas"]["AprovacaoDto"][];
+        };
         TurnoDto: {
             /** Format: uuid */
             id: string;
@@ -2255,6 +2485,14 @@ export interface components {
             diferencaTexto: null | string;
             /** Format: int64 */
             recebidoDinheiroCentavos: number | string;
+            situacao?: null | string;
+            /** Format: int64 */
+            suprimentosCentavos?: null | number | string;
+            /** Format: int64 */
+            sangriasCentavos?: null | number | string;
+            /** @default false */
+            esperadoOculto: boolean;
+            contagens?: null | components["schemas"]["ContagemDto"][];
         };
         UltimaVezDaMesaDto: {
             /** Format: uuid */
@@ -4536,6 +4774,464 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    getResumoDoTurno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumoDoTurnoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    listMovimentosDoTurno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suprirCaixa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MovimentoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    sangrarCaixa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MovimentoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimentoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    getHistoricoDoCaixa: {
+        parameters: {
+            query?: {
+                operadorId?: string;
+                de?: string;
+                ate?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listTurnosPendentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTurno: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDetalheDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    aprovarDiferenca: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AprovarDiferencaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+        };
+    };
+    recontarDiferenca: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecontarDiferencaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaixaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

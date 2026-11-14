@@ -184,6 +184,9 @@ public interface ICaixaStore
     /// <summary>Sets the situation of a CLOSED shift (used right after closing, inside the closing unit of work).</summary>
     Task DefinirSituacaoAsync(Guid organizationId, Guid turnoId, SituacaoDaConferencia situacao, CancellationToken cancellationToken);
 
+    /// <summary>Locks the row of a shift that is still pending approval; false when it is not (open, concluded or approved). What the caller reads AFTER this call is what the winner of a race left.</summary>
+    Task<bool> TravarPendenteAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken);
+
     /// <summary>Marks a pending shift approved; false (nothing written) when it was no longer pending. The row lock makes two approvers a one-wins race.</summary>
     Task<bool> AprovarAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken);
 
@@ -209,7 +212,7 @@ public interface IMovimentosDoCaixa
     /// <summary>The id of the operator's open shift in the unit, or null.</summary>
     Task<Guid?> TurnoAbertoAsync(Guid organizationId, Guid unitId, Guid operadorId, CancellationToken cancellationToken);
 
-    /// <summary>Adds cash applied to a comanda to the expected amount of an OPEN shift; false (nothing written) when the shift is no longer open.</summary>
+    /// <summary>Adds cash applied to a comanda to the expected amount of an OPEN shift (zero for a payment without cash: it still takes the row lock the closing waits on); false (nothing written) when the shift is no longer open.</summary>
     Task<bool> RegistrarRecebimentoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken);
 }
 

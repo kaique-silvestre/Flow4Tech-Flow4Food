@@ -294,13 +294,21 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
     public async Task<long?> SaldoDaGavetaTravandoAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken)
     {
         await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
-        var saldos = await context.Database.SqlQuery<long>(
+
+        // Statement 1 takes the row lock (a movement in flight finishes first); statement 2 then sums with a snapshot that sees what that movement committed. One statement would read
+        // the movements with the snapshot taken BEFORE the wait and let two withdrawals overdraw the drawer.
+        var travado = await context.Database.SqlQuery<int>($"SELECT 1 AS \"Value\" FROM turnos_caixa WHERE id = {turnoId} AND fechado_em IS NULL FOR UPDATE").ToListAsync(cancellationToken);
+        if (travado.Count == 0)
+        {
+            return null;
+        }
+
+        return (await context.Database.SqlQuery<long>(
             $"""
             SELECT (t.fundo_centavos + t.recebido_dinheiro_centavos
                     + COALESCE((SELECT SUM(CASE m.tipo WHEN 'suprimento' THEN m.valor_centavos ELSE -m.valor_centavos END) FROM movimentos_caixa m WHERE m.turno_id = t.id), 0))::bigint AS "Value"
-            FROM turnos_caixa t WHERE t.id = {turnoId} AND t.fechado_em IS NULL FOR UPDATE OF t
-            """).ToListAsync(cancellationToken);
-        return saldos.Count == 0 ? null : saldos[0];
+            FROM turnos_caixa t WHERE t.id = {turnoId}
+            """).ToListAsync(cancellationToken))[0];
     }
 
     public async Task InserirMovimentoAsync(Guid organizationId, MovimentoDoCaixa movimento, CancellationToken cancellationToken)
@@ -396,6 +404,12 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
         await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
         var texto = Texto(situacao);
         await context.Database.ExecuteSqlAsync($"UPDATE turnos_caixa SET situacao_conferencia = {texto} WHERE id = {turnoId} AND fechado_em IS NOT NULL", cancellationToken);
+    }
+
+    public async Task<bool> TravarPendenteAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken)
+    {
+        await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
+        return (await context.Database.SqlQuery<int>($"SELECT 1 AS \"Value\" FROM turnos_caixa WHERE id = {turnoId} AND situacao_conferencia = 'pendente' FOR UPDATE").ToListAsync(cancellationToken)).Count == 1;
     }
 
     public async Task<bool> AprovarAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken)

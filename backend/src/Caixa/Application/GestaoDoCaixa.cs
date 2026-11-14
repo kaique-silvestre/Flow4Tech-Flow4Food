@@ -89,7 +89,7 @@ internal static class ContagensDoTurno
         }
 
         var recebido = await store.RecebidoPorMetodoAsync(organizationId, turnoId, cancellationToken);
-        return [.. pedidos.Select(p => new ContagemDoMetodo(p.MetodoId, metodos[p.MetodoId].Nome, p.ContadoCentavos, recebido.GetValueOrDefault(p.MetodoId)))];
+        return [.. pedidos.Select(p => new ContagemDoMetodo(p.MetodoId, metodos[p.MetodoId].Nome, p.ContadoCentavos, recebido.GetValueOrDefault(p.MetodoId))).OrderBy(c => c.MetodoNome, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.MetodoId)];
     }
 
     public static JsonArray ComoJson(IEnumerable<ContagemDoMetodo> contagens) =>

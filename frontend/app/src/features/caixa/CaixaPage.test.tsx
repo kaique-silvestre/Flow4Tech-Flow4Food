@@ -20,6 +20,7 @@ const turno = (extra: Partial<components["schemas"]["TurnoDto"]> = {}): componen
   fechadoEm: null,
   contadoCentavos: null,
   esperadoCentavos: null,
+  esperadoOculto: false,
   diferencaCentavos: null,
   diferencaTexto: null,
   recebidoDinheiroCentavos: 2_750,

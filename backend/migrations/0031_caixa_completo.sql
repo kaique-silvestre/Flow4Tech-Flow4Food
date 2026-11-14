@@ -6,6 +6,9 @@
 --   aprovacoes_diferenca  what an approver did about a difference above the tolerance: accepted it ('aprovacao') or counted again ('recontagem'). Append-only.
 --   turnos_caixa          suprimentos/sangrias snapshot at closing (null while open) and situacao_conferencia: 'concluida' (inside the tolerance), 'pendente' (waiting for an approver), 'aprovada'.
 --                         null while open and on shifts closed before this migration (read as concluida).
+-- The database itself ties a movement or an approval to the unit of its shift (composite foreign key over the unit).
+ALTER TABLE turnos_caixa ADD CONSTRAINT turnos_caixa_org_unidade_id UNIQUE (organizacao_id, unidade_id, id);
+
 CREATE TABLE movimentos_caixa (
   id              uuid PRIMARY KEY,
   organizacao_id  uuid        NOT NULL REFERENCES organizacoes (id),
@@ -20,7 +23,7 @@ CREATE TABLE movimentos_caixa (
   UNIQUE (organizacao_id, id),
   CHECK (tipo = 'suprimento' OR destino IS NOT NULL),
   FOREIGN KEY (organizacao_id, unidade_id) REFERENCES unidades (organizacao_id, id),
-  FOREIGN KEY (organizacao_id, turno_id) REFERENCES turnos_caixa (organizacao_id, id),
+  FOREIGN KEY (organizacao_id, unidade_id, turno_id) REFERENCES turnos_caixa (organizacao_id, unidade_id, id),
   FOREIGN KEY (organizacao_id, operador_id) REFERENCES contas (organizacao_id, id)
 );
 
@@ -53,7 +56,7 @@ CREATE TABLE aprovacoes_diferenca (
   criado_em                  timestamptz NOT NULL,
   UNIQUE (organizacao_id, id),
   FOREIGN KEY (organizacao_id, unidade_id) REFERENCES unidades (organizacao_id, id),
-  FOREIGN KEY (organizacao_id, turno_id) REFERENCES turnos_caixa (organizacao_id, id),
+  FOREIGN KEY (organizacao_id, unidade_id, turno_id) REFERENCES turnos_caixa (organizacao_id, unidade_id, id),
   FOREIGN KEY (organizacao_id, aprovador_id) REFERENCES contas (organizacao_id, id)
 );
 

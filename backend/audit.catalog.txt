@@ -4,7 +4,11 @@ area:criar
 autenticacao:bloquear
 autenticacao:falhar
 caixa:abrir
+caixa:aprovar-diferenca
 caixa:fechar
+caixa:recontar-diferenca
+caixa:sangria
+caixa:suprimento
 categoria:alterar
 categoria:criar
 comanda:abrir
