@@ -1,0 +1,83 @@
+/* Receive with one or several methods (F4-0064). Tokens only; every chip and row is a 44px or larger touch target. */
+.receb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--f4-space-2);
+  margin-bottom: var(--f4-space-3);
+}
+
+.receb-linhas {
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.receb-linha {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--f4-space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--f4-space-3);
+  border: 1px solid var(--f4-border);
+  border-radius: var(--f4-radius-md);
+  background: var(--f4-surface);
+  color: var(--f4-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.receb-linhas li + li {
+  margin-top: var(--f4-space-2);
+}
+
+/* The line the keypad types in: the accent border and weight say it, not the color alone (the word "o que falta" and the value stay). */
+.receb-linha[aria-pressed="true"] {
+  border: 2px solid var(--f4-accent);
+  background: var(--f4-surface-2);
+  font-weight: 600;
+}
+
+.receb-linha:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: 2px;
+}
+
+.receb-linha-nome small {
+  margin-left: var(--f4-space-1);
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-secondary);
+  font-weight: 400;
+}
+
+.receb-linha-valor {
+  font-size: var(--f4-text-sheet-title);
+}
+
+/* The keys are 48px here (the item sheet does the same) so the chips, the lines and the keypad meet in one screen. */
+.receb-teclado .f4-key {
+  min-height: 48px;
+}
+
+.receb-resumo {
+  overflow-wrap: anywhere;
+}
+
+/* Change in the pinned footer: one row, still in large type. */
+.fechar-troco.fechar-troco-linha {
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 0;
+  padding: var(--f4-space-2) var(--f4-space-3);
+}
+
+.fechar-troco-linha .fechar-troco-valor {
+  font-size: 1.75rem;
+}
+
+.f4-sheet .fechar-conta > div {
+  padding: var(--f4-space-1) 0;
+}
