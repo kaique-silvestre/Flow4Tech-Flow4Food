@@ -21,6 +21,7 @@ comanda:fechar
 comanda:juntar
 comanda:lancar-item
 comanda:receber-pagamento
+comanda:reimprimir
 comanda:remover-taxa-servico
 comanda:renomear
 comanda:transferir-item

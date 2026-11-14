@@ -24,6 +24,8 @@ comanda:dividir
 comanda:fechar
 comanda:juntar
 comanda:lancar-rodada
+comanda:pedir-conta
+comanda:reimprimir
 comanda:remover-taxa-servico
 comanda:renomear
 comanda:transferir-item

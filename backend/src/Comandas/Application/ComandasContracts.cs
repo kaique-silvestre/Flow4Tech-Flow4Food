@@ -72,6 +72,9 @@ public static class ComandaPermissions
     /// <summary>Close a comanda whose balance is zero.</summary>
     public const string Fechar = "comanda:fechar";
 
+    /// <summary>Read the second copy of the receipt of a closed comanda (non-fiscal). Audited: every copy is recorded.</summary>
+    public const string Reimprimir = "comanda:reimprimir";
+
     /// <summary>Remove the service fee of an open comanda. Sensitive: a denial is audited, and so is the removal.</summary>
     public const string RemoverTaxaServico = "comanda:remover-taxa-servico";
 }
@@ -131,6 +134,9 @@ public interface IComandasStore
 
     /// <summary>Closes an OPEN comanda as merged into <paramref name="destinoId"/>; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
     Task<bool> JuntarAsync(Guid organizationId, Guid comandaId, Guid destinoId, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
+
+    /// <summary>Marks an OPEN comanda as "bill requested" (the table then waits for the bill); false when it was no longer open or was already marked. Changes no bill and no version.</summary>
+    Task<bool> MarcarContaPedidaAsync(Guid organizationId, Guid comandaId, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 
     /// <summary>Marks the service fee of an OPEN comanda as removed; false when it was already removed or the comanda is not open.</summary>
     Task<bool> RemoverTaxaServicoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken);
@@ -218,6 +224,14 @@ public sealed record DescontoAplicado(Guid EventId, Guid ComandaId, Guid Descont
 public sealed record ItemAlterado(Guid EventId, Guid ComandaId, Guid ItemId, Guid UnidadeId, int QuantidadeAntes, int QuantidadeDepois, Guid AlteradoPor) : IDomainEvent
 {
     public const string Type = "comanda.item-alterado";
+
+    public string EventType => Type;
+}
+
+/// <summary>Someone asked for the bill of an open comanda (<c>comanda.conta-pedida</c>): its table now waits for the bill.</summary>
+public sealed record ContaPedida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, Guid? MesaId, Guid PedidaPor) : IDomainEvent
+{
+    public const string Type = "comanda.conta-pedida";
 
     public string EventType => Type;
 }

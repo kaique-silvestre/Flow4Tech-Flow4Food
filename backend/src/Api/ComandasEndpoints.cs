@@ -19,7 +19,8 @@ internal sealed record ComandaDto(
     bool TaxaServicoRemovida,
     int Versao,
     DateTimeOffset AbertaEm,
-    string? Observacao);
+    string? Observacao,
+    DateTimeOffset? ContaPedidaEm = null);
 
 /// <summary>Every field is optional on purpose: a comanda opens with a number only. Unit, waiter and channel never come from the body.</summary>
 internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, int? Pessoas);
@@ -331,6 +332,7 @@ internal static class ComandasEndpoints
         app.MapMovimentoDeItens();
         app.MapDivisaoDaConta();
         app.MapRecebimentoMisto();
+        app.MapComprovanteDaComanda();
     }
 
     internal static PagamentoDto PagamentoParaDto(PagamentoRecebido p) =>
@@ -385,7 +387,7 @@ internal static class ComandasEndpoints
     }
 
     internal static ComandaDto Dto(Comanda c) =>
-        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao);
+        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao, c.ContaPedidaEm);
 
     private static IResult Erro(ResultadoDaTroca r) => r.Resultado switch
     {

@@ -22,7 +22,7 @@ public static class ModelosDePerfil
 
     private static readonly string[] Caixa =
     [
-        "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir",
+        "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir", "comanda:reimprimir",
         "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "produto:ver", "mesa:ver",
     ];
 
@@ -33,7 +33,7 @@ public static class ModelosDePerfil
         "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados",
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
         "pagamento:dividir", "pagamento:registrar-gorjeta", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "caixa:aprovar-diferenca", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
-        "comanda:desconto", "comanda:cortesia", "comanda:brinde",
+        "comanda:desconto", "comanda:cortesia", "comanda:brinde", "comanda:reimprimir",
     ];
 
     // Default limits (numbers a restaurant is expected to edit; the owner is the factory profile, uncapped; no daily cap by default).
