@@ -105,3 +105,23 @@ conflicts:
 - The prototype's "dar um nome" and number-only entry both exist; with `Usar mesas` off the field reads "Comanda 7", not "Mesa 7" (`05` U4).
 - decided 2026-11-15 by the owner (F4-0133): the ONLY visual identity is the prototype `index.html`, in both `#m=mobile` and `#m=web`; every other identity and palette prototype was deleted. Token values still follow that file.
 - approved: 2026-11-06 by the owner: follow the approved prototype `.scratch/S-00-novo-sistema/prototipos/index.html` as the visual reference; the authored screens in `docs/design/refs/salao/autoral/` stand as the first slice. Token VALUES stay provisional (see base source).
+
+---
+
+## Several screens and web management
+Source of every rule: the prototype `.scratch/S-00-novo-sistema/prototipos/index.html` (`#m=mobile`, `#m=web`); line numbers refer to that file. Breakpoints and rationale: ADR-019. Nothing here is invented beyond the prototype; gaps are in "Owner questions".
+
+breakpoints (px, mobile-first): phone under 500 (l. 119, `max-width:499.98px`); tablet 500 to 999; computer 1000 and up, compact 1000 to 1279 and full from 1280 (l. 1048, 1050, 1943). No other number in any screen.
+navigation: phone = bottom tab bar (`.tabbar`, l. 2269, `#m=mobile`); tablet = rail 72 px (`body.rail`, l. 866); computer = sidebar 200 px compact (l. 1050) or 264 px full (l. 865), collapsible to the rail with `[` (l. 7369). The user's manual choice beats the automatic one (`flow.sidebar`, l. 8338).
+sheets, panels, dialogs: phone keeps bottom sheets (`#m=mobile&c=12&sheet=...`); tablet and computer open the comanda in the side panel, 420 px, 380 px at 1280 or less (l. 1010, 1048; `#m=web&open=3`), or in the large dialog opened by clicking the card or `N` (l. 1354, `#m=web`); the dialog stacks to one column at 900 or less (l. 1354). Short confirmations stay small dialogs.
+list and detail: at 1100 or less the board and split collapse to one column and the list header hides (l. 1879, 1943); above that the list and the detail sit side by side (`.sal-split`, 1fr + 340 px, l. 1880; `#m=web&view=table` for the table).
+density: `--density` and `--text-scale` scale padding and type (l. 1050, 1356); content padding drops from 28 to 20 px at 1180 or less (l. 1356); the context block `.ctx` hides at 1180 or less (l. 1050). Phone touch targets stay 44 px.
+keyboard (computer, `#m=web`, l. 31 and 7350-7374): `N` new comanda (table or name + Enter); in the dialog, typing "3 chope" + Enter adds the item, Enter with the search empty sends the round, `Esc` closes (innermost layer first: menu, then cancel, then dialog); `[` collapses the menu; `Ctrl+K` / `Cmd+K` opens the search palette. Single-key shortcuts are off while a field has focus or a modifier is held (l. 7366).
+focus: visible ring on every control (`:focus-visible`, 2px brand, l. 112); rows are keyboard targets with Enter or Space (l. 3877); arrow keys move inside menus and the picker (l. 3423, 7352); `Esc` returns focus to the control that opened the layer (l. 7372, `b.focus()`); `prefers-reduced-motion` removes animation (l. 123).
+
+Owner questions (the prototype does not decide):
+1. Between 900 and 999 px the prototype leaves the rail, the dialog goes to one column below 900: keep the rail up to 999 (ADR-019) or switch to the 200 px sidebar at 900?
+2. Tablet 500 to 999: comanda in the 420 px side panel or the large dialog? The prototype only shows both on the web.
+3. Phone shortcuts do not exist (no keyboard); confirm that `N`, `Ctrl+K` and `[` are computer only, and whether a tablet with a keyboard gets them.
+4. The prototype has no tablet-specific screen; confirm tablet = web layout with the rail, as ADR-019 assumes.
+
