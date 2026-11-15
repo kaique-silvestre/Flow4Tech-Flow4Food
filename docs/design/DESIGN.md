@@ -103,4 +103,5 @@ conflicts:
 - Prototype caixa on mobile is "Em breve" (`05` U18, point 7) but roadmap 1.12 requires open and close in the slice: **no reference image**; designed from the base tokens and the U18 rules (float is not a sale, blind count hides the expected cash, difference shown in words).
 - No reference for login, unit selection, forced password change, comanda list, empty/skeleton/error states: **authorial mode** for these screens; the user can add refs under `docs/design/refs/salao/` or accept authorial.
 - The prototype's "dar um nome" and number-only entry both exist; with `Usar mesas` off the field reads "Comanda 7", not "Mesa 7" (`05` U4).
+- decided 2026-11-15 by the owner (F4-0133): the ONLY visual identity is the prototype `index.html`, in both `#m=mobile` and `#m=web`; every other identity and palette prototype was deleted. Token values still follow that file.
 - approved: 2026-11-06 by the owner: follow the approved prototype `.scratch/S-00-novo-sistema/prototipos/index.html` as the visual reference; the authored screens in `docs/design/refs/salao/autoral/` stand as the first slice. Token VALUES stay provisional (see base source).

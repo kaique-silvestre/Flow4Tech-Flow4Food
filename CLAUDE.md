@@ -51,6 +51,7 @@ Leia o arquivo ANTES de mexer na área; a raiz guarda só o que vale para todo a
 - Toda ação que muda estado grava `IAuditLog` na mesma unidade de trabalho.
 - Código nunca ramifica por nome de perfil; a decisão é do `IAuthorizationEngine`.
 - Migração aplicada nunca é editada; crie um arquivo novo. Segredos só por variável de ambiente.
+- Visual: só o protótipo `.scratch/S-00-novo-sistema/prototipos/index.html` (modos `#m=mobile` e `#m=web`) vale como referência de toda tela; outras identidades/paletas foram removidas.
 - Warnings são erros; corrija a causa em vez de suprimir a regra.
 - Respostas ao dono: português, curtas (até ~8 linhas), só estado e próxima ação; detalhe só se pedido. Sem tabelas nem lista do que já foi enviado.
 
