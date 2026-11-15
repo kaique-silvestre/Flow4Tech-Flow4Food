@@ -192,7 +192,7 @@ describe("the navigation follows the band of the window", () => {
     expect(nav).toHaveAttribute("data-menu", "trilho");
     expect(within(nav).getByRole("link", { name: "Comandas" })).toHaveAttribute("title", "Comandas");
     expect(within(nav).getByRole("link", { name: "Caixa" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Expandir o menu" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Expandir menu" })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("tablet rail: each icon-only link carries its name as aria-label", async () => {
@@ -214,11 +214,11 @@ describe("the navigation follows the band of the window", () => {
     const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
     expect(nav).toHaveAttribute("data-menu", "completo");
 
-    await userEvent.click(screen.getByRole("button", { name: "Recolher o menu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Recolher menu" }));
 
     expect(nav).toHaveAttribute("data-menu", "trilho");
     expect(window.localStorage.getItem("f4t-menu")).toBe("trilho");
-    await userEvent.click(screen.getByRole("button", { name: "Expandir o menu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Expandir menu" }));
     expect(nav).toHaveAttribute("data-menu", "completo");
     expect(window.localStorage.getItem("f4t-menu")).toBe("completo");
   });
@@ -243,7 +243,7 @@ describe("the navigation follows the band of the window", () => {
       window.dispatchEvent(new Event("resize"));
     });
 
-    expect(await screen.findByRole("button", { name: "Recolher o menu" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Recolher menu" })).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Seções do salão" })).toHaveAttribute("data-menu", "completo");
   });
 

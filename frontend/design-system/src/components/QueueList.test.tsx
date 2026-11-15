@@ -52,8 +52,8 @@ describe("QueueList", () => {
       /data-estado="falhou"\] \.f4-queue-marcador \{[^}]*clip-path: polygon\(50% 0, 100% 50%, 50% 100%, 0 50%\)/s,
     );
     expect(css).toMatch(/data-estado="enviando"\] \.f4-queue-marcador \{[^}]*border-radius: 50%/s);
-    expect(css).toMatch(
-      /prefers-reduced-motion: reduce\) \{\s*\.f4-queue-item\[data-estado="enviando"\] \.f4-queue-marcador \{\s*animation: none/s,
-    );
+    const quieto = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1];
+    expect(quieto).toBeDefined();
+    expect(quieto).toMatch(/\.f4-queue-item\[data-estado="enviando"\] \.f4-queue-marcador \{\s*animation: none/);
   });
 });

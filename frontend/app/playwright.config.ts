@@ -8,6 +8,9 @@ import { defineConfig } from "@playwright/test";
 const executablePath = process.env["PW_CHROMIUM"];
 const launchOptions = executablePath ? { executablePath, args: ["--no-sandbox"] } : { args: ["--no-sandbox"] };
 
+/** `PW_PORT` moves the preview server when another worktree already holds 4173 (`reuseExistingServer` would otherwise test that worktree's build). */
+const porta = process.env["PW_PORT"] ?? "4173";
+
 export default defineConfig({
   testDir: "e2e",
   outputDir: "e2e-results/artifacts",
@@ -17,7 +20,7 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${porta}`,
     trace: "off",
     launchOptions,
     serviceWorkers: "allow",
@@ -29,7 +32,7 @@ export default defineConfig({
     },
     {
       name: "phone-360x740",
-      testIgnore: /salao-tablet\.spec\.ts/,
+      testIgnore: /salao-(tablet|computador)\.spec\.ts/,
       use: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     },
     // Tablet (ADR-019): only the specs that prove the side-by-side layout; the rest of the suite is the phone's.
@@ -38,10 +41,16 @@ export default defineConfig({
       testMatch: /salao-tablet\.spec\.ts/,
       use: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 1, hasTouch: true },
     },
+    // Computer (ADR-019): the sidebar layout and the keyboard shortcuts.
+    {
+      name: "computer-1440x900",
+      testMatch: /salao-computador\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
+    },
   ],
   webServer: {
-    command: "pnpm run build && pnpm run preview",
-    url: "http://127.0.0.1:4173/salao",
+    command: `pnpm run build && pnpm exec vite preview --host 127.0.0.1 --port ${porta} --strictPort`,
+    url: `http://127.0.0.1:${porta}/salao`,
     reuseExistingServer: !process.env["CI"],
     timeout: 180_000,
   },

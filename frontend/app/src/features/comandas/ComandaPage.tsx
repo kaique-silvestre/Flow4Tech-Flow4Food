@@ -9,6 +9,7 @@ import {
   Stepper,
   ToneBadge,
   UndoToast,
+  useFaixa,
 } from "@flow4tech/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -62,7 +63,6 @@ import { Picker } from "./Picker";
 import { PreContaSheet } from "./PreContaSheet";
 import { lerIgnorados, previaDaRepeticao, textoDosIgnorados } from "./repetir";
 import {
-  adicionar,
   adicionarConfigurado,
   type CodigoDeMotivo,
   DURACAO_DO_DESFAZER_MS,
@@ -91,6 +91,8 @@ interface FolhaDoItem {
   grupos: GrupoDeOpcao[];
   /** Present when adjusting a staged line. */
   edicao?: { chave: string; escolha: EscolhaDoItem };
+  /** The quantity typed in the quick launch ("3 chope") for a product that needs a choice: the sheet starts with it. */
+  quantidade?: number;
   /** Changes per opening, so the sheet starts clean. */
   numero: number;
 }
@@ -128,6 +130,7 @@ export function ComandaPage() {
   const frequentes = useFrequentes(pode && lancar);
   const favoritos = useFavoritos(pode && lancar);
   const navegar = useNavigate();
+  const faixa = useFaixa();
 
   const [emPreparo, setEmPreparo] = useState<ItemEmPreparo[]>([]);
   const [folhaDoItem, setFolhaDoItem] = useState<FolhaDoItem | null>(null);
@@ -546,7 +549,7 @@ export function ComandaPage() {
   }
 
   /** One tap on + : a product with nothing to choose goes straight into the round; a required group opens the item sheet. Groups come from the cache, so the common case never waits. */
-  async function aoAdicionar(produto: Produto) {
+  async function aoAdicionar(produto: Produto, quantidade = 1) {
     setAviso(null);
     let grupos = queryClient.getQueryData<GrupoDeOpcao[]>(chaveDosGrupos(produto.id));
     if (grupos === undefined) {
@@ -559,22 +562,28 @@ export function ComandaPage() {
         setAviso(
           `Sem sinal para ver as opções de ${produto.nome}. Entrou sem adicionais: confira se ele tem opção obrigatória. Se tiver, o envio será recusado e a rodada continua aqui para você corrigir.`,
         );
-        setEmPreparo((atual) => adicionar(atual, produto));
+        setEmPreparo((atual) => adicionarConfigurado(atual, { produto, quantidade, opcoes: [], observacao: null }));
         return;
       }
     }
 
     if (exigeEscolha(grupos)) {
-      abrirFolha(produto, grupos);
+      abrirFolha(produto, grupos, undefined, quantidade);
       return;
     }
 
-    setEmPreparo((atual) => adicionar(atual, produto));
+    setEmPreparo((atual) => adicionarConfigurado(atual, { produto, quantidade, opcoes: [], observacao: null }));
   }
 
-  function abrirFolha(produto: Produto, grupos: GrupoDeOpcao[], edicao?: FolhaDoItem["edicao"]) {
+  function abrirFolha(produto: Produto, grupos: GrupoDeOpcao[], edicao?: FolhaDoItem["edicao"], quantidade?: number) {
     aberturas.current += 1;
-    setFolhaDoItem({ produto, grupos, numero: aberturas.current, ...(edicao ? { edicao } : {}) });
+    setFolhaDoItem({
+      produto,
+      grupos,
+      numero: aberturas.current,
+      ...(edicao ? { edicao } : {}),
+      ...(quantidade ? { quantidade } : {}),
+    });
   }
 
   function aoAbrirOpcoes(produto: Produto) {
@@ -956,7 +965,8 @@ export function ComandaPage() {
           }
           categorias={categorias.data ?? []}
           quantidades={quantidades}
-          onAdicionar={(produto: Produto) => void aoAdicionar(produto)}
+          onAdicionar={(produto: Produto, quantidade?: number) => void aoAdicionar(produto, quantidade)}
+          lancamentoRapido={faixa === "computador"}
           onOpcoes={aoAbrirOpcoes}
           carregando={produtos.isPending || categorias.isPending}
           erro={produtos.isError || categorias.isError}
@@ -1056,6 +1066,7 @@ export function ComandaPage() {
           produto={folhaDoItem.produto}
           grupos={folhaDoItem.grupos}
           inicial={folhaDoItem.edicao?.escolha}
+          quantidadeInicial={folhaDoItem.quantidade}
           onConfirmar={confirmarItem}
         />
       ) : null}

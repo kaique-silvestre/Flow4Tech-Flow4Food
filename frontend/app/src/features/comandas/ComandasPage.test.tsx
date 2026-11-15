@@ -1,6 +1,6 @@
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
 import { acharMesaPorNumero, combinaBusca, nomeExibido, paraComanda, tempoDecorrido } from "./tipos";
 
@@ -255,7 +255,15 @@ describe("comanda list", () => {
   });
 });
 
+function larguraDaJanela(px: number) {
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: px });
+}
+
 describe("new comanda", () => {
+  // The keypad sheet is the phone's and the tablet's; the computer has its own window (below).
+  beforeEach(() => larguraDaJanela(820));
+  afterEach(() => larguraDaJanela(1024));
+
   /** The keys of the pad: a table chip can carry the same label as a key ("4"), so taps go through the pad. */
   const teclado = (folha: HTMLElement) => within(within(folha).getByRole("group", { name: "Teclado numérico" }));
 
@@ -480,5 +488,64 @@ describe("list rules", () => {
   it("finds the table an entered number refers to", () => {
     expect(acharMesaPorNumero([{ id: "a", identificacao: "12", status: "livre" }], "12")?.id).toBe("a");
     expect(acharMesaPorNumero([{ id: "a", identificacao: "Varanda", status: "livre" }], "12")).toBeUndefined();
+  });
+});
+
+/** Computer: N and the button open the prototype's centered window (.qp, index.html#m=web l. 1118) with a text field already focused. */
+describe("new comanda window on the computer", () => {
+  beforeEach(() => larguraDaJanela(1440));
+  afterEach(() => larguraDaJanela(1024));
+
+  it("opens with the text field focused and no keypad; digits open the table, Enter confirms", async () => {
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json(mesas),
+      "POST /comandas": json(comanda(1, { id: "novo", mesaId: "m4", identificacao: "4" }), { status: 201 }),
+    });
+    const { router } = await renderEm("/salao");
+    await screen.findByRole("button", { name: "Nova comanda" });
+
+    await userEvent.keyboard("n");
+
+    const janela = await screen.findByRole("dialog", { name: "Nova comanda" });
+    expect(within(janela).queryByRole("group", { name: "Teclado numérico" })).toBeNull();
+    expect(within(janela).getByRole("textbox", { name: "Mesa ou nome" })).toHaveFocus();
+    expect(janela).toHaveAttribute("data-janela", "true");
+    await userEvent.keyboard("4{Enter}");
+
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/salao/comanda/novo"));
+    expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({
+      identificacao: null,
+      mesaId: "m4",
+      pessoas: null,
+    });
+  });
+
+  it("opens a comanda by the typed name on Enter, and Esc closes the window", async () => {
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas": json([]),
+      "GET /mesas": json(mesas),
+      "POST /comandas": json(comanda(2, { id: "nome" }), { status: 201 }),
+    });
+    await renderEm("/salao");
+    await screen.findByRole("button", { name: "Nova comanda" });
+    await userEvent.keyboard("n");
+    await screen.findByRole("dialog", { name: "Nova comanda" });
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    await userEvent.keyboard("n");
+    await screen.findByRole("dialog", { name: "Nova comanda" });
+    await userEvent.keyboard("Carlos{Enter}");
+
+    await vi.waitFor(() =>
+      expect(chamadas.find((c) => c.path === "/comandas" && c.method === "POST")?.body).toEqual({
+        identificacao: "Carlos",
+        mesaId: null,
+        pessoas: null,
+      }),
+    );
   });
 });

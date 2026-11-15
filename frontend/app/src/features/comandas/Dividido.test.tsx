@@ -126,3 +126,73 @@ describe("the stylesheet and the band constant agree", () => {
     expect(sistema).toMatch(new RegExp(`@media \\(min-width: ${CORTE_TABLET}px\\)\\s*\\{\\s*\\.f4-sheet\\s*\\{`));
   });
 });
+
+/** Computer band (>= 1000): the same split as the tablet, plus the keyboard. Reference: .scratch/S-00-novo-sistema/prototipos/index.html#m=web. */
+describe("salão on the computer band", () => {
+  beforeEach(() => larguraDaJanela(1440));
+
+  it("shows the list and the comanda side by side from the computer cut", async () => {
+    rede();
+
+    await renderEm("/salao/comanda/c7");
+
+    expect(await screen.findByRole("list", { name: "Comandas abertas" })).toBeVisible();
+    expect(
+      await within(screen.getByRole("region", { name: "Comanda aberta" })).findByRole("heading", {
+        level: 2,
+        name: "Ana",
+      }),
+    ).toBeVisible();
+  });
+
+  it("Ctrl+K focuses the search, N opens the new-comanda sheet, Esc closes the panel; a letter typed in a field stays text", async () => {
+    rede();
+    const { router } = await renderEm("/salao/comanda/c7");
+    await screen.findByRole("heading", { level: 2, name: "Ana" });
+
+    await userEvent.keyboard("{Control>}k{/Control}");
+    expect(screen.getByLabelText("Buscar comanda")).toHaveFocus();
+    await userEvent.keyboard("n");
+    expect(screen.getByLabelText("Buscar comanda")).toHaveValue("n");
+    await userEvent.clear(screen.getByLabelText("Buscar comanda"));
+    await userEvent.click(document.body);
+
+    await userEvent.keyboard("{Escape}");
+    expect(router.state.location.pathname).toBe("/salao");
+
+    await userEvent.keyboard("n");
+    expect(await screen.findByRole("dialog", { name: "Nova comanda" })).toBeVisible();
+  });
+
+  it("[ folds the side menu to the rail and back", async () => {
+    rede();
+    await renderEm("/salao");
+    await screen.findByRole("list", { name: "Comandas abertas" });
+    const casca = document.querySelector(".app-shell");
+
+    await userEvent.keyboard("[[");
+    expect(casca).toHaveAttribute("data-menu", "trilho");
+    await userEvent.keyboard("[[");
+    expect(casca).toHaveAttribute("data-menu", "completo");
+  });
+
+  it("has no shortcut on the phone and on the tablet", async () => {
+    for (const largura of [390, 820]) {
+      rede();
+      larguraDaJanela(largura);
+      window.localStorage.clear();
+      const { router, unmount } = await renderEm("/salao/comanda/c7");
+      await screen.findByRole("heading", { level: 2, name: "Ana" });
+      const antes = document.querySelector(".app-shell")?.getAttribute("data-menu");
+
+      await userEvent.keyboard("n");
+      await userEvent.keyboard("[[");
+      await userEvent.keyboard("{Escape}");
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(router.state.location.pathname).toBe("/salao/comanda/c7");
+      expect(document.querySelector(".app-shell")?.getAttribute("data-menu")).toBe(antes);
+      unmount();
+    }
+  });
+});

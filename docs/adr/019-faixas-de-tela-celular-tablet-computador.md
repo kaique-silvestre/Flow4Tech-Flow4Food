@@ -42,6 +42,8 @@ As quatro perguntas em aberto foram respondidas pelas recomendações do rascunh
 3. Atalhos N, Ctrl+K e `[` só no computador e no tablet com teclado físico; nunca no celular.
 4. Tablet usa o layout web com o trilho de 72 px.
 
+Decisão em aberto, registrada (F4-0137): o tablet fica sem atalhos até haver detecção confiável de teclado físico; hoje os atalhos existem só no computador.
+
 ## Alternatives considered
 - Manter 600 e 1024 do rascunho: números sem origem no protótipo; descartado pelo dono.
 - Quatro ou mais faixas (celular grande, tablet pequeno): mais variantes por tela, sem base no protótipo.

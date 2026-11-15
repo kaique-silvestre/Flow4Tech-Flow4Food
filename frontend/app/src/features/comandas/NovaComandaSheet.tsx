@@ -13,6 +13,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   mesas: readonly Mesa[];
   comandas: readonly Comanda[];
+  /** Computer: a centered window with a text field already focused (prototype `.qp`, N): digits are a table or comanda number, anything else is a name; Enter confirms. */
+  janela?: boolean;
 }
 
 type Etapa = "teclado" | "nome" | "ocupada";
@@ -21,7 +23,7 @@ type Etapa = "teclado" | "nome" | "ocupada";
  * New comanda by keypad (docs/design/refs/salao/04.png): a huge entry, free-table chips when the unit uses tables, 12 keys, "Dar um nome" and an OK that stays off until there is a value.
  * With tables the entry names a table ("Mesa 12"); without them it names the comanda ("Comanda 7"). An occupied table asks before opening another comanda on it.
  */
-export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props) {
+export function NovaComandaSheet({ open, onOpenChange, mesas, comandas, janela = false }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const usaMesas = mesas.length > 0;
@@ -29,6 +31,7 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
   const [digitos, setDigitos] = useState("");
   const [mesaEscolhida, setMesaEscolhida] = useState<string | null>(null);
   const [nome, setNome] = useState("");
+  const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | undefined>(undefined);
 
@@ -38,6 +41,7 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
       setDigitos("");
       setMesaEscolhida(null);
       setNome("");
+      setTexto("");
       setErro(undefined);
       setEnviando(false);
     }
@@ -45,11 +49,17 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
 
   const livres = mesas.filter((m) => m.status === "livre").slice(0, CHIPS_VISIVEIS);
   const mesaPorChip = mesas.find((m) => m.id === mesaEscolhida);
-  const mesaDigitada = usaMesas && digitos !== "" ? acharMesaPorNumero(mesas, digitos) : undefined;
+  const numerico = /^\d+$/.test(texto.trim());
+  const digitosEf = janela ? (numerico ? texto.trim() : "") : digitos;
+  const mesaDigitada = usaMesas && digitosEf !== "" ? acharMesaPorNumero(mesas, digitosEf) : undefined;
   const mesaAlvo = mesaPorChip ?? mesaDigitada;
   const rotulo = usaMesas ? "Mesa" : "Comanda";
-  const entrada = mesaPorChip ? mesaPorChip.identificacao : digitos;
-  const podeConfirmar = etapa === "nome" ? nome.trim() !== "" : entrada !== "";
+  const entrada = mesaPorChip ? mesaPorChip.identificacao : digitosEf;
+  const podeConfirmar = janela
+    ? texto.trim() !== "" || mesaPorChip !== undefined
+    : etapa === "nome"
+      ? nome.trim() !== ""
+      : entrada !== "";
 
   async function abrir(corpo: { identificacao?: string; mesaId?: string }) {
     setErro(undefined);
@@ -82,18 +92,18 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
   }
 
   async function confirmar(jaConfirmouOcupada = false) {
-    if (etapa === "nome") {
-      await abrir({ identificacao: nome.trim() });
+    if (etapa === "nome" || (janela && !mesaPorChip && !numerico)) {
+      await abrir({ identificacao: (janela ? texto : nome).trim() });
       return;
     }
 
     if (!usaMesas) {
-      await abrir({ identificacao: `Comanda ${digitos}` });
+      await abrir({ identificacao: `Comanda ${digitosEf}` });
       return;
     }
 
     if (!mesaAlvo) {
-      setErro(`Não existe a mesa ${digitos}.`);
+      setErro(`Não existe a mesa ${digitosEf}.`);
       return;
     }
 
@@ -112,6 +122,7 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
       <BottomSheet
         open={open}
         onOpenChange={onOpenChange}
+        janela={janela}
         title={`Mesa ${mesaAlvo.identificacao} já está ocupada`}
         description={
           existentes.length > 0
@@ -183,6 +194,77 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
     );
   }
 
+  const chips =
+    usaMesas && livres.length > 0 ? (
+      <div className="nova-chips" role="group" aria-label="Mesas livres">
+        {livres.map((mesa) => (
+          <Chip
+            key={mesa.id}
+            selected={mesaEscolhida === mesa.id}
+            onClick={() => {
+              setMesaEscolhida((atual) => (atual === mesa.id ? null : mesa.id));
+              setDigitos("");
+              setTexto("");
+              setErro(undefined);
+            }}
+          >
+            {mesa.identificacao}
+          </Chip>
+        ))}
+      </div>
+    ) : null;
+
+  if (janela) {
+    return (
+      <BottomSheet
+        open={open}
+        onOpenChange={onOpenChange}
+        janela
+        title="Nova comanda"
+        description={
+          usaMesas
+            ? "Digite o número da mesa ou um nome e tecle Enter."
+            : "Digite o número da comanda ou um nome e tecle Enter."
+        }
+        error={erro}
+        loading={enviando}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={enviando}>
+              Cancelar
+            </Button>
+            <Button loading={enviando} disabled={!podeConfirmar} onClick={() => void confirmar()}>
+              OK
+            </Button>
+          </>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (podeConfirmar && !enviando) {
+              void confirmar();
+            }
+          }}
+        >
+          <TextField
+            label={usaMesas ? "Mesa ou nome" : "Número ou nome"}
+            value={texto}
+            maxLength={40}
+            autoFocus
+            autoComplete="off"
+            onChange={(e) => {
+              setErro(undefined);
+              setMesaEscolhida(null);
+              setTexto(e.target.value);
+            }}
+          />
+        </form>
+        {chips}
+      </BottomSheet>
+    );
+  }
+
   return (
     <BottomSheet
       open={open}
@@ -209,23 +291,7 @@ export function NovaComandaSheet({ open, onOpenChange, mesas, comandas }: Props)
       >
         <span className="nova-rotulo">{rotulo}</span> {entrada === "" ? "—" : entrada}
       </p>
-      {usaMesas && livres.length > 0 ? (
-        <div className="nova-chips" role="group" aria-label="Mesas livres">
-          {livres.map((mesa) => (
-            <Chip
-              key={mesa.id}
-              selected={mesaEscolhida === mesa.id}
-              onClick={() => {
-                setMesaEscolhida((atual) => (atual === mesa.id ? null : mesa.id));
-                setDigitos("");
-                setErro(undefined);
-              }}
-            >
-              {mesa.identificacao}
-            </Chip>
-          ))}
-        </div>
-      ) : null}
+      {chips}
       <Keypad
         disabled={enviando}
         onDigit={(d) => {

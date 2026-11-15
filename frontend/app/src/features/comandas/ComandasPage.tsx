@@ -9,11 +9,12 @@ import {
   StatusBadge,
   useFaixa,
 } from "@flow4tech/design-system";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Link, useMatch, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { useOnline } from "../fila/conexao";
 import { usePermissoes } from "../sessao/permissoes";
 import { contaDaSessao } from "../sessao/sessao";
+import { useAtalhosDaTela } from "./atalhos";
 import { useComandas, useMesas } from "./consultas";
 import {
   contar,
@@ -66,6 +67,16 @@ export function ComandasPage() {
   const [busca, setBusca] = useState("");
   const [escolhido, setEscolhido] = useState<Filtro | null>(null);
   const [nova, setNova] = useState(false);
+  const campoDeBusca = useRef<HTMLInputElement>(null);
+  const navegar = useNavigate();
+  const comandaAberta = useMatch({ from: "/app/lista/salao/comanda/$comandaId", shouldThrow: false }) !== undefined;
+  const podeAbrir = permissoes.pode("comanda:abrir");
+  // Computer shortcuts of the comandas screen (only here: this component is the screen). The menu one (`[`) is the shell's, handed by context.
+  useAtalhosDaTela(faixa, comandaAberta, {
+    nova: () => podeAbrir && setNova(true),
+    buscar: () => campoDeBusca.current?.focus(),
+    fechar: () => void navegar({ to: "/salao" }),
+  });
 
   if (permissoes.carregado && !permissoes.pode("comanda:ver")) {
     return <Notice tone="info">Você não tem permissão para ver as comandas.</Notice>;
@@ -108,9 +119,10 @@ export function ComandasPage() {
       {comandas.isSuccess && comandas.data.length > 0 ? (
         <>
           <SearchField
+            ref={campoDeBusca}
             className="comandas-busca"
             label="Buscar comanda"
-            placeholder={faixa === "tablet" ? "Buscar comanda" : "Buscar mesa, balcão ou nome"}
+            placeholder={faixa === "celular" ? "Buscar mesa, balcão ou nome" : "Buscar comanda"}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -174,7 +186,7 @@ export function ComandasPage() {
         </>
       ) : null}
 
-      {permissoes.pode("comanda:abrir") ? (
+      {podeAbrir ? (
         <div className="comandas-acao">
           <Button className="entry-submit" onClick={() => setNova(true)}>
             <Icon name="plus" /> Nova comanda
@@ -182,7 +194,13 @@ export function ComandasPage() {
         </div>
       ) : null}
 
-      <NovaComandaSheet open={nova} onOpenChange={setNova} mesas={mesas.data ?? []} comandas={comandas.data ?? []} />
+      <NovaComandaSheet
+        janela={faixa === "computador"}
+        open={nova}
+        onOpenChange={setNova}
+        mesas={mesas.data ?? []}
+        comandas={comandas.data ?? []}
+      />
     </section>
   );
 }

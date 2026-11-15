@@ -1,5 +1,6 @@
 import { Button, formatBRL, Notice, Skeleton, Tab, TabList, TabPanel, Tabs, ToneBadge } from "@flow4tech/design-system";
 import { type KeyboardEvent, type ReactNode, useEffect, useState } from "react";
+import { lancamentoRapido } from "./atalhos";
 import { BUSCA_MAXIMA, buscarProdutos, type Categoria, type Produto, useBusca, useGruposDoProduto } from "./cardapio";
 import { exigeEscolha } from "./opcoes";
 
@@ -12,7 +13,9 @@ interface Props {
   categorias: readonly Categoria[];
   /** Units staged per product, to show ×N. */
   quantidades: ReadonlyMap<string, number>;
-  onAdicionar: (produto: Produto) => void;
+  onAdicionar: (produto: Produto, quantidade?: number) => void;
+  /** Computer shortcut: "3 chope" + Enter puts 3 of the first match in the round. Off elsewhere. */
+  lancamentoRapido?: boolean;
   /** Opens the item sheet (add-ons, note, quantity) for a product that offers add-ons. */
   onOpcoes: (produto: Produto) => void;
   carregando: boolean;
@@ -92,6 +95,7 @@ export function Picker({
   onTentarDeNovo,
   topo,
   buscaNoServidor = true,
+  lancamentoRapido: rapido = false,
 }: Props) {
   const [busca, setBusca] = useState("");
   const [termo, setTermo] = useState("");
@@ -136,6 +140,17 @@ export function Picker({
     }
 
     e.preventDefault();
+    if (rapido) {
+      const pedido = lancamentoRapido(busca);
+      const achado = pedido ? buscarProdutos(produtos, pedido.termo).find((p) => !p.indisponivel) : undefined;
+      if (pedido && achado) {
+        onAdicionar(achado, pedido.quantidade);
+        setBusca("");
+        setTermo("");
+        return;
+      }
+    }
+
     const digitado = busca.trim().toLowerCase();
     const exato = resultados.find((p) => p.codigo.toLowerCase() === digitado && !p.indisponivel);
     if (exato) {

@@ -14,6 +14,8 @@ export interface BottomSheetProps {
   error?: string | undefined;
   /** A request is in flight: the sheet announces it as busy. */
   loading?: boolean;
+  /** On the computer: a centered window (prototype `.qp`) instead of the side panel. The phone and the tablet ignore it. */
+  janela?: boolean;
 }
 
 /** Short tasks over the list (new comanda, send the round, close the bill). Radix Dialog gives the focus trap, Escape and the labelled dialog role. */
@@ -26,6 +28,7 @@ export function BottomSheet({
   footer,
   error,
   loading = false,
+  janela = false,
 }: BottomSheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -34,6 +37,7 @@ export function BottomSheet({
         <Dialog.Content
           className="f4-sheet"
           aria-busy={loading || undefined}
+          data-janela={janela || undefined}
           {...(description ? {} : { "aria-describedby": undefined })}
         >
           <Dialog.Title className="f4-sheet-title">{title}</Dialog.Title>

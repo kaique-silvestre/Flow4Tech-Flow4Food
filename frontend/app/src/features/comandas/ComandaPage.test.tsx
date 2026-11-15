@@ -144,7 +144,9 @@ describe("comanda screen layout", () => {
 
     expect(document.querySelector("p.comanda-voltar")?.textContent).toBe("Comandas › #7");
     expect(screen.getByLabelText("Total da conta").textContent).toBe(formatBRL(2750));
-    expect(screen.getByText("Aberta", { exact: false })).toBeVisible();
+    expect(
+      within(screen.getByRole("region", { name: "Comanda aberta" })).getByText("Aberta", { exact: false }),
+    ).toBeVisible();
     const conta_ = screen.getByRole("list", { name: "Itens da conta" });
     expect(within(conta_).getByText("Chopp 300ml")).toBeVisible();
     expect(conta_.textContent).toContain(formatBRL(2500));
@@ -394,6 +396,34 @@ describe("sending a round", () => {
     // The exact code goes straight into the round and the field is clear for the next code.
     expect(await screen.findByRole("group", { name: "Chopp 300ml" })).toBeVisible();
     expect(screen.getByLabelText("Buscar produto")).toHaveValue("");
+  });
+
+  it("quick launch on the computer: '3 chopp' + Enter stages 3 through the same path, Enter on the empty field does nothing", async () => {
+    // Reference: .scratch/S-00-novo-sistema/prototipos/index.html#m=web (the dialog search, "3 chope" + Enter).
+    await abrir();
+    const campo = screen.getByLabelText("Buscar produto");
+
+    await userEvent.type(campo, "3 chopp{Enter}");
+
+    expect(await screen.findByRole("group", { name: "Chopp 300ml" })).toBeVisible();
+    expect(screen.getByText("3 itens", { exact: false })).toBeVisible();
+    expect(campo).toHaveValue("");
+
+    await userEvent.type(campo, "{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("does not quick launch on the phone: '3 chopp' + Enter stages nothing", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 390 });
+    try {
+      await abrir();
+
+      await userEvent.type(screen.getByLabelText("Buscar produto"), "3 chopp{Enter}");
+
+      expect(screen.queryByRole("group", { name: "Chopp 300ml" })).toBeNull();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1024 });
+    }
   });
 
   it("keeps searching on the loaded menu when the server cannot answer", async () => {

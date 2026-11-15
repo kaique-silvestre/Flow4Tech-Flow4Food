@@ -144,6 +144,22 @@ describe("item sheet", () => {
     expect(within(folha).getByRole("button", { name: /^Adicionar/ })).toBeEnabled();
   });
 
+  it("quick launch '3 hamb' on a product with a required group opens the sheet already at 3, and the 3 is kept when confirmed", async () => {
+    await abrir();
+
+    await userEvent.type(screen.getByLabelText("Buscar produto"), "3 hamb{Enter}");
+
+    const folha = await screen.findByRole("dialog", { name: "Hambúrguer" });
+    await userEvent.click(
+      within(within(folha).getByRole("group", { name: "Ponto" })).getByRole("button", { name: "Ao ponto" }),
+    );
+    // 3 x 30,00
+    const adicionar = within(folha).getByRole("button", { name: /^Adicionar/ });
+    expect(adicionar).toHaveTextContent(formatBRL(9000));
+    await userEvent.click(adicionar);
+    expect(screen.getByRole("group", { name: "Hambúrguer" }).closest("li")).toHaveTextContent("3×");
+  });
+
   it("the most used add-on is a one-tap chip that adds its price; quantity comes from the numeric keypad; the note is kept", async () => {
     await abrir();
     await userEvent.click(screen.getByRole("button", { name: "Adicionar Hambúrguer" }));

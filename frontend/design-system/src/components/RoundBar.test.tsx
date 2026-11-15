@@ -61,7 +61,9 @@ describe("UndoToast", () => {
     expect(bar?.style.animationDuration).toBe("8000ms");
     const css = readFileSync(join(import.meta.dirname, "..", "styles.css"), "utf8");
     expect(css).toMatch(/\.f4-toast-bar \{[^}]*animation-timing-function: linear/s);
-    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.f4-toast-bar \{\s*animation: none/s);
+    const quieto = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1];
+    expect(quieto).toBeDefined();
+    expect(quieto).toMatch(/\.f4-toast-bar \{\s*animation: none/);
   });
 
   it("undoes when asked and counts down; when the window ends the action is gone and the owner is told", async () => {

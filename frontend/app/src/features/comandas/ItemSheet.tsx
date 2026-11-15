@@ -23,6 +23,8 @@ interface Props {
   grupos: readonly GrupoDeOpcao[];
   /** Editing a staged line: starts from what it has and says "Salvar". */
   inicial?: EscolhaDoItem | undefined;
+  /** Starting quantity of a new line (quick launch); ignored when adjusting. */
+  quantidadeInicial?: number | undefined;
   onConfirmar: (escolha: EscolhaDoItem) => void;
 }
 
@@ -46,10 +48,10 @@ function PrecoDaOpcao({ opcao }: { opcao: Opcao }) {
  * the staged round. The state lives here, so the parent renders it with a `key` per product/line to start clean.
  * Mount it only while it is needed (the add-ons query runs while it is mounted and open).
  */
-export function ItemSheet({ open, onOpenChange, produto, grupos, inicial, onConfirmar }: Props) {
+export function ItemSheet({ open, onOpenChange, produto, grupos, inicial, quantidadeInicial, onConfirmar }: Props) {
   const [opcoes, setOpcoes] = useState<OpcaoEscolhida[]>(inicial?.opcoes ?? []);
   const [observacao, setObservacao] = useState(inicial?.observacao ?? "");
-  const [quantidade, setQuantidade] = useState(inicial?.quantidade ?? 1);
+  const [quantidade, setQuantidade] = useState(inicial?.quantidade ?? quantidadeInicial ?? 1);
   const [teclado, setTeclado] = useState(false);
   const [digitou, setDigitou] = useState(false);
   const frequentes = useOpcoesFrequentes(produto.id, open && grupos.length > 0);

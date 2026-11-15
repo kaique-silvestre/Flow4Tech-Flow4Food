@@ -10,6 +10,7 @@ import {
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { useLeituraDoCaixa } from "./features/caixa/dados";
+import { AlternarMenuContext } from "./features/comandas/atalhos";
 import { BarraDeFila } from "./features/fila/BarraDeFila";
 import { useMapaDeMesas } from "./features/mesas/consultas";
 import { semMesas } from "./features/mesas/tipos";
@@ -151,66 +152,68 @@ export function Shell({
   const recolhido = menuRecolhido(faixa, escolha);
   const comMenuLateral = faixa !== "celular";
   return (
-    <div
-      className="app-shell"
-      data-faixa={faixa}
-      data-menu={comMenuLateral ? (recolhido ? "trilho" : "completo") : "inferior"}
-    >
-      {comMenuLateral ? (
-        <aside className="app-lateral">
-          <p className="app-marca">
-            <span className="app-marca-sinal">F4</span>
-            <span className="app-marca-nome">Flow4Tech Salão</span>
-          </p>
-          <Navegacao tabs={visiveis} faixa={faixa} recolhido={recolhido} />
-          <button
-            type="button"
-            className="app-recolher"
-            aria-expanded={!recolhido}
-            aria-label={recolhido ? "Expandir o menu" : "Recolher o menu"}
-            title={recolhido ? "Expandir o menu" : "Recolher o menu"}
-            onClick={() => guardarEscolha(recolhido ? "completo" : "trilho")}
-          >
-            <Icon name="chevron" />
-            <span className="app-tab-rotulo">Recolher menu</span>
-          </button>
-        </aside>
-      ) : null}
-      <div className="app-coluna">
-        <header className="app-topbar">
-          <h1 className="f4-title app-title">{title}</h1>
-          <div className="app-topbar-acoes">
+    <AlternarMenuContext value={() => guardarEscolha(recolhido ? "completo" : "trilho")}>
+      <div
+        className="app-shell"
+        data-faixa={faixa}
+        data-menu={comMenuLateral ? (recolhido ? "trilho" : "completo") : "inferior"}
+      >
+        {comMenuLateral ? (
+          <aside className="app-lateral">
+            <p className="app-marca">
+              <span className="app-marca-sinal">F4</span>
+              <span className="app-marca-nome">Flow4Tech Salão</span>
+            </p>
+            <Navegacao tabs={visiveis} faixa={faixa} recolhido={recolhido} />
             <button
               type="button"
-              className="app-tema"
-              onClick={alternar}
-              aria-label={tema === "escuro" ? "Mudar para o tema claro" : "Mudar para o tema escuro"}
+              className="app-recolher"
+              aria-expanded={!recolhido}
+              aria-label={recolhido ? "Expandir menu" : "Recolher menu"}
+              title={recolhido ? "Expandir menu" : "Recolher menu"}
+              onClick={() => guardarEscolha(recolhido ? "completo" : "trilho")}
             >
-              <Icon name={tema === "escuro" ? "sun" : "moon"} />
+              <Icon name="chevron" />
+              <span className="app-tab-rotulo">Recolher menu</span>
             </button>
-            <Button
-              variant="secondary"
-              className="app-signout"
-              onClick={() => {
-                // Ending the session forgets what was waiting (the session hooks count it and tell the sign-in screen): the next person on the device never sends it.
-                void sair().then(() => navigate({ to: "/salao/entrar" }));
-              }}
-            >
-              Sair
-            </Button>
-          </div>
-          {contexto ? (
-            <p className="app-contexto">
-              {contexto.organizacao} · {contexto.unidade}
-              {permissoes.pode("caixa:ver") ? <TurnoDoCabecalho /> : null} · <strong>{contexto.usuario}</strong>
-            </p>
-          ) : null}
-        </header>
-        <BarraDeFila />
-        <main className="app-content">{children ?? <Outlet />}</main>
-        {comMenuLateral ? null : <Navegacao tabs={visiveis} faixa={faixa} recolhido={false} />}
+          </aside>
+        ) : null}
+        <div className="app-coluna">
+          <header className="app-topbar">
+            <h1 className="f4-title app-title">{title}</h1>
+            <div className="app-topbar-acoes">
+              <button
+                type="button"
+                className="app-tema"
+                onClick={alternar}
+                aria-label={tema === "escuro" ? "Mudar para o tema claro" : "Mudar para o tema escuro"}
+              >
+                <Icon name={tema === "escuro" ? "sun" : "moon"} />
+              </button>
+              <Button
+                variant="secondary"
+                className="app-signout"
+                onClick={() => {
+                  // Ending the session forgets what was waiting (the session hooks count it and tell the sign-in screen): the next person on the device never sends it.
+                  void sair().then(() => navigate({ to: "/salao/entrar" }));
+                }}
+              >
+                Sair
+              </Button>
+            </div>
+            {contexto ? (
+              <p className="app-contexto">
+                {contexto.organizacao} · {contexto.unidade}
+                {permissoes.pode("caixa:ver") ? <TurnoDoCabecalho /> : null} · <strong>{contexto.usuario}</strong>
+              </p>
+            ) : null}
+          </header>
+          <BarraDeFila />
+          <main className="app-content">{children ?? <Outlet />}</main>
+          {comMenuLateral ? null : <Navegacao tabs={visiveis} faixa={faixa} recolhido={false} />}
+        </div>
       </div>
-    </div>
+    </AlternarMenuContext>
   );
 }
 
