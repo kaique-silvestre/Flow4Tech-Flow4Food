@@ -12,6 +12,12 @@ export interface Comanda {
   observacao: string | null;
   /** When the bill was requested ("conta pedida"), or null. */
   contaPedidaEm: string | null;
+  /** Filled by the list only (null on any other answer): the name of who holds the comanda. */
+  garcomNome: string | null;
+  /** Filled by the list only: what was launched, in cents. */
+  consumoCentavos: number | null;
+  /** Filled by the list only: the last launch, the opening when none. */
+  ultimaAtividadeEm: string | null;
 }
 
 export interface Mesa {
@@ -34,6 +40,9 @@ export function paraComanda(c: Record<string, unknown>): Comanda {
     pessoas: typeof c["pessoas"] === "number" ? c["pessoas"] : null,
     observacao: typeof c["observacao"] === "string" ? c["observacao"] : null,
     contaPedidaEm: typeof c["contaPedidaEm"] === "string" ? c["contaPedidaEm"] : null,
+    garcomNome: typeof c["garcomNome"] === "string" ? c["garcomNome"] : null,
+    consumoCentavos: c["consumoCentavos"] == null ? null : Number(c["consumoCentavos"]),
+    ultimaAtividadeEm: typeof c["ultimaAtividadeEm"] === "string" ? c["ultimaAtividadeEm"] : null,
   };
 }
 

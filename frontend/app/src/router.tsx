@@ -40,8 +40,8 @@ const indexRoute = createRoute({
 /** The tabs of the slice plus Cardápio (who manages products) and Pessoas (who may see profiles): absent, not disabled, for the rest. */
 const abas = [
   ...salaoTabs,
-  { to: "/salao/cardapio", label: "Cardápio", permissao: "produto:gerenciar" },
-  { to: "/salao/pessoas", label: "Pessoas", permissao: "perfil:ver" },
+  { to: "/salao/cardapio", label: "Cardápio", icone: "book", permissao: "produto:gerenciar" },
+  { to: "/salao/pessoas", label: "Pessoas", icone: "users", permissao: "perfil:ver" },
 ] as const;
 
 /** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */

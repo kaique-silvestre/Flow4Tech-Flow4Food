@@ -83,6 +83,12 @@ export function stubRede(informadas: Record<string, Resposta>) {
   // The caller's permissions are incidental to most tests: everyone may do everything unless a test says otherwise.
   const rotas: Record<string, Resposta> = {
     "GET /sessao/permissoes": json({ permissoes: TODAS_AS_PERMISSOES }),
+    // The header names (company, unit, person) are incidental to most tests too.
+    "GET /sessao/contexto": jsonDoContrato("get", "/sessao/contexto", 200, {
+      organizacao: "Bar do Zé",
+      unidade: "Unidade Centro",
+      usuario: "Marina",
+    }),
     ...informadas,
   };
   const chamadas: Chamada[] = [];

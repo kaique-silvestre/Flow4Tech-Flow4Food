@@ -1,12 +1,14 @@
 export { BottomSheet, type BottomSheetProps } from "./components/BottomSheet";
 export { Button, type ButtonProps } from "./components/Button";
 export { Chip, type ChipProps } from "./components/Chip";
+export { Icon, type IconName, type IconProps } from "./components/Icon";
 export { ItemRow, type ItemRowProps, Stepper, type StepperProps } from "./components/ItemRow";
 export { Keypad, type KeypadProps } from "./components/Keypad";
 export { MoneyField, type MoneyFieldProps } from "./components/MoneyField";
 export { Notice, type NoticeProps, Skeleton } from "./components/Notice";
 export { type AcaoDaFila, type EstadoDaAcao, QueueList, type QueueListProps } from "./components/QueueList";
 export { RoundBar, type RoundBarProps } from "./components/RoundBar";
+export { SearchField, type SearchFieldProps } from "./components/SearchField";
 export { type ComandaStatus, type MesaStatus, StatusBadge, type StatusBadgeProps } from "./components/StatusBadge";
 export { Switch, type SwitchProps } from "./components/Switch";
 export { Tab, TabList, TabPanel, type TabProps, Tabs } from "./components/Tabs";

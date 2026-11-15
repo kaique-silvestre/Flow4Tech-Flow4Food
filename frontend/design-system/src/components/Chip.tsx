@@ -4,6 +4,8 @@ export interface ChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
   selected?: boolean;
   loading?: boolean;
   error?: boolean;
+  /** A tally shown after the label ("Abertas 9"); the name read aloud is "label count", the same words that are drawn. */
+  count?: number;
   children: ReactNode;
 }
 
@@ -12,6 +14,7 @@ export function Chip({
   selected = false,
   loading = false,
   error = false,
+  count,
   disabled,
   className,
   children,
@@ -31,6 +34,7 @@ export function Chip({
     >
       {loading ? <span className="f4-spinner" aria-hidden="true" /> : null}
       {children}
+      {count !== undefined ? <span className="f4-chip-count f4-num">{` ${count}`}</span> : null}
     </button>
   );
 }

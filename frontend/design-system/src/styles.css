@@ -256,6 +256,17 @@ body {
   color: var(--f4-error);
 }
 
+.f4-chip-count {
+  min-width: 1ch;
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+  font-weight: 500;
+}
+
+.f4-chip[aria-pressed="true"] .f4-chip-count {
+  color: inherit;
+}
+
 /* Switch */
 .f4-switch {
   box-sizing: border-box;
@@ -862,6 +873,29 @@ body {
 .f4-notice-text {
   margin: 0;
   font-size: var(--f4-text-secondary);
+}
+
+/* Search field: the magnifier sits inside the left edge, the input leaves room for it */
+.f4-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.f4-search-icon {
+  position: absolute;
+  left: var(--f4-space-4);
+  display: flex;
+  color: var(--f4-ink-muted);
+  pointer-events: none;
+}
+
+.f4-search .f4-input {
+  padding-left: 48px;
+}
+
+.f4-icon {
+  flex: none;
 }
 
 /* Skeleton rows */

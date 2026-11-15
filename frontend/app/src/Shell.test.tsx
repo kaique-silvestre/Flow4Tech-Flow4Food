@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { enfileirarRodada, lerFila } from "./features/fila/fila";
@@ -28,6 +28,51 @@ describe("salão shell (signed in)", () => {
     expect(screen.getByRole("link", { name: "Caixa" })).not.toHaveAttribute("aria-current");
   });
 
+  it("names the company, the unit and the person of the session under the title", async () => {
+    stubRede(pronta);
+
+    await renderEm("/salao");
+
+    const contexto = await screen.findByText(/Bar do Zé/);
+    expect(contexto).toHaveTextContent("Bar do Zé · Unidade Centro · Marina");
+    expect(within(contexto).getByText("Marina")).toBeVisible();
+  });
+
+  it("leaves the context line out when the server does not answer it", async () => {
+    stubRede({ ...pronta, "GET /sessao/contexto": new Response(null, { status: 500 }) });
+
+    await renderEm("/salao");
+    await screen.findByRole("heading", { level: 1, name: "Salão" });
+
+    expect(screen.queryByText(/Bar do Zé/)).toBeNull();
+  });
+
+  it("switches the theme from the header, remembers it and offers the way back", async () => {
+    window.localStorage.removeItem("f4t-tema");
+    document.documentElement.dataset["theme"] = "light";
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Mudar para o tema escuro" }));
+
+    expect(document.documentElement.dataset["theme"]).toBe("dark");
+    expect(window.localStorage.getItem("f4t-tema")).toBe("escuro");
+    await userEvent.click(screen.getByRole("button", { name: "Mudar para o tema claro" }));
+    expect(document.documentElement.dataset["theme"]).toBe("light");
+    delete document.documentElement.dataset["theme"];
+    window.localStorage.removeItem("f4t-tema");
+  });
+
+  it("draws an icon above each tab label and keeps the label", async () => {
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    const comandas = await screen.findByRole("link", { name: "Comandas" });
+
+    expect(comandas.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(within(comandas).getByText("Comandas")).toBeVisible();
+  });
+
   it("switches sections through the tab bar", async () => {
     stubRede(pronta);
     const { router } = await renderEm("/salao");
@@ -44,6 +89,8 @@ describe("salão shell (signed in)", () => {
     await renderEm("/salao");
     await screen.findByRole("heading", { level: 1, name: "Salão" });
 
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Mudar para o tema escuro" })).toHaveFocus();
     await userEvent.tab();
     expect(screen.getByRole("button", { name: "Sair" })).toHaveFocus();
     await userEvent.tab();

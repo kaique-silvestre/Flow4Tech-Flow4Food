@@ -54,4 +54,12 @@ describe("StatusBadge", () => {
       /data-status="aguardando-conta"\] \.f4-badge-marker[^{]*\{[^}]*clip-path: polygon\(50% 0, 100% 100%, 0 100%\)/s,
     );
   });
+
+  it("draws an icon instead of the shaped marker when asked, keeping the word and the elapsed time", () => {
+    const { container } = render(<StatusBadge status="parada" detail="há 52 min" icon />);
+
+    expect(screen.getByText("Parada há 52 min")).toBeVisible();
+    expect(container.querySelector(".f4-badge-marker")).toBeNull();
+    expect(container.querySelector("svg.f4-icon")).toHaveAttribute("aria-hidden", "true");
+  });
 });

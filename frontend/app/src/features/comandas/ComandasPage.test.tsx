@@ -25,8 +25,14 @@ const comanda = (n: number, extra: Record<string, unknown> = {}) => ({
   taxaServicoRemovida: false,
   versao: 1,
   abertaEm: new Date(Date.now() - 12 * 60_000).toISOString(),
+  garcomNome: "Rafael",
+  consumoCentavos: 11700,
+  ultimaAtividadeEm: new Date(Date.now() - 5 * 60_000).toISOString(),
   ...extra,
 });
+const minhaComanda = (n: number, extra: Record<string, unknown> = {}) =>
+  comanda(n, { garcomId: "conta-1", garcomNome: "Marina", ...extra });
+const minutosAtras = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const mesas = [
   { id: "m1", unidadeId: "u1", identificacao: "1", capacidade: null, ativa: true, status: "livre" },
   { id: "m4", unidadeId: "u1", identificacao: "4", capacidade: null, ativa: true, status: "livre" },
@@ -44,20 +50,108 @@ describe("comanda list", () => {
     expect(screen.getAllByRole("button").filter((b) => b.getAttribute("data-variant") === "primary")).toHaveLength(1);
   });
 
-  it("lists the open comandas with number, name, status badge and elapsed time", async () => {
+  it("draws each comanda as a card with name, value, time open, waiter and the state in words", async () => {
     stubRede({
       ...base,
-      "GET /comandas": json([comanda(7, { identificacao: "Aniversário da Ana" })]),
+      "GET /comandas": json([
+        comanda(7, { identificacao: "Aniversário da Ana", consumoCentavos: 123456 }),
+        minhaComanda(8, { identificacao: "Balcão 1", consumoCentavos: 2800, abertaEm: minutosAtras(135) }),
+      ]),
       "GET /mesas": json([]),
     });
 
     await renderEm("/salao");
 
-    const linha = await screen.findByRole("link", { name: /#7/ });
-    expect(within(linha).getByText("Aniversário da Ana")).toBeVisible();
-    expect(within(linha).getByText("há 12 min")).toBeVisible();
-    expect(within(linha).getByText("Aberta")).toBeVisible();
-    expect(screen.getByRole("heading", { level: 2, name: "Minhas comandas" })).toBeVisible();
+    const outra = await screen.findByRole("link", { name: /#7/ });
+    expect(within(outra).getByText("Aniversário da Ana")).toBeVisible();
+    expect(within(outra).getByText("R$ 1.234,56")).toBeVisible();
+    expect(within(outra).getByText("12 min aberta · Rafael")).toBeVisible();
+    expect(within(outra).getByText("Aberta")).toBeVisible();
+    const minha = screen.getByRole("link", { name: /#8/ });
+    expect(within(minha).getByText("R$ 28,00")).toBeVisible();
+    expect(within(minha).getByText("2h 15min aberta · Você")).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "Minhas comandas" })).toBeInTheDocument();
+  });
+
+  it("marks a comanda with no launch for 40 minutes as Parada, with the time and an icon, and one with a requested bill as Aguardando pagamento", async () => {
+    stubRede({
+      ...base,
+      "GET /comandas": json([
+        comanda(1, { ultimaAtividadeEm: minutosAtras(52) }),
+        comanda(2, { contaPedidaEm: minutosAtras(1) }),
+        comanda(3),
+      ]),
+      "GET /mesas": json([]),
+    });
+
+    await renderEm("/salao");
+
+    const parada = await screen.findByRole("link", { name: /#1/ });
+    expect(within(parada).getByText("Parada há 52 min")).toBeVisible();
+    expect(parada.querySelector("svg.f4-icon")).not.toBeNull();
+    expect(within(screen.getByRole("link", { name: /#2/ })).getByText("Aguardando pagamento")).toBeVisible();
+    expect(within(screen.getByRole("link", { name: /#3/ })).getByText("Aberta")).toBeVisible();
+    // The stalled one comes first, the one waiting for payment last.
+    const ordem = screen.getAllByRole("link", { name: /#\d/ }).map((a) => a.textContent);
+    expect(ordem[0]).toContain("#1");
+    expect(ordem[2]).toContain("#2");
+  });
+
+  it("filters by chip and shows the tally on each one, counting the whole list", async () => {
+    stubRede({
+      ...base,
+      "GET /sessao/permissoes": json({ permissoes: ["comanda:ver", "comanda:ver-comandas-de-outros"] }),
+      "GET /comandas": json([
+        minhaComanda(1),
+        minhaComanda(2, { contaPedidaEm: minutosAtras(2) }),
+        comanda(3),
+        comanda(4, { ultimaAtividadeEm: minutosAtras(60) }),
+      ]),
+    });
+    await renderEm("/salao");
+
+    const grupo = await screen.findByRole("group", { name: "Filtrar comandas" });
+    const chips = within(grupo)
+      .getAllByRole("button")
+      .map((b) => b.textContent?.trim());
+    expect(chips).toEqual(["Minhas 2", "Todas 4", "Abertas 3", "Aguardando 1"]);
+    expect(within(grupo).getByRole("button", { name: "Todas 4" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByRole("link", { name: /#\d/ })).toHaveLength(4);
+
+    await userEvent.click(within(grupo).getByRole("button", { name: "Minhas 2" }));
+    expect(screen.getAllByRole("link", { name: /#\d/ })).toHaveLength(2);
+    expect(within(grupo).getByRole("button", { name: "Minhas 2" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(within(grupo).getByRole("button", { name: "Aguardando 1" }));
+    expect(screen.getAllByRole("link", { name: /#\d/ })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /#2/ })).toBeVisible();
+
+    await userEvent.type(screen.getByLabelText("Buscar comanda"), "xyz");
+    expect(screen.getByText("Nada com “xyz”. Tente o número da comanda.")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Ver todas" }));
+    expect(screen.getAllByRole("link", { name: /#\d/ })).toHaveLength(4);
+    expect(within(grupo).getByRole("button", { name: "Todas 4" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("offers no Todas chip to who only sees their own and starts on Minhas", async () => {
+    stubRede({ ...base, "GET /comandas": json([minhaComanda(1), minhaComanda(2)]), "GET /mesas": json([]) });
+    await renderEm("/salao");
+
+    const grupo = await screen.findByRole("group", { name: "Filtrar comandas" });
+
+    expect(within(grupo).queryByRole("button", { name: /^Todas/ })).toBeNull();
+    expect(within(grupo).getByRole("button", { name: "Minhas 2" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("says so when a filter has nothing and brings everything back with Ver todas", async () => {
+    stubRede({ ...base, "GET /comandas": json([minhaComanda(1)]), "GET /mesas": json([]) });
+    await renderEm("/salao");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Aguardando 0" }));
+    expect(screen.getByText("Nenhuma comanda neste filtro.")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Ver todas" }));
+
+    expect(screen.getByRole("link", { name: /#1/ })).toBeVisible();
   });
 
   it("calls it Comandas abertas for who may see the others'", async () => {

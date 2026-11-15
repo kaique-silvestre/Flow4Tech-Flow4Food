@@ -56,4 +56,18 @@ describe("Chip", () => {
     expect(screen.getByRole("button", { name: "Mesa 1" })).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("button", { name: "Mesa 1" })).toHaveAttribute("data-state", "error");
   });
+
+  it("shows a count after the label and reads it aloud as the same words", () => {
+    render(<Chip count={9}>Abertas</Chip>);
+
+    const chip = screen.getByRole("button", { name: "Abertas 9" });
+    expect(chip).toHaveAccessibleName("Abertas 9");
+    expect(chip).not.toHaveAttribute("aria-label");
+  });
+
+  it("keeps the label alone when there is no count", () => {
+    render(<Chip>Todas</Chip>);
+
+    expect(screen.getByRole("button", { name: "Todas" })).toBeVisible();
+  });
 });

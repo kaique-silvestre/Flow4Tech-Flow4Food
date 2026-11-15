@@ -1,11 +1,30 @@
-import { Button, Notice, Skeleton, StatusBadge } from "@flow4tech/design-system";
+import { Button, Chip, formatBRL, Icon, Notice, SearchField, Skeleton, StatusBadge } from "@flow4tech/design-system";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useOnline } from "../fila/conexao";
 import { usePermissoes } from "../sessao/permissoes";
+import { contaDaSessao } from "../sessao/sessao";
 import { useComandas, useMesas } from "./consultas";
+import {
+  contar,
+  estadoDaComanda,
+  type Filtro,
+  filtrar,
+  filtroInicial,
+  filtrosOferecidos,
+  minutosAberta,
+  quemAtende,
+  tempoAberta,
+} from "./lista";
 import { NovaComandaSheet } from "./NovaComandaSheet";
-import { combinaBusca, nomeExibido, tempoDecorrido } from "./tipos";
+import { nomeExibido } from "./tipos";
+
+const ROTULO: Record<Filtro, string> = {
+  minhas: "Minhas",
+  todas: "Todas",
+  abertas: "Abertas",
+  aguardando: "Aguardando",
+};
 
 function useAgora(intervaloMs = 30_000) {
   const [agora, setAgora] = useState(() => Date.now());
@@ -24,7 +43,7 @@ function useAquecerComanda() {
   }, []);
 }
 
-/** The landing of /salao: the open comandas of the waiter (all of the unit for who may see others'), with search, elapsed time and one accent action: Nova comanda. */
+/** The landing of /salao: the open comandas of the waiter (all of the unit for who may see others'), with search, filter chips with their tally, a card per comanda (value, time, waiter, state in words) and one accent action: Nova comanda. */
 export function ComandasPage() {
   const permissoes = usePermissoes();
   const pode = permissoes.carregado && permissoes.pode("comanda:ver");
@@ -34,6 +53,7 @@ export function ComandasPage() {
   useAquecerComanda();
   const online = useOnline();
   const [busca, setBusca] = useState("");
+  const [escolhido, setEscolhido] = useState<Filtro | null>(null);
   const [nova, setNova] = useState(false);
 
   if (permissoes.carregado && !permissoes.pode("comanda:ver")) {
@@ -41,11 +61,16 @@ export function ComandasPage() {
   }
 
   const verTodas = permissoes.pode("comanda:ver-comandas-de-outros");
-  const lista = (comandas.data ?? []).filter((c) => combinaBusca(c, busca));
+  const oferecidos = filtrosOferecidos(verTodas);
+  const filtro = escolhido !== null && oferecidos.includes(escolhido) ? escolhido : filtroInicial(verTodas);
+  const conta = contaDaSessao();
+  const quem = { conta, verTodas };
+  const lista = filtrar(comandas.data ?? [], filtro, busca, quem, agora);
+  const contagem = contar(comandas.data ?? [], quem);
 
   return (
     <section className="comandas" aria-labelledby="comandas-titulo">
-      <h2 id="comandas-titulo" className="app-empty-title">
+      <h2 id="comandas-titulo" className="f4-visually-hidden">
         {verTodas ? "Comandas abertas" : "Minhas comandas"}
       </h2>
       {!online ? <Notice tone="info">Sem conexão. A lista pode estar desatualizada.</Notice> : null}
@@ -71,37 +96,63 @@ export function ComandasPage() {
 
       {comandas.isSuccess && comandas.data.length > 0 ? (
         <>
-          <div className="f4-field comandas-busca">
-            <label htmlFor="busca-comandas" className="f4-visually-hidden">
-              Buscar comanda
-            </label>
-            <input
-              id="busca-comandas"
-              className="f4-input"
-              type="search"
-              inputMode="search"
-              placeholder="Buscar por número ou nome"
-              autoComplete="off"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
+          <SearchField
+            className="comandas-busca"
+            label="Buscar comanda"
+            placeholder="Buscar mesa, balcão ou nome"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          <div className="comandas-filtros" role="group" aria-label="Filtrar comandas">
+            {oferecidos.map((f) => (
+              <Chip key={f} selected={f === filtro} count={contagem[f]} onClick={() => setEscolhido(f)}>
+                {ROTULO[f]}
+              </Chip>
+            ))}
           </div>
           {lista.length === 0 ? (
-            <p className="comandas-vazio">Nada com “{busca}”. Tente o número da comanda.</p>
+            <div className="comandas-nada">
+              <p className="comandas-vazio">
+                {busca.trim() === ""
+                  ? "Nenhuma comanda neste filtro."
+                  : `Nada com “${busca}”. Tente o número da comanda.`}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setBusca("");
+                  setEscolhido(filtroInicial(verTodas));
+                }}
+              >
+                Ver todas
+              </Button>
+            </div>
           ) : (
             <ul className="comanda-list" aria-label="Comandas abertas">
-              {lista.map((comanda) => (
-                <li key={comanda.id}>
-                  <Link to="/salao/comanda/$comandaId" params={{ comandaId: comanda.id }} className="comanda-row">
-                    <span className="f4-num comanda-numero">{comanda.numeroTexto}</span>
-                    <span className="comanda-nome">
-                      {nomeExibido(comanda)}
-                      <span className="comanda-tempo">{tempoDecorrido(comanda.abertaEm, agora)}</span>
-                    </span>
-                    <StatusBadge status="aberta" />
-                  </Link>
-                </li>
-              ))}
+              {lista.map((comanda) => {
+                const estado = estadoDaComanda(comanda, agora);
+                const quem = quemAtende(comanda, conta);
+                return (
+                  <li key={comanda.id}>
+                    <Link to="/salao/comanda/$comandaId" params={{ comandaId: comanda.id }} className="comanda-card">
+                      <span className="comanda-card-nome">
+                        {nomeExibido(comanda)}
+                        <span className="f4-visually-hidden"> {comanda.numeroTexto}</span>
+                      </span>
+                      {comanda.consumoCentavos !== null ? (
+                        <span className="comanda-card-valor f4-num">{formatBRL(comanda.consumoCentavos)}</span>
+                      ) : (
+                        <span />
+                      )}
+                      <span className="comanda-card-meta f4-num">
+                        {tempoAberta(minutosAberta(comanda, agora))}
+                        {quem ? ` · ${quem}` : ""}
+                      </span>
+                      <StatusBadge status={estado.status} detail={estado.detalhe} icon />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>
@@ -110,7 +161,7 @@ export function ComandasPage() {
       {permissoes.pode("comanda:abrir") ? (
         <div className="comandas-acao">
           <Button className="entry-submit" onClick={() => setNova(true)}>
-            Nova comanda
+            <Icon name="plus" /> Nova comanda
           </Button>
         </div>
       ) : null}
