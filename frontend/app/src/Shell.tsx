@@ -72,11 +72,11 @@ function useEscolhaDoMenu() {
 
 const horaLocal = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-/** The shift of the caller's cash register, read from the server like the rest of the header; absent while unknown or when the caller has no say on the caixa. */
+/** The shift of the caller's cash register, read from the server like the rest of the header; absent while unknown (the header only mounts it for callers with `caixa:ver`). */
 function TurnoDoCabecalho() {
   const leitura = useLeituraDoCaixa();
   const dado = leitura.data;
-  if (dado === undefined || dado.tipo === "semPermissao") {
+  if (dado === undefined) {
     return null;
   }
 

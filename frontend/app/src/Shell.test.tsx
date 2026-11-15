@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { CORTE_COMPUTADOR_PLENO } from "@flow4tech/design-system";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -371,7 +372,7 @@ describe("nothing of one account stays for the next on the same phone", () => {
 });
 
 describe("the stylesheet and the band constants agree", () => {
-  const css = readFileSync("src/app.css", "utf8");
+  const css = readFileSync(resolve(__dirname, "app.css"), "utf8");
 
   it("widens the full menu at the constant of the design system", () => {
     expect(css).toContain(`@media (min-width: ${CORTE_COMPUTADOR_PLENO}px)`);

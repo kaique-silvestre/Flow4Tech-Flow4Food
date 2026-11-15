@@ -5,7 +5,7 @@
 **Touches:** frontend/app/src/Shell.tsx, frontend/design-system/**, frontend/app/src/app.css, frontend/app/bundle-budget.json
 **Nature:** ui
 **tdd-scope:** required
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Navigation is bottom tabs on the phone, a rail on the tablet and a sidebar on the computer, always filtered by the authorization engine.
 - [ ] Header shows organization, unit, shift, user and the theme switch, read from the session (never from the client).
