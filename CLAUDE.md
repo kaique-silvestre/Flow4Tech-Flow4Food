@@ -5,7 +5,7 @@ Modular monolith. .NET backend, two React front apps (`app`, `control`) plus a s
 ## Structure
 - `backend/Flow4Tech.sln`
   - `src/Kernel`: small stable shared code (organization/unit context, `Money`, `EntityId`, `IClock`; `Events/IDomainEvent`; `Authorization/IAuthorizationEngine`: the single decision interface, ADR-006; `Audit/`: `IAuditLog`, `AuditEntry`, `ITechnicalLog`, the secret rule `SensitiveData`, `Correlation`).
-  - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`, `Identidade`). Project names `Flow4Tech.<Module>.<Layer>`.
+  - `src/<Module>/{Domain,Application,Infrastructure,Interface}`: one folder per module (`Organizacao`, `Permissoes`, `Identidade`, salão: `Cardapio`, `Comandas`, `Pagamentos`, `Caixa`). Project names `Flow4Tech.<Module>.<Layer>`.
   - `src/Infrastructure/Data`: shared technical data access (`Flow4Tech.Infrastructure.Data`: `TenantDatabase`, `MigrationRunner`); not a module; only a module's Infrastructure layer (and Api) may reference it.
   - `src/Infrastructure/Outbox`: transactional outbox and background-job seam (`Flow4Tech.Infrastructure.Outbox`: `OutboxWriter`, `OutboxDispatcher`, `OutboxSweeper`, `IOutboxConsumer`, `IdempotentConsumer`, `IBackgroundJobs`); not a module, built on `TenantDatabase`; module Infrastructure layers may reference it.
   - `tests/Authorization`: authorization engine contract (profile x permission matrix, cases 1-3, deny precedence), the factory policy and the cumulative-limit concurrency test against real PostgreSQL (classes named `*Integration*`).

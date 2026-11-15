@@ -1,0 +1,28 @@
+Metas do 2A (F4-0072), medidas em 2026-11-15
+Como foi medido: testes Playwright (Chromium emulando 390x844 e 360x740) contra a API REAL em `docker compose` (PostgreSQL real, banco recem-criado e semeado), build de producao servido por `vite preview`, num Mac de desenvolvimento. NAO e aparelho real: o criterio 2 do marco 2A pede aparelho real e isso continua PENDENTE (rodar no piloto, com a ficha de atrito). Tempos em emulador sao otimistas.
+Contagem de toques = caminho minimo roteirizado pelo teste (nao e uma pessoa); "toque" = clique do teste.
+
+1. Abrir comanda e primeiro item enviado em menos de 10 s: ATINGIDA no emulador.
+   - lancamento.spec: 390x844 2816 ms; 360x740 4850 ms.
+   - rapido.spec (a partir de Favoritos): 390x844 1168 ms; 360x740 4386 ms.
+   O limite de 10000 ms e afirmado dentro dos testes (falham se passar).
+2. Item comum em 2 toques: ATINGIDA POR ITEM, com ressalva de leitura.
+   - Cada item a mais do mesmo produto: 1 toque (lancamento.spec). Produto sem opcoes: 1 toque entra na rodada, sem folha de opcoes (opcoes.spec). A partir de Favoritos: 1 toque.
+   - Enviar a rodada custa 2 toques UMA vez por rodada (Enviar, Enviar agora): ate o envio de um item sozinho sao 3 toques. Se a meta do dono for "item sozinho ate enviado em 2 toques", NAO e atingida; decisao do dono.
+   - Repetir a ultima rodada: 2 toques (abrir a previa, Repetir agora). Ultima vez na mesa: 1 toque.
+3. Dividir em partes iguais em ate 4 toques: ATINGIDA, 4 toques (Mais, Dividir a conta, +, Confirmar divisao) nos dois tamanhos de tela (movimento.spec; o teste falha se passar de 4).
+4. Receber pagamento misto (2 metodos) em ate 8 toques: ATINGIDA, 8 toques (Fechar conta, 2 metodos, 4 digitos, Receber) nos dois tamanhos de tela (recebimento.spec; o teste falha se passar de 8).
+
+NAO MEDIDO: aparelho real, rede movel/Wi-Fi ruim, noite longa, dedo de garcom real (erro de toque). Divisao validada por testes de propriedade (SalaoPropertyTests, parte da suite .NET verde). Dois aparelhos na mesma comanda: coberto por testes de concorrencia otimista na API (409 com versao atual), nao por dois aparelhos fisicos.
+
+Linhas brutas gravadas pelos testes (frontend/app/e2e-results/metas.txt, nao versionado):
+2026-11-15T19:42:54.415Z 390x844 abrir comanda e primeiro item enviado em 1168 ms (limite 10000); item comum a partir de Favoritos: 1 toque para entrar na rodada, 3 toques ate o envio (adicionar, Enviar, Enviar agora) (F4-0053)
+2026-11-15T19:43:05.867Z 390x844 repetir ultima rodada: 2 toques (abrir a previa, Repetir agora) (F4-0053)
+2026-11-15T19:43:29.543Z 390x844 ultima vez nesta mesa: 1 toque para trazer a rodada inteira (F4-0053)
+2026-11-15T19:45:39.994Z 360x740 abrir comanda e primeiro item enviado em 4386 ms (limite 10000); item comum a partir de Favoritos: 1 toque para entrar na rodada, 3 toques ate o envio (adicionar, Enviar, Enviar agora) (F4-0053)
+2026-11-15T19:45:54.657Z 360x740 repetir ultima rodada: 2 toques (abrir a previa, Repetir agora) (F4-0053)
+2026-11-15T19:46:21.614Z 360x740 ultima vez nesta mesa: 1 toque para trazer a rodada inteira (F4-0053)
+2026-11-15T19:47:10.367Z 390x844 primeiro item enviado em 2816 ms (limite 10000); proxima unidade do mesmo produto: 1 toque
+2026-11-15T19:47:52.201Z 390x844 produto sem opcoes: 1 toque entra na rodada, sem folha de opcoes (F4-0051)
+2026-11-15T19:48:12.359Z 360x740 primeiro item enviado em 4850 ms (limite 10000); proxima unidade do mesmo produto: 1 toque
+2026-11-15T19:49:00.952Z 360x740 produto sem opcoes: 1 toque entra na rodada, sem folha de opcoes (F4-0051)

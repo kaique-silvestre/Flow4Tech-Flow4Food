@@ -673,6 +673,202 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Equal(1L, (await QueryAsync(a, "SELECT count(*) FROM produtos WHERE codigo = 'IMP01'", r => r.GetInt64(0))).Single());
     }
 
+    private const string PlanilhaDaNoite =
+        "tipo;codigo;nome;preco;categoria;grupo;minimo;maximo\r\n"
+        + "categoria;;Bar;;;;;\r\n"
+        + "grupo;;Adicionais;;;;0;1\r\n"
+        + "opcao;;Gelo extra;1;;Adicionais;;\r\n"
+        + "produto;CHOPP;Chopp 300ml;12,50;Bar;Adicionais;;\r\n"
+        + "produto;PORC;Porcao de fritas;40;Bar;;;\r\n";
+
+    private sealed record Noite(Guid ComandaA, Guid ComandaB, Guid ComandaC, Guid Turno, long TotalA);
+
+    /// <summary>
+    /// A scripted night in one organization, the owner only setting it up (model profiles, people, menu import, tables): a cashier opens the shift; a waiter opens comandas with and without a table,
+    /// launches with an add-on, repeats the round, moves an item and tries a discount (denied); a manager merges, gives a discount inside the limit and one above it (denied) and a courtesy;
+    /// the waiter previews and records every way to split; the cashier receives by seat with several methods and closes; a second comanda is paid in one mixed receipt; supply, withdrawal,
+    /// close with a difference that the cashier cannot approve and the manager does.
+    /// </summary>
+    private async Task<Noite> RunNoiteAsync(ApiFactory api, HttpClient client, Tenant tenant)
+    {
+        var dono = (await LoginAsync(client, tenant.OwnerEmail, DonoSenha)).AccessToken;
+
+        // Model profiles, three people, each with its model; nothing below runs as the owner.
+        using var modelos = await SendAsync(client, HttpMethod.Post, "/perfis/modelos", dono);
+        Assert.Equal(HttpStatusCode.Created, modelos.StatusCode);
+        var porModelo = (await modelos.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!.ToDictionary(m => m.GetProperty("chave").GetString()!, m => m.GetProperty("perfilId").GetGuid());
+        async Task<string> PessoaAsync(string modelo)
+        {
+            var conta = await NewStaffAsync(api, tenant, modelo);
+            Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(client, HttpMethod.Put, $"/contas/{conta.Id}/perfis/{porModelo[modelo]}", dono));
+            return (await LoginOperationalAsync(client, tenant, conta)).AccessToken;
+        }
+
+        var garcom = await PessoaAsync("garcom");
+        var caixa = await PessoaAsync("caixa");
+        var gerente = await PessoaAsync("gerente");
+
+        // The menu comes from a spreadsheet (with the add-on group), the tables from the owner.
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/cardapio/importacao", dono, PedidoDeImportacao(Guid.CreateVersion7(), PlanilhaDaNoite)));
+        using var mesa = await SendAsync(client, HttpMethod.Post, "/mesas", dono, new { identificacao = "M1" });
+        Assert.Equal(HttpStatusCode.Created, mesa.StatusCode);
+        var mesaId = (await mesa.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+        using var produtos = await SendAsync(client, HttpMethod.Get, "/cardapio/produtos", garcom);
+        var lista = (await produtos.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!;
+        var chopp = lista.Single(p => p.GetProperty("nome").GetString() == "Chopp 300ml").GetProperty("id").GetGuid();
+        var porcao = lista.Single(p => p.GetProperty("nome").GetString() == "Porcao de fritas").GetProperty("id").GetGuid();
+        using var grupos = await SendAsync(client, HttpMethod.Get, "/cardapio/grupos-opcao", dono);
+        var gelo = (await grupos.Content.ReadFromJsonAsync<List<System.Text.Json.JsonElement>>())!.Single().GetProperty("opcoes")[0].GetProperty("id").GetGuid();
+
+        async Task<System.Text.Json.JsonElement> CallAsync(string token, HttpMethod metodo, string caminho, object? corpo, HttpStatusCode esperado)
+        {
+            using var response = await SendAsync(client, metodo, caminho, token, corpo);
+            Assert.True(response.StatusCode == esperado, $"{metodo} {caminho}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+            return await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        }
+
+        async Task AssertDeniedAsync(string token, string caminho, object corpo)
+        {
+            using var response = await SendAsync(client, HttpMethod.Post, caminho, token, corpo);
+            var texto = await response.Content.ReadAsStringAsync();
+            Assert.True(response.StatusCode == HttpStatusCode.Forbidden, $"POST {caminho}: {(int)response.StatusCode} {texto}");
+            Assert.Equal(string.Empty, texto);
+        }
+
+        // The cashier opens the shift; the waiter opens a comanda on the table and one without.
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos", caixa, new { fundoCentavos = 10_000 }));
+        var a = await CallAsync(garcom, HttpMethod.Post, "/comandas", new { mesaId }, HttpStatusCode.Created);
+        var b = await CallAsync(garcom, HttpMethod.Post, "/comandas", new { identificacao = "Balcao", mesaId = (Guid?)null, pessoas = (int?)null }, HttpStatusCode.Created);
+        var (idA, idB) = (a.GetProperty("id").GetGuid(), b.GetProperty("id").GetGuid());
+
+        // Round with the add-on and seats, then the same round again in one call: 2 x 13,50 + 40,00 twice.
+        var rodada = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idA}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = a.GetProperty("versao").GetInt32(), itens = new object[] { new { produtoId = chopp, quantidade = 2, assento = 1, opcaoIds = new[] { gelo } }, new { produtoId = porcao, quantidade = 1, assento = 2 } } }, HttpStatusCode.Created);
+        var porcao1 = rodada.GetProperty("itens").EnumerateArray().Single(i => i.GetProperty("produtoId").GetGuid() == porcao).GetProperty("id").GetGuid();
+        var repetida = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idA}/rodadas/repetir", new { rodadaId = Guid.CreateVersion7(), versao = rodada.GetProperty("comandaVersao").GetInt32() }, HttpStatusCode.Created);
+        Assert.Equal(0, repetida.GetProperty("ignorados").GetArrayLength());
+        var versaoA = repetida.GetProperty("rodada").GetProperty("comandaVersao").GetInt32();
+
+        // The waiter moves the fries to the other comanda; the manager merges it back.
+        var movido = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idA}/itens/transferir", new { versao = versaoA, destinoId = idB, destinoVersao = b.GetProperty("versao").GetInt32(), itemIds = new[] { porcao1 } }, HttpStatusCode.OK);
+        var juntada = await CallAsync(gerente, HttpMethod.Post, $"/comandas/{idA}/juntar", new { versao = movido.GetProperty("origem").GetProperty("versao").GetInt32(), origemId = idB, origemVersao = movido.GetProperty("destino").GetProperty("versao").GetInt32() }, HttpStatusCode.OK);
+        versaoA = juntada.GetProperty("destino").GetProperty("versao").GetInt32();
+        using (var conta = await SendAsync(client, HttpMethod.Get, $"/comandas/{idA}/conta", garcom))
+        {
+            Assert.Equal(13_400L, (await conta.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("consumoCentavos").GetInt64());
+        }
+
+        // The waiter has no discount; the manager gives 10% (inside 20%) and is denied 50% (above it), then a courtesy of a chopp line (inside R$ 80,00 of table value).
+        await AssertDeniedAsync(garcom, $"/comandas/{idA}/descontos", new { versao = versaoA, percentual = 10m, motivo = "pedido" });
+        await AssertDeniedAsync(gerente, $"/comandas/{idA}/descontos", new { versao = versaoA, percentual = 50m, motivo = "demais" });
+        var desconto = await CallAsync(gerente, HttpMethod.Post, $"/comandas/{idA}/descontos", new { versao = versaoA, percentual = 10m, motivo = "cliente antigo" }, HttpStatusCode.Created);
+        Assert.Equal(1_340, desconto.GetProperty("desconto").GetProperty("aplicadoCentavos").GetInt32());
+        versaoA = desconto.GetProperty("conta").GetProperty("versao").GetInt32();
+        using var itensA = await SendAsync(client, HttpMethod.Get, $"/comandas/{idA}/itens", garcom);
+        var itens = (await itensA.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("itens").EnumerateArray().Where(i => i.GetProperty("estado").GetString() == "lancado").ToList();
+        Assert.Equal(4, itens.Count);
+        var choppItem = itens.First(i => i.GetProperty("produtoId").GetGuid() == chopp).GetProperty("id").GetGuid();
+        await AssertDeniedAsync(garcom, $"/comandas/{idA}/itens/{choppItem}/cortesia", new { versao = versaoA, motivo = "x" });
+        var cortesia = await CallAsync(gerente, HttpMethod.Post, $"/comandas/{idA}/itens/{choppItem}/cortesia", new { versao = versaoA, motivo = "aniversario" }, HttpStatusCode.OK);
+        versaoA = cortesia.GetProperty("conta").GetProperty("versao").GetInt32();
+        var totalA = cortesia.GetProperty("conta").GetProperty("totalCentavos").GetInt64();
+        Assert.True(totalA is > 0 and < 14_740);
+
+        // The waiter previews and records every way to split; the last one recorded (equal, three parts) is the one the cashier receives by.
+        var ids = itens.Select(i => i.GetProperty("id").GetGuid()).ToList();
+        object[] pedidos =
+        [
+            new { modo = "assento", gorjetaCentavos = 100 },
+            new { modo = "item", grupos = new[] { ids.Take(2).ToList(), ids.Skip(2).ToList() } },
+            new { modo = "valores", valores = new[] { totalA - 1_000, 1_000 } },
+            new { modo = "percentual", percentuais = new[] { 50m, 30m, 20m } },
+            new { modo = "iguais", partes = 3, gorjetaCentavos = (long?)null },
+        ];
+        System.Text.Json.JsonElement divisao = default;
+        foreach (var pedido in pedidos)
+        {
+            var previa = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idA}/divisao/previa", pedido, HttpStatusCode.OK);
+            Assert.Equal(previa.GetProperty("totalCentavos").GetInt64(), previa.GetProperty("partes").EnumerateArray().Sum(p => p.GetProperty("totalCentavos").GetInt64()));
+            divisao = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idA}/divisao", new { divisaoId = Guid.CreateVersion7(), versao = versaoA, pedido }, HttpStatusCode.Created);
+            versaoA = divisao.GetProperty("comandaVersao").GetInt32();
+        }
+
+        // The cashier receives each part: Pix, cash with change, and card plus cash in the same part; then closes the comanda.
+        var metodos = (await CallAsync(caixa, HttpMethod.Get, "/pagamentos/metodos", null, HttpStatusCode.OK)).EnumerateArray().ToList();
+        Guid Metodo(string chave) => metodos.Single(m => m.GetProperty("chave").GetString() == chave).GetProperty("id").GetGuid();
+        object Linha(Guid metodo, long recebido, int parte) => new { pagamentoId = Guid.CreateVersion7(), metodoId = metodo, recebidoCentavos = recebido, gorjetaCentavos = (long?)null, divisaoId = divisao.GetProperty("id").GetGuid(), divisaoParte = parte };
+        var partes = divisao.GetProperty("partes").EnumerateArray().Select(p => p.GetProperty("totalCentavos").GetInt64()).ToList();
+        Assert.Equal(totalA, partes.Sum());
+        var r1 = await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idA}/recebimentos", new { versao = versaoA, linhas = new[] { Linha(Metodo("pix"), partes[0], 1) } }, HttpStatusCode.Created);
+        var r2 = await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idA}/recebimentos", new { versao = r1.GetProperty("conta").GetProperty("versao").GetInt32(), linhas = new[] { Linha(Metodo("dinheiro"), partes[1] + 500, 2) } }, HttpStatusCode.Created);
+        var r3 = await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idA}/recebimentos", new { versao = r2.GetProperty("conta").GetProperty("versao").GetInt32(), linhas = new[] { Linha(Metodo("credito"), partes[2] - 1_000, 3), Linha(Metodo("dinheiro"), 1_000, 3) } }, HttpStatusCode.Created);
+        Assert.Equal(0L, r3.GetProperty("conta").GetProperty("saldoCentavos").GetInt64());
+        await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idA}/fechar", new { versao = r3.GetProperty("conta").GetProperty("versao").GetInt32() }, HttpStatusCode.OK);
+
+        // A second comanda, paid in one mixed receipt (card with tip, Pix, cash with change): 2 x 13,50 + 10% = 29,70.
+        var c = await CallAsync(garcom, HttpMethod.Post, "/comandas", new { identificacao = "Mista", mesaId = (Guid?)null, pessoas = (int?)null }, HttpStatusCode.Created);
+        var idC = c.GetProperty("id").GetGuid();
+        var rodadaC = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idC}/rodadas", new { rodadaId = Guid.CreateVersion7(), versao = c.GetProperty("versao").GetInt32(), itens = new[] { new { produtoId = chopp, quantidade = 1, opcaoIds = new[] { gelo } } } }, HttpStatusCode.Created);
+        var repetidaC = await CallAsync(garcom, HttpMethod.Post, $"/comandas/{idC}/rodadas/repetir", new { rodadaId = Guid.CreateVersion7(), versao = rodadaC.GetProperty("comandaVersao").GetInt32() }, HttpStatusCode.Created);
+        var versaoC = repetidaC.GetProperty("rodada").GetProperty("comandaVersao").GetInt32();
+        object Mista(Guid metodo, long recebido, long? gorjeta) => new { pagamentoId = Guid.CreateVersion7(), metodoId = metodo, recebidoCentavos = recebido, gorjetaCentavos = gorjeta, divisaoId = (Guid?)null, divisaoParte = (int?)null };
+        var mista = await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idC}/recebimentos", new { versao = versaoC, linhas = new[] { Mista(Metodo("credito"), 1_000, 200), Mista(Metodo("pix"), 500, null), Mista(Metodo("dinheiro"), 2_000, null) } }, HttpStatusCode.Created);
+        Assert.Equal([0L, 0L, 530L], mista.GetProperty("pagamentos").EnumerateArray().Select(l => l.GetProperty("trocoCentavos").GetInt64()));
+        await CallAsync(caixa, HttpMethod.Post, $"/comandas/{idC}/fechar", new { versao = mista.GetProperty("conta").GetProperty("versao").GetInt32() }, HttpStatusCode.OK);
+
+        // Supply and withdrawal; closing R$ 10,00 over the expected cash is a difference only the manager can approve.
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos/atual/suprimentos", caixa, new { valorCentavos = 2_000, motivo = "Troco do banco" }));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/caixa/turnos/atual/sangrias", caixa, new { valorCentavos = 1_500, motivo = "Deposito", destino = "Cofre" }));
+        var turnoAtual = await CallAsync(caixa, HttpMethod.Get, "/caixa/turnos/atual", null, HttpStatusCode.OK);
+        var esperado = 10_000 + turnoAtual.GetProperty("recebidoDinheiroCentavos").GetInt64() + 2_000 - 1_500;
+        var fechado = await CallAsync(caixa, HttpMethod.Post, "/caixa/turnos/atual/fechar", new { contadoCentavos = esperado + 1_000 }, HttpStatusCode.OK);
+        Assert.Equal((esperado, 1_000L, "pendente"), (fechado.GetProperty("esperadoCentavos").GetInt64(), fechado.GetProperty("diferencaCentavos").GetInt64(), fechado.GetProperty("situacao").GetString()));
+        var turno = fechado.GetProperty("id").GetGuid();
+        await AssertDeniedAsync(caixa, $"/caixa/turnos/{turno}/diferenca/aprovar", new { motivo = "Eu mesmo" });
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Post, $"/caixa/turnos/{turno}/diferenca/aprovar", gerente, new { motivo = "Gorjeta no caixa" }));
+        return new Noite(idA, idB, idC, turno, totalA);
+    }
+
+    [Fact]
+    public async Task A_scripted_night_runs_in_each_organization_by_model_profiles_without_the_owner_and_nothing_crosses_to_the_other()
+    {
+        await using var api = Api();
+        using var client = api.CreateClient();
+        var a = await NewTenantAsync(api);
+        var b = await NewTenantAsync(api);
+
+        var noiteA = await RunNoiteAsync(api, client, a);
+        var noiteB = await RunNoiteAsync(api, client, b);
+
+        // Each organization ends with the same shape and its own rows only.
+        foreach (var (tenant, noite) in new[] { (a, noiteA), (b, noiteB) })
+        {
+            Assert.Equal(("fechada", "juntada", "fechada"), (
+                (await QueryAsync(tenant, "SELECT estado FROM comandas WHERE id = @c", r => r.GetString(0), ("c", noite.ComandaA))).Single(),
+                (await QueryAsync(tenant, "SELECT estado FROM comandas WHERE id = @c", r => r.GetString(0), ("c", noite.ComandaB))).Single(),
+                (await QueryAsync(tenant, "SELECT estado FROM comandas WHERE id = @c", r => r.GetString(0), ("c", noite.ComandaC))).Single()));
+            Assert.Equal((7L, 5L, 2L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM pagamentos), (SELECT count(*) FROM divisoes), (SELECT count(*) FROM movimentos_caixa), (SELECT count(*) FROM aprovacoes_diferenca)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2), r.GetInt64(3)))).Single());
+            foreach (var (tipo, quantidade) in new[] { ("cardapio.importado", 1L), ("comanda.transferida", 1L), ("comanda.juntada", 1L), ("comanda.desconto-aplicado", 1L), ("comanda.item-cortesia", 1L), ("comanda.dividida", 5L), ("caixa.suprimento", 1L), ("caixa.sangria", 1L), ("caixa.diferenca-aprovada", 1L) })
+            {
+                Assert.Equal(quantidade, (await QueryAsync(tenant, "SELECT count(*) FROM outbox_eventos WHERE tipo = @t", r => r.GetInt64(0), ("t", tipo))).Single());
+            }
+
+            // The denials of the night are on the audit trail with the permission, never with a reason.
+            Assert.True((await QueryAsync(tenant, "SELECT count(*) FROM auditoria_registros WHERE acao = 'acesso:negar' AND resultado = 'negado' AND depois->>'permissao' = 'comanda:desconto'", r => r.GetInt64(0))).Single() >= 1);
+            Assert.Equal(0L, (await QueryAsync(tenant, "SELECT count(*) FROM comandas WHERE organizacao_id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single());
+        }
+
+        // The other organization neither reads nor changes this night, and the table sweep stays at zero for both.
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Get, $"/comandas/{noiteA.ComandaA}/conta", (await LoginAsync(client, b.OwnerEmail, DonoSenha)).AccessToken));
+        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(client, HttpMethod.Post, $"/caixa/turnos/{noiteA.Turno}/diferenca/aprovar", (await LoginAsync(client, b.OwnerEmail, DonoSenha)).AccessToken, new { motivo = "Invasao" }));
+        foreach (var tenant in new[] { a, b })
+        {
+            foreach (var table in await ListTablesAsync())
+            {
+                Assert.True((await QueryAsync(tenant, $"SELECT count(*) FROM {table} WHERE organizacao_id <> @o", r => r.GetInt64(0), ("o", tenant.Id))).Single() == 0, $"{table} returned a row of another organization to {tenant.Id}");
+            }
+        }
+    }
+
     private sealed record Comprovantes(Guid Aberta, Guid Fechada);
 
     /// <summary>One organization as its founder: an open comanda (pre-bill, then bill requested twice) and a closed one with a payment (second copy of the receipt, as data and as text).</summary>
@@ -1100,6 +1296,21 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
 
         await link.CommitAsync();
         return new Tenant(org, unit, owner, email, new Conta(criada.ContaId.Value, usuario));
+    }
+
+    /// <summary>An operational account of the tenant (temporary credential already replaced, linked to the unit), created by its owner; the profile is the caller's to assign.</summary>
+    private async Task<Conta> NewStaffAsync(ApiFactory api, Tenant tenant, string modelo)
+    {
+        var usuario = modelo + tenant.Id.ToString("N")[..8];
+        var criada = await api.Services.GetRequiredService<GestaoDeContas>().CriarOperacionalAsync(tenant.RequestOfOwner(), usuario, "Pessoa " + usuario);
+        Assert.Equal(StatusCriacao.Criada, criada.Status);
+        var troca = await api.Services.GetRequiredService<TrocaDeSenha>().TrocarAsync(tenant.Id, criada.ContaId!.Value, criada.Credencial!.Valor, NovaSenha);
+        Assert.Equal(StatusTrocaDeSenha.Trocada, troca.Status);
+        await using var source = NpgsqlDataSource.Create(_db.AppConnection);
+        await using var link = await new TenantDatabase(source).BeginAsync(new OrganizationContext(tenant.Id, tenant.Unit));
+        await ExecAsync(link, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @c, @u)", ("o", tenant.Id), ("c", criada.ContaId.Value), ("u", tenant.Unit));
+        await link.CommitAsync();
+        return new Conta(criada.ContaId.Value, usuario);
     }
 
     private static async Task<int> ExecAsync(TenantTransaction tx, string sql, params (string Name, object Value)[] args)
