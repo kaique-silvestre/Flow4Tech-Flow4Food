@@ -2,7 +2,7 @@ import { BottomSheet, Button, Notice, Skeleton } from "@flow4tech/design-system"
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useOnline } from "../fila/conexao";
-import { CorpoDoComprovante, useCompartilhar } from "./Comprovante";
+import { CorpoDoComprovante, useCompartilhar } from "./ComprovanteView";
 import { falhaDe, horaCurta, pedirConta, textoDaFalha, useComprovante } from "./comprovante";
 
 interface Props {

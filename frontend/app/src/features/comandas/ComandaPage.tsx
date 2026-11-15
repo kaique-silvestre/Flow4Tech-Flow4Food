@@ -24,7 +24,7 @@ import {
 } from "../fila/fila";
 import { usePermissoes } from "../sessao/permissoes";
 import { api } from "../sessao/sessao";
-import { ReciboDaComanda } from "./Comprovante";
+import { ReciboDaComanda } from "./ComprovanteView";
 import {
   buscarGruposDoProduto,
   chaveDosGrupos,
