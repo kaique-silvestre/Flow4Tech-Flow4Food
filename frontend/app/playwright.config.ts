@@ -1,7 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * Two phone sizes (docs/design/DESIGN.md): 390x844 is the design size, 360x740 the smallest supported. The app is served by `vite preview`
+ * Four resolutions (ADR-019, F4-0138): phone 390x844 (the design size) and 360x740 (the smallest supported), tablet 820x1180, computer 1440x900.
+ * `salao-quatro-resolucoes.spec.ts` (simulated API, no backend) runs at all four; the tablet and computer projects run only it and their own spec,
+ * the phones run the whole suite (the flows with the real API are the phones'). The app is served by `vite preview`
  * (the production build, so the service worker and the manifest are the real ones) which proxies the API paths to the real API (`API_URL`, default http://127.0.0.1:8080).
  * `PW_CHROMIUM` points at an already installed Chromium when the one Playwright wants is not available (cloud sessions); CI uses `playwright install chromium`.
  */
@@ -38,13 +40,13 @@ export default defineConfig({
     // Tablet (ADR-019): only the specs that prove the side-by-side layout; the rest of the suite is the phone's.
     {
       name: "tablet-820x1180",
-      testMatch: /salao-tablet\.spec\.ts/,
+      testMatch: /salao-(tablet|quatro-resolucoes)\.spec\.ts/,
       use: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 1, hasTouch: true },
     },
     // Computer (ADR-019): the sidebar layout and the keyboard shortcuts.
     {
       name: "computer-1440x900",
-      testMatch: /salao-computador\.spec\.ts/,
+      testMatch: /salao-(computador|quatro-resolucoes)\.spec\.ts/,
       use: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
     },
   ],
