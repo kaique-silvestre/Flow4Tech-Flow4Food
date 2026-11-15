@@ -13,6 +13,7 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | S-02 | `.scratch/S-02-plataforma-base/` | 2026-11-02 | 2026-11-05 | F4-0013..F4-0023 |
 | S-03 | `.scratch/S-03-dominio-salao/` | 2026-11-05 | 2026-11-06 | F4-0024..F4-0038 |
 | S-04 | `.scratch/S-04-salao-rapido/` | 2026-11-06 | em andamento | F4-0044..F4-0072 |
+| S-05 | `.scratch/S-05-gestao-web-e-telas/` | 2026-11-15 | em andamento | a registrar |
 
 ## Tickets
 
@@ -148,3 +149,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0128 | Corrigir o CI do PR 48: timeout do job de integracao, orcamento de bundle, specs e2e do Marco 2A que falhavam e `cardapio:importar` ausente em /sessao/permissoes | governanca | - | - | `claude/s04-marco-2a` | - | feito |
 | F4-0129 | Front `app` hospedado no Railway (staging) para teste: servico `flow4tech-app` (Caddy serve o `dist` e faz proxy das rotas da API na rede privada, mesma origem) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0130 | Knip acusava `Comprovante.tsx` como sem uso (colide com `comprovante.ts` em disco sem distincao de caixa): renomeia para `ComprovanteView.tsx` | governanca | - | - | `dev-v2` (commit direto) | - | feito |
+| F4-0131 | Abrir a fatia S-05 (gestao na web e app para varias telas) com o rascunho da spec | governanca | `.scratch/S-05-gestao-web-e-telas/spec.md` | - | `docs/s05-spec` | - | feito |
