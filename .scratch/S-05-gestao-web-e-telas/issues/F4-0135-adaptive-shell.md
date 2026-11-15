@@ -2,7 +2,7 @@
 
 **What to build:** block R2 of slice S-05 (see the spec).
 **Blocked by:** F4-0134
-**Touches:** frontend/app/src/Shell.tsx, frontend/design-system/**
+**Touches:** frontend/app/src/Shell.tsx, frontend/design-system/**, frontend/app/src/app.css, frontend/app/bundle-budget.json
 **Nature:** ui
 **tdd-scope:** required
 **Status:** ready-for-agent

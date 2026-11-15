@@ -51,6 +51,7 @@ body {
   --app-menu: 200px;
 }
 
+/* Mirrors CORTE_COMPUTADOR_PLENO (design-system faixa.ts); Shell.test.tsx keeps the two equal. */
 @media (min-width: 1280px) {
   .app-shell[data-menu="completo"] {
     --app-menu: 264px;
@@ -1266,4 +1267,25 @@ body {
 .conta-tipo {
   display: inline-flex;
   margin-right: var(--f4-space-2);
+}
+
+/* Tablet and computer: "Nova comanda" is a natural-size button at the top of the list, not the phone's fixed full-width bar. */
+.app-shell:not([data-faixa="celular"]) .comandas {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell:not([data-faixa="celular"]) .comandas-acao {
+  position: static;
+  order: -1;
+  align-self: flex-end;
+  margin: 0 0 var(--f4-space-3);
+  padding: 0;
+  border-top: 0;
+  background: none;
+}
+
+.app-shell:not([data-faixa="celular"]) .comandas-acao .entry-submit {
+  width: auto;
+  margin-top: 0;
 }

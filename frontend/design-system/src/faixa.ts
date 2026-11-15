@@ -3,6 +3,8 @@ import { useSyncExternalStore } from "react";
 /** The only width cuts of the app (ADR-019, px CSS, mobile-first). No screen uses another number. */
 export const CORTE_TABLET = 500;
 export const CORTE_COMPUTADOR = 1000;
+/** Inside the computer band, the full menu widens from here (prototype l. 1048/1050). CSS cannot read this constant: `app.css` mirrors it and a test keeps both equal. */
+export const CORTE_COMPUTADOR_PLENO = 1280;
 
 export type Faixa = "celular" | "tablet" | "computador";
 

@@ -17,6 +17,7 @@ export { type Tone, ToneBadge } from "./components/ToneBadge";
 export { UndoToast, type UndoToastProps } from "./components/UndoToast";
 export {
   CORTE_COMPUTADOR,
+  CORTE_COMPUTADOR_PLENO,
   CORTE_TABLET,
   type EscolhaDoMenu,
   type Faixa,

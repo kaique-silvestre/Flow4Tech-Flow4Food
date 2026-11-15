@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { CORTE_COMPUTADOR_PLENO } from "@flow4tech/design-system";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -192,6 +194,18 @@ describe("the navigation follows the band of the window", () => {
     expect(screen.getByRole("button", { name: "Expandir o menu" })).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("tablet rail: each icon-only link carries its name as aria-label", async () => {
+    larguraDaJanela(820);
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
+
+    for (const nome of ["Comandas", "Caixa"]) {
+      expect(within(nav).getByRole("link", { name: nome })).toHaveAttribute("aria-label", nome);
+    }
+  });
+
   it("computer: the full menu, collapsible to the rail, and the choice is remembered", async () => {
     larguraDaJanela(1440);
     stubRede(pronta);
@@ -353,5 +367,20 @@ describe("nothing of one account stays for the next on the same phone", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Sair" }));
     await screen.findByRole("heading", { level: 1, name: "Entrar" });
     expect(screen.queryByText(/descartadas/)).toBeNull();
+  });
+});
+
+describe("the stylesheet and the band constants agree", () => {
+  const css = readFileSync("src/app.css", "utf8");
+
+  it("widens the full menu at the constant of the design system", () => {
+    expect(css).toContain(`@media (min-width: ${CORTE_COMPUTADOR_PLENO}px)`);
+  });
+
+  it("drops the phone's fixed Nova comanda bar outside the phone band", () => {
+    const regra = css.match(/\.app-shell:not\(\[data-faixa="celular"\]\) \.comandas-acao \{([^}]*)\}/);
+
+    expect(regra?.[1]).toMatch(/position:\s*static/);
+    expect(regra?.[1]).toMatch(/border-top:\s*0/);
   });
 });

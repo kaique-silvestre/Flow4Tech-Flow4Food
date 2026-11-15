@@ -106,6 +106,7 @@ function Navegacao({ tabs, faixa, recolhido }: { tabs: readonly TabItem[]; faixa
           to={tab.to}
           className="app-tab"
           title={recolhido ? tab.label : undefined}
+          aria-label={recolhido ? tab.label : undefined}
           activeOptions={{ exact: true }}
           activeProps={{ "aria-current": "page" }}
         >

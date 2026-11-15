@@ -1,6 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { CORTE_COMPUTADOR, CORTE_TABLET, faixaDaLargura, menuRecolhido, useFaixa } from "./faixa";
+import {
+  CORTE_COMPUTADOR,
+  CORTE_COMPUTADOR_PLENO,
+  CORTE_TABLET,
+  faixaDaLargura,
+  menuRecolhido,
+  useFaixa,
+} from "./faixa";
 
 function larguraDaJanela(px: number) {
   Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: px });
@@ -10,7 +17,7 @@ afterEach(() => larguraDaJanela(1024));
 
 describe("faixaDaLargura (ADR-019: 500 and 1000 are the only cuts)", () => {
   it("keeps the cuts as the ADR names them", () => {
-    expect([CORTE_TABLET, CORTE_COMPUTADOR]).toEqual([500, 1000]);
+    expect([CORTE_TABLET, CORTE_COMPUTADOR, CORTE_COMPUTADOR_PLENO]).toEqual([500, 1000, 1280]);
   });
 
   it.each([
