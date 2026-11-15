@@ -29,7 +29,14 @@ export default defineConfig({
     },
     {
       name: "phone-360x740",
+      testIgnore: /salao-tablet\.spec\.ts/,
       use: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    },
+    // Tablet (ADR-019): only the specs that prove the side-by-side layout; the rest of the suite is the phone's.
+    {
+      name: "tablet-820x1180",
+      testMatch: /salao-tablet\.spec\.ts/,
+      use: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 1, hasTouch: true },
     },
   ],
   webServer: {

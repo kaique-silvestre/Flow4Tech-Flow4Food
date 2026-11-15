@@ -485,6 +485,19 @@ body {
   flex: 1;
 }
 
+/* Tablet and computer (CORTE_TABLET, faixa.ts; a test keeps both equal): the same sheet is a side panel, full height on the right. */
+@media (min-width: 500px) {
+  .f4-sheet {
+    top: 0;
+    left: auto;
+    width: 420px;
+    max-width: 100%;
+    max-height: none;
+    margin: 0;
+    border-radius: var(--f4-radius-sheet) 0 0 var(--f4-radius-sheet);
+  }
+}
+
 @keyframes f4-sheet-in {
   from {
     transform: translateY(24px);

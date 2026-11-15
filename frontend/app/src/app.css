@@ -40,6 +40,7 @@ body {
 
 .app-shell:not([data-faixa="celular"]) {
   --app-menu: 72px;
+  --app-cabecalho: 5rem;
   display: grid;
   grid-template-columns: var(--app-menu) minmax(0, 1fr);
   max-width: none;
@@ -307,6 +308,7 @@ body {
 }
 
 .app-shell:not([data-faixa="celular"]) .app-topbar {
+  min-height: var(--app-cabecalho);
   padding-inline: var(--f4-space-6);
 }
 
@@ -371,14 +373,11 @@ body {
 
 /* Comanda list rows */
 .comanda-list {
+  display: grid;
+  gap: var(--f4-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.comanda-list {
-  display: grid;
-  gap: var(--f4-space-2);
 }
 
 /* A comanda: name and value on the first line, time open and waiter with the state in words on the second (a table of two columns, the value and the badge aligned right). */
@@ -514,13 +513,6 @@ body {
   display: grid;
   gap: var(--f4-space-2);
   justify-items: start;
-}
-
-.caixa-resultado-linha {
-  margin: 0;
-  display: flex;
-  gap: var(--f4-space-3);
-  align-items: baseline;
 }
 
 .caixa-resultado .f4-badge {
@@ -976,12 +968,6 @@ body {
   white-space: normal;
 }
 
-.item-carregando {
-  margin: var(--f4-space-3) 0 0;
-  color: var(--f4-ink-muted);
-  font-size: var(--f4-text-secondary);
-}
-
 .item-chips {
   margin-bottom: var(--f4-space-3);
   display: flex;
@@ -1168,7 +1154,6 @@ body {
   line-height: 1.1;
 }
 
-.fechar-parcial,
 .fechar-resta,
 .fechar-sem-troco {
   margin: var(--f4-space-3) 0;
@@ -1288,4 +1273,45 @@ body {
 .app-shell:not([data-faixa="celular"]) .comandas-acao .entry-submit {
   width: auto;
   margin-top: 0;
+}
+
+/* Tablet (ADR-019): the list beside the open comanda in a 420px panel (prototype .sal-split); the panel scrolls on its own, below the header (--app-cabecalho, the minimum height the shell gives it). */
+.dividido {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: var(--f4-space-4);
+  align-items: start;
+}
+
+.dividido .comandas-filtros {
+  flex-wrap: wrap;
+  margin-inline: 0;
+  padding-inline: 0;
+  overflow: visible;
+}
+
+.dividido-painel {
+  position: sticky;
+  top: calc(var(--app-cabecalho) + var(--f4-space-4));
+  max-height: calc(100dvh - var(--app-cabecalho) - 2 * var(--f4-space-4));
+  overflow-y: auto;
+  padding: var(--f4-space-4);
+  border: 1px solid var(--f4-border);
+  border-radius: var(--f4-radius-lg);
+  background: var(--f4-surface);
+}
+
+/* In the panel the round bar (last in the screen, after "Ver pré-conta") is pinned to the foot with the panel's own padding under the buttons. */
+.dividido-painel .comanda {
+  min-height: 0;
+}
+
+.dividido-painel .comanda-barra {
+  bottom: calc(-1 * var(--f4-space-4));
+  padding-block: var(--f4-space-2) var(--f4-space-4);
+  background: var(--f4-surface);
+}
+
+.comanda-card[aria-current="page"] {
+  border-color: var(--f4-accent);
 }

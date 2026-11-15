@@ -114,7 +114,7 @@ type ErroDeApi =
  * and the cancel of an item. Every write carries the comanda version the screen last saw; a stale one is told and refreshed without losing what is staged.
  */
 export function ComandaPage() {
-  const { comandaId } = useParams({ from: "/app/salao/comanda/$comandaId" });
+  const { comandaId } = useParams({ from: "/app/lista/salao/comanda/$comandaId" });
   const queryClient = useQueryClient();
   const permissoes = usePermissoes();
   const pode = permissoes.carregado && permissoes.pode("comanda:ver");
@@ -967,6 +967,22 @@ export function ComandaPage() {
         />
       ) : null}
 
+      {comandaAberta && faltaUnidades === 0 ? (
+        <div className="comanda-fechar">
+          <Button variant="secondary" onClick={() => setFolhaPreConta(true)}>
+            {comanda.contaPedidaEm ? "Ver pré-conta · conta pedida" : "Ver pré-conta"}
+          </Button>
+        </div>
+      ) : null}
+
+      {podeFechar && faltaUnidades === 0 ? (
+        <div className="comanda-fechar">
+          <Button variant="secondary" onClick={() => setFolhaFechar(true)}>
+            Fechar conta
+          </Button>
+        </div>
+      ) : null}
+
       {lancar ? (
         <div className="comanda-barra">
           {faltaUnidades > 0 ? (
@@ -985,22 +1001,6 @@ export function ComandaPage() {
               </Button>
             </>
           ) : null}
-        </div>
-      ) : null}
-
-      {comandaAberta && faltaUnidades === 0 ? (
-        <div className="comanda-fechar">
-          <Button variant="secondary" onClick={() => setFolhaPreConta(true)}>
-            {comanda.contaPedidaEm ? "Ver pré-conta · conta pedida" : "Ver pré-conta"}
-          </Button>
-        </div>
-      ) : null}
-
-      {podeFechar && faltaUnidades === 0 ? (
-        <div className="comanda-fechar">
-          <Button variant="secondary" onClick={() => setFolhaFechar(true)}>
-            Fechar conta
-          </Button>
         </div>
       ) : null}
 

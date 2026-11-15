@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { ErroDeRota } from "./ErroDeRota";
-import { ComandasPage } from "./features/comandas/ComandasPage";
+import { SalaoLayout, SalaoRota } from "./features/comandas/Dividido";
 import { aoEncerrarSessao, destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
 import { EntryShell, Shell, salaoTabs } from "./Shell";
 
@@ -57,9 +57,10 @@ const appLayout = createRoute({
   component: () => <Shell title="Salão" tabs={abas} />,
 });
 
-const salaoRoute = createRoute({ getParentRoute: () => appLayout, path: "/salao", component: ComandasPage });
+const salaoLayout = createRoute({ getParentRoute: () => appLayout, id: "lista", component: SalaoLayout });
+const salaoRoute = createRoute({ getParentRoute: () => salaoLayout, path: "/salao", component: SalaoRota });
 const comandaRoute = createRoute({
-  getParentRoute: () => appLayout,
+  getParentRoute: () => salaoLayout,
   path: "/salao/comanda/$comandaId",
   component: lazyRouteComponent(() => import("./features/comandas/ComandaPage"), "ComandaPage"),
 });
@@ -125,8 +126,7 @@ const unidadeRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   appLayout.addChildren([
-    salaoRoute,
-    comandaRoute,
+    salaoLayout.addChildren([salaoRoute, comandaRoute]),
     mesasRoute,
     caixaRoute,
     cardapioRoute,

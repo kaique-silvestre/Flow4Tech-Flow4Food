@@ -1,4 +1,14 @@
-import { Button, Chip, formatBRL, Icon, Notice, SearchField, Skeleton, StatusBadge } from "@flow4tech/design-system";
+import {
+  Button,
+  Chip,
+  formatBRL,
+  Icon,
+  Notice,
+  SearchField,
+  Skeleton,
+  StatusBadge,
+  useFaixa,
+} from "@flow4tech/design-system";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useOnline } from "../fila/conexao";
@@ -52,6 +62,7 @@ export function ComandasPage() {
   const agora = useAgora();
   useAquecerComanda();
   const online = useOnline();
+  const faixa = useFaixa();
   const [busca, setBusca] = useState("");
   const [escolhido, setEscolhido] = useState<Filtro | null>(null);
   const [nova, setNova] = useState(false);
@@ -99,7 +110,7 @@ export function ComandasPage() {
           <SearchField
             className="comandas-busca"
             label="Buscar comanda"
-            placeholder="Buscar mesa, balcão ou nome"
+            placeholder={faixa === "tablet" ? "Buscar comanda" : "Buscar mesa, balcão ou nome"}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -134,7 +145,12 @@ export function ComandasPage() {
                 const quem = quemAtende(comanda, conta);
                 return (
                   <li key={comanda.id}>
-                    <Link to="/salao/comanda/$comandaId" params={{ comandaId: comanda.id }} className="comanda-card">
+                    <Link
+                      to="/salao/comanda/$comandaId"
+                      params={{ comandaId: comanda.id }}
+                      className="comanda-card"
+                      activeProps={{ "aria-current": "page" }}
+                    >
                       <span className="comanda-card-nome">
                         {nomeExibido(comanda)}
                         <span className="f4-visually-hidden"> {comanda.numeroTexto}</span>
