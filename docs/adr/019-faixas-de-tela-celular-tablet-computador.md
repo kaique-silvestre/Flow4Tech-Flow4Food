@@ -1,6 +1,6 @@
 # 019. Faixas de tela: celular, tablet e computador
 
-- Status: proposed
+- Status: accepted (ticket F4-0134; decisões do dono em 2026-11-15, ver a seção "Respostas do dono")
 - Date: 2026-11-15
 
 ## Context
@@ -34,6 +34,13 @@ Os demais detalhes (folhas viram painel ou janela, densidade, teclado, foco) fic
 - Tablet em pé e deitado até 999 px usa o trilho e uma coluna de detalhe ao lado da lista (R3); tablets deitados de 1024 px ou mais caem no computador compacto. Aceito: é o padrão comercial de 1024.
 - O protótipo muda de comportamento em 900 px (trilho automático e janela em uma coluna), dentro do nosso tablet. Seguimos a regra do dono (tablet até 999 px com trilho) e registramos a diferença como pergunta ao dono, em vez de inventar um corte novo.
 - Os cortes de 1100 e 1180 px do protótipo viram ajustes internos do computador compacto, não faixas novas.
+
+## Respostas do dono (aceitas em 2026-11-15)
+As quatro perguntas em aberto foram respondidas pelas recomendações do rascunho, sem pausa para revisão:
+1. Faixa tablet até 999 px; barra lateral (computador) a partir de 1000 px.
+2. No tablet, a comanda aberta abre em painel lateral de 420 px ao lado da lista.
+3. Atalhos N, Ctrl+K e `[` só no computador e no tablet com teclado físico; nunca no celular.
+4. Tablet usa o layout web com o trilho de 72 px.
 
 ## Alternatives considered
 - Manter 600 e 1024 do rascunho: números sem origem no protótipo; descartado pelo dono.
