@@ -119,6 +119,15 @@ test("the list shows the context header, search, chips with tally and one card p
   const cartaoConta = page.getByRole("link", { name: new RegExp(aguardando) });
   await expect(cartaoConta).toContainText("Aguardando pagamento");
 
+  // Neither the name nor the waiter line is cut by the state (at 360px it moves under the time line).
+  const cortados = await page.evaluate(
+    () =>
+      [...document.querySelectorAll<HTMLElement>(".comanda-card-nome, .comanda-card-meta")].filter(
+        (el) => el.scrollWidth > el.clientWidth,
+      ).length,
+  );
+  expect(cortados).toBe(0);
+
   await shoot(page, "33-lista-clara");
   await semHorizontal(page);
   expect(await alvosPequenos(page)).toEqual([]);
@@ -166,4 +175,44 @@ test("an empty list says so with the single accent action, in both themes", asyn
   await page.getByRole("button", { name: "Mudar para o tema escuro" }).click();
   await shoot(page, "33-lista-vazia-escura");
   await axeEstrito(page, "lista vazia escura");
+});
+
+test("a comanda idle for more than 40 minutes shows Parada with the alert icon and the time, in both themes", async ({
+  page,
+}) => {
+  // The page's clock is faked from the start (it keeps running) so it can be moved later; the server's cannot be.
+  await page.clock.install();
+  await entrarComoGarcom2(page);
+  const nome = `Parada ${Date.now() % 100000}`;
+  await novaComandaComChopp(page, nome);
+  await paraALista(page);
+  const cartao = page.getByRole("link", { name: new RegExp(nome) });
+  await expect(cartao).toContainText("Aberta");
+
+  // The page's clock goes 90 minutes ahead and the list's own tick recomputes the state.
+  await page.clock.fastForward("01:30:00");
+  await expect(cartao).toContainText(/Parada há 1h 3\dmin/);
+  await expect(cartao.locator("svg.f4-icon").last()).toBeVisible();
+
+  await shoot(page, "33-lista-parada-clara");
+  await axeEstrito(page, "lista parada clara");
+  await page.getByRole("button", { name: "Mudar para o tema escuro" }).click();
+  await shoot(page, "33-lista-parada-escura");
+  await axeEstrito(page, "lista parada escura");
+});
+
+test("who may see the others' comandas gets the Todas chip, selected first", async ({ page }) => {
+  await page.goto("/salao/entrar");
+  await page.getByLabel("Usuário ou e-mail").fill("dono@bar-a.test");
+  await page.getByLabel("Senha").fill(SENHA);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Comandas abertas" })).toBeVisible();
+
+  const filtros = page.getByRole("group", { name: "Filtrar comandas" });
+  await expect(filtros.getByRole("button")).toHaveCount(4);
+  await expect(filtros.getByRole("button", { name: /^Todas/ })).toHaveAttribute("aria-pressed", "true");
+  await shoot(page, "33-lista-todas-clara");
+  await axeEstrito(page, "lista todas clara");
+  await page.getByRole("button", { name: "Mudar para o tema escuro" }).click();
+  await shoot(page, "33-lista-todas-escura");
 });
