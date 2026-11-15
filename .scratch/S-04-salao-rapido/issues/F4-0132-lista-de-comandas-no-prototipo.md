@@ -6,7 +6,7 @@
 **Nature:** ui (+ extensao read-only do backend: dados que a lista nao devolvia)
 **tdd-scope:** required
 **Seams:** vitest/testing-library (filtros, contagem, estados); Playwright a 390x844 e 360x740, claro e escuro; testes de integracao da rota (permitido, negado, outra organizacao).
-**Status:** em andamento
+**Status:** done
 
 - [ ] Cabecalho com empresa, unidade e usuario vindos da sessao (nunca do cliente) e botao de tema.
 - [ ] Busca com icone e filtros em chips com contagem.
