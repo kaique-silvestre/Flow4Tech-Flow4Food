@@ -56,10 +56,12 @@ Ordem sugerida: **R1, R2, R3, R4, R5**, depois G1, G2 (usa R3), G7, G3, G4, G5, 
 ## Fora de escopo
 Control Tower e cobrança (Fase 6); estoque e ficha técnica (Fase 3); relatórios e dashboard (Fase 4); KDS, impressão por praça e Bluetooth (Fase 9); NFC-e e TEF/Pix automático (Fase 10); app nativo (a interface é web adaptável).
 
+## Decisões do dono (2026-11-15)
+- **Ordem:** o piloto em modo sombra (celular, testado pelo próprio dono) vem primeiro; o bloco R começa depois dele e antes de qualquer G.
+- **Faixas:** uso comercial, sem aparelho de referência: celular, tablet a partir de 600 px e computador a partir de 1024 px.
+
 ## Perguntas abertas
-- **Q1. Faixas:** 600 e 1024 como limites servem, ou há um aparelho de referência do restaurante (modelo do tablet, tamanho do monitor do caixa)?
 - **Q2. Gestão no `app` ou em app próprio?** *(proposta: no `app`, rota `/gestao`)*
-- **Q3. Quanto do R vem antes do piloto?** *(proposta: nada; o piloto roda no celular e o R começa depois dele, mas antes de qualquer G)*
 - **Q4. Teclado e atalhos no computador (R4):** só o básico ou um conjunto completo?
 - **Q5. G9 (edição de permissões):** entra no 2B ou espera a Fase 4?
 - **Q6. Identidade visual v6 ou v7** (herdada da Fase 1B): os tokens finais mudam as capturas do R5; decidir antes do R1.
