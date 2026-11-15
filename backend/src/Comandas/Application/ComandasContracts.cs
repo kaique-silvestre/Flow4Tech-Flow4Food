@@ -357,6 +357,21 @@ public interface IHistoricoDaComanda
 
 public sealed record GarcomDaUnidade(Guid Id, string Nome);
 
+/// <summary>What the list needs to know about a comanda to summarize it: who holds it and since when.</summary>
+public sealed record ComandaParaResumir(Guid Id, Guid GarcomId, DateTimeOffset AbertaEm);
+
+/// <summary>The waiter's name, the consumption in cents and the instant of the last launch (the opening when nothing was launched) of a comanda, for the list.</summary>
+public sealed record ResumoDaComanda(string GarcomNome, long ConsumoCentavos, DateTimeOffset UltimaAtividadeEm);
+
+/// <summary>A comanda of the list with its summary.</summary>
+public sealed record ComandaDaLista(Comanda Comanda, ResumoDaComanda Resumo);
+
+/// <summary>Port: the summaries of a batch of comandas of the current organization, in one pass. Runs inside a unit of work (RLS filters).</summary>
+public interface IResumosDasComandas
+{
+    Task<IReadOnlyDictionary<Guid, ResumoDaComanda>> ResumirAsync(Guid organizationId, IReadOnlyCollection<ComandaParaResumir> comandas, CancellationToken cancellationToken);
+}
+
 /// <summary>Port: whether an account may take comandas of the unit (active, and linked to the unit). Runs inside a unit of work.</summary>
 public interface IGarconsDaUnidade
 {

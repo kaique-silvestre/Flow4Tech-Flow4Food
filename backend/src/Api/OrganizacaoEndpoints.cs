@@ -1,3 +1,4 @@
+using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
 using Flow4Tech.Organizacao.Application;
 
@@ -9,6 +10,9 @@ internal sealed record UnidadeResponse(Guid Id, string Nome);
 internal sealed record TrocarUnidadeRequest(Guid UnidadeDestinoId);
 
 internal sealed record UnidadeAtivaResponse(Guid UnidadeId);
+
+/// <summary>The names the app header shows: company, active unit and the signed-in person, all taken from the session.</summary>
+internal sealed record ContextoDaSessaoResponse(string Organizacao, string Unidade, string Usuario);
 
 internal static class OrganizacaoEndpoints
 {
@@ -32,6 +36,18 @@ internal static class OrganizacaoEndpoints
             .WithName("getUnidadeAtiva")
             .RequireSession()
             .RequirePermission(OrganizacaoPermissions.VerUnidades)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/sessao/contexto", async (RequestContextAccessor request, ContextoDaSessao contexto, CancellationToken cancellationToken) =>
+            {
+                var nomes = await contexto.LerAsync(request, cancellationToken);
+                return nomes is null ? Results.StatusCode(StatusCodes.Status403Forbidden) : Results.Ok(new ContextoDaSessaoResponse(nomes.Organizacao, nomes.Unidade, nomes.Usuario));
+            })
+            .WithName("getContextoDaSessao")
+            .RequireSession()
+            .RequirePermission(SessaoPermissions.VerProprias)
+            .Produces<ContextoDaSessaoResponse>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 

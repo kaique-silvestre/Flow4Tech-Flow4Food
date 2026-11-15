@@ -71,7 +71,7 @@ public sealed partial class ComandasEndpointsTests : IAsyncLifetime
         foreach (var (org, unit, dono, email) in new[] { (OrgA, UnitA, DonoA, "dono@a.test"), (OrgB, UnitB, DonoB, "dono@b.test") })
         {
             await using var tx = await new TenantDatabase(ownerSource).BeginAsync(new OrganizationContext(org, unit));
-            await Exec(tx, "INSERT INTO organizacoes (id, nome) VALUES (@o, 'Bar')", ("o", org));
+            await Exec(tx, "INSERT INTO organizacoes (id, nome) VALUES (@o, @n)", ("o", org), ("n", org == OrgA ? "Bar A" : "Bar B"));
             await Exec(tx, "INSERT INTO unidades (id, organizacao_id, nome) VALUES (@u, @o, 'Centro')", ("u", unit), ("o", org));
             await Exec(tx, "INSERT INTO contas (id, organizacao_id, tipo, nome, email, dono, criada_em) VALUES (@i, @o, 'email', 'Dono', @e, true, now())", ("i", dono), ("o", org), ("e", email));
             await Exec(tx, "INSERT INTO usuario_unidades (organizacao_id, usuario_id, unidade_id) VALUES (@o, @u, @n)", ("o", org), ("u", dono), ("n", unit));

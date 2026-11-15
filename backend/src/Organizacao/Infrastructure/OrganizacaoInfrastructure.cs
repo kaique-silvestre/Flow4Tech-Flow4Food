@@ -125,6 +125,33 @@ public sealed class PostgresUnidadeVinculos : IUnidadeVinculos
     }
 }
 
+internal sealed class ContextoRow
+{
+    public string Organizacao { get; set; } = "";
+
+    public string Unidade { get; set; } = "";
+
+    public string Usuario { get; set; } = "";
+}
+
+/// <summary>The names of the session on PostgreSQL. Joins the caller's unit of work; the tables are tenant tables, RLS keeps another organization's rows out and the unit is also checked against the caller's link.</summary>
+public sealed class PostgresContextoDaSessaoStore : IContextoDaSessaoStore
+{
+    public async Task<ContextoDaSessaoNomes?> LerAsync(Guid organizationId, Guid unitId, Guid userId, CancellationToken cancellationToken)
+    {
+        await using var context = new OrganizacaoDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.SqlQuery<ContextoRow>(
+            $"""
+            SELECT o.nome AS "Organizacao", u.nome AS "Unidade", c.nome AS "Usuario"
+            FROM organizacoes o
+            JOIN unidades u ON u.organizacao_id = o.id AND u.id = {unitId}
+            JOIN usuario_unidades v ON v.organizacao_id = o.id AND v.unidade_id = u.id AND v.usuario_id = {userId}
+            JOIN contas c ON c.organizacao_id = o.id AND c.id = v.usuario_id
+            """).ToListAsync(cancellationToken);
+        return rows.Count == 0 ? null : new ContextoDaSessaoNomes(rows[0].Organizacao, rows[0].Unidade, rows[0].Usuario);
+    }
+}
+
 /// <summary>
 /// Setting versions on PostgreSQL (spec 5.7). Joins the caller's unit of work; never filters on <c>organizacao_id</c> (RLS does). The version in force is chosen by SQL
 /// (<c>DISTINCT ON</c> the scope and key, highest version among those already started), the same rule <c>ResolvedorDeConfiguracao</c> applies in memory. Append only: the
@@ -218,6 +245,8 @@ public static class OrganizacaoServices
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddSingleton<IUnidadeVinculos, PostgresUnidadeVinculos>();
+        services.AddSingleton<IContextoDaSessaoStore, PostgresContextoDaSessaoStore>();
+        services.AddSingleton<ContextoDaSessao>();
         services.AddScoped<UnidadesDoUsuario>();
         services.AddSingleton<IConfiguracoesStore, PostgresConfiguracoesStore>();
         services.AddSingleton(new CatalogoDeConfiguracoes(catalogo ?? []));

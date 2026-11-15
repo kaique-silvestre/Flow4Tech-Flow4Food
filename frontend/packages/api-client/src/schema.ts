@@ -84,6 +84,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessao/contexto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getContextoDaSessao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/login": {
         parameters: {
             query?: never;
@@ -1814,6 +1830,11 @@ export interface components {
             observacao: null | string;
             /** Format: date-time */
             contaPedidaEm?: null | string;
+            garcomNome?: null | string;
+            /** Format: int64 */
+            consumoCentavos?: null | number | string;
+            /** Format: date-time */
+            ultimaAtividadeEm?: null | string;
         };
         ComandaErro: {
             codigo: string;
@@ -1971,6 +1992,11 @@ export interface components {
             metodoId: string;
             /** Format: int64 */
             contadoCentavos: number | string;
+        };
+        ContextoDaSessaoResponse: {
+            organizacao: string;
+            unidade: string;
+            usuario: string;
         };
         ConviteRequest: {
             email: null | string;
@@ -2992,6 +3018,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnidadeAtivaResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getContextoDaSessao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextoDaSessaoResponse"];
                 };
             };
             /** @description Unauthorized */

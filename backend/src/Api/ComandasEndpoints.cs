@@ -4,6 +4,10 @@ using Flow4Tech.Pagamentos.Application;
 
 namespace Flow4Tech.Api;
 
+/// <summary>
+/// A comanda. The last three fields are filled only by the list (<c>GET /comandas</c>) and are null on every other route: <c>GarcomNome</c> (who holds it), <c>ConsumoCentavos</c> (launched items, the bill's consumption) and
+/// <c>UltimaAtividadeEm</c> (the last launch, the opening when none).
+/// </summary>
 internal sealed record ComandaDto(
     Guid Id,
     Guid UnidadeId,
@@ -20,7 +24,10 @@ internal sealed record ComandaDto(
     int Versao,
     DateTimeOffset AbertaEm,
     string? Observacao,
-    DateTimeOffset? ContaPedidaEm = null);
+    DateTimeOffset? ContaPedidaEm = null,
+    string? GarcomNome = null,
+    long? ConsumoCentavos = null,
+    DateTimeOffset? UltimaAtividadeEm = null);
 
 /// <summary>Every field is optional on purpose: a comanda opens with a number only. Unit, waiter and channel never come from the body.</summary>
 internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, int? Pessoas);
@@ -109,7 +116,7 @@ internal static class ComandasEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapGet("/comandas", async (RequestContextAccessor request, GestaoDeComandas comandas, CancellationToken cancellationToken) =>
-                Results.Ok((await comandas.ListarAsync(request, cancellationToken)).Select(Dto).ToList()))
+                Results.Ok((await comandas.ListarAsync(request, cancellationToken)).Select(DtoDaLista).ToList()))
             .WithName("listComandas")
             .RequireSession()
             .RequirePermission(ComandaPermissions.Ver)
@@ -388,6 +395,9 @@ internal static class ComandasEndpoints
 
     internal static ComandaDto Dto(Comanda c) =>
         new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao, c.ContaPedidaEm);
+
+    private static ComandaDto DtoDaLista(ComandaDaLista item) =>
+        Dto(item.Comanda) with { GarcomNome = item.Resumo.GarcomNome, ConsumoCentavos = item.Resumo.ConsumoCentavos, UltimaAtividadeEm = item.Resumo.UltimaAtividadeEm };
 
     private static IResult Erro(ResultadoDaTroca r) => r.Resultado switch
     {

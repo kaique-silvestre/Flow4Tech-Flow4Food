@@ -949,14 +949,14 @@ public sealed class PostgresRodadasStore : IRodadasStore
         context.Itens.AsNoTracking().Where(i => i.RodadaId == rodadaId).OrderBy(i => i.Posicao);
 
     /// <summary>The frozen options of these items, in the order they were chosen at launch (name, then id: a stable order).</summary>
-    private static async Task<ILookup<Guid, OpcaoDoItem>> EscolhasAsync(MesasDbContext context, IReadOnlyList<ItemRow> itens, CancellationToken cancellationToken)
+    internal static async Task<ILookup<Guid, OpcaoDoItem>> EscolhasAsync(MesasDbContext context, IReadOnlyList<ItemRow> itens, CancellationToken cancellationToken)
     {
         var ids = itens.Select(i => i.Id).ToList();
         var rows = ids.Count == 0 ? [] : await context.ItemOpcoes.AsNoTracking().Where(o => ids.Contains(o.ItemId)).OrderBy(o => o.Nome).ThenBy(o => o.OpcaoId).ToListAsync(cancellationToken);
         return rows.ToLookup(o => o.ItemId, o => new OpcaoDoItem(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos));
     }
 
-    private static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
+    internal static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
         new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo, i.Assento);
 }
 
@@ -1059,6 +1059,38 @@ public sealed class PostgresGarconsDaUnidade : IGarconsDaUnidade
             WHERE c.id = {contaId} AND c.ativa AND u.unidade_id = {unitId}
             """).ToListAsync(cancellationToken);
         return achados.Count > 0;
+    }
+}
+
+/// <summary>
+/// What the comanda list shows beside each row: the waiter's name, the consumption and the last launch. Joins the caller's unit of work, one query per table for the whole list (never one per comanda); RLS
+/// filters, nothing names the organization. The consumption is the one the bill uses (<see cref="RegrasDeRodada.Consumo"/>): launched items, price with options times quantity, courtesies and gifts at zero.
+/// </summary>
+public sealed class PostgresResumosDasComandas : IResumosDasComandas
+{
+    public async Task<IReadOnlyDictionary<Guid, ResumoDaComanda>> ResumirAsync(Guid organizationId, IReadOnlyCollection<ComandaParaResumir> comandas, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(comandas);
+        if (comandas.Count == 0)
+        {
+            return new Dictionary<Guid, ResumoDaComanda>();
+        }
+
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var ids = comandas.Select(c => c.Id).ToList();
+        var garcomIds = comandas.Select(c => c.GarcomId).Distinct().ToList();
+        var itens = await context.Itens.AsNoTracking().Where(i => ids.Contains(i.ComandaId)).ToListAsync(cancellationToken);
+        var escolhas = await PostgresRodadasStore.EscolhasAsync(context, itens, cancellationToken);
+        var consumo = itens.Select(i => PostgresRodadasStore.ParaItem(i, escolhas)).ToLookup(i => i.ComandaId);
+        var rodadas = await context.Rodadas.AsNoTracking().Where(r => ids.Contains(r.ComandaId) && r.DesfeitaEm == null).Select(r => new { r.ComandaId, r.EnviadaEm }).ToListAsync(cancellationToken);
+        var ultima = rodadas.GroupBy(r => r.ComandaId).ToDictionary(g => g.Key, g => g.Max(r => r.EnviadaEm));
+        var nomes = (await context.Database.SqlQuery<GarcomRow>($"""SELECT c.id AS "Id", c.nome AS "Nome" FROM contas c WHERE c.id = ANY({garcomIds})""").ToListAsync(cancellationToken)).ToDictionary(r => r.Id, r => r.Nome);
+        return comandas.ToDictionary(
+            c => c.Id,
+            c => new ResumoDaComanda(
+                nomes.GetValueOrDefault(c.GarcomId, string.Empty),
+                RegrasDeRodada.Consumo(consumo[c.Id]),
+                ultima.TryGetValue(c.Id, out var quando) && quando > c.AbertaEm ? quando : c.AbertaEm));
     }
 }
 
@@ -1184,6 +1216,7 @@ public static class ComandasServices
         services.AddSingleton<GestaoDaTrocaDeMesa>();
         services.AddSingleton<IHistoricoDaComanda, PostgresHistoricoDaComanda>();
         services.AddSingleton<IGarconsDaUnidade, PostgresGarconsDaUnidade>();
+        services.AddSingleton<IResumosDasComandas, PostgresResumosDasComandas>();
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
         services.AddSingleton<IDescontosStore, PostgresDescontosStore>();
         services.AddSingleton<GestaoDeDescontos>();

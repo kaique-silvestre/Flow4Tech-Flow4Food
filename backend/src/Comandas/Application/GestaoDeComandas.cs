@@ -32,6 +32,7 @@ public sealed class GestaoDeComandas(
     IAuditLog audit,
     IEventosDeComandas eventos,
     IPermissaoDaComanda permissoes,
+    IResumosDasComandas resumos,
     IDiaOperacional dias,
     ISettings settings,
     IClock clock)
@@ -108,8 +109,8 @@ public sealed class GestaoDeComandas(
             cancellationToken);
     }
 
-    /// <summary>Open comandas of the active unit. Without <c>comanda:ver-comandas-de-outros</c> only the caller's own.</summary>
-    public Task<IReadOnlyList<Comanda>> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    /// <summary>Open comandas of the active unit, each with its waiter's name, consumption and last launch. Without <c>comanda:ver-comandas-de-outros</c> only the caller's own.</summary>
+    public Task<IReadOnlyList<ComandaDaLista>> ListarAsync(IRequestContext request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         return unitOfWork.ExecuteAsync(
@@ -117,7 +118,9 @@ public sealed class GestaoDeComandas(
             async ct =>
             {
                 var todas = await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct);
-                return await store.ListarAbertasAsync(request.Organization.OrganizationId, request.Organization.UnitId, todas ? null : request.UserId, LimiteDaLista, ct);
+                var abertas = await store.ListarAbertasAsync(request.Organization.OrganizationId, request.Organization.UnitId, todas ? null : request.UserId, LimiteDaLista, ct);
+                var resumo = await resumos.ResumirAsync(request.Organization.OrganizationId, [.. abertas.Select(c => new ComandaParaResumir(c.Id, c.GarcomId, c.AbertaEm))], ct);
+                return (IReadOnlyList<ComandaDaLista>)[.. abertas.Select(c => new ComandaDaLista(c, resumo[c.Id]))];
             },
             cancellationToken);
     }
