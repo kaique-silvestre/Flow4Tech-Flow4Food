@@ -6,7 +6,7 @@
 **Nature:** objective
 **tdd-scope:** required
 **Seams:** Two tenants over HTTP (`DoisTenantsEndpointsTests` extended); Browser (Playwright against the real API in `docker compose`, 390x844 and 360x740) plus vitest/testing-library for logic, state and components.
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A scripted night in each of two organizations over HTTP: model profiles, import, add-ons, repeat round, discount within and above the limit, transfer, merge, every split form, mixed payment, supply, withdrawal, close with an approved difference; table sweep stays at zero across organizations.
 - [ ] Full suites green: `dotnet test backend/Flow4Tech.sln`, `pnpm -r typecheck`, `pnpm -r --if-present test`, Playwright at both viewports against the real API; `dotnet format --verify-no-changes` clean; the GitHub Actions run of every gate green on the PR (first real run) or listed as the remaining owner item.
