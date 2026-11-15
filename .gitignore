@@ -55,3 +55,6 @@ StrykerOutput/
 stryker.log
 .vercel
 .env.local
+
+# Local notes with credentials (never committed)
+*.local.md
