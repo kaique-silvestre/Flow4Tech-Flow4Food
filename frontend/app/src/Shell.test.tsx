@@ -1,12 +1,24 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enfileirarRodada, lerFila } from "./features/fila/fila";
 import { api } from "./features/sessao/sessao";
-import { json, renderEm, sessaoJson, stubRede } from "./test-utils";
+import { abasVisiveis, salaoTabs } from "./Shell";
+import { json, jsonDoContrato, renderEm, sessaoJson, stubRede } from "./test-utils";
+
+function larguraDaJanela(px: number) {
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: px });
+}
+
+// The phone is the design size: every older test below runs on it; the bands have their own describes.
+beforeEach(() => {
+  larguraDaJanela(390);
+  window.localStorage.removeItem("f4t-menu");
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  larguraDaJanela(1024);
 });
 
 const pronta = {
@@ -34,7 +46,9 @@ describe("salão shell (signed in)", () => {
     await renderEm("/salao");
 
     const contexto = await screen.findByText(/Bar do Zé/);
-    expect(contexto).toHaveTextContent("Bar do Zé · Unidade Centro · Marina");
+    await vi.waitFor(() =>
+      expect(contexto).toHaveTextContent("Bar do Zé · Unidade Centro · Sem turno aberto · Marina"),
+    );
     expect(within(contexto).getByText("Marina")).toBeVisible();
   });
 
@@ -99,6 +113,161 @@ describe("salão shell (signed in)", () => {
     expect(await screen.findByRole("link", { name: "Comandas" })).toHaveFocus();
     await userEvent.tab();
     expect(screen.getByRole("link", { name: "Caixa" })).toHaveFocus();
+  });
+});
+
+describe("abasVisiveis (the permission filter of the navigation)", () => {
+  const todas = [
+    ...salaoTabs,
+    { to: "/salao/cardapio", label: "Cardápio", icone: "book", permissao: "produto:gerenciar" },
+  ] as const;
+
+  it("keeps only the tabs the caller may use, in order", () => {
+    const pode = (p: string) => p === "comanda:ver" || p === "produto:gerenciar";
+
+    expect(abasVisiveis(todas, pode, true).map((t) => t.label)).toEqual(["Comandas", "Cardápio"]);
+  });
+
+  it("drops the tables tab when the unit has no tables, even with the permission", () => {
+    const tudo = () => true;
+
+    expect(abasVisiveis(todas, tudo, false).map((t) => t.label)).toEqual(["Comandas", "Caixa", "Cardápio"]);
+    expect(abasVisiveis(todas, tudo, true).map((t) => t.label)).toEqual(["Comandas", "Mesas", "Caixa", "Cardápio"]);
+  });
+
+  it("shows nothing while nothing is known", () => {
+    expect(abasVisiveis(todas, () => false, true)).toEqual([]);
+  });
+});
+
+describe("the navigation follows the band of the window", () => {
+  const aberto = {
+    ...pronta,
+    "GET /caixa/turnos/atual/resumo": jsonDoContrato("get", "/caixa/turnos/atual/resumo", 200, {
+      turno: {
+        id: "0197e2e0-0000-7000-8000-0000000000b1",
+        unidadeId: "0197e2e0-0000-7000-8000-0000000000a1",
+        operadorId: "0197e2e0-0000-7000-8000-0000000000c1",
+        abertoEm: "2026-11-15T22:42:00Z",
+        fundoCentavos: 10000,
+        fechadoEm: null,
+        contadoCentavos: null,
+        esperadoCentavos: null,
+        diferencaCentavos: null,
+        diferencaTexto: null,
+        recebidoDinheiroCentavos: 0,
+        esperadoOculto: false,
+        situacao: "aberto",
+      },
+      cego: false,
+      suprimentosCentavos: 0,
+      sangriasCentavos: 0,
+      esperadoCentavos: null,
+      porMetodo: [],
+    }),
+  };
+
+  it("phone: bottom tab bar, no side menu", async () => {
+    larguraDaJanela(390);
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
+
+    expect(nav).toHaveAttribute("data-menu", "inferior");
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.queryByRole("button", { name: /menu/ })).toBeNull();
+  });
+
+  it("tablet: a 72 px rail whose links keep their names", async () => {
+    larguraDaJanela(820);
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
+
+    expect(nav).toHaveAttribute("data-menu", "trilho");
+    expect(within(nav).getByRole("link", { name: "Comandas" })).toHaveAttribute("title", "Comandas");
+    expect(within(nav).getByRole("link", { name: "Caixa" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Expandir o menu" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("computer: the full menu, collapsible to the rail, and the choice is remembered", async () => {
+    larguraDaJanela(1440);
+    stubRede(pronta);
+    await renderEm("/salao");
+    const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
+    expect(nav).toHaveAttribute("data-menu", "completo");
+
+    await userEvent.click(screen.getByRole("button", { name: "Recolher o menu" }));
+
+    expect(nav).toHaveAttribute("data-menu", "trilho");
+    expect(window.localStorage.getItem("f4t-menu")).toBe("trilho");
+    await userEvent.click(screen.getByRole("button", { name: "Expandir o menu" }));
+    expect(nav).toHaveAttribute("data-menu", "completo");
+    expect(window.localStorage.getItem("f4t-menu")).toBe("completo");
+  });
+
+  it("a saved choice beats the band: the tablet can have the full menu", async () => {
+    window.localStorage.setItem("f4t-menu", "completo");
+    larguraDaJanela(820);
+    stubRede(pronta);
+    await renderEm("/salao");
+
+    expect(await screen.findByRole("navigation", { name: "Seções do salão" })).toHaveAttribute("data-menu", "completo");
+  });
+
+  it("moves to the other navigation when the window is resized", async () => {
+    larguraDaJanela(390);
+    stubRede(pronta);
+    await renderEm("/salao");
+    await screen.findByRole("navigation", { name: "Seções do salão" });
+
+    act(() => {
+      larguraDaJanela(1440);
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(await screen.findByRole("button", { name: "Recolher o menu" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Seções do salão" })).toHaveAttribute("data-menu", "completo");
+  });
+
+  it("hides the tabs the session may not use on every band", async () => {
+    for (const largura of [390, 820, 1440]) {
+      larguraDaJanela(largura);
+      stubRede({ ...pronta, "GET /sessao/permissoes": json({ permissoes: ["comanda:ver"] }) });
+      const { unmount } = await renderEm("/salao");
+      const nav = await screen.findByRole("navigation", { name: "Seções do salão" });
+
+      expect(within(nav).getByRole("link", { name: "Comandas" })).toBeVisible();
+      expect(within(nav).queryByRole("link", { name: "Caixa" })).toBeNull();
+      unmount();
+    }
+  });
+
+  it("the header names company, unit, shift and person on every band, and keeps the theme switch", async () => {
+    for (const largura of [390, 820, 1440]) {
+      larguraDaJanela(largura);
+      stubRede(aberto);
+      const { unmount } = await renderEm("/salao");
+
+      const contexto = await screen.findByText(/Bar do Zé/);
+
+      await vi.waitFor(() =>
+        expect(contexto).toHaveTextContent(/Unidade Centro · Turno aberto desde \d{2}:\d{2} · Marina/),
+      );
+      expect(screen.getByRole("button", { name: "Mudar para o tema escuro" })).toBeVisible();
+      unmount();
+    }
+  });
+
+  it("leaves the shift out when the caller has no say on the caixa", async () => {
+    stubRede({ ...pronta, "GET /sessao/permissoes": json({ permissoes: ["comanda:ver"] }) });
+    await renderEm("/salao");
+
+    const contexto = await screen.findByText(/Bar do Zé/);
+
+    expect(contexto).toHaveTextContent("Bar do Zé · Unidade Centro · Marina");
   });
 });
 

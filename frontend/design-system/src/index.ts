@@ -15,6 +15,15 @@ export { Tab, TabList, TabPanel, type TabProps, Tabs } from "./components/Tabs";
 export { TextField, type TextFieldProps } from "./components/TextField";
 export { type Tone, ToneBadge } from "./components/ToneBadge";
 export { UndoToast, type UndoToastProps } from "./components/UndoToast";
+export {
+  CORTE_COMPUTADOR,
+  CORTE_TABLET,
+  type EscolhaDoMenu,
+  type Faixa,
+  faixaDaLargura,
+  menuRecolhido,
+  useFaixa,
+} from "./faixa";
 export { centsFromDigits, formatBRL } from "./format";
 export {
   type ColorToken,

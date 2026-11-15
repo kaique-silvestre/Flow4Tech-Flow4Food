@@ -21,7 +21,7 @@ body {
   min-height: 100dvh;
 }
 
-/* One phone column, centered once the viewport is wider than 480px (the web management app is not part of this slice). */
+/* Phone: one column, centered up to 480px. Tablet and computer (data-faixa, ADR-019): the side menu (rail 72px, menu 200px or 264px from 1280) beside the column. */
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -29,6 +29,32 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding-top: env(safe-area-inset-top);
+}
+
+.app-coluna {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-shell:not([data-faixa="celular"]) {
+  --app-menu: 72px;
+  display: grid;
+  grid-template-columns: var(--app-menu) minmax(0, 1fr);
+  max-width: none;
+  margin: 0;
+  padding-top: 0;
+}
+
+.app-shell[data-menu="completo"] {
+  --app-menu: 200px;
+}
+
+@media (min-width: 1280px) {
+  .app-shell[data-menu="completo"] {
+    --app-menu: 264px;
+  }
 }
 
 .app-topbar {
@@ -87,6 +113,10 @@ body {
   color: var(--f4-ink-muted);
   font-size: var(--f4-text-secondary);
   line-height: 1.35;
+}
+
+.app-turno {
+  white-space: nowrap;
 }
 
 .app-contexto strong {
@@ -156,6 +186,131 @@ body {
   min-height: 44px;
   padding: 0 var(--f4-space-3);
   font-size: var(--f4-text-secondary);
+}
+
+/* In the side menu a tab is a row: icon at the start, label beside it. */
+.app-lateral-nav .app-tab {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--f4-space-3);
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--f4-space-3);
+  font-size: var(--f4-text-secondary);
+}
+
+.app-lateral {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--f4-space-2);
+  height: 100dvh;
+  padding: var(--f4-space-3);
+  overflow: hidden auto;
+  background: var(--f4-surface);
+  border-right: 1px solid var(--f4-border);
+}
+
+.app-marca {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-3);
+  min-height: 44px;
+  margin: 0 0 var(--f4-space-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-marca-sinal {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--f4-radius-sm);
+  background: var(--f4-accent);
+  color: var(--f4-accent-ink);
+  font-size: var(--f4-text-secondary);
+}
+
+.app-lateral-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--f4-space-1);
+}
+
+.app-recolher {
+  display: flex;
+  align-items: center;
+  gap: var(--f4-space-3);
+  min-height: 44px;
+  margin-top: auto;
+  padding: 0 var(--f4-space-3);
+  border: 0;
+  border-radius: var(--f4-radius-md);
+  background: none;
+  color: var(--f4-ink-muted);
+  font: inherit;
+  font-size: var(--f4-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .app-recolher:hover {
+    background: var(--f4-hover);
+    color: var(--f4-ink);
+  }
+}
+
+.app-recolher:focus-visible {
+  outline: 3px solid var(--f4-accent);
+  outline-offset: -3px;
+}
+
+.app-recolher .f4-icon {
+  flex: none;
+}
+
+.app-shell[data-menu="trilho"] .app-recolher .f4-icon {
+  transform: scaleX(-1);
+}
+
+/* The rail keeps the label for the screen reader and the pointer (title) and draws only the icon. */
+.app-shell[data-menu="trilho"] .app-tab-rotulo,
+.app-shell[data-menu="trilho"] .app-marca-nome {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app-shell[data-menu="trilho"] .app-lateral {
+  align-items: center;
+  padding-inline: var(--f4-space-2);
+}
+
+.app-shell[data-menu="trilho"] .app-lateral-nav,
+.app-shell[data-menu="trilho"] .app-tab,
+.app-shell[data-menu="trilho"] .app-recolher {
+  width: 100%;
+  justify-content: center;
+}
+
+.app-shell[data-menu="trilho"] .app-recolher {
+  padding: 0;
+}
+
+.app-shell:not([data-faixa="celular"]) .app-topbar {
+  padding-inline: var(--f4-space-6);
+}
+
+.app-shell:not([data-faixa="celular"]) .app-content {
+  padding: var(--f4-space-6);
 }
 
 /* Sign-in, password change, unit choice */

@@ -12,7 +12,8 @@ export type IconName =
   | "clock"
   | "dot"
   | "check"
-  | "logout";
+  | "logout"
+  | "chevron";
 
 /** Stroke paths on a 24x24 grid, drawn once here so a screen never ships its own SVG. */
 const PATHS: Record<IconName, string[]> = {
@@ -44,6 +45,7 @@ const PATHS: Record<IconName, string[]> = {
   clock: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z", "M12 7v5l3 2"],
   dot: ["M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"],
   check: ["M20 6L9 17l-5-5"],
+  chevron: ["M15 6l-6 6 6 6"],
   logout: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
 };
 
