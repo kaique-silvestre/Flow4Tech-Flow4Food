@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/node_modules/
+backend/
+.git/
+.scratch/
+.claude/
+frontend/app/dist/

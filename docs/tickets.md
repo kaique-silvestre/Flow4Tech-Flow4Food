@@ -146,3 +146,4 @@ Uma fatia é uma pasta `.scratch/S-NN-<nome>/` (spec, tickets, packets, estado).
 | F4-0127 | Regra de resposta curta ao dono no CLAUDE.md (portugues, ate ~8 linhas, estado e proxima acao) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0126 | Timeout de 60 s nos testes e2e de captura (o padrao de 30 s e curto em runner de CI carregado) | governanca | - | - | `dev-v2` (commit direto) | - | feito |
 | F4-0128 | Corrigir o CI do PR 48: timeout do job de integracao, orcamento de bundle, specs e2e do Marco 2A que falhavam e `cardapio:importar` ausente em /sessao/permissoes | governanca | - | - | `claude/s04-marco-2a` | - | feito |
+| F4-0129 | Front `app` hospedado no Railway (staging) para teste: servico `flow4tech-app` (Caddy serve o `dist` e faz proxy das rotas da API na rede privada, mesma origem) | governanca | - | - | `dev-v2` (commit direto) | - | feito |

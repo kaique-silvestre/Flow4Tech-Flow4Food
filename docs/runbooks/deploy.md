@@ -11,6 +11,7 @@ The new system lives in its own Railway project, `flow4tech-v2` (the old system 
 | `staging` | `dev-v2` | every push to `dev-v2`, after the GitHub checks (`ci` job `gates`) are green | `https://flow4tech-api-staging.up.railway.app` |
 | `production` | `main-v2` | every merge to `main-v2` (PR only, from `dev-v2`), after the checks are green `https://flow4tech-api-production.up.railway.app` |
 | front | per ADR-009 (Vercel) | Vercel Git integration, preview per branch | see `.scratch/governanca/hospedagem-do-front-e-ambientes.md` (open discussion) |
+| front test (F4-0129) | manual `railway up -s flow4tech-app -e staging` (service var `RAILWAY_DOCKERFILE_PATH=Dockerfile.front`) | Caddy serves the SPA and proxies the API routes over `flow4tech-api.railway.internal:8080` (same origin) | `https://flow4tech-app-staging.up.railway.app` |
 
 `staging` and `production` never share a database, token or secret. There is no manual approval step in Railway: the protection of production is the PR into `main-v2` plus the required `gates` check (configure branch protection on GitHub, see First-time setup).
 
