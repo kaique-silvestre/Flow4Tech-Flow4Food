@@ -711,11 +711,19 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
-    public async Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, ConsultaDaCentral consulta, int limite, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(consulta);
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
-        var rows = await Abertas(context, unitId, garcomId).Take(limite).ToListAsync(cancellationToken);
+        var rows = await Abertas(context, unitId, consulta.GarcomId, consulta.MesaId, consulta.AbertaAte, consulta.Numero).Take(limite).ToListAsync(cancellationToken);
         return rows.Select(c => ParaComanda(c)).ToList();
+    }
+
+    public async Task<int> ContarAbertasAsync(Guid organizationId, Guid unitId, ConsultaDaCentral consulta, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(consulta);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await Abertas(context, unitId, consulta.GarcomId, consulta.MesaId, consulta.AbertaAte, consulta.Numero).CountAsync(cancellationToken);
     }
 
     public async Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken)
@@ -745,12 +753,27 @@ public sealed class PostgresComandasStore : IComandasStore
         context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.Id == comandaId);
 
     /// <summary>The list query, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
-    internal static IQueryable<ComandaRow> Abertas(MesasDbContext context, Guid unitId, Guid? garcomId)
+    internal static IQueryable<ComandaRow> Abertas(MesasDbContext context, Guid unitId, Guid? garcomId, Guid? mesaId = null, DateTimeOffset? abertaAte = null, int? numero = null)
     {
         var query = context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && c.Estado == "aberta");
         if (garcomId is { } own)
         {
             query = query.Where(c => c.GarcomId == own);
+        }
+
+        if (mesaId is { } mesa)
+        {
+            query = query.Where(c => c.MesaId == mesa);
+        }
+
+        if (abertaAte is { } ate)
+        {
+            query = query.Where(c => c.AbertaEm <= ate);
+        }
+
+        if (numero is { } n)
+        {
+            query = query.Where(c => c.Numero == n);
         }
 
         return query.OrderByDescending(c => c.AbertaEm).ThenBy(c => c.Id);

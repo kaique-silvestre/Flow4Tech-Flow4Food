@@ -884,6 +884,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/central": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["centralDeComandas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas/{comandaId}/trocar-mesa": {
         parameters: {
             query?: never;
@@ -1813,6 +1829,11 @@ export interface components {
             versao: number | string;
             /** Format: uuid */
             categoriaPaiId: null | string;
+        };
+        CentralDeComandasDto: {
+            comandas: components["schemas"]["ComandaDto"][];
+            /** Format: int32 */
+            total: number | string;
         };
         ComandaCanceladaDto: {
             comanda: components["schemas"]["ComandaDto"];
@@ -5846,6 +5867,54 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ComandaErro"];
                 };
+            };
+        };
+    };
+    centralDeComandas: {
+        parameters: {
+            query?: {
+                garcomId?: string;
+                mesaId?: string;
+                tempoMinimoMinutos?: string;
+                numero?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CentralDeComandasDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

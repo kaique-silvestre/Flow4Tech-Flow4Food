@@ -2916,6 +2916,73 @@
         "x-permission": "comanda:abrir"
       }
     },
+    "/comandas/central": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "centralDeComandas",
+        "parameters": [
+          {
+            "name": "garcomId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mesaId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tempoMinimoMinutos",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CentralDeComandasDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
     "/comandas/{comandaId}/trocar-mesa": {
       "post": {
         "tags": [
@@ -6951,6 +7018,29 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "CentralDeComandasDto": {
+        "required": [
+          "comandas",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "comandas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComandaDto"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

@@ -41,6 +41,9 @@ internal sealed record ItemDto(Guid Id, Guid RodadaId, int Posicao, Guid Produto
 /// <summary><c>ComandaVersao</c> is the comanda version after the write: the one the client sends with its next write.</summary>
 internal sealed record RodadaDto(Guid Id, Guid ComandaId, DateTimeOffset EnviadaEm, DateTimeOffset? DesfeitaEm, int ComandaVersao, List<ItemDto> Itens);
 
+/// <summary>The central de comandas: the rows (at most 200, newest first) and <c>Total</c>, how many open comandas of the unit match the filters.</summary>
+internal sealed record CentralDeComandasDto(List<ComandaDto> Comandas, int Total);
+
 internal sealed record ItemCanceladoDto(ItemDto Item, int ComandaVersao);
 
 internal sealed record ItensDaComandaDto(List<ItemDto> Itens, long ConsumoCentavos);
@@ -121,6 +124,27 @@ internal static class ComandasEndpoints
             .RequireSession()
             .RequirePermission(ComandaPermissions.Ver)
             .Produces<List<ComandaDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/comandas/central", async (string? garcomId, string? mesaId, string? tempoMinimoMinutos, string? numero, RequestContextAccessor request, GestaoDeComandas comandas, CancellationToken cancellationToken) =>
+            {
+                // Strings parsed here, not by the binder, so every bad value answers the same {"codigo":"invalido"} body.
+                if (!TryGuid(garcomId, out var garcom) || !TryGuid(mesaId, out var mesa) || !TryInt(tempoMinimoMinutos, out var tempo) || !TryInt(numero, out var numeroDaComanda))
+                {
+                    return Results.Json(new ComandaErro("invalido"), statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                var r = await comandas.ConsultarCentralAsync(request, new FiltroDaCentral(garcom, mesa, tempo, numeroDaComanda), cancellationToken);
+                return r.Valida
+                    ? Results.Ok(new CentralDeComandasDto([.. r.Comandas.Select(DtoDaLista)], r.Total))
+                    : Results.Json(new ComandaErro("invalido"), statusCode: StatusCodes.Status400BadRequest);
+            })
+            .WithName("centralDeComandas")
+            .RequireSession()
+            .RequirePermission(ComandaPermissions.Ver)
+            .Produces<CentralDeComandasDto>()
+            .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
@@ -395,6 +419,32 @@ internal static class ComandasEndpoints
 
     internal static ComandaDto Dto(Comanda c) =>
         new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao, c.ContaPedidaEm);
+
+    private static bool TryGuid(string? text, out Guid? value)
+    {
+        value = null;
+        if (string.IsNullOrEmpty(text))
+        {
+            return true;
+        }
+
+        var ok = Guid.TryParse(text, out var parsed);
+        value = ok ? parsed : null;
+        return ok;
+    }
+
+    private static bool TryInt(string? text, out int? value)
+    {
+        value = null;
+        if (string.IsNullOrEmpty(text))
+        {
+            return true;
+        }
+
+        var ok = int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var parsed);
+        value = ok ? parsed : null;
+        return ok;
+    }
 
     private static ComandaDto DtoDaLista(ComandaDaLista item) =>
         Dto(item.Comanda) with { GarcomNome = item.Resumo.GarcomNome, ConsumoCentavos = item.Resumo.ConsumoCentavos, UltimaAtividadeEm = item.Resumo.UltimaAtividadeEm };

@@ -165,8 +165,11 @@ public interface IComandasStore
     /// <summary>The most recently CLOSED comanda that held the table in the unit (closed time, then id); only <paramref name="garcomId"/>'s when given. Null when there is none.</summary>
     Task<Comanda?> UltimaFechadaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, Guid? garcomId, CancellationToken cancellationToken);
 
-    /// <summary>Open comandas of the unit, newest first; only <paramref name="garcomId"/>'s when given.</summary>
-    Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken);
+    /// <summary>Open comandas of the unit that match the query, newest first.</summary>
+    Task<IReadOnlyList<Comanda>> ListarAbertasAsync(Guid organizationId, Guid unitId, ConsultaDaCentral consulta, int limite, CancellationToken cancellationToken);
+
+    /// <summary>How many open comandas of the unit match the query (no limit).</summary>
+    Task<int> ContarAbertasAsync(Guid organizationId, Guid unitId, ConsultaDaCentral consulta, CancellationToken cancellationToken);
 }
 
 public sealed record ComandaTransferida(Guid EventId, Guid ComandaId, Guid UnidadeId, int Numero, Guid? MesaDeId, Guid MesaParaId, Guid TransferidaPor) : IDomainEvent
@@ -365,6 +368,9 @@ public sealed record ResumoDaComanda(string GarcomNome, long ConsumoCentavos, Da
 
 /// <summary>A comanda of the list with its summary.</summary>
 public sealed record ComandaDaLista(Comanda Comanda, ResumoDaComanda Resumo);
+
+/// <summary>The central de comandas answer: the rows (at most <see cref="GestaoDeComandas.LimiteDaLista"/>) and how many comandas match the filters in all. <c>Valida</c> false = the filter was refused.</summary>
+public sealed record ResultadoDaCentral(bool Valida, IReadOnlyList<ComandaDaLista> Comandas, int Total);
 
 /// <summary>Port: the summaries of a batch of comandas of the current organization, in one pass. Runs inside a unit of work (RLS filters).</summary>
 public interface IResumosDasComandas

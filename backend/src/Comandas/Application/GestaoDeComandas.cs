@@ -118,9 +118,43 @@ public sealed class GestaoDeComandas(
             async ct =>
             {
                 var todas = await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct);
-                var abertas = await store.ListarAbertasAsync(request.Organization.OrganizationId, request.Organization.UnitId, todas ? null : request.UserId, LimiteDaLista, ct);
+                var abertas = await store.ListarAbertasAsync(request.Organization.OrganizationId, request.Organization.UnitId, new ConsultaDaCentral(GarcomId: todas ? null : request.UserId), LimiteDaLista, ct);
                 var resumo = await resumos.ResumirAsync(request.Organization.OrganizationId, [.. abertas.Select(c => new ComandaParaResumir(c.Id, c.GarcomId, c.AbertaEm))], ct);
                 return (IReadOnlyList<ComandaDaLista>)[.. abertas.Select(c => new ComandaDaLista(c, resumo[c.Id]))];
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// The central de comandas: the list above narrowed by waiter, table, minimum open time and number, plus the total that matches. Read-only (no audit). The unit is the session's; without
+    /// <c>comanda:ver-comandas-de-outros</c> the server limits it to the caller's own comandas whatever the filter says.
+    /// </summary>
+    public Task<ResultadoDaCentral> ConsultarCentralAsync(IRequestContext request, FiltroDaCentral filtro, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(filtro);
+        if (!RegrasDaCentral.Valido(filtro))
+        {
+            return Task.FromResult(new ResultadoDaCentral(false, [], 0));
+        }
+
+        return unitOfWork.ExecuteAsync(
+            request,
+            async ct =>
+            {
+                var todas = await permissoes.PodeAsync(request, ComandaPermissions.VerComandasDeOutros, ct);
+                var consulta = RegrasDaCentral.Mapear(filtro, todas ? null : request.UserId, clock.UtcNow);
+                if (consulta is null)
+                {
+                    return new ResultadoDaCentral(true, [], 0);
+                }
+
+                var org = request.Organization.OrganizationId;
+                var unidade = request.Organization.UnitId;
+                var abertas = await store.ListarAbertasAsync(org, unidade, consulta, LimiteDaLista, ct);
+                var total = await store.ContarAbertasAsync(org, unidade, consulta, ct);
+                var resumo = await resumos.ResumirAsync(org, [.. abertas.Select(c => new ComandaParaResumir(c.Id, c.GarcomId, c.AbertaEm))], ct);
+                return new ResultadoDaCentral(true, [.. abertas.Select(c => new ComandaDaLista(c, resumo[c.Id]))], total);
             },
             cancellationToken);
     }
