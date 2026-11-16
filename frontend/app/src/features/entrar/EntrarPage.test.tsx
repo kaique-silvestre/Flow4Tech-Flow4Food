@@ -197,6 +197,22 @@ describe("sign-in rules", () => {
     expect(entrarSchema.safeParse({ identificador: "a@b.test", senha: "x", organizacao: "" }).success).toBe(true);
   });
 
+  it("names the missing organization on its own field", () => {
+    const r = entrarSchema.safeParse({ identificador: "garcom", senha: "x", organizacao: "   " });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.map((i) => ({ path: i.path, message: i.message }))).toEqual([
+      { path: ["organizacao"], message: "Informe o código da organização." },
+    ]);
+  });
+
+  it("refuses an identifier of only spaces (trimmed) with its own message", () => {
+    const r = entrarSchema.safeParse({ identificador: "   ", senha: "x", organizacao: "" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.map((i) => ({ path: i.path, message: i.message }))).toEqual([
+      { path: ["identificador"], message: "Informe o usuário ou e-mail." },
+    ]);
+  });
+
   it("accepts only an id-shaped organization code", () => {
     expect(organizacaoValida(ORG)).toBe(true);
     expect(organizacaoValida(` ${ORG} `)).toBe(true);

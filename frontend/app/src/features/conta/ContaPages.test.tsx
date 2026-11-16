@@ -121,6 +121,14 @@ describe("password policy", () => {
     expect(trocarSenhaSchema.safeParse({ ...base, confirmacao: "diferente-diferente" }).success).toBe(false);
   });
 
+  it("refuses a 257-character password (the maximum is 256) and accepts 256", () => {
+    const longa = (n: number) => "a".repeat(n);
+    const r = trocarSenhaSchema.safeParse({ ...base, novaSenha: longa(257), confirmacao: longa(257) });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.message).toBe("Use no máximo 256 caracteres.");
+    expect(trocarSenhaSchema.safeParse({ ...base, novaSenha: longa(256), confirmacao: longa(256) }).success).toBe(true);
+  });
+
   it("asks for no symbols or capitals", () => {
     expect(
       trocarSenhaSchema.safeParse({

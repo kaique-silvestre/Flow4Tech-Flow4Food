@@ -1,0 +1,72 @@
+/* Agenda de funcionamento (/gestao/agenda). Reference: prototipos/index.html#m=web&screen=configuracoes&ctab=op. Fields, switches, buttons and notices are the design system's; only the layout is here. */
+.agenda {
+  display: grid;
+  gap: var(--f4-space-4);
+  max-width: 720px;
+}
+
+.agenda-titulo,
+.agenda-subtitulo,
+.agenda-nota {
+  margin: 0;
+}
+
+.agenda-titulo {
+  font-size: var(--f4-text-sheet-title);
+}
+
+.agenda-subtitulo {
+  font-size: var(--f4-text-body);
+}
+
+.agenda-nota {
+  color: var(--f4-ink-muted);
+}
+
+.agenda-secao,
+.agenda-form {
+  display: grid;
+  gap: var(--f4-space-3);
+}
+
+.agenda-secao {
+  padding-top: var(--f4-space-4);
+  border-top: 1px solid var(--f4-border);
+}
+
+.agenda-linha,
+.agenda-acoes,
+.agenda-horas,
+.agenda-dia,
+.agenda-excecao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--f4-space-3);
+}
+
+.agenda-lista {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-dia,
+.agenda-excecao {
+  padding: var(--f4-space-3) 0;
+  border-bottom: 1px solid var(--f4-border);
+}
+
+.agenda-dia-nome {
+  min-width: 5.5rem;
+}
+
+.agenda-horas {
+  align-items: start;
+}
+
+.agenda-esqueleto {
+  height: 56px;
+  margin-bottom: var(--f4-space-3);
+}

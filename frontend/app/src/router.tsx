@@ -44,6 +44,7 @@ const abas = [
   { to: "/salao/cardapio", label: "Cardápio", icone: "book", permissao: "produto:gerenciar" },
   { to: "/salao/pessoas", label: "Pessoas", icone: "users", permissao: "perfil:ver" },
   { to: "/gestao/comandas", label: "Central", icone: "grid", permissao: "comanda:ver", semCelular: true },
+  { to: "/gestao/agenda", label: "Agenda", icone: "clock", permissao: "organizacao:configurar", semCelular: true },
 ] as const;
 
 /** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */
@@ -103,6 +104,13 @@ const centralRoute = createRoute({
   component: lazyRouteComponent(() => import("./features/central/CentralPage"), "CentralPage"),
 });
 
+/** The opening agenda of the unit, for who may configure the organization: desk work, the app's own route like the central. */
+const agendaRoute = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/gestao/agenda",
+  component: lazyRouteComponent(() => import("./features/agenda/AgendaPage"), "AgendaPage"),
+});
+
 const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
 
 function exigir(destino: "/salao/entrar" | "/salao/trocar-senha" | "/salao/unidade") {
@@ -143,6 +151,7 @@ const routeTree = rootRoute.addChildren([
     importarCardapioRoute,
     pessoasRoute,
     centralRoute,
+    agendaRoute,
   ]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);

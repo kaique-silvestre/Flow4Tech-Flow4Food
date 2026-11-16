@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /** An identifier with an at-sign is an e-mail; anything else is an operational user name (and then the organization is required). */
 export function ehEmail(identificador: string): boolean {
@@ -7,15 +7,16 @@ export function ehEmail(identificador: string): boolean {
 
 export const entrarSchema = z
   .object({
-    identificador: z.string().trim().min(1, "Informe o usuário ou e-mail."),
-    senha: z.string().min(1, "Informe a senha."),
-    organizacao: z.string().trim(),
+    identificador: z.string().check(z.trim(), z.minLength(1, "Informe o usuário ou e-mail.")),
+    senha: z.string().check(z.minLength(1, "Informe a senha.")),
+    organizacao: z.string().check(z.trim()),
   })
-  .superRefine((valor, contexto) => {
-    if (!ehEmail(valor.identificador) && valor.identificador !== "" && valor.organizacao === "") {
-      contexto.addIssue({ code: "custom", path: ["organizacao"], message: "Informe o código da organização." });
-    }
-  });
+  .check(
+    z.refine((v) => ehEmail(v.identificador) || v.identificador === "" || v.organizacao !== "", {
+      path: ["organizacao"],
+      error: "Informe o código da organização.",
+    }),
+  );
 
 export type EntrarValores = z.infer<typeof entrarSchema>;
 

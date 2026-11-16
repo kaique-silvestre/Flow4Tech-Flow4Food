@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { aceitarSessao, api, destinoDaSessao, lerSessao, sair } from "../sessao/sessao";
 
 export const SENHA_MINIMO = 10;
@@ -11,14 +11,16 @@ const SENHA_MAXIMO = 256;
 
 export const trocarSenhaSchema = z
   .object({
-    senhaAtual: z.string().min(1, "Informe a senha provisória."),
+    senhaAtual: z.string().check(z.minLength(1, "Informe a senha provisória.")),
     novaSenha: z
       .string()
-      .min(SENHA_MINIMO, `Use pelo menos ${SENHA_MINIMO} caracteres.`)
-      .max(SENHA_MAXIMO, `Use no máximo ${SENHA_MAXIMO} caracteres.`),
-    confirmacao: z.string().min(1, "Repita a nova senha."),
+      .check(
+        z.minLength(SENHA_MINIMO, `Use pelo menos ${SENHA_MINIMO} caracteres.`),
+        z.maxLength(SENHA_MAXIMO, `Use no máximo ${SENHA_MAXIMO} caracteres.`),
+      ),
+    confirmacao: z.string().check(z.minLength(1, "Repita a nova senha.")),
   })
-  .refine((v) => v.novaSenha === v.confirmacao, { path: ["confirmacao"], message: "As senhas não são iguais." });
+  .check(z.refine((v) => v.novaSenha === v.confirmacao, { path: ["confirmacao"], error: "As senhas não são iguais." }));
 
 type Valores = z.infer<typeof trocarSenhaSchema>;
 
