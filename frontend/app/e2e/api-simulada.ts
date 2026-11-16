@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 /** The API answered inside the browser (`page.route`), so the salão specs of the tablet and the computer run with no backend. */
 const base64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const token = `${base64url({ alg: "HS256", typ: "JWT" })}.${base64url({ sub: "conta-1" })}.assinatura`;
-const comanda = (n: number, nome: string, consumoCentavos: number) => ({
+export const comanda = (n: number, nome: string, consumoCentavos: number) => ({
   id: `c${n}`,
   unidadeId: "u1",
   numero: n,
@@ -101,6 +101,44 @@ export async function simularApi(page: Page) {
       return corpo === undefined ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ json: corpo });
     },
   );
+  // Registered after the generic route: Playwright tries the latest route first.
+  await page.route(
+    (url) => url.pathname === "/comandas/fluxo",
+    // The live stream stays open and silent (the request is never answered); `simularFluxo` replaces it.
+    () => new Promise<void>(() => undefined),
+  );
+}
+
+/**
+ * The live stream of the comandas, driven by the test: each connection the app opens is answered with what `emitir` queued since the last one (or just the open comment) and ends,
+ * so the app reconnects (about every second) and reads the next batch. `lista` answers `GET /comandas` from then on, so a changed version shows up when the stream says it did.
+ */
+export async function simularFluxo(page: Page, lista: () => unknown) {
+  const fila: string[] = [];
+  let caido = false;
+  await page.route(
+    (url) => url.pathname === "/comandas/fluxo",
+    (route) => {
+      if (caido) {
+        return route.fulfill({ status: 503, body: "" });
+      }
+
+      const resync = `event: resync\ndata: ${JSON.stringify({ motivo: "abertura", comandas: [] })}\n\n`;
+      const corpo = `: aberto\n\n${resync}${fila.splice(0).join("")}`;
+      return route.fulfill({ status: 200, contentType: "text/event-stream", body: corpo });
+    },
+  );
+  await page.route(
+    (url) => url.pathname === "/comandas",
+    (route) => route.fulfill({ json: lista() }),
+  );
+  return {
+    derrubar: (valor: boolean) => {
+      caido = valor;
+    },
+    emitir: (nome: string, dados: unknown, id?: string) =>
+      void fila.push(`${id ? `id: ${id}\n` : ""}event: ${nome}\ndata: ${JSON.stringify(dados)}\n\n`),
+  };
 }
 
 export async function semAnimacao(page: Page) {

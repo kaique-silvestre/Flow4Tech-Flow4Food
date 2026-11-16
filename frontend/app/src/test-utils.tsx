@@ -50,6 +50,23 @@ export function jsonDoContrato<P extends keyof paths, M extends Metodo, S extend
   return Response.json(corpo, { status });
 }
 
+/** A live stream the test drives: `enviar` pushes text to whoever reads it, `fechar` ends it. */
+export function fluxoControlavel() {
+  let controlador: ReadableStreamDefaultController<Uint8Array> | undefined;
+  const corpo = new ReadableStream<Uint8Array>({
+    start(c) {
+      controlador = c;
+    },
+  });
+  const codificador = new TextEncoder();
+  return {
+    // A function stub is not cloned by `stubRede`, so the single stream reaches the reader as it is.
+    resposta: () => new Response(corpo, { headers: { "Content-Type": "text/event-stream" } }),
+    enviar: (texto: string) => controlador?.enqueue(codificador.encode(texto)),
+    fechar: () => controlador?.close(),
+  };
+}
+
 /** A token shaped like the server's (header.payload.signature) whose `sub` is the account; the client only reads `sub` to keep one person's queue from being sent by another. */
 export function tokenDe(conta: string): string {
   const parte = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -83,6 +100,9 @@ export function stubRede(informadas: Record<string, Resposta>) {
   // The caller's permissions are incidental to most tests: everyone may do everything unless a test says otherwise.
   const rotas: Record<string, Resposta> = {
     "GET /sessao/permissoes": json({ permissoes: TODAS_AS_PERMISSOES }),
+    // The live stream of the comandas stays open and silent unless a test drives it (`fluxoControlavel`).
+    "GET /comandas/fluxo": () =>
+      new Response(new ReadableStream(), { headers: { "Content-Type": "text/event-stream" } }),
     // The header names (company, unit, person) are incidental to most tests too.
     "GET /sessao/contexto": jsonDoContrato("get", "/sessao/contexto", 200, {
       organizacao: "Bar do Zé",

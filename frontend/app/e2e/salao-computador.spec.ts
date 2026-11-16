@@ -11,11 +11,16 @@ import { semAnimacao, simularApi } from "./api-simulada";
 test.use({ serviceWorkers: "block" });
 
 const shots = join(import.meta.dirname, "..", "..", "..", ".scratch", "S-05-gestao-web-e-telas", "shots", "F4-0137");
-mkdirSync(shots, { recursive: true });
 
 const computador = (page: Page) => page.viewportSize()?.width === 1440;
 
+/** The F4-0137 captures are committed and approved: they are only rewritten on purpose (`CAPTURAS=1`). */
 async function shoot(page: Page, name: string) {
+  if (!process.env["CAPTURAS"]) {
+    return;
+  }
+
+  mkdirSync(shots, { recursive: true });
   await page.screenshot({ path: join(shots, `${name}-1440x900.png`) });
 }
 

@@ -87,6 +87,7 @@ states:
 - empty: list of comandas ("Nenhuma comanda aberta. Toque em Nova comanda."), search with no results ("Nada com 'xyz'. Tente o código do produto."), cash register closed ("Caixa fechado. Abra o caixa para receber.").
 - error: load failure with a "Tentar novamente" banner; send failure keeps the round staged and shows what did not go.
 - success: toast "Rodada enviada · Desfazer" for 8 seconds; closing the bill returns to the list with the comanda marked Fechada.
+- live stream down (F4-0140): while the comandas list reconnects to its live stream, a `Notice` (info, polite status) above the list with the clock icon and the words "Reconectando ao vivo. A lista continua aqui e se atualiza sozinha."; never a modal, the list stays usable and the notice leaves when the stream is back (not shown when the offline banner already says there is no connection).
 - feature-specific: offline (banner plus queue, items keep being staged and are sent in order when the connection returns), concurrency conflict (the comanda changed on another device: a non-blocking notice "Esta comanda foi alterada" and a refresh that keeps the staged items), no permission (the action is absent, not disabled, unless explaining it helps; a 403 shows "Você não tem permissão" without leaking why), temporary-password session (only the change-password screen is reachable).
 flows:
 1. Login (e-mail or operational user + password + organization), forced password change when temporary, unit selection when more than one.

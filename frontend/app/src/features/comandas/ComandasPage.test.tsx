@@ -1,7 +1,7 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { json, renderEm, sessaoJson, stubRede } from "../../test-utils";
+import { fluxoControlavel, json, renderEm, sessaoJson, stubRede } from "../../test-utils";
 import { acharMesaPorNumero, combinaBusca, nomeExibido, paraComanda, tempoDecorrido } from "./tipos";
 
 afterEach(() => {
@@ -547,5 +547,102 @@ describe("new comanda window on the computer", () => {
         pessoas: null,
       }),
     );
+  });
+});
+
+describe("comanda list, live over SSE", () => {
+  const chamadasDaLista = (chamadas: { method: string; path: string }[]) =>
+    chamadas.filter((c) => c.method === "GET" && c.path === "/comandas").length;
+
+  it("opens the stream with the bearer token and reloads the list when a comanda is ahead by version", async () => {
+    const fluxo = fluxoControlavel();
+    let versao = 1;
+    const chamadas = stubRede({
+      ...base,
+      "GET /comandas/fluxo": fluxo.resposta,
+      "GET /comandas": () => json([minhaComanda(7, { versao, consumoCentavos: versao * 1000 })]),
+      "GET /mesas": json(mesas),
+    });
+
+    await renderEm("/salao");
+    expect(await screen.findByText("R$ 10,00")).toBeVisible();
+    const fluxoChamado = chamadas.find((c) => c.path === "/comandas/fluxo");
+    expect(fluxoChamado?.headers.get("Authorization")).toMatch(/^Bearer /);
+
+    act(() =>
+      fluxo.enviar(
+        ': aberto\n\nevent: resync\ndata: {"motivo":"abertura","comandas":[{"comandaId":"c7","versao":1}]}\n\n',
+      ),
+    );
+    await screen.findByText("R$ 10,00");
+    const depoisDoResync = chamadasDaLista(chamadas);
+    expect(depoisDoResync).toBeGreaterThanOrEqual(2);
+
+    // Same version as the screen: nothing to reload.
+    act(() =>
+      fluxo.enviar(
+        'id: e1\nevent: comanda\ndata: {"eventoId":"e1","tipo":"comanda.rodada-enviada","comandas":[{"comandaId":"c7","versao":1}]}\n\n',
+      ),
+    );
+    await act(async () => new Promise((r) => setTimeout(r, 50)));
+    expect(chamadasDaLista(chamadas)).toBe(depoisDoResync);
+
+    versao = 2;
+    act(() =>
+      fluxo.enviar(
+        'id: e2\nevent: comanda\ndata: {"eventoId":"e2","tipo":"comanda.rodada-enviada","comandas":[{"comandaId":"c7","versao":2}]}\n\n',
+      ),
+    );
+    expect(await screen.findByText("R$ 20,00")).toBeVisible();
+  });
+
+  it("says it is reconnecting when the stream drops, and the notice goes away when it comes back", async () => {
+    const fluxo = fluxoControlavel();
+    let tentativas = 0;
+    stubRede({
+      ...base,
+      "GET /comandas/fluxo": () => {
+        tentativas += 1;
+        return tentativas === 1 ? new Response("", { status: 503 }) : fluxo.resposta();
+      },
+      "GET /comandas": json([minhaComanda(7)]),
+      "GET /mesas": json(mesas),
+    });
+
+    await renderEm("/salao");
+
+    expect(await screen.findByText(/Reconectando ao vivo/)).toBeVisible();
+    expect(screen.getByText("Comanda 7")).toBeVisible();
+
+    act(() => fluxo.enviar('event: resync\ndata: {"motivo":"reconexao","comandas":[]}\n\n'));
+    await waitFor(() => expect(screen.queryByText(/Reconectando ao vivo/)).toBeNull(), { timeout: 3000 });
+    expect(tentativas).toBe(2);
+  });
+
+  it("closes the stream when the list leaves the screen", async () => {
+    let sinal: AbortSignal | undefined;
+    stubRede({
+      ...base,
+      "GET /comandas/fluxo": () =>
+        new Response(new ReadableStream(), { headers: { "Content-Type": "text/event-stream" } }),
+      "GET /comandas": json([minhaComanda(7)]),
+      "GET /mesas": json(mesas),
+    });
+    const original = globalThis.fetch;
+    vi.stubGlobal("fetch", (r: Request) => {
+      if (new URL(r.url).pathname === "/comandas/fluxo") {
+        sinal = r.signal;
+      }
+      return original(r);
+    });
+
+    const { unmount } = await renderEm("/salao");
+    await screen.findByText("Comanda 7");
+    await waitFor(() => expect(sinal).toBeDefined());
+    expect(sinal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(sinal?.aborted).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ import { usePermissoes } from "../sessao/permissoes";
 import { contaDaSessao } from "../sessao/sessao";
 import { useAtalhosDaTela } from "./atalhos";
 import { useComandas, useMesas } from "./consultas";
+import { useFluxoDeComandas } from "./fluxo";
 import {
   contar,
   estadoDaComanda,
@@ -59,6 +60,7 @@ export function ComandasPage() {
   const permissoes = usePermissoes();
   const pode = permissoes.carregado && permissoes.pode("comanda:ver");
   const comandas = useComandas(pode);
+  const aoVivoCaiu = useFluxoDeComandas(pode);
   const mesas = useMesas(pode && permissoes.pode("comanda:abrir"));
   const agora = useAgora();
   useAquecerComanda();
@@ -96,6 +98,14 @@ export function ComandasPage() {
         {verTodas ? "Comandas abertas" : "Minhas comandas"}
       </h2>
       {!online ? <Notice tone="info">Sem conexão. A lista pode estar desatualizada.</Notice> : null}
+
+      {online && aoVivoCaiu ? (
+        <Notice tone="info">
+          <span className="app-topbar-acoes">
+            <Icon name="clock" size={16} /> Reconectando ao vivo. A lista continua aqui e se atualiza sozinha.
+          </span>
+        </Notice>
+      ) : null}
 
       {comandas.isPending ? <Skeleton rows={4} label="Carregando comandas" /> : null}
 
