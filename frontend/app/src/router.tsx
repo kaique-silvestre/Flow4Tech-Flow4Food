@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { ErroDeRota } from "./ErroDeRota";
+import { lerFiltros, paraBusca } from "./features/central/filtros";
 import { SalaoLayout, SalaoRota } from "./features/comandas/Dividido";
 import { aoEncerrarSessao, destinoDaSessao, lerSessao, restaurar } from "./features/sessao/sessao";
 import { EntryShell, Shell, salaoTabs } from "./Shell";
@@ -42,6 +43,7 @@ const abas = [
   ...salaoTabs,
   { to: "/salao/cardapio", label: "Cardápio", icone: "book", permissao: "produto:gerenciar" },
   { to: "/salao/pessoas", label: "Pessoas", icone: "users", permissao: "perfil:ver" },
+  { to: "/gestao/comandas", label: "Central", icone: "grid", permissao: "comanda:ver", semCelular: true },
 ] as const;
 
 /** The app proper: only for a session that is fully ready (password set, unit chosen). Anything else is sent to the screen it still owes. */
@@ -93,6 +95,14 @@ const pessoasRoute = createRoute({
   component: lazyRouteComponent(() => import("./features/usuarios/PessoasPage"), "PessoasPage"),
 });
 
+/** The manager's central de comandas: the app's own route (the management lives in the app, /gestao), a separate download like every screen but the list. */
+const centralRoute = createRoute({
+  getParentRoute: () => appLayout,
+  path: "/gestao/comandas",
+  validateSearch: (bruto: Record<string, unknown>) => paraBusca(lerFiltros(bruto)),
+  component: lazyRouteComponent(() => import("./features/central/CentralPage"), "CentralPage"),
+});
+
 const entryLayout = createRoute({ getParentRoute: () => rootRoute, id: "entry", component: EntryShell });
 
 function exigir(destino: "/salao/entrar" | "/salao/trocar-senha" | "/salao/unidade") {
@@ -132,6 +142,7 @@ const routeTree = rootRoute.addChildren([
     cardapioRoute,
     importarCardapioRoute,
     pessoasRoute,
+    centralRoute,
   ]),
   entryLayout.addChildren([entrarRoute, trocarSenhaRoute, unidadeRoute]),
 ]);

@@ -28,6 +28,8 @@ export interface TabItem {
   permissao: string;
   /** Absent too when the unit has no tables to show (it does not use them, or none is registered). */
   requerMesas?: boolean;
+  /** Desk work: absent on the phone, where the bottom bar has room for the waiter's own tabs only. */
+  semCelular?: boolean;
 }
 
 /** The slice ships Comandas and Caixa only; each later step shows or hides its tab by the caller's permission. */
@@ -42,8 +44,11 @@ export function abasVisiveis(
   tabs: readonly TabItem[],
   pode: (permissao: string) => boolean,
   temMesas: boolean,
+  faixa?: Faixa,
 ): readonly TabItem[] {
-  return tabs.filter((tab) => pode(tab.permissao) && (!tab.requerMesas || temMesas));
+  return tabs.filter(
+    (tab) => pode(tab.permissao) && (!tab.requerMesas || temMesas) && !(tab.semCelular && faixa === "celular"),
+  );
 }
 
 const CHAVE_DO_MENU = "f4t-menu";
@@ -108,7 +113,7 @@ function Navegacao({ tabs, faixa, recolhido }: { tabs: readonly TabItem[]; faixa
           className="app-tab"
           title={recolhido ? tab.label : undefined}
           aria-label={recolhido ? tab.label : undefined}
-          activeOptions={{ exact: true }}
+          activeOptions={{ exact: true, includeSearch: false }}
           activeProps={{ "aria-current": "page" }}
         >
           <Icon name={tab.icone} />
@@ -146,8 +151,8 @@ export function Shell({
   const permissoes = usePermissoes();
   const mapa = useMapaDeMesas(permissoes.pode("mesa:ver") && tabs.some((tab) => tab.requerMesas));
   const temMesas = mapa.data !== undefined && !semMesas(mapa.data);
-  const visiveis = abasVisiveis(tabs, permissoes.pode, temMesas);
   const faixa = useFaixa();
+  const visiveis = abasVisiveis(tabs, permissoes.pode, temMesas, faixa);
   const [escolha, guardarEscolha] = useEscolhaDoMenu();
   const recolhido = menuRecolhido(faixa, escolha);
   const comMenuLateral = faixa !== "celular";

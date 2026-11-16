@@ -138,6 +138,18 @@ describe("abasVisiveis (the permission filter of the navigation)", () => {
     expect(abasVisiveis(todas, tudo, true).map((t) => t.label)).toEqual(["Comandas", "Mesas", "Caixa", "Cardápio"]);
   });
 
+  it("hides a desk tab on the phone only", () => {
+    const central = [
+      { to: "/gestao/comandas", label: "Central", icone: "grid", permissao: "comanda:ver", semCelular: true },
+    ] as const;
+    const tudo = () => true;
+
+    expect(abasVisiveis(central, tudo, true, "celular")).toEqual([]);
+    expect(abasVisiveis(central, tudo, true, "tablet").map((t) => t.label)).toEqual(["Central"]);
+    expect(abasVisiveis(central, tudo, true, "computador").map((t) => t.label)).toEqual(["Central"]);
+    expect(abasVisiveis(central, () => false, true, "computador")).toEqual([]);
+  });
+
   it("shows nothing while nothing is known", () => {
     expect(abasVisiveis(todas, () => false, true)).toEqual([]);
   });

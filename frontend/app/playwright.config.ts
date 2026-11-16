@@ -46,7 +46,7 @@ export default defineConfig({
     // Computer (ADR-019): the sidebar layout and the keyboard shortcuts.
     {
       name: "computer-1440x900",
-      testMatch: /salao-(computador|quatro-resolucoes)\.spec\.ts/,
+      testMatch: /(salao-(computador|quatro-resolucoes)|central-comandas)\.spec\.ts/,
       use: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
     },
   ],

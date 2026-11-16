@@ -60,6 +60,16 @@ const respostas: Record<string, unknown> = {
   },
   "GET /sessao/contexto": { organizacao: "Bar do Zé", unidade: "Unidade Centro", usuario: "Marina" },
   "GET /comandas": [comanda(7, "Ana", 2500), comanda(8, "Bia", 8900), comanda(9, "Balcão 1", 4200)],
+  "GET /comandas/central": [
+    comanda(7, "Ana", 2500),
+    comanda(8, "Bia", 8900),
+    {
+      ...comanda(9, "Balcão 1", 4200),
+      garcomId: "conta-2",
+      garcomNome: "Rafael",
+      ultimaAtividadeEm: new Date(Date.now() - 55 * 60_000).toISOString(),
+    },
+  ],
   "GET /mesas": [],
   "GET /comandas/c7/conta": {
     consumoCentavos: 2500,
@@ -102,6 +112,21 @@ export async function simularApi(page: Page) {
     },
   );
   // Registered after the generic route: Playwright tries the latest route first.
+  // The central de comandas filters like the server does (waiter and number), so a spec sees the total change.
+  await page.route(
+    (url) => url.pathname === "/comandas/central",
+    (route) => {
+      const busca = new URL(route.request().url()).searchParams;
+      const lista = (respostas["GET /comandas/central"] as unknown[]).filter((c) => {
+        const { garcomId, numero } = c as { garcomId: string; numero: number };
+        return (
+          (!busca.get("garcomId") || busca.get("garcomId") === garcomId) &&
+          (!busca.get("numero") || busca.get("numero") === String(numero))
+        );
+      });
+      return route.fulfill({ json: { comandas: lista, total: lista.length } });
+    },
+  );
   await page.route(
     (url) => url.pathname === "/comandas/fluxo",
     // The live stream stays open and silent (the request is never answered); `simularFluxo` replaces it.

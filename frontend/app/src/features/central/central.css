@@ -1,0 +1,68 @@
+/* Central de comandas (/gestao/comandas). Reference: prototipos/index.html#m=web, cards and view=table. Cards reuse .comanda-card; only the filters row and the table are new. */
+.central-titulo {
+  margin: 0 0 var(--f4-space-3);
+  font-size: var(--f4-text-sheet-title);
+}
+
+.central-filtros,
+.central-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--f4-space-3);
+  margin-bottom: var(--f4-space-3);
+}
+
+.central-barra {
+  justify-content: space-between;
+}
+
+.central-vista {
+  display: flex;
+  gap: var(--f4-space-2);
+}
+
+.central-cartoes {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.central-rolagem {
+  overflow-x: auto;
+}
+
+.central-tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.central-tabela th,
+.central-tabela td {
+  padding: var(--f4-space-3);
+  border-bottom: 1px solid var(--f4-border);
+  text-align: left;
+}
+
+.central-tabela thead th {
+  color: var(--f4-ink-muted);
+  font-size: var(--f4-text-meta);
+}
+
+.central-tabela .central-num {
+  text-align: right;
+}
+
+/* The number links are text in the ink token, not the browser's blue: bold, underlined only on hover and focus. */
+.central-tabela a {
+  color: var(--f4-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.central-tabela a:hover {
+  text-decoration: underline;
+}
+
+.central-tabela a:focus-visible {
+  outline: 2px solid var(--f4-accent);
+  outline-offset: 2px;
+}

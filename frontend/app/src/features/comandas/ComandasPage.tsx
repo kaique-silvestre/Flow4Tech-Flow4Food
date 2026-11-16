@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { useOnline } from "../fila/conexao";
 import { usePermissoes } from "../sessao/permissoes";
 import { contaDaSessao } from "../sessao/sessao";
+import { useAgora } from "./agora";
 import { useAtalhosDaTela } from "./atalhos";
 import { useComandas, useMesas } from "./consultas";
 import { useFluxoDeComandas } from "./fluxo";
@@ -37,15 +38,6 @@ const ROTULO: Record<Filtro, string> = {
   abertas: "Abertas",
   aguardando: "Aguardando",
 };
-
-function useAgora(intervaloMs = 30_000) {
-  const [agora, setAgora] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setAgora(Date.now()), intervaloMs);
-    return () => window.clearInterval(timer);
-  }, [intervaloMs]);
-  return agora;
-}
 
 /** The comanda screen is the waiter's main path and a separate download: it is fetched as soon as the list is on screen (the service worker keeps it for the next time without signal), so opening a comanda waits for nothing. Failing to fetch it is not an error here: opening it will say so. */
 function useAquecerComanda() {
