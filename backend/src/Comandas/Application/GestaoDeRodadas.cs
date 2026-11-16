@@ -21,6 +21,9 @@ public enum ResultadoDeRodada
 
     ComandaNaoAberta,
 
+    /// <summary>The unit is outside its opening hours (agenda de funcionamento): nothing is launched.</summary>
+    ForaDoHorario,
+
     ProdutoInativo,
 
     /// <summary>The chosen options do not fit the product's groups (unknown, repeated, below the minimum or above the maximum): the whole round is refused.</summary>
@@ -120,6 +123,7 @@ public sealed class GestaoDeRodadas(
     IEventosDeComandas eventos,
     IPermissaoDaComanda permissoes,
     GestaoDePagamentos pagamentos,
+    IHorarioDeFuncionamento horario,
     ISettings settings,
     IClock clock)
 {
@@ -243,6 +247,11 @@ public sealed class GestaoDeRodadas(
         if (comanda.Estado != EstadoDaComanda.Aberta)
         {
             return new ResultadoDeEscrita(ResultadoDeRodada.ComandaNaoAberta);
+        }
+
+        if (!await horario.EstaAbertoAsync(org, clock.UtcNow, ct))
+        {
+            return new ResultadoDeEscrita(ResultadoDeRodada.ForaDoHorario);
         }
 
         // The price charged is the one in force for the comanda's unit at this instant (unit override, else promotion while valid, else base), frozen into the item.

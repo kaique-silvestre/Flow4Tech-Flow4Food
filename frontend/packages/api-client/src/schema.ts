@@ -420,6 +420,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agenda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAgenda"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agenda/semana": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["salvarAgendaSemana"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agenda/excecoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["salvarAgendaExcecoes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agenda/estender-hoje": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["estenderAgendaHoje"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cardapio/categorias": {
         parameters: {
             query?: never;
@@ -1691,6 +1755,20 @@ export interface components {
             codigo: string;
             problemas: string[];
         };
+        AgendaDto: {
+            /** Format: date */
+            diaOperacional: string;
+            fuso: string;
+            virada: string;
+            semana: components["schemas"]["JanelaDto"][];
+            excecoes: components["schemas"]["ExcecaoDto"][];
+            estendidoAte: null | string;
+            janelaDeHoje: null | components["schemas"]["JanelaDto"];
+            abertoAgora: boolean;
+        };
+        AgendaErro: {
+            codigo: string;
+        };
         AlterarCategoriaRequest: {
             nome: null | string;
             ativa: boolean;
@@ -2187,6 +2265,10 @@ export interface components {
             /** Format: int64 */
             esperadoCentavos: null | number | string;
         };
+        EstenderHojeRequest: {
+            fecha: null | string;
+            motivo: null | string;
+        };
         EventoDoHistoricoDto: {
             /** Format: uuid */
             id: string;
@@ -2202,6 +2284,11 @@ export interface components {
             depois: {
                 [key: string]: string;
             };
+        };
+        ExcecaoDto: {
+            /** Format: date */
+            dia: string;
+            janela: null | components["schemas"]["JanelaDto"];
         };
         FecharTurnoRequest: {
             /** Format: int64 */
@@ -2312,6 +2399,10 @@ export interface components {
             itens: components["schemas"]["ItemDto"][];
             /** Format: int64 */
             consumoCentavos: number | string;
+        };
+        JanelaDto: {
+            abre: string;
+            fecha: string;
         };
         JuntarComandasRequest: {
             /** Format: int32 */
@@ -2734,6 +2825,14 @@ export interface components {
         RodadaRepetidaDto: {
             rodada: components["schemas"]["RodadaDto"];
             ignorados: components["schemas"]["ItemIgnoradoDto"][];
+        };
+        SalvarExcecoesRequest: {
+            excecoes: null | components["schemas"]["ExcecaoDto"][];
+            motivo: null | string;
+        };
+        SalvarSemanaRequest: {
+            semana: null | components["schemas"]["JanelaDto"][];
+            motivo: null | string;
         };
         SepararItensRequest: {
             /** Format: int32 */
@@ -4096,6 +4195,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfiguracaoErro"];
+                };
+            };
+        };
+    };
+    getAgenda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    salvarAgendaSemana: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalvarSemanaRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
+                };
+            };
+        };
+    };
+    salvarAgendaExcecoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalvarExcecoesRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
+                };
+            };
+        };
+    };
+    estenderAgendaHoje: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstenderHojeRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgendaErro"];
                 };
             };
         };

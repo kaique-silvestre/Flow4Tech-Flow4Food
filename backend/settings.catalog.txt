@@ -10,7 +10,10 @@ caixa.exigir-caixa-aberto|Booleano|OrganizacaoEUnidade|true
 caixa.permitir-autoaprovacao|Booleano|OrganizacaoEUnidade|false
 caixa.tolerancia-diferenca-centavos|Inteiro|OrganizacaoEUnidade|500
 comanda.janela-desfazer-segundos|Inteiro|SomenteSistema|8
+dia-operacional.estender-hoje|Texto|OrganizacaoEUnidade|-
+dia-operacional.excecoes|Texto|OrganizacaoEUnidade|-
 dia-operacional.fuso|Texto|OrganizacaoEUnidade|America/Sao_Paulo
+dia-operacional.semana|Texto|OrganizacaoEUnidade|0000-0000;0000-0000;0000-0000;0000-0000;0000-0000;0000-0000;0000-0000
 dia-operacional.virada|Hora|OrganizacaoEUnidade|05:00
 operacao.usar-mesas|Booleano|OrganizacaoEUnidade|true
 sessao.absoluta-dias|Numero|Organizacao|14

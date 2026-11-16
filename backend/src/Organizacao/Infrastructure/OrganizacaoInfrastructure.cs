@@ -261,6 +261,12 @@ public static class OrganizacaoServices
             provider.GetRequiredService<IPermissaoDoChamador>(),
             provider.GetRequiredService<Flow4Tech.Kernel.Audit.IAuditLog>(),
             provider.GetRequiredService<IClock>()));
+        services.AddSingleton<AgendaDaUnidade>(provider => new AgendaDaUnidade(
+            provider.GetRequiredService<IUnitOfWork>(),
+            provider.GetRequiredService<ISettings>(),
+            provider.GetRequiredService<Configuracoes>(),
+            provider.GetRequiredService<IPermissaoDoChamador>(),
+            provider.GetRequiredService<IClock>()));
         return services;
     }
 }

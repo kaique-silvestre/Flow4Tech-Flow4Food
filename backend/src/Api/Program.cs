@@ -81,6 +81,9 @@ builder.Services.AddSingleton<IDiaOperacional, DiaOperacionalDaUnidade>();
 builder.Services.AddSingleton<IPermissaoDoChamador, PermissaoDoChamador>();
 // Permissions on HTTP (ticket 05): one engine (IAuthorizationEngine.DecidirAsync), asked by the handler for every route that declares a permission.
 builder.Services.AddPermissoes(moduleCatalog);
+builder.Services.AddSingleton<IHorarioDeFuncionamento, HorarioDeFuncionamentoDaUnidade>();
+// The operating day (cap day, display numbers, agenda) is read from the dia-operacional.* options; replaces the module's own default resolver.
+builder.Services.Replace(ServiceDescriptor.Singleton<IOperatingDayResolver, DiaOperacionalConfigurado>());
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddSingleton<IPerfisDoUsuario, PerfisDaConta>();
@@ -200,6 +203,7 @@ app.MapOrganizacao();
 app.MapSessao();
 app.MapAcesso();
 app.MapConfiguracao();
+app.MapAgenda();
 app.MapCardapio();
 app.MapCaixa();
 app.MapComandas();

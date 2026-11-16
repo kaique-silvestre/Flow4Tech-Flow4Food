@@ -125,3 +125,24 @@ internal sealed class DiaOperacionalDaUnidade(IOperatingDayResolver resolver) : 
         return resolver.CurrentAsync(organization.OrganizationId, organization.UnitId == Guid.Empty ? null : organization.UnitId, cancellationToken);
     }
 }
+
+/// <summary>
+/// The operating-day resolver of the host: the unit's zone and rollover come from the layered <c>dia-operacional.*</c> options (organization, then unit), default America/Sao_Paulo and 05:00,
+/// so a cap day, a display number and the opening agenda all agree on which day it is.
+/// </summary>
+internal sealed class DiaOperacionalConfigurado(IServiceProvider services, IClock clock) : IOperatingDayResolver
+{
+    // Resolved on use, not injected: the agenda writes through Configuracoes, which asks the authorization engine, which holds this resolver (a construction cycle otherwise).
+    public Task<DateOnly> CurrentAsync(Guid organizationId, Guid? unitId, CancellationToken cancellationToken) =>
+        services.GetRequiredService<AgendaDaUnidade>().DiaOperacionalAsync(organizationId, unitId, clock.UtcNow, cancellationToken);
+}
+
+/// <summary>Adapts the unit's agenda to the port Comandas declares: launching is refused outside the opening hours, judged by the server clock.</summary>
+internal sealed class HorarioDeFuncionamentoDaUnidade(AgendaDaUnidade agenda) : IHorarioDeFuncionamento
+{
+    public Task<bool> EstaAbertoAsync(OrganizationContext organization, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(organization);
+        return agenda.EstaAbertoAsync(organization.OrganizationId, organization.UnitId == Guid.Empty ? null : organization.UnitId, at, cancellationToken);
+    }
+}

@@ -230,6 +230,7 @@ internal static class ComandasEndpoints
                     ResultadoDeRodada.NadaParaRepetir => Results.Json(new RepeticaoErro("nada-para-repetir", null, ignorados), statusCode: StatusCodes.Status409Conflict),
                     ResultadoDeRodada.SemRodadaAnterior => Results.Json(new RepeticaoErro("sem-rodada-anterior", null, ignorados), statusCode: StatusCodes.Status409Conflict),
                     ResultadoDeRodada.ComandaNaoAberta => Results.Json(new RepeticaoErro("comanda-nao-aberta", null, ignorados), statusCode: StatusCodes.Status409Conflict),
+                    ResultadoDeRodada.ForaDoHorario => Results.Json(new RepeticaoErro("fora-do-horario", null, ignorados), statusCode: StatusCodes.Status409Conflict),
                     ResultadoDeRodada.VersaoDesatualizada => Results.Json(new RepeticaoErro("versao-desatualizada", r.VersaoAtual, ignorados), statusCode: StatusCodes.Status409Conflict),
                     _ => Results.Json(new RepeticaoErro("invalido", null, ignorados), statusCode: StatusCodes.Status409Conflict),
                 };
@@ -402,6 +403,7 @@ internal static class ComandasEndpoints
         {
             ResultadoDeRodada.ComandaNaoEncontrada or ResultadoDeRodada.RodadaNaoEncontrada or ResultadoDeRodada.ItemNaoEncontrado => (StatusCodes.Status404NotFound, "nao-encontrada"),
             ResultadoDeRodada.ComandaNaoAberta => (StatusCodes.Status409Conflict, "comanda-nao-aberta"),
+            ResultadoDeRodada.ForaDoHorario => (StatusCodes.Status409Conflict, "fora-do-horario"),
             ResultadoDeRodada.ProdutoInativo => (StatusCodes.Status409Conflict, "produto-inativo"),
             ResultadoDeRodada.OpcaoInativa => (StatusCodes.Status409Conflict, "opcao-inativa"),
             ResultadoDeRodada.OpcaoInvalida => (StatusCodes.Status400BadRequest, "opcao-invalida"),
@@ -462,6 +464,7 @@ internal static class ComandasEndpoints
     private static IResult Erro(ResultadoDeAbrir r) => r.Resultado switch
     {
         ResultadoDeComanda.MesasDesligadas => Results.Json(new ComandaErro("mesas-desligadas"), statusCode: StatusCodes.Status409Conflict),
+        ResultadoDeComanda.ForaDoHorario => Results.Json(new ComandaErro("fora-do-horario"), statusCode: StatusCodes.Status409Conflict),
         ResultadoDeComanda.VersaoDesatualizada => Results.Json(new ComandaErro("versao-desatualizada", r.VersaoAtual), statusCode: StatusCodes.Status409Conflict),
         _ => Results.Json(new ComandaErro("invalido"), statusCode: StatusCodes.Status400BadRequest),
     };

@@ -1087,6 +1087,183 @@
         "x-permission": "organizacao:configurar"
       }
     },
+    "/agenda": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getAgenda",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/agenda/semana": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "salvarAgendaSemana",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalvarSemanaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/agenda/excecoes": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "salvarAgendaExcecoes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalvarExcecoesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
+    "/agenda/estender-hoje": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "estenderAgendaHoje",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstenderHojeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "organizacao:configurar"
+      }
+    },
     "/cardapio/categorias": {
       "get": {
         "tags": [
@@ -6430,6 +6607,73 @@
           }
         }
       },
+      "AgendaDto": {
+        "required": [
+          "diaOperacional",
+          "fuso",
+          "virada",
+          "semana",
+          "excecoes",
+          "estendidoAte",
+          "janelaDeHoje",
+          "abertoAgora"
+        ],
+        "type": "object",
+        "properties": {
+          "diaOperacional": {
+            "type": "string",
+            "format": "date"
+          },
+          "fuso": {
+            "type": "string"
+          },
+          "virada": {
+            "type": "string"
+          },
+          "semana": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JanelaDto"
+            }
+          },
+          "excecoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExcecaoDto"
+            }
+          },
+          "estendidoAte": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "janelaDeHoje": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JanelaDto"
+              }
+            ]
+          },
+          "abertoAgora": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AgendaErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          }
+        }
+      },
       "AlterarCategoriaRequest": {
         "required": [
           "nome",
@@ -8493,6 +8737,27 @@
           }
         }
       },
+      "EstenderHojeRequest": {
+        "required": [
+          "fecha",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "fecha": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "EventoDoHistoricoDto": {
         "required": [
           "id",
@@ -8540,6 +8805,29 @@
             "additionalProperties": {
               "type": "string"
             }
+          }
+        }
+      },
+      "ExcecaoDto": {
+        "required": [
+          "dia",
+          "janela"
+        ],
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "format": "date"
+          },
+          "janela": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JanelaDto"
+              }
+            ]
           }
         }
       },
@@ -8989,6 +9277,21 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "JanelaDto": {
+        "required": [
+          "abre",
+          "fecha"
+        ],
+        "type": "object",
+        "properties": {
+          "abre": {
+            "type": "string"
+          },
+          "fecha": {
+            "type": "string"
           }
         }
       },
@@ -10787,6 +11090,54 @@
             "items": {
               "$ref": "#/components/schemas/ItemIgnoradoDto"
             }
+          }
+        }
+      },
+      "SalvarExcecoesRequest": {
+        "required": [
+          "excecoes",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "excecoes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExcecaoDto"
+            }
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SalvarSemanaRequest": {
+        "required": [
+          "semana",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "semana": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/JanelaDto"
+            }
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

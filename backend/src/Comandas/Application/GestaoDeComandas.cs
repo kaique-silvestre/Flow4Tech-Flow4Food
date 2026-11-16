@@ -17,6 +17,9 @@ public enum ResultadoDeComanda
 
     /// <summary>A write carried a version other than the current one (the caller learns the current one).</summary>
     VersaoDesatualizada,
+
+    /// <summary>The unit is outside its opening hours (agenda de funcionamento).</summary>
+    ForaDoHorario,
 }
 
 public sealed record ResultadoDeAbrir(ResultadoDeComanda Resultado, Comanda? Comanda = null, int? VersaoAtual = null);
@@ -34,6 +37,7 @@ public sealed class GestaoDeComandas(
     IPermissaoDaComanda permissoes,
     IResumosDasComandas resumos,
     IDiaOperacional dias,
+    IHorarioDeFuncionamento horario,
     ISettings settings,
     IClock clock)
 {
@@ -54,6 +58,11 @@ public sealed class GestaoDeComandas(
 
                 var org = request.Organization;
                 var agora = clock.UtcNow;
+                if (!await horario.EstaAbertoAsync(org, agora, ct))
+                {
+                    return new ResultadoDeAbrir(ResultadoDeComanda.ForaDoHorario);
+                }
+
                 Mesa? mesa = null;
                 if (mesaId is { } id)
                 {
