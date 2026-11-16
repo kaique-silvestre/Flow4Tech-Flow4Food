@@ -237,8 +237,8 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
                 contado_centavos = {contadoCentavos},
                 suprimentos_centavos = m.suprimentos,
                 sangrias_centavos = m.sangrias,
-                esperado_centavos = t.fundo_centavos + t.recebido_dinheiro_centavos + m.suprimentos - m.sangrias,
-                diferenca_centavos = {contadoCentavos} - (t.fundo_centavos + t.recebido_dinheiro_centavos + m.suprimentos - m.sangrias)
+                esperado_centavos = t.fundo_centavos + t.recebido_dinheiro_centavos - t.estornado_dinheiro_centavos + m.suprimentos - m.sangrias,
+                diferenca_centavos = {contadoCentavos} - (t.fundo_centavos + t.recebido_dinheiro_centavos - t.estornado_dinheiro_centavos + m.suprimentos - m.sangrias)
             FROM (
               SELECT COALESCE(SUM(valor_centavos) FILTER (WHERE tipo = 'suprimento'), 0)::bigint AS suprimentos,
                      COALESCE(SUM(valor_centavos) FILTER (WHERE tipo = 'sangria'), 0)::bigint AS sangrias
@@ -260,6 +260,32 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
             $"UPDATE turnos_caixa SET recebido_dinheiro_centavos = recebido_dinheiro_centavos + {centavos} WHERE id = {turnoId} AND fechado_em IS NULL",
             cancellationToken);
         return rows == 1;
+    }
+
+    public async Task<bool> TurnoEstaAbertoAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken)
+    {
+        await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Turnos.AsNoTracking().AnyAsync(t => t.Id == turnoId && t.FechadoEm == null, cancellationToken);
+    }
+
+    public async Task<ResultadoDoEstornoNoCaixa> RegistrarEstornoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken)
+    {
+        // SaldoDaGavetaTravandoAsync takes the row lock of the open shift first and sums after it, so a withdrawal or another refund in flight cannot overdraw the drawer.
+        if (await SaldoDaGavetaTravandoAsync(organizationId, turnoId, cancellationToken) is not { } gaveta)
+        {
+            return ResultadoDoEstornoNoCaixa.TurnoFechado;
+        }
+
+        if (gaveta < centavos)
+        {
+            return ResultadoDoEstornoNoCaixa.SemDinheiro;
+        }
+
+        await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync(
+            $"UPDATE turnos_caixa SET estornado_dinheiro_centavos = estornado_dinheiro_centavos + {centavos} WHERE id = {turnoId} AND fechado_em IS NULL",
+            cancellationToken);
+        return rows == 1 ? ResultadoDoEstornoNoCaixa.Ok : ResultadoDoEstornoNoCaixa.TurnoFechado;
     }
 
     public Task<IReadOnlyList<Turno>> ListarAsync(Guid organizationId, Guid unitId, Guid? operadorId, int limite, CancellationToken cancellationToken) =>
@@ -305,7 +331,7 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
 
         return (await context.Database.SqlQuery<long>(
             $"""
-            SELECT (t.fundo_centavos + t.recebido_dinheiro_centavos
+            SELECT (t.fundo_centavos + t.recebido_dinheiro_centavos - t.estornado_dinheiro_centavos
                     + COALESCE((SELECT SUM(CASE m.tipo WHEN 'suprimento' THEN m.valor_centavos ELSE -m.valor_centavos END) FROM movimentos_caixa m WHERE m.turno_id = t.id), 0))::bigint AS "Value"
             FROM turnos_caixa t WHERE t.id = {turnoId}
             """).ToListAsync(cancellationToken))[0];
@@ -361,8 +387,12 @@ public sealed class PostgresCaixaStore : ICaixaStore, IMovimentosDoCaixa
         await using var context = new CaixaDbContext(TenantUnitOfWork.Require(organizationId));
         var linhas = await context.Database.SqlQuery<LinhaDeValor>(
             $"""
-            SELECT metodo_id AS "Id", SUM(aplicado_centavos + gorjeta_centavos)::bigint AS "Valor"
-            FROM pagamentos WHERE turno_id = {turnoId} AND estado = 'confirmado' AND metodo_id IS NOT NULL GROUP BY metodo_id
+            SELECT metodo_id AS "Id", GREATEST(SUM(valor), 0)::bigint AS "Valor"
+            FROM (
+              SELECT metodo_id, aplicado_centavos + gorjeta_centavos AS valor FROM pagamentos WHERE turno_id = {turnoId} AND estado = 'confirmado' AND metodo_id IS NOT NULL
+              UNION ALL
+              SELECT metodo_id, valor_centavos AS valor FROM estornos_pagamento WHERE turno_id = {turnoId} AND metodo_id IS NOT NULL
+            ) x GROUP BY metodo_id
             """).ToListAsync(cancellationToken);
         return linhas.ToDictionary(l => l.Id, l => l.Valor);
     }

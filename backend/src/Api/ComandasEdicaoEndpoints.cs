@@ -15,7 +15,8 @@ internal sealed record TrocarGarcomRequest(int Versao, Guid GarcomId);
 internal sealed record AlterarDadosRequest(int Versao, int? Pessoas, string? Observacao);
 
 /// <summary><c>Motivo</c> is a code of the standard list (cliente-desistiu, erro-de-lancamento, item-indisponivel, outro); <c>Texto</c> is required with 'outro'.</summary>
-internal sealed record CancelarComandaRequest(int Versao, string Motivo, string? Texto);
+/// <summary><c>MotivoDoEstorno</c> (up to 200 characters) is required when the comanda has money received: every payment is then refunded together with the cancellation, in one operation. It carries no amount: the server measures it.</summary>
+internal sealed record CancelarComandaRequest(int Versao, string Motivo, string? Texto, string? MotivoDoEstorno = null);
 
 internal sealed record ItemAlteradoDto(ItemDto Item, int ComandaVersao);
 
@@ -103,7 +104,7 @@ internal static class ComandasEdicaoEndpoints
 
         app.MapPost("/comandas/{comandaId:guid}/cancelar", async (Guid comandaId, CancelarComandaRequest body, RequestContextAccessor request, GestaoDaEdicaoDaComanda edicao, CancellationToken cancellationToken) =>
             {
-                var r = await edicao.CancelarAsync(request, comandaId, body.Versao, body.Motivo, body.Texto, cancellationToken);
+                var r = await edicao.CancelarAsync(request, comandaId, body.Versao, body.Motivo, body.Texto, body.MotivoDoEstorno, cancellationToken);
                 return r.Resultado == ResultadoDaEdicao.Ok ? Results.Ok(new ComandaCanceladaDto(ComandasEndpoints.Dto(r.Comanda!), r.ItensCancelados)) : Erro(r);
             })
             .WithName("cancelarComanda")
@@ -113,7 +114,7 @@ internal static class ComandasEdicaoEndpoints
             .Produces<ComandaCanceladaDto>()
             .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ComandaErro>(StatusCodes.Status403Forbidden)
             .Produces<ComandaErro>(StatusCodes.Status404NotFound)
             .Produces<ComandaErro>(StatusCodes.Status409Conflict);
 
@@ -152,6 +153,9 @@ internal static class ComandasEdicaoEndpoints
             ResultadoDaEdicao.VersaoDesatualizada => (StatusCodes.Status409Conflict, "versao-desatualizada"),
             ResultadoDaEdicao.ValorJaRecebido => (StatusCodes.Status409Conflict, "valor-ja-recebido"),
             ResultadoDaEdicao.ComPagamentos => (StatusCodes.Status409Conflict, "com-pagamentos"),
+            ResultadoDaEdicao.SemTurnoAberto => (StatusCodes.Status409Conflict, "sem-turno-aberto"),
+            ResultadoDaEdicao.CaixaSemDinheiro => (StatusCodes.Status409Conflict, "caixa-sem-dinheiro"),
+            ResultadoDaEdicao.Negado => (StatusCodes.Status403Forbidden, "negado"),
             ResultadoDaEdicao.GarcomInvalido => (StatusCodes.Status400BadRequest, "garcom-invalido"),
             _ => (StatusCodes.Status400BadRequest, "invalido"),
         };

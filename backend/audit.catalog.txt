@@ -52,6 +52,7 @@ mesa:criar
 mesa:definir-area
 metodo-pagamento:alterar
 metodo-pagamento:criar
+pagamento:estornar
 pagamento:registrar
 perfil:atribuir
 perfil:criar

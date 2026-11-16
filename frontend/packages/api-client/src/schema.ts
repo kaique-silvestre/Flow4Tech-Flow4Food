@@ -1588,6 +1588,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pagamentos/{pagamentoId}/estornos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listEstornosDoPagamento"];
+        put?: never;
+        post: operations["estornarPagamento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pagamentos/metodos": {
         parameters: {
             query?: never;
@@ -1888,6 +1904,7 @@ export interface components {
             versao: number | string;
             motivo: string;
             texto: null | string;
+            motivoDoEstorno?: null | string;
         };
         CancelarItemRequest: {
             /** Format: int32 */
@@ -2268,6 +2285,52 @@ export interface components {
         EstenderHojeRequest: {
             fecha: null | string;
             motivo: null | string;
+        };
+        EstornarPagamentoRequest: {
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            motivo: string;
+        };
+        EstornoDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: uuid */
+            comandaId: string;
+            /** Format: uuid */
+            turnoId: null | string;
+            metodo: string;
+            /** Format: int64 */
+            valorCentavos: number | string;
+            motivo: string;
+            /** Format: uuid */
+            operadorId: string;
+            /** Format: date-time */
+            registradoEm: string;
+        };
+        EstornoErro: {
+            codigo: string;
+            /** Format: int64 */
+            saldoEstornavelCentavos?: null | number | string;
+        };
+        EstornoFeitoDto: {
+            estorno: components["schemas"]["EstornoDto"];
+            /** Format: int64 */
+            saldoEstornavelCentavos: number | string;
+        };
+        EstornosDoPagamentoDto: {
+            /** Format: uuid */
+            pagamentoId: string;
+            /** Format: uuid */
+            comandaId: string;
+            /** Format: int64 */
+            aplicadoCentavos: number | string;
+            /** Format: int64 */
+            estornadoCentavos: number | string;
+            /** Format: int64 */
+            saldoEstornavelCentavos: number | string;
+            estornos: components["schemas"]["EstornoDto"][];
         };
         EventoDoHistoricoDto: {
             /** Format: uuid */
@@ -7227,7 +7290,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
             };
             /** @description Not Found */
             404: {
@@ -8750,6 +8815,120 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MesaErro"];
+                };
+            };
+        };
+    };
+    listEstornosDoPagamento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pagamentoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornosDoPagamentoDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoErro"];
+                };
+            };
+        };
+    };
+    estornarPagamento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pagamentoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstornarPagamentoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoFeitoDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoErro"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstornoErro"];
                 };
             };
         };

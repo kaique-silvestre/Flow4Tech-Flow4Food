@@ -4350,7 +4350,14 @@
             "description": "Unauthorized"
           },
           "403": {
-            "description": "Forbidden"
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
@@ -6019,6 +6026,137 @@
         "x-permission": "mesa:ver"
       }
     },
+    "/pagamentos/{pagamentoId}/estornos": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "estornarPagamento",
+        "parameters": [
+          {
+            "name": "pagamentoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstornarPagamentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoFeitoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoErro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "pagamento:ver"
+      },
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listEstornosDoPagamento",
+        "parameters": [
+          {
+            "name": "pagamentoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornosDoPagamentoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstornoErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "pagamento:ver"
+      }
+    },
     "/pagamentos/metodos": {
       "get": {
         "tags": [
@@ -7183,6 +7321,12 @@
             "type": "string"
           },
           "texto": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "motivoDoEstorno": {
             "type": [
               "null",
               "string"
@@ -8755,6 +8899,175 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EstornarPagamentoRequest": {
+        "required": [
+          "valorCentavos",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      },
+      "EstornoDto": {
+        "required": [
+          "id",
+          "pagamentoId",
+          "comandaId",
+          "turnoId",
+          "metodo",
+          "valorCentavos",
+          "motivo",
+          "operadorId",
+          "registradoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comandaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "turnoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "metodo": {
+            "type": "string"
+          },
+          "valorCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "operadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registradoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EstornoErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "saldoEstornavelCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "EstornoFeitoDto": {
+        "required": [
+          "estorno",
+          "saldoEstornavelCentavos"
+        ],
+        "type": "object",
+        "properties": {
+          "estorno": {
+            "$ref": "#/components/schemas/EstornoDto"
+          },
+          "saldoEstornavelCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "EstornosDoPagamentoDto": {
+        "required": [
+          "pagamentoId",
+          "comandaId",
+          "aplicadoCentavos",
+          "estornadoCentavos",
+          "saldoEstornavelCentavos",
+          "estornos"
+        ],
+        "type": "object",
+        "properties": {
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comandaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aplicadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "estornadoCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "saldoEstornavelCentavos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "estornos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EstornoDto"
+            }
           }
         }
       },

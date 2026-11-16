@@ -30,8 +30,17 @@ public enum ResultadoDaEdicao
     /// <summary>The chosen waiter is not an active account of the unit (or is the one who already holds the comanda).</summary>
     GarcomInvalido,
 
-    /// <summary>A comanda with a payment is never cancelled: money was received.</summary>
+    /// <summary>A comanda with a payment is not cancelled until the money is refunded (a refund before, or together with the cancellation).</summary>
     ComPagamentos,
+
+    /// <summary>The refund that goes with the cancellation needs an open shift and there is none.</summary>
+    SemTurnoAberto,
+
+    /// <summary>The refund that goes with the cancellation is cash and the drawer holds less than it.</summary>
+    CaixaSemDinheiro,
+
+    /// <summary>The engine refused the refund (not held, or beyond the limit). Answered as 403 with a typed body.</summary>
+    Negado,
 }
 
 /// <summary><c>Comanda</c> is the comanda after the write (with its new version); <c>Item</c> is set by an item edit; <c>VersaoAtual</c> is set on a stale version.</summary>
@@ -39,7 +48,7 @@ public sealed record ResultadoDaEdicaoDaComanda(ResultadoDaEdicao Resultado, Com
 
 /// <summary>
 /// Everything a waiter or manager changes on an open comanda without receiving money: an item's quantity or note, the name, the responsible waiter, the head count and the general note, and cancelling
-/// the whole comanda while it has no payment. The route has already asked the engine for the permission of the action. Every write is ONE unit of work: the version check, the change, the audit record
+/// the whole comanda while it has no payment (or together with the refund of what was paid). The route has already asked the engine for the permission of the action. Every write is ONE unit of work: the version check, the change, the audit record
 /// and the outbox event commit or roll back together, and a stale version changes nothing. Closing is a write of the same row against the same version, so a launch racing a close (or a cancel) loses the
 /// version check: nothing is ever launched into a comanda that is closing. A waiter reaches only comandas they opened unless they hold <c>comanda:ver-comandas-de-outros</c>.
 /// </summary>
@@ -160,58 +169,90 @@ public sealed class GestaoDaEdicaoDaComanda(
     }
 
     /// <summary>
-    /// Cancels an open comanda with no payment: every item still launched is cancelled with the same reason and the comanda leaves the open state. The reason is one of the standard list
-    /// ('outro' carries free text). A comanda with a payment answers <see cref="ResultadoDaEdicao.ComPagamentos"/>.
+    /// Cancels an open comanda: every item still launched is cancelled with the same reason and the comanda leaves the open state. The reason is one of the standard list ('outro' carries free text).
+    /// A comanda with money still received answers <see cref="ResultadoDaEdicao.ComPagamentos"/> unless <paramref name="motivoDoEstorno"/> comes with it: then every payment is refunded in the SAME unit of
+    /// work (refund, audit, cancellation commit or roll back together), the engine is asked once for the total (<c>pagamento:estornar</c>) and a refusal is 403 with nothing written.
     /// </summary>
-    public Task<ResultadoDaEdicaoDaComanda> CancelarAsync(IRequestContext request, Guid comandaId, int versao, string? motivo, string? texto, CancellationToken cancellationToken = default)
+    public async Task<ResultadoDaEdicaoDaComanda> CancelarAsync(IRequestContext request, Guid comandaId, int versao, string? motivo, string? texto, string? motivoDoEstorno = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return unitOfWork.ExecuteAsync(
-            request,
-            async ct =>
+        try
+        {
+            return await unitOfWork.ExecuteAsync(
+                request,
+                async ct =>
+                {
+                    var palavra = RegrasDeRodada.MotivoDeItem(motivo, texto);
+                    if (palavra is null || versao < 1)
+                    {
+                        return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Invalido);
+                    }
+
+                    var org = request.Organization;
+                    var comanda = await AcharVisivelAsync(request, comandaId, ct);
+                    if (comanda is null)
+                    {
+                        return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoEncontrada);
+                    }
+
+                    if (comanda.Estado != EstadoDaComanda.Aberta)
+                    {
+                        return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoAberta);
+                    }
+
+                    // A payment changes the comanda version, so a payment that committed after the caller last saw the comanda also fails the version check below. What counts is what is still paid (refunds taken off).
+                    var comPagamento = await pagamentos.SomaAplicadaAsync(request, comandaId, ct) > 0;
+                    if (comPagamento && motivoDoEstorno is null)
+                    {
+                        return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComPagamentos);
+                    }
+
+                    if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+                    {
+                        return await FalhaDeVersaoAsync(org, comandaId, ct);
+                    }
+
+                    var estornado = 0L;
+                    if (comPagamento)
+                    {
+                        // After the row lock, like the discount: a refusal or a failure throws so the version bump and any daily cap the engine reserved roll back with the refund.
+                        var estorno = await pagamentos.EstornarComandaAsync(request, comandaId, motivoDoEstorno, ct);
+                        if (estorno.Resultado != ResultadoDoEstorno.Ok)
+                        {
+                            throw new EstornoRecusadoException(estorno.Resultado);
+                        }
+
+                        estornado = -estorno.Estornos.Sum(e => e.ValorCentavos);
+                    }
+
+                    var quando = RegrasDeRodada.Microssegundos(clock.UtcNow);
+                    var itens = await rodadas.CancelarItensVivosAsync(org.OrganizationId, comandaId, palavra, request.UserId, quando, ct);
+                    if (!await comandas.CancelarAsync(org.OrganizationId, comandaId, palavra, request.UserId, quando, ct))
+                    {
+                        throw new InvalidOperationException("A comanda mudou durante o cancelamento.");
+                    }
+
+                    var depois = new JsonObject { ["comandaNumero"] = comanda.Numero, ["motivo"] = palavra, ["itensCancelados"] = itens, ["estornadoCentavos"] = estornado, ["versao"] = versao + 1 };
+                    await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.CancelarComanda, ObjectType = "comanda", ObjectId = comandaId.ToString("D"), After = depois }, ct);
+                    await eventos.PublicarAsync(org, new ComandaCancelada(EntityId.New().Value, comandaId, comanda.UnidadeId, comanda.Numero, palavra, itens, request.UserId), ct);
+                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Ok, comanda with { Estado = EstadoDaComanda.Cancelada, FechadaEm = quando, MotivoCancelamento = palavra, Versao = versao + 1 }, ItensCancelados: itens);
+                },
+                cancellationToken);
+        }
+        catch (DecisaoDeEstornoNegadaException)
+        {
+            await pagamentos.RegistrarNegacaoAsync(request, "comanda", comandaId, cancellationToken);
+            return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Negado);
+        }
+        catch (EstornoRecusadoException recusa)
+        {
+            return new ResultadoDaEdicaoDaComanda(recusa.Resultado switch
             {
-                var palavra = RegrasDeRodada.MotivoDeItem(motivo, texto);
-                if (palavra is null || versao < 1)
-                {
-                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Invalido);
-                }
-
-                var org = request.Organization;
-                var comanda = await AcharVisivelAsync(request, comandaId, ct);
-                if (comanda is null)
-                {
-                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoEncontrada);
-                }
-
-                if (comanda.Estado != EstadoDaComanda.Aberta)
-                {
-                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoAberta);
-                }
-
-                // A payment changes the comanda version, so a payment that committed after the caller last saw the comanda also fails the version check below.
-                if (await pagamentos.SomaAplicadaAsync(request, comandaId, ct) > 0)
-                {
-                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComPagamentos);
-                }
-
-                if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
-                {
-                    return await FalhaDeVersaoAsync(org, comandaId, ct);
-                }
-
-                var quando = RegrasDeRodada.Microssegundos(clock.UtcNow);
-                var itens = await rodadas.CancelarItensVivosAsync(org.OrganizationId, comandaId, palavra, request.UserId, quando, ct);
-                if (!await comandas.CancelarAsync(org.OrganizationId, comandaId, palavra, request.UserId, quando, ct))
-                {
-                    throw new InvalidOperationException("A comanda mudou durante o cancelamento.");
-                }
-
-                var depois = new JsonObject { ["comandaNumero"] = comanda.Numero, ["motivo"] = palavra, ["itensCancelados"] = itens, ["versao"] = versao + 1 };
-                await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.CancelarComanda, ObjectType = "comanda", ObjectId = comandaId.ToString("D"), After = depois }, ct);
-                await eventos.PublicarAsync(org, new ComandaCancelada(EntityId.New().Value, comandaId, comanda.UnidadeId, comanda.Numero, palavra, itens, request.UserId), ct);
-                return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Ok, comanda with { Estado = EstadoDaComanda.Cancelada, FechadaEm = quando, MotivoCancelamento = palavra, Versao = versao + 1 }, ItensCancelados: itens);
-            },
-            cancellationToken);
+                ResultadoDoEstorno.CaixaSemDinheiro => ResultadoDaEdicao.CaixaSemDinheiro,
+                ResultadoDoEstorno.SemTurnoAberto or ResultadoDoEstorno.TurnoEncerrado => ResultadoDaEdicao.SemTurnoAberto,
+                _ => ResultadoDaEdicao.Invalido,
+            });
+        }
     }
 
     /// <summary>The shared shape of the small edits: validate, find, open, optional extra check, version bump, write, audit.</summary>

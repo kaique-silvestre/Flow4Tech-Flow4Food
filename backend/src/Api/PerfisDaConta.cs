@@ -5,6 +5,7 @@ using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Authorization;
 using Flow4Tech.Organizacao.Application;
+using Flow4Tech.Pagamentos.Application;
 using Flow4Tech.Permissoes.Application;
 
 namespace Flow4Tech.Api;
@@ -95,6 +96,23 @@ internal sealed class DecisaoDeDescontoDaComanda(IAuthorizationEngine engine, IP
         var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
         var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
         var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), permission, new Scope(organization.OrganizationId, unit), new DecisionContext(new Money(valorCentavos, "BRL"), percentual), cancellationToken);
+        return decision.IsAllowed;
+    }
+}
+
+/// <summary>
+/// Adapts the one authorization engine to the question Pagamentos asks for a refund (<c>pagamento:estornar</c>, limited by value and daily cap). The module measures the cents from the stored payments; this only
+/// carries them to the engine inside the unit of work in progress, where a daily cap is reserved.
+/// </summary>
+internal sealed class DecisaoDeEstornoDoOperador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IDecisaoDeEstorno
+{
+    public async Task<bool> PodeAsync(IRequestContext request, long valorCentavos, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var organization = request.Organization;
+        var profiles = await perfis.ListarAsync(organization, request.UserId, cancellationToken);
+        var unit = organization.UnitId == Guid.Empty ? (Guid?)null : organization.UnitId;
+        var decision = await engine.DecidirAsync(new Subject(request.UserId, profiles), PagamentosPermissions.Estornar, new Scope(organization.OrganizationId, unit), new DecisionContext(new Money(valorCentavos, "BRL")), cancellationToken);
         return decision.IsAllowed;
     }
 }

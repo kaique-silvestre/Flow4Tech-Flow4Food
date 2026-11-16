@@ -51,6 +51,33 @@ internal sealed class PagamentoRow
     public int? DivisaoParte { get; set; }
 }
 
+internal sealed class EstornoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public Guid PagamentoId { get; set; }
+
+    public Guid ComandaId { get; set; }
+
+    public Guid? TurnoId { get; set; }
+
+    public Guid? MetodoId { get; set; }
+
+    public string Metodo { get; set; } = "";
+
+    public long ValorCentavos { get; set; }
+
+    public string Motivo { get; set; } = "";
+
+    public Guid OperadorId { get; set; }
+
+    public DateTimeOffset RegistradoEm { get; set; }
+}
+
 internal sealed class MetodoRow
 {
     public Guid Id { get; set; }
@@ -76,6 +103,8 @@ internal sealed class PagamentosDbContext(TenantTransaction transaction) : Tenan
     public DbSet<PagamentoRow> Pagamentos => Set<PagamentoRow>();
 
     public DbSet<MetodoRow> Metodos => Set<MetodoRow>();
+
+    public DbSet<EstornoRow> Estornos => Set<EstornoRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,6 +132,23 @@ internal sealed class PagamentosDbContext(TenantTransaction transaction) : Tenan
             e.Property(x => x.Estado).HasColumnName("estado");
             e.Property(x => x.DivisaoId).HasColumnName("divisao_id");
             e.Property(x => x.DivisaoParte).HasColumnName("divisao_parte");
+        });
+        modelBuilder.Entity<EstornoRow>(e =>
+        {
+            e.ToTable("estornos_pagamento");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.PagamentoId).HasColumnName("pagamento_id");
+            e.Property(x => x.ComandaId).HasColumnName("comanda_id");
+            e.Property(x => x.TurnoId).HasColumnName("turno_id");
+            e.Property(x => x.MetodoId).HasColumnName("metodo_id");
+            e.Property(x => x.Metodo).HasColumnName("metodo");
+            e.Property(x => x.ValorCentavos).HasColumnName("valor_centavos");
+            e.Property(x => x.Motivo).HasColumnName("motivo");
+            e.Property(x => x.OperadorId).HasColumnName("operador_id");
+            e.Property(x => x.RegistradoEm).HasColumnName("registrado_em");
         });
         modelBuilder.Entity<MetodoRow>(e =>
         {
@@ -150,7 +196,8 @@ public sealed class PostgresPagamentosStore : IPagamentosStore
     public async Task<long> SomaAplicadaAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
     {
         await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
-        return await Soma(context, comandaId).SumAsync(cancellationToken);
+        var estornado = await context.Estornos.AsNoTracking().Where(e => e.ComandaId == comandaId).SumAsync(e => e.ValorCentavos, cancellationToken);
+        return await Soma(context, comandaId).SumAsync(cancellationToken) + estornado;
     }
 
     public async Task<IReadOnlyDictionary<(Guid DivisaoId, int Parte), long>> SomaAplicadaPorParteAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
@@ -161,7 +208,22 @@ public sealed class PostgresPagamentosStore : IPagamentosStore
             .GroupBy(p => new { p.DivisaoId, p.DivisaoParte })
             .Select(g => new { g.Key.DivisaoId, g.Key.DivisaoParte, Soma = g.Sum(p => p.AplicadoCentavos) })
             .ToListAsync(cancellationToken);
-        return linhas.ToDictionary(l => (l.DivisaoId!.Value, l.DivisaoParte!.Value), l => l.Soma);
+
+        // A refund takes its cents back off the part its payment paid.
+        var estornos = await (
+            from e in context.Estornos.AsNoTracking()
+            join p in context.Pagamentos.AsNoTracking() on e.PagamentoId equals p.Id
+            where e.ComandaId == comandaId && p.DivisaoId != null
+            group e by new { p.DivisaoId, p.DivisaoParte } into g
+            select new { g.Key.DivisaoId, g.Key.DivisaoParte, Soma = g.Sum(e => e.ValorCentavos) }).ToListAsync(cancellationToken);
+        var porParte = linhas.ToDictionary(l => (l.DivisaoId!.Value, l.DivisaoParte!.Value), l => l.Soma);
+        foreach (var e in estornos)
+        {
+            var chave = (e.DivisaoId!.Value, e.DivisaoParte!.Value);
+            porParte[chave] = porParte.GetValueOrDefault(chave) + e.Soma;
+        }
+
+        return porParte;
     }
 
     public async Task<IReadOnlyList<Pagamento>> ListarDaComandaAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
@@ -180,6 +242,48 @@ public sealed class PostgresPagamentosStore : IPagamentosStore
 
     private static readonly System.Linq.Expressions.Expression<Func<PagamentoRow, Pagamento>> Mapa =
         p => new Pagamento(p.Id, p.UnidadeId, p.ComandaId, p.TurnoId, p.Metodo, p.RecebidoCentavos, p.AplicadoCentavos, p.TrocoCentavos, p.OperadorId, p.RegistradoEm, p.SaldoAposCentavos, p.ComandaVersao, p.MetodoId, p.MetodoNome, p.GorjetaCentavos, p.Estado == "pendente" ? EstadoDoPagamento.Pendente : EstadoDoPagamento.Confirmado, p.DivisaoId, p.DivisaoParte);
+}
+
+/// <summary>The refunds on PostgreSQL. Joins the caller's unit of work; RLS filters by organization. Insert-only: the application credential has no UPDATE or DELETE on the table.</summary>
+public sealed class PostgresEstornosStore : IEstornosStore
+{
+    public async Task TravarPagamentoAsync(Guid organizationId, Guid pagamentoId, CancellationToken cancellationToken)
+    {
+        await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
+        _ = await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"estorno-pagamento:" + pagamentoId.ToString("D")}, 0))", cancellationToken);
+    }
+
+    public async Task InserirAsync(Guid organizationId, Estorno estorno, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(estorno);
+        await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
+        _ = await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO estornos_pagamento (id, organizacao_id, unidade_id, pagamento_id, comanda_id, turno_id, metodo_id, metodo, valor_centavos, motivo, operador_id, registrado_em)
+            VALUES ({estorno.Id}, {organizationId}, {estorno.UnidadeId}, {estorno.PagamentoId}, {estorno.ComandaId}, {estorno.TurnoId}, {estorno.MetodoId}, {estorno.Metodo}, {estorno.ValorCentavos}, {estorno.Motivo}, {estorno.OperadorId}, {estorno.RegistradoEm})
+            """,
+            cancellationToken);
+    }
+
+    public async Task<long> SomaEstornadaAsync(Guid organizationId, Guid pagamentoId, CancellationToken cancellationToken)
+    {
+        await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
+        return -await context.Estornos.AsNoTracking().Where(e => e.PagamentoId == pagamentoId).SumAsync(e => e.ValorCentavos, cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, long>> SomaEstornadaPorPagamentoAsync(Guid organizationId, Guid comandaId, CancellationToken cancellationToken)
+    {
+        await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
+        var linhas = await context.Estornos.AsNoTracking().Where(e => e.ComandaId == comandaId).GroupBy(e => e.PagamentoId).Select(g => new { Id = g.Key, Soma = g.Sum(e => e.ValorCentavos) }).ToListAsync(cancellationToken);
+        return linhas.ToDictionary(l => l.Id, l => -l.Soma);
+    }
+
+    public async Task<IReadOnlyList<Estorno>> ListarDoPagamentoAsync(Guid organizationId, Guid pagamentoId, CancellationToken cancellationToken)
+    {
+        await using var context = new PagamentosDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Estornos.AsNoTracking().Where(e => e.PagamentoId == pagamentoId).OrderBy(e => e.RegistradoEm).ThenBy(e => e.Id).ToListAsync(cancellationToken);
+        return [.. rows.Select(e => new Estorno(e.Id, e.UnidadeId, e.PagamentoId, e.ComandaId, e.TurnoId, e.MetodoId, e.Metodo, e.ValorCentavos, e.Motivo, e.OperadorId, e.RegistradoEm))];
+    }
 }
 
 /// <summary>
@@ -288,6 +392,7 @@ public static class PagamentosServices
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<OutboxWriter>();
         services.AddSingleton<IPagamentosStore, PostgresPagamentosStore>();
+        services.AddSingleton<IEstornosStore, PostgresEstornosStore>();
         services.AddSingleton<IMetodosDePagamentoStore, PostgresMetodosDePagamentoStore>();
         services.AddSingleton<GestaoDeMetodosDePagamento>();
         services.AddSingleton<IEventosDePagamentos, OutboxEventosDePagamentos>();

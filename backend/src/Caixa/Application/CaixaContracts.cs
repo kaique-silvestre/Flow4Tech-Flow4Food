@@ -214,6 +214,22 @@ public interface IMovimentosDoCaixa
 
     /// <summary>Adds cash applied to a comanda to the expected amount of an OPEN shift (zero for a payment without cash: it still takes the row lock the closing waits on); false (nothing written) when the shift is no longer open.</summary>
     Task<bool> RegistrarRecebimentoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken);
+
+    /// <summary>Whether the shift exists and is still open.</summary>
+    Task<bool> TurnoEstaAbertoAsync(Guid organizationId, Guid turnoId, CancellationToken cancellationToken);
+
+    /// <summary>Takes cash back out of the drawer of an OPEN shift for a refund (zero for a refund without cash: it still takes the row lock the closing waits on). Refused, nothing written, when the shift is closed or the drawer holds less than the amount.</summary>
+    Task<ResultadoDoEstornoNoCaixa> RegistrarEstornoEmDinheiroAsync(Guid organizationId, Guid turnoId, long centavos, CancellationToken cancellationToken);
+}
+
+public enum ResultadoDoEstornoNoCaixa
+{
+    Ok,
+
+    TurnoFechado,
+
+    /// <summary>The drawer holds less cash than the refund.</summary>
+    SemDinheiro,
 }
 
 /// <summary>Port: domain events of the register, written to the outbox on the unit of work in progress.</summary>

@@ -21,6 +21,9 @@ public static class PagamentosPermissions
     /// <summary>Record a tip on a payment (outside the balance).</summary>
     public const string RegistrarGorjeta = "pagamento:registrar-gorjeta";
 
+    /// <summary>Refund a payment, in whole or in part. LIMITED by value per operation (and a daily cap): the engine is asked by the use case with the cents the server measured, never by the route.</summary>
+    public const string Estornar = "pagamento:estornar";
+
     /// <summary>Rename, deactivate or add payment methods of the organization.</summary>
     public const string GerenciarMetodos = "metodo-pagamento:gerenciar";
 }
@@ -29,6 +32,8 @@ public static class PagamentosPermissions
 public static class PagamentosAuditActions
 {
     public const string Registrar = "pagamento:registrar";
+
+    public const string Estornar = "pagamento:estornar";
 
     public const string CriarMetodo = "metodo-pagamento:criar";
 

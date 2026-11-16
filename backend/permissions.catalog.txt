@@ -40,6 +40,7 @@ organizacao:configurar
 organizacao:trocar-unidade
 organizacao:ver-unidades
 pagamento:dividir
+pagamento:estornar
 pagamento:registrar
 pagamento:registrar-gorjeta
 pagamento:ver

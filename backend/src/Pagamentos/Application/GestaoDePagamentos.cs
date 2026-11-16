@@ -36,6 +36,8 @@ public sealed record ContextoDeRecebimento(bool CaixaExigido, Guid? TurnoId);
 public sealed class GestaoDePagamentos(
     IUnitOfWork unitOfWork,
     IPagamentosStore store,
+    IEstornosStore estornos,
+    IDecisaoDeEstorno decisaoDeEstorno,
     IMetodosDePagamentoStore metodos,
     IMovimentosDoCaixa caixa,
     IAuditLog audit,
@@ -212,6 +214,220 @@ public sealed class GestaoDePagamentos(
             },
             cancellationToken);
     }
+
+    /// <summary>
+    /// Refunds <paramref name="valorCentavos"/> of a payment (all that is left when null) with a reason. Writes a NEGATIVE entry; the payment is never edited. The limit (<c>pagamento:estornar</c>, by value and
+    /// daily cap) is asked of the engine here, with the cents the server measured, after the shift movement and before the write; a refusal rolls everything back, is audited on its own transaction
+    /// (<c>acesso:negar</c>) and answered by the caller as 403.
+    /// </summary>
+    public async Task<ResultadoDeEstorno> EstornarAsync(IRequestContext request, Guid pagamentoId, long? valorCentavos, string? motivo, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // The permission comes BEFORE every validation (reason, existence, balance, shift): whoever holds no refund rule learns nothing about the payment.
+        if (!await TemRegraDeEstornoAsync(request, cancellationToken))
+        {
+            await RegistrarNegacaoAsync(request, "pagamento", pagamentoId, cancellationToken);
+            return new ResultadoDeEstorno(ResultadoDoEstorno.Negado, []);
+        }
+
+        try
+        {
+            return await unitOfWork.ExecuteAsync(
+                request,
+                async ct =>
+                {
+                    if (!RegrasDeEstorno.TentarMotivo(motivo, out var texto) || valorCentavos is < 1)
+                    {
+                        return new ResultadoDeEstorno(ResultadoDoEstorno.Invalido, []);
+                    }
+
+                    var pagamento = await store.AcharAsync(request.Organization.OrganizationId, pagamentoId, ct);
+                    if (pagamento is null || pagamento.UnidadeId != request.Organization.UnitId)
+                    {
+                        return new ResultadoDeEstorno(ResultadoDoEstorno.NaoEncontrado, []);
+                    }
+
+                    return await ExecutarEstornoAsync(request, [(pagamento, valorCentavos)], texto, false, ct);
+                },
+                cancellationToken);
+        }
+        catch (DecisaoDeEstornoNegadaException)
+        {
+            await RegistrarNegacaoAsync(request, "pagamento", pagamentoId, cancellationToken);
+            return new ResultadoDeEstorno(ResultadoDoEstorno.Negado, []);
+        }
+        catch (EstornoRecusadoException recusa)
+        {
+            return new ResultadoDeEstorno(recusa.Resultado, []);
+        }
+    }
+
+    /// <summary>
+    /// Refunds, in the CALLER's unit of work, everything still refundable of every payment of the comanda (cancelling a comanda that was paid). The engine is asked ONCE, with the total, so the limit is
+    /// the limit of one operation. A refusal throws <see cref="DecisaoDeEstornoNegadaException"/> (the caller rolls back and audits); any other failure comes back as a value and wrote nothing.
+    /// </summary>
+    public async Task<ResultadoDeEstorno> EstornarComandaAsync(IRequestContext request, Guid comandaId, string? motivo, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!RegrasDeEstorno.TentarMotivo(motivo, out var texto))
+        {
+            return new ResultadoDeEstorno(ResultadoDoEstorno.Invalido, []);
+        }
+
+        var org = request.Organization;
+        var pagamentos = await store.ListarDaComandaAsync(org.OrganizationId, comandaId, cancellationToken);
+        var feitos = await estornos.SomaEstornadaPorPagamentoAsync(org.OrganizationId, comandaId, cancellationToken);
+        var pedidos = pagamentos
+            .Where(p => p.Estado == EstadoDoPagamento.Confirmado && RegrasDeEstorno.SaldoEstornavel(p.AplicadoCentavos, feitos.GetValueOrDefault(p.Id)) > 0)
+            .Select(p => (p, (long?)null))
+            .ToList();
+        return pedidos.Count == 0 ? new ResultadoDeEstorno(ResultadoDoEstorno.Ok, []) : await ExecutarEstornoAsync(request, pedidos, texto, true, cancellationToken);
+    }
+
+    /// <summary>A payment with every refund it has, for the caller who may see it; null when it is not of the session's unit.</summary>
+    public Task<EstornosDoPagamento?> ListarEstornosAsync(IRequestContext request, Guid pagamentoId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return unitOfWork.ExecuteAsync<EstornosDoPagamento?>(
+            request,
+            async ct =>
+            {
+                var org = request.Organization;
+                var pagamento = await store.AcharAsync(org.OrganizationId, pagamentoId, ct);
+                if (pagamento is null || pagamento.UnidadeId != org.UnitId)
+                {
+                    return null;
+                }
+
+                var feitos = await estornos.ListarDoPagamentoAsync(org.OrganizationId, pagamentoId, ct);
+                var estornado = -feitos.Sum(e => e.ValorCentavos);
+                return new EstornosDoPagamento(PagamentoRecebido.De(pagamento), estornado, RegrasDeEstorno.SaldoEstornavel(pagamento.AplicadoCentavos, estornado), [.. feitos.Select(EstornoFeito.De)]);
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Does the caller hold ANY rule of <c>pagamento:estornar</c>? Asks the engine for the smallest possible operation (zero cents): allowed exactly when some rule applies, whatever its limit. It runs in its own
+    /// unit of work, rolled back at the end, so a daily cap is never reserved. Each real refund is still decided with the real cents.
+    /// </summary>
+    private async Task<bool> TemRegraDeEstornoAsync(IRequestContext request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await unitOfWork.ExecuteAsync<object?>(
+                request,
+                async ct => throw new ConsultaDeRegraDeEstornoConcluidaException(await decisaoDeEstorno.PodeAsync(request, 0, ct)),
+                cancellationToken);
+        }
+        catch (ConsultaDeRegraDeEstornoConcluidaException feito)
+        {
+            return feito.Resultado;
+        }
+
+        throw new InvalidOperationException("The question must end by rolling back.");
+    }
+
+    /// <summary>
+    /// Plans every refund first (lock of the payment, refundable balance, shift), moves the shift for each, asks the engine once with the total and only then writes. Nothing is written before the engine
+    /// answers, and a failure that comes back as a value happens before any write that would survive (the shift movement is the only earlier write and is rolled back by the caller's failure path).
+    /// </summary>
+    private async Task<ResultadoDeEstorno> ExecutarEstornoAsync(IRequestContext request, List<(Pagamento Pagamento, long? Pedido)> pedidos, string motivo, bool ignorarQuitados, CancellationToken ct)
+    {
+        var org = request.Organization;
+        var exigido = (await settings.ResolveAsync(CaixaSettings.ExigirCaixaAberto, org.OrganizationId, org.UnitId, clock.UtcNow, ct)).AsBoolean();
+        var plano = new List<(Pagamento Pagamento, long Valor, Guid? Turno, long SaldoApos)>(pedidos.Count);
+        foreach (var (pagamento, pedido) in pedidos)
+        {
+            if (pagamento.Estado != EstadoDoPagamento.Confirmado)
+            {
+                return new ResultadoDeEstorno(ResultadoDoEstorno.NaoConfirmado, []);
+            }
+
+            await estornos.TravarPagamentoAsync(org.OrganizationId, pagamento.Id, ct);
+            var saldo = RegrasDeEstorno.SaldoEstornavel(pagamento.AplicadoCentavos, await estornos.SomaEstornadaAsync(org.OrganizationId, pagamento.Id, ct));
+            if (ignorarQuitados && pedido is null && saldo == 0)
+            {
+                // A refund that committed between the listing of the comanda and the lock of this payment already took everything: nothing is left to hand back here.
+                continue;
+            }
+
+            if (RegrasDeEstorno.Valor(pedido, saldo) is not { } valor)
+            {
+                return new ResultadoDeEstorno(ResultadoDoEstorno.ExcedeSaldoEstornavel, [], saldo);
+            }
+
+            var turno = pagamento.TurnoId is { } original && await caixa.TurnoEstaAbertoAsync(org.OrganizationId, original, ct)
+                ? original
+                : exigido ? await caixa.TurnoAbertoAsync(org.OrganizationId, org.UnitId, request.UserId, ct) : null;
+            if (exigido && turno is null)
+            {
+                return new ResultadoDeEstorno(ResultadoDoEstorno.SemTurnoAberto, []);
+            }
+
+            plano.Add((pagamento, valor, turno, saldo - valor));
+        }
+
+        if (plano.Count == 0)
+        {
+            return new ResultadoDeEstorno(ResultadoDoEstorno.Ok, []);
+        }
+
+        foreach (var (pagamento, valor, turno, _) in plano)
+        {
+            if (turno is { } t)
+            {
+                var dinheiro = pagamento.Metodo == RegrasDePagamento.Dinheiro ? valor : 0;
+                var movimento = await caixa.RegistrarEstornoEmDinheiroAsync(org.OrganizationId, t, dinheiro, ct);
+                if (movimento != ResultadoDoEstornoNoCaixa.Ok)
+                {
+                    // Earlier movements of this loop were written: the caller's unit of work must not commit them, so the failure rolls everything back.
+                    throw new EstornoRecusadoException(movimento == ResultadoDoEstornoNoCaixa.SemDinheiro ? ResultadoDoEstorno.CaixaSemDinheiro : ResultadoDoEstorno.TurnoEncerrado);
+                }
+            }
+        }
+
+        // The question comes after the shift lock and measures the SERVER's number: the sum of what is about to be handed back.
+        if (!await decisaoDeEstorno.PodeAsync(request, plano.Sum(p => p.Valor), ct))
+        {
+            throw new DecisaoDeEstornoNegadaException();
+        }
+
+        var feitos = new List<EstornoFeito>(plano.Count);
+        foreach (var (pagamento, valor, turno, saldoApos) in plano)
+        {
+            var estorno = new Estorno(EntityId.New().Value, pagamento.UnidadeId, pagamento.Id, pagamento.ComandaId, turno, pagamento.MetodoId, pagamento.Metodo, -valor, motivo, request.UserId, RegrasDoInstante.Microssegundos(clock.UtcNow));
+            await estornos.InserirAsync(org.OrganizationId, estorno, ct);
+            var depois = new JsonObject
+            {
+                ["comandaId"] = pagamento.ComandaId.ToString("D"),
+                ["estornoId"] = estorno.Id.ToString("D"),
+                ["valorCentavos"] = estorno.ValorCentavos,
+                ["motivo"] = motivo,
+                ["turnoId"] = turno?.ToString("D"),
+                ["saldoEstornavelAposCentavos"] = saldoApos,
+            };
+            await audit.RecordAsync(request, new AuditEntry { Action = PagamentosAuditActions.Estornar, ObjectType = "pagamento", ObjectId = pagamento.Id.ToString("D"), After = depois }, ct);
+            await eventos.PublicarAsync(org, new PagamentoEstornado(EntityId.New().Value, estorno.Id, pagamento.Id, pagamento.ComandaId, pagamento.UnidadeId, turno, estorno.ValorCentavos, motivo, request.UserId), ct);
+            feitos.Add(EstornoFeito.De(estorno));
+        }
+
+        return new ResultadoDeEstorno(ResultadoDoEstorno.Ok, feitos, plano.Count == 1 ? plano[0].SaldoApos : 0);
+    }
+
+    /// <summary>A refusal by the engine is a security fact: written on its own transaction after the unit of work rolled back (<c>acesso:negar</c>, result <c>negado</c>, the permission only, never the reason).</summary>
+    public Task RegistrarNegacaoAsync(IRequestContext request, string tipoDoObjeto, Guid objetoId, CancellationToken cancellationToken = default) =>
+        audit.RecordDetachedAsync(
+            request,
+            new AuditEntry
+            {
+                Action = PlatformAuditActions.AcessoNegar,
+                Result = AuditResult.Negado,
+                ObjectType = tipoDoObjeto,
+                ObjectId = objetoId.ToString("D"),
+                After = new JsonObject { ["permissao"] = PagamentosPermissions.Estornar },
+            },
+            cancellationToken);
 
     /// <summary>Cents applied so far to each part of a recorded split of the comanda.</summary>
     public Task<IReadOnlyDictionary<(Guid DivisaoId, int Parte), long>> SomaAplicadaPorParteAsync(IRequestContext request, Guid comandaId, CancellationToken cancellationToken = default)
