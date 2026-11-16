@@ -5382,6 +5382,33 @@
         "x-permission": "comanda:reimprimir"
       }
     },
+    "/comandas/fluxo": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "streamComandas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "comanda:ver"
+      }
+    },
     "/mesas": {
       "get": {
         "tags": [

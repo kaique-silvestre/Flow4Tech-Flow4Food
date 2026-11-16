@@ -1186,6 +1186,62 @@ public sealed class PostgresDivisoesStore : IDivisoesStore
     }
 }
 
+internal sealed class EventoDoFluxoRow
+{
+    public Guid Id { get; set; }
+
+    public string Tipo { get; set; } = "";
+
+    public string Payload { get; set; } = "";
+
+    public DateTimeOffset OcorridoEm { get; set; }
+}
+
+/// <summary>
+/// The comanda stream on PostgreSQL: reads the unit's comanda and payment events straight from <c>outbox_eventos</c> (delivered or not: the stream never depends on the dispatcher) and the current comanda
+/// versions. Joins the caller's unit of work; RLS filters the organization, the unit is the session's (it sits in every event payload).
+/// </summary>
+public sealed class PostgresFluxoDeComandas : IFluxoDeComandasStore
+{
+    public async Task<IReadOnlyList<EventoBrutoDoFluxo>> LerAsync(Guid organizationId, Guid unitId, DateTimeOffset desde, IReadOnlyCollection<Guid> jaEntregues, int limite, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(jaEntregues);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var unidade = unitId.ToString();
+        var pulados = jaEntregues.ToArray();
+        var rows = await context.Database
+            .SqlQuery<EventoDoFluxoRow>(
+                $"""
+                SELECT id AS "Id", tipo AS "Tipo", payload::text AS "Payload", ocorrido_em AS "OcorridoEm"
+                FROM outbox_eventos
+                WHERE (tipo LIKE 'comanda.%' OR tipo = 'pagamento.registrado') AND payload ->> 'UnidadeId' = {unidade} AND ocorrido_em >= {desde} AND id <> ALL({pulados})
+                ORDER BY ocorrido_em, id LIMIT {limite}
+                """)
+            .ToListAsync(cancellationToken);
+        return [.. rows.Select(r => new EventoBrutoDoFluxo(r.Id, r.Tipo, r.Payload, r.OcorridoEm))];
+    }
+
+    public async Task<IReadOnlyList<VersaoDeComanda>> VersoesAsync(Guid organizationId, Guid unitId, IReadOnlyCollection<Guid> comandaIds, Guid? garcomId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(comandaIds);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var ids = comandaIds.ToList();
+        var query = context.Comandas.AsNoTracking().Where(c => c.UnidadeId == unitId && ids.Contains(c.Id));
+        if (garcomId is { } own)
+        {
+            query = query.Where(c => c.GarcomId == own);
+        }
+
+        return await query.Select(c => new VersaoDeComanda(c.Id, c.Versao)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<VersaoDeComanda>> VersoesDasAbertasAsync(Guid organizationId, Guid unitId, Guid? garcomId, int limite, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        return await PostgresComandasStore.Abertas(context, unitId, garcomId).Take(limite).Select(c => new VersaoDeComanda(c.Id, c.Versao)).ToListAsync(cancellationToken);
+    }
+}
+
 /// <summary>Comanda events through the outbox, on the unit of work in progress (they commit or roll back with the change that raised them).</summary>
 public sealed class OutboxEventosDeComandas(OutboxWriter outbox) : IEventosDeComandas
 {
@@ -1227,6 +1283,9 @@ public static class ComandasServices
         services.AddSingleton<ConsultaDoHistoricoDaComanda>();
         services.AddSingleton<ConsultaDeGarcons>();
         services.AddSingleton<ConsultaDaUltimaVez>();
+        services.AddSingleton<IFluxoDeComandasStore, PostgresFluxoDeComandas>();
+        services.TryAddSingleton(new FluxoOptions());
+        services.AddSingleton<FluxoDeComandas>();
         return services;
     }
 }

@@ -203,6 +203,7 @@ app.MapConfiguracao();
 app.MapCardapio();
 app.MapCaixa();
 app.MapComandas();
+app.MapComandasFluxo();
 app.MapMesas();
 app.MapPagamentos();
 app.MapPerfis();
