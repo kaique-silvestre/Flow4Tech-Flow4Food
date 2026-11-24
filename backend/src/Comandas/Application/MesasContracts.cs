@@ -65,6 +65,10 @@ public static class ComandasAuditActions
     public const string FecharComanda = "comanda:fechar";
 
     public const string RemoverTaxaServico = "comanda:remover-taxa-servico";
+
+    public const string CriarPromocao = "promocao:criar";
+
+    public const string AlterarPromocao = "promocao:alterar";
 }
 
 [SettingsCatalog]

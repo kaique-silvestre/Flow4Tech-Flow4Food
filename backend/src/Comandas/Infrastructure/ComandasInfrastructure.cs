@@ -159,6 +159,12 @@ internal sealed class ItemRow
     public DateTimeOffset? TipoEm { get; set; }
 
     public int? Assento { get; set; }
+
+    public Guid? PromocaoId { get; set; }
+
+    public string? PromocaoNome { get; set; }
+
+    public long PromocaoCentavos { get; set; }
 }
 
 internal sealed class DescontoRow
@@ -186,6 +192,58 @@ internal sealed class DescontoRow
     public Guid CriadoPor { get; set; }
 
     public DateTimeOffset CriadoEm { get; set; }
+
+    public Guid? PromocaoId { get; set; }
+}
+
+internal sealed class PromocaoRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid? UnidadeId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public string Tipo { get; set; } = "";
+
+    public decimal? Percentual { get; set; }
+
+    public long? ValorCentavos { get; set; }
+
+    public bool Ativo { get; set; }
+
+    public DateTimeOffset? ValidoDe { get; set; }
+
+    public DateTimeOffset? ValidoAte { get; set; }
+
+    public short DiasSemana { get; set; }
+
+    public TimeOnly? HoraInicio { get; set; }
+
+    public TimeOnly? HoraFim { get; set; }
+
+    public int Versao { get; set; }
+
+    public Guid CriadoPor { get; set; }
+
+    public DateTimeOffset CriadoEm { get; set; }
+
+    public Guid AtualizadoPor { get; set; }
+
+    public DateTimeOffset AtualizadoEm { get; set; }
+}
+
+internal sealed class PromocaoProdutoRow
+{
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid PromocaoId { get; set; }
+
+    public Guid ProdutoId { get; set; }
+
+    public int Quantidade { get; set; }
 }
 
 internal sealed class DivisaoRow
@@ -285,6 +343,10 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
 
     public DbSet<DescontoRow> Descontos => Set<DescontoRow>();
 
+    public DbSet<PromocaoRow> Promocoes => Set<PromocaoRow>();
+
+    public DbSet<PromocaoProdutoRow> PromocaoProdutos => Set<PromocaoProdutoRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -373,6 +435,41 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.TipoPor).HasColumnName("tipo_por");
             e.Property(x => x.TipoEm).HasColumnName("tipo_em");
             e.Property(x => x.Assento).HasColumnName("assento");
+            e.Property(x => x.PromocaoId).HasColumnName("promocao_id");
+            e.Property(x => x.PromocaoNome).HasColumnName("promocao_nome");
+            e.Property(x => x.PromocaoCentavos).HasColumnName("promocao_centavos");
+        });
+        modelBuilder.Entity<PromocaoRow>(e =>
+        {
+            e.ToTable("promocoes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.Tipo).HasColumnName("tipo");
+            e.Property(x => x.Percentual).HasColumnName("percentual").HasColumnType("numeric(5,2)");
+            e.Property(x => x.ValorCentavos).HasColumnName("valor_centavos");
+            e.Property(x => x.Ativo).HasColumnName("ativo");
+            e.Property(x => x.ValidoDe).HasColumnName("valido_de");
+            e.Property(x => x.ValidoAte).HasColumnName("valido_ate");
+            e.Property(x => x.DiasSemana).HasColumnName("dias_semana");
+            e.Property(x => x.HoraInicio).HasColumnName("hora_inicio");
+            e.Property(x => x.HoraFim).HasColumnName("hora_fim");
+            e.Property(x => x.Versao).HasColumnName("versao");
+            e.Property(x => x.CriadoPor).HasColumnName("criado_por");
+            e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+            e.Property(x => x.AtualizadoPor).HasColumnName("atualizado_por");
+            e.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em");
+        });
+        modelBuilder.Entity<PromocaoProdutoRow>(e =>
+        {
+            e.ToTable("promocao_produtos");
+            e.HasKey(x => new { x.OrganizacaoId, x.PromocaoId, x.ProdutoId });
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.PromocaoId).HasColumnName("promocao_id");
+            e.Property(x => x.ProdutoId).HasColumnName("produto_id");
+            e.Property(x => x.Quantidade).HasColumnName("quantidade");
         });
         modelBuilder.Entity<DescontoRow>(e =>
         {
@@ -390,6 +487,7 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.Motivo).HasColumnName("motivo");
             e.Property(x => x.CriadoPor).HasColumnName("criado_por");
             e.Property(x => x.CriadoEm).HasColumnName("criado_em");
+            e.Property(x => x.PromocaoId).HasColumnName("promocao_id");
         });
         modelBuilder.Entity<DivisaoRow>(e =>
         {
@@ -831,8 +929,8 @@ public sealed class PostgresRodadasStore : IRodadasStore
             var estado = RegrasDeRodada.Palavra(i.Estado);
             await context.Database.ExecuteSqlAsync(
                 $"""
-                INSERT INTO itens_comanda (id, organizacao_id, comanda_id, rodada_id, posicao, produto_id, produto_nome, preco_centavos, quantidade, observacao, estado, motivo_cancelamento, cancelado_por, cancelado_em, assento)
-                VALUES ({i.Id}, {organizationId}, {i.ComandaId}, {i.RodadaId}, {i.Posicao}, {i.ProdutoId}, {i.ProdutoNome}, {i.PrecoCentavos}, {i.Quantidade}, {i.Observacao}, {estado}, {i.MotivoCancelamento}, {i.CanceladoPor}, {i.CanceladoEm}, {i.Assento})
+                INSERT INTO itens_comanda (id, organizacao_id, comanda_id, rodada_id, posicao, produto_id, produto_nome, preco_centavos, quantidade, observacao, estado, motivo_cancelamento, cancelado_por, cancelado_em, assento, promocao_id, promocao_nome, promocao_centavos)
+                VALUES ({i.Id}, {organizationId}, {i.ComandaId}, {i.RodadaId}, {i.Posicao}, {i.ProdutoId}, {i.ProdutoNome}, {i.PrecoCentavos}, {i.Quantidade}, {i.Observacao}, {estado}, {i.MotivoCancelamento}, {i.CanceladoPor}, {i.CanceladoEm}, {i.Assento}, {i.PromocaoId}, {i.PromocaoNome}, {i.PromocaoCentavos})
                 """,
                 cancellationToken);
             foreach (var o in i.Opcoes)
@@ -980,7 +1078,7 @@ public sealed class PostgresRodadasStore : IRodadasStore
     }
 
     internal static ItemDaComanda ParaItem(ItemRow i, ILookup<Guid, OpcaoDoItem> escolhas) =>
-        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo, i.Assento);
+        new(i.Id, i.ComandaId, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.EstadoDe(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, escolhas[i.Id].ToList(), RegrasDeDesconto.Tipo(i.Tipo), i.MotivoTipo, i.Assento, i.PromocaoId, i.PromocaoNome, i.PromocaoCentavos);
 }
 
 internal sealed class GarcomRow
@@ -1124,7 +1222,7 @@ public sealed class PostgresDescontosStore : IDescontosStore
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
         var rows = await context.Descontos.AsNoTracking().Where(d => d.ComandaId == comandaId).OrderBy(d => d.CriadoEm).ThenBy(d => d.Id).ToListAsync(cancellationToken);
-        return rows.Select(d => new Desconto(d.Id, d.ComandaId, d.ItemId, RegrasDeDesconto.Forma(d.Forma), d.Percentual, d.ValorCentavos, d.AplicadoCentavos, d.Motivo, d.CriadoPor, d.CriadoEm)).ToList();
+        return rows.Select(d => new Desconto(d.Id, d.ComandaId, d.ItemId, RegrasDeDesconto.Forma(d.Forma), d.Percentual, d.ValorCentavos, d.AplicadoCentavos, d.Motivo, d.CriadoPor, d.CriadoEm, d.PromocaoId)).ToList();
     }
 
     public async Task InserirAsync(Guid organizationId, Guid unitId, Desconto desconto, CancellationToken cancellationToken)
@@ -1134,10 +1232,93 @@ public sealed class PostgresDescontosStore : IDescontosStore
         var forma = RegrasDeDesconto.Palavra(desconto.Forma);
         await context.Database.ExecuteSqlAsync(
             $"""
-            INSERT INTO descontos_comanda (id, organizacao_id, unidade_id, comanda_id, item_id, forma, percentual, valor_centavos, aplicado_centavos, motivo, criado_por, criado_em)
-            VALUES ({desconto.Id}, {organizationId}, {unitId}, {desconto.ComandaId}, {desconto.ItemId}, {forma}, {desconto.Percentual}, {desconto.ValorCentavos}, {desconto.AplicadoCentavos}, {desconto.Motivo}, {desconto.CriadoPor}, {desconto.CriadoEm})
+            INSERT INTO descontos_comanda (id, organizacao_id, unidade_id, comanda_id, item_id, forma, percentual, valor_centavos, aplicado_centavos, motivo, criado_por, criado_em, promocao_id)
+            VALUES ({desconto.Id}, {organizationId}, {unitId}, {desconto.ComandaId}, {desconto.ItemId}, {forma}, {desconto.Percentual}, {desconto.ValorCentavos}, {desconto.AplicadoCentavos}, {desconto.Motivo}, {desconto.CriadoPor}, {desconto.CriadoEm}, {desconto.PromocaoId})
             """,
             cancellationToken);
+    }
+}
+
+/// <summary>The promotion rules on PostgreSQL. Joins the caller's unit of work; never filters on <c>organizacao_id</c> (RLS does). The products of a rule are written once (the app credential has no UPDATE or DELETE on them).</summary>
+public sealed class PostgresPromocoesStore : IPromocoesStore
+{
+    public async Task<IReadOnlyList<Promocao>> ListarAsync(Guid organizationId, Guid unitId, bool somenteAtivas, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Promocoes.AsNoTracking()
+            .Where(p => (p.UnidadeId == null || p.UnidadeId == unitId) && (!somenteAtivas || p.Ativo))
+            .OrderByDescending(p => p.CriadoEm).ThenBy(p => p.Id)
+            .ToListAsync(cancellationToken);
+        return await ParaPromocoesAsync(context, rows, cancellationToken);
+    }
+
+    public async Task<Promocao?> AcharAsync(Guid organizationId, Guid promocaoId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var row = await context.Promocoes.AsNoTracking().Where(p => p.Id == promocaoId).FirstOrDefaultAsync(cancellationToken);
+        return row is null ? null : (await ParaPromocoesAsync(context, [row], cancellationToken))[0];
+    }
+
+    public async Task InserirAsync(Guid organizationId, Promocao promocao, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(promocao);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var tipo = RegrasDePromocao.Palavra(promocao.Tipo);
+        var dias = (short)promocao.DiasDaSemana;
+        await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO promocoes (id, organizacao_id, unidade_id, nome, tipo, percentual, valor_centavos, ativo, valido_de, valido_ate, dias_semana, hora_inicio, hora_fim, versao, criado_por, criado_em, atualizado_por, atualizado_em)
+            VALUES ({promocao.Id}, {organizationId}, {promocao.UnidadeId}, {promocao.Nome}, {tipo}, {promocao.Percentual}, {promocao.ValorCentavos}, {promocao.Ativo}, {promocao.ValidoDe}, {promocao.ValidoAte}, {dias}, {promocao.HoraInicio}, {promocao.HoraFim}, {promocao.Versao}, {promocao.CriadoPor}, {promocao.CriadoEm}, {promocao.AtualizadoPor}, {promocao.AtualizadoEm})
+            """,
+            cancellationToken);
+        foreach (var p in promocao.Produtos)
+        {
+            await context.Database.ExecuteSqlAsync(
+                $"INSERT INTO promocao_produtos (organizacao_id, promocao_id, produto_id, quantidade) VALUES ({organizationId}, {promocao.Id}, {p.ProdutoId}, {p.Quantidade})",
+                cancellationToken);
+        }
+    }
+
+    public async Task<bool> AtualizarAsync(Guid organizationId, Promocao promocao, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(promocao);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var dias = (short)promocao.DiasDaSemana;
+        var anterior = promocao.Versao - 1;
+        var linhas = await context.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE promocoes SET unidade_id = {promocao.UnidadeId}, nome = {promocao.Nome}, percentual = {promocao.Percentual}, valor_centavos = {promocao.ValorCentavos}, ativo = {promocao.Ativo},
+              valido_de = {promocao.ValidoDe}, valido_ate = {promocao.ValidoAte}, dias_semana = {dias}, hora_inicio = {promocao.HoraInicio}, hora_fim = {promocao.HoraFim},
+              versao = {promocao.Versao}, atualizado_por = {promocao.AtualizadoPor}, atualizado_em = {promocao.AtualizadoEm}
+            WHERE id = {promocao.Id} AND versao = {anterior}
+            """,
+            cancellationToken);
+        return linhas == 1;
+    }
+
+    private static async Task<IReadOnlyList<Promocao>> ParaPromocoesAsync(MesasDbContext context, IReadOnlyList<PromocaoRow> rows, CancellationToken cancellationToken)
+    {
+        var ids = rows.Select(r => r.Id).ToList();
+        var produtos = (await context.PromocaoProdutos.AsNoTracking().Where(p => ids.Contains(p.PromocaoId)).OrderBy(p => p.ProdutoId).ToListAsync(cancellationToken)).ToLookup(p => p.PromocaoId);
+        return rows.Select(r => new Promocao(
+            r.Id,
+            r.UnidadeId,
+            r.Nome,
+            Enum.Parse<TipoDePromocao>(r.Tipo, ignoreCase: true),
+            r.Percentual,
+            r.ValorCentavos,
+            r.Ativo,
+            r.ValidoDe,
+            r.ValidoAte,
+            r.DiasSemana,
+            r.HoraInicio,
+            r.HoraFim,
+            r.Versao,
+            [.. produtos[r.Id].Select(p => new ProdutoDaPromocao(p.ProdutoId, p.Quantidade))],
+            r.CriadoPor,
+            r.CriadoEm,
+            r.AtualizadoPor,
+            r.AtualizadoEm)).ToList();
     }
 }
 
@@ -1299,6 +1480,9 @@ public static class ComandasServices
         services.AddSingleton<GestaoDaEdicaoDaComanda>();
         services.AddSingleton<IDescontosStore, PostgresDescontosStore>();
         services.AddSingleton<GestaoDeDescontos>();
+        services.AddSingleton<IPromocoesStore, PostgresPromocoesStore>();
+        services.AddSingleton<GestaoDePromocoes>();
+        services.AddSingleton<AvaliadorDePromocoes>();
         services.AddSingleton<IDivisoesStore, PostgresDivisoesStore>();
         services.AddSingleton<GestaoDaDivisaoDaConta>();
         services.AddSingleton<GestaoDaTransferenciaDeItens>();

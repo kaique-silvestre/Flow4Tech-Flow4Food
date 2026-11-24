@@ -65,6 +65,8 @@ produto:criar
 produto:grupos-opcao-definir
 produto:preco-unidade-definir
 produto:preco-unidade-remover
+promocao:alterar
+promocao:criar
 sessao:encerrar
 sessao:iniciar
 sessao:refresh-reutilizado

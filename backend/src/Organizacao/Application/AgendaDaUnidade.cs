@@ -51,6 +51,10 @@ public sealed class AgendaDaUnidade(IUnitOfWork unitOfWork, ISettings settings, 
     public async Task<DateOnly> DiaOperacionalAsync(Guid organizationId, Guid? unitId, DateTimeOffset at, CancellationToken cancellationToken = default) =>
         (await LerAsync(organizationId, unitId, at, cancellationToken)).Dia;
 
+    /// <summary>The instant on the unit's wall clock (its configured time zone): what a promotion's days and time window are judged on.</summary>
+    public async Task<DateTime> HoraLocalAsync(Guid organizationId, Guid? unitId, DateTimeOffset at, CancellationToken cancellationToken = default) =>
+        (await LerAsync(organizationId, unitId, at, cancellationToken)).Local;
+
     public async Task<bool> EstaAbertoAsync(Guid organizationId, Guid? unitId, DateTimeOffset at, CancellationToken cancellationToken = default)
     {
         var estado = await LerAsync(organizationId, unitId, at, cancellationToken);

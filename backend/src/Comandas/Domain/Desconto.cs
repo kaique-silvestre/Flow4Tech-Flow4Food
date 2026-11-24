@@ -16,7 +16,7 @@ public enum FormaDoDesconto
 
 /// <summary>
 /// A discount given on a comanda. <see cref="ItemId"/> null means the whole comanda. <see cref="AplicadoCentavos"/> is the amount the SERVER computed when it was given (from the percent or the value
-/// and the stored comanda); the bill uses it, clamped at calculation time so the total never goes below zero.
+/// and the stored comanda); the bill uses it, clamped at calculation time so the total never goes below zero. <see cref="PromocaoId"/> is set when a promotion gave it (always on an item, written in the launch).
 /// </summary>
 public sealed record Desconto(
     Guid Id,
@@ -28,7 +28,8 @@ public sealed record Desconto(
     long AplicadoCentavos,
     string Motivo,
     Guid CriadoPor,
-    DateTimeOffset CriadoEm);
+    DateTimeOffset CriadoEm,
+    Guid? PromocaoId = null);
 
 /// <summary>What the discounts took off the consumption: those given on items and those given on the whole comanda (each clamped so the bill is never negative).</summary>
 public sealed record DescontosDaConta(long DeItensCentavos, long DaComandaCentavos)

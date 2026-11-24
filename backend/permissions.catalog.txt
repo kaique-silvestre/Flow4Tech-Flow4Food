@@ -49,6 +49,8 @@ perfil:ver
 permissao:atribuir
 produto:gerenciar
 produto:ver
+promocao:gerenciar
+promocao:ver
 recuperacao:redefinir
 recuperacao:solicitar
 sessao:entrar
