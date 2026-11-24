@@ -421,6 +421,9 @@ public interface IPermissaoDaComanda
 public interface IDiaOperacional
 {
     Task<DateOnly> AtualAsync(OrganizationContext organization, CancellationToken cancellationToken);
+
+    /// <summary>The operating day an instant falls in for the unit (a reservation of tomorrow night belongs to tomorrow's day).</summary>
+    Task<DateOnly> DoInstanteAsync(OrganizationContext organization, DateTimeOffset at, CancellationToken cancellationToken);
 }
 
 /// <summary>Port: is the unit inside its opening hours at an instant (adapted in Api over the unit's agenda). Launching outside them is refused by the handler, with the server clock.</summary>

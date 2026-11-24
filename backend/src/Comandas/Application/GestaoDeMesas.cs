@@ -33,7 +33,7 @@ public sealed record ResultadoDeArea(ResultadoDeMesa Resultado, Area? Area = nul
 /// Registering and listing the tables of the active unit. Who may call is the route's job (<c>mesa:ver</c>, <c>mesa:gerenciar</c>, decided by the one engine). Creating is ONE unit of work:
 /// the row and its audit record commit or roll back together. The unit comes from the session, never from the client.
 /// </summary>
-public sealed class GestaoDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IAuditLog audit, ISettings settings, IClock clock)
+public sealed class GestaoDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IReservasStore reservas, IAuditLog audit, ISettings settings, IClock clock)
 {
     public Task<ResultadoDeCriarMesa> CriarAsync(IRequestContext request, string? identificacao, int? capacidade, Guid? areaId = null, CancellationToken cancellationToken = default)
     {
@@ -98,9 +98,16 @@ public sealed class GestaoDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IAu
 
                 var mesas = await store.ListarAtivasAsync(org.OrganizationId, org.UnitId, ct);
                 var ocupacao = await store.OcupacaoAsync(org.OrganizationId, org.UnitId, ct);
-                return (IReadOnlyList<MesaComStatus>)mesas.Select(m => new MesaComStatus(m, ocupacao.TryGetValue(m.Id, out var o) ? RegrasDeMesa.Status(o.ComandasAbertas, o.AguardandoConta) : RegrasDeMesa.Status(0))).ToList();
+                var reservadas = RegrasDeReserva.MesasReservadas(await reservas.EmEsperaComMesaAsync(org.OrganizationId, org.UnitId, ct), clock.UtcNow);
+                return (IReadOnlyList<MesaComStatus>)mesas.Select(m => new MesaComStatus(m, StatusDa(m, ocupacao, reservadas))).ToList();
             },
             cancellationToken);
+    }
+
+    private static StatusDaMesa StatusDa(Mesa mesa, IReadOnlyDictionary<Guid, OcupacaoDaMesa> ocupacao, IReadOnlyDictionary<Guid, DateTimeOffset> reservadas)
+    {
+        var status = ocupacao.TryGetValue(mesa.Id, out var o) ? RegrasDeMesa.Status(o.ComandasAbertas, o.AguardandoConta) : RegrasDeMesa.Status(0);
+        return status == StatusDaMesa.Livre && reservadas.ContainsKey(mesa.Id) ? StatusDaMesa.Reservada : status;
     }
 
     private async Task<bool> UsaMesasAsync(OrganizationContext org, CancellationToken ct) =>

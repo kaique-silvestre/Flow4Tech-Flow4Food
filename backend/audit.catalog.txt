@@ -65,6 +65,10 @@ produto:criar
 produto:grupos-opcao-definir
 produto:preco-unidade-definir
 produto:preco-unidade-remover
+reserva:cancelar
+reserva:chegou
+reserva:criar
+reserva:nao-compareceu
 sessao:encerrar
 sessao:iniciar
 sessao:refresh-reutilizado

@@ -6026,6 +6026,285 @@
         "x-permission": "mesa:ver"
       }
     },
+    "/reservas": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listReservas",
+        "parameters": [
+          {
+            "name": "dia",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReservaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "reserva:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "criarReserva",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarReservaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "reserva:gerenciar"
+      }
+    },
+    "/reservas/{reservaId}/chegou": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "reservaChegou",
+        "parameters": [
+          {
+            "name": "reservaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChegouDaReservaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "reserva:chegou"
+      }
+    },
+    "/reservas/{reservaId}/cancelar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "cancelarReserva",
+        "parameters": [
+          {
+            "name": "reservaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "reserva:gerenciar"
+      }
+    },
+    "/reservas/{reservaId}/nao-compareceu": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "reservaNaoCompareceu",
+        "parameters": [
+          {
+            "name": "reservaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "reserva:gerenciar"
+      }
+    },
     "/pagamentos/{pagamentoId}/estornos": {
       "post": {
         "tags": [
@@ -7432,6 +7711,26 @@
           }
         }
       },
+      "ChegouDaReservaDto": {
+        "required": [
+          "reserva",
+          "comandaId",
+          "repetida"
+        ],
+        "type": "object",
+        "properties": {
+          "reserva": {
+            "$ref": "#/components/schemas/ReservaDto"
+          },
+          "comandaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repetida": {
+            "type": "boolean"
+          }
+        }
+      },
       "ComandaCanceladaDto": {
         "required": [
           "comanda",
@@ -8520,6 +8819,60 @@
               {
                 "$ref": "#/components/schemas/PromocaoDto"
               }
+            ]
+          }
+        }
+      },
+      "CriarReservaRequest": {
+        "required": [
+          "nome",
+          "telefone",
+          "pessoas",
+          "horario",
+          "mesaId",
+          "observacao"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "telefone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pessoas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horario": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "mesaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         }
@@ -9939,6 +10292,13 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "reservadaPara": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -11172,6 +11532,86 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ReservaDto": {
+        "required": [
+          "id",
+          "mesaId",
+          "nome",
+          "telefone",
+          "pessoas",
+          "horario",
+          "diaOperacional",
+          "observacao",
+          "estado",
+          "comandaId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mesaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pessoas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horario": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "diaOperacional": {
+            "type": "string",
+            "format": "date"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": "string"
+          },
+          "comandaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "ReservaErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
           }
         }
       },

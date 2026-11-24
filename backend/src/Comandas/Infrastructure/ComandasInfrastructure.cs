@@ -262,12 +262,45 @@ internal sealed class NumeracaoRow
     public int Ultimo { get; set; }
 }
 
+internal sealed class ReservaRow
+{
+    public Guid Id { get; set; }
+
+    public Guid OrganizacaoId { get; set; }
+
+    public Guid UnidadeId { get; set; }
+
+    public Guid? MesaId { get; set; }
+
+    public string Nome { get; set; } = "";
+
+    public string? Telefone { get; set; }
+
+    public int Pessoas { get; set; }
+
+    public DateTimeOffset Horario { get; set; }
+
+    public DateOnly DiaOperacional { get; set; }
+
+    public string? Observacao { get; set; }
+
+    public string Estado { get; set; } = "";
+
+    public Guid? ComandaId { get; set; }
+
+    public DateTimeOffset CriadaEm { get; set; }
+
+    public DateTimeOffset AtualizadaEm { get; set; }
+}
+
 /// <summary>EF mapping of the tables, areas and comandas (schemas owned by <c>0017_mesas.sql</c>, <c>0018_comandas.sql</c> and <c>0024_areas.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
 internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbContext(transaction)
 {
     public DbSet<MesaRow> Mesas => Set<MesaRow>();
 
     public DbSet<AreaRow> Areas => Set<AreaRow>();
+
+    public DbSet<ReservaRow> Reservas => Set<ReservaRow>();
 
     public DbSet<ComandaRow> Comandas => Set<ComandaRow>();
 
@@ -311,6 +344,25 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.Nome).HasColumnName("nome");
             e.Property(x => x.Ativa).HasColumnName("ativa");
             e.Property(x => x.CriadaEm).HasColumnName("criada_em");
+        });
+        modelBuilder.Entity<ReservaRow>(e =>
+        {
+            e.ToTable("reservas");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.OrganizacaoId).HasColumnName("organizacao_id");
+            e.Property(x => x.UnidadeId).HasColumnName("unidade_id");
+            e.Property(x => x.MesaId).HasColumnName("mesa_id");
+            e.Property(x => x.Nome).HasColumnName("nome");
+            e.Property(x => x.Telefone).HasColumnName("telefone");
+            e.Property(x => x.Pessoas).HasColumnName("pessoas");
+            e.Property(x => x.Horario).HasColumnName("horario");
+            e.Property(x => x.DiaOperacional).HasColumnName("dia_operacional");
+            e.Property(x => x.Observacao).HasColumnName("observacao");
+            e.Property(x => x.Estado).HasColumnName("estado");
+            e.Property(x => x.ComandaId).HasColumnName("comanda_id");
+            e.Property(x => x.CriadaEm).HasColumnName("criada_em");
+            e.Property(x => x.AtualizadaEm).HasColumnName("atualizada_em");
         });
         modelBuilder.Entity<ComandaRow>(e =>
         {
@@ -579,6 +631,85 @@ public sealed class PostgresMesasStore : IMesasStore
     /// <summary>The list query, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
     internal static IQueryable<MesaRow> Ativas(MesasDbContext context, Guid unitId) =>
         context.Mesas.AsNoTracking().Where(m => m.UnidadeId == unitId && m.Ativa).OrderBy(m => m.Identificacao).ThenBy(m => m.Id);
+}
+
+/// <summary>
+/// The reservations on PostgreSQL. Joins the caller's unit of work (<see cref="TenantUnitOfWork.Require"/>); never filters on <c>organizacao_id</c> (RLS does). Writers of one table's bookings queue on
+/// an advisory lock of the table; the booking being moved is read <c>FOR UPDATE</c>, so a repeated arrival waits for the first and then finds it done.
+/// </summary>
+public sealed class PostgresReservasStore : IReservasStore
+{
+    public async Task TravarMesaAsync(Guid organizationId, Guid mesaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        await context.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({"reservas:" + mesaId.ToString("D")}, 0))", cancellationToken);
+    }
+
+    public async Task InserirAsync(Guid organizationId, Reserva reserva, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(reserva);
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var estado = RegrasDeReserva.Palavra(reserva.Estado);
+        await context.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO reservas (id, organizacao_id, unidade_id, mesa_id, nome, telefone, pessoas, horario, dia_operacional, observacao, estado, comanda_id, criada_em, atualizada_em)
+            VALUES ({reserva.Id}, {organizationId}, {reserva.UnidadeId}, {reserva.MesaId}, {reserva.Nome}, {reserva.Telefone}, {reserva.Pessoas}, {reserva.Horario}, {reserva.DiaOperacional}, {reserva.Observacao}, {estado}, {reserva.ComandaId}, {reserva.CriadaEm}, {reserva.CriadaEm})
+            """,
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ReservaNaMesa>> EmEsperaDaMesaAsync(Guid organizationId, Guid unitId, Guid mesaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await EmEspera(context, unitId).Where(r => r.MesaId == mesaId).Select(r => new { MesaId = r.MesaId!.Value, r.Horario }).ToListAsync(cancellationToken);
+        return [.. rows.Select(r => new ReservaNaMesa(r.MesaId, r.Horario, EstadoDaReserva.Reservada))];
+    }
+
+    public async Task<IReadOnlyList<ReservaNaMesa>> EmEsperaComMesaAsync(Guid organizationId, Guid unitId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await EmEspera(context, unitId).Select(r => new { MesaId = r.MesaId!.Value, r.Horario }).ToListAsync(cancellationToken);
+        return [.. rows.Select(r => new ReservaNaMesa(r.MesaId, r.Horario, EstadoDaReserva.Reservada))];
+    }
+
+    public async Task<Reserva?> AcharParaMudarAsync(Guid organizationId, Guid unitId, Guid reservaId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var row = await context.Reservas
+            .FromSql($"SELECT * FROM reservas WHERE id = {reservaId} AND unidade_id = {unitId} FOR UPDATE")
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken);
+        return row is null ? null : Mapear(row);
+    }
+
+    public async Task MudarEstadoAsync(Guid organizationId, Guid reservaId, EstadoDaReserva estado, Guid? comandaId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var palavra = RegrasDeReserva.Palavra(estado);
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE reservas SET estado = {palavra}, comanda_id = {comandaId}, atualizada_em = {now} WHERE id = {reservaId} AND estado = 'reservada'", cancellationToken);
+        if (rows != 1)
+        {
+            throw new InvalidOperationException("The reservation is not waiting any more.");
+        }
+    }
+
+    public async Task<IReadOnlyList<Reserva>> ListarDoDiaAsync(Guid organizationId, Guid unitId, DateOnly dia, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await DoDia(context, unitId, dia).ToListAsync(cancellationToken);
+        return [.. rows.Select(Mapear)];
+    }
+
+    /// <summary>The waiting bookings of the unit that name a table, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
+    internal static IQueryable<ReservaRow> EmEspera(MesasDbContext context, Guid unitId) =>
+        context.Reservas.AsNoTracking().Where(r => r.UnidadeId == unitId && r.Estado == "reservada" && r.MesaId != null);
+
+    /// <summary>The bookings of one operating day by time, exposed so a test can assert its SQL text (no organization filter: RLS does it).</summary>
+    internal static IQueryable<ReservaRow> DoDia(MesasDbContext context, Guid unitId, DateOnly dia) =>
+        context.Reservas.AsNoTracking().Where(r => r.UnidadeId == unitId && r.DiaOperacional == dia).OrderBy(r => r.Horario).ThenBy(r => r.Id);
+
+    private static Reserva Mapear(ReservaRow r) =>
+        new(r.Id, r.UnidadeId, r.MesaId, r.Nome, r.Telefone, r.Pessoas, r.Horario, r.DiaOperacional, r.Observacao, RegrasDeReserva.EstadoDe(r.Estado), r.ComandaId, r.CriadaEm);
 }
 
 /// <summary>
@@ -1284,6 +1415,8 @@ public static class ComandasServices
         services.AddSingleton<IMesasStore, PostgresMesasStore>();
         services.AddSingleton<GestaoDeMesas>();
         services.AddSingleton<GestaoDeAreas>();
+        services.AddSingleton<IReservasStore, PostgresReservasStore>();
+        services.AddSingleton<GestaoDeReservas>();
         services.AddSingleton<ConsultaDoMapaDeMesas>();
         services.TryAddSingleton<OutboxWriter>();
         services.AddSingleton<IComandasStore, PostgresComandasStore>();

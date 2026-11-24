@@ -211,6 +211,7 @@ app.MapCaixa();
 app.MapComandas();
 app.MapComandasFluxo();
 app.MapMesas();
+app.MapReservas();
 app.MapPagamentos();
 app.MapPerfis();
 app.MapPermissoesDoUsuario(moduleCatalog);

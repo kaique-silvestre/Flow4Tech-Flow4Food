@@ -135,8 +135,14 @@ internal sealed class DecisaoDeCaixaDoOperador(IAuthorizationEngine engine, IPer
 }
 
 /// <summary>Adapts the operating-day resolver (Permissoes) to the port Comandas declares, so display numbers restart with the unit's operating day without Comandas referencing Permissoes.</summary>
-internal sealed class DiaOperacionalDaUnidade(IOperatingDayResolver resolver) : IDiaOperacional
+internal sealed class DiaOperacionalDaUnidade(IOperatingDayResolver resolver, AgendaDaUnidade agenda) : IDiaOperacional
 {
+    public Task<DateOnly> DoInstanteAsync(OrganizationContext organization, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(organization);
+        return agenda.DiaOperacionalAsync(organization.OrganizationId, organization.UnitId == Guid.Empty ? null : organization.UnitId, at, cancellationToken);
+    }
+
     public Task<DateOnly> AtualAsync(OrganizationContext organization, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(organization);
