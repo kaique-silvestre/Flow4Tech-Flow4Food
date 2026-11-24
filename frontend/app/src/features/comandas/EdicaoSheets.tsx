@@ -11,6 +11,7 @@ export type AcaoDoMenu =
   | "separar"
   | "juntar"
   | "dividir"
+  | "estornar"
   | "renomear"
   | "dados"
   | "garcom"
@@ -31,6 +32,7 @@ const ROTULOS: Record<AcaoDoMenu, string> = {
   separar: "Separar itens",
   juntar: "Juntar comandas",
   dividir: "Dividir a conta",
+  estornar: "Estornar pagamento",
   renomear: "Renomear comanda",
   dados: "Pessoas e observação",
   garcom: "Trocar de garçom",
@@ -38,7 +40,14 @@ const ROTULOS: Record<AcaoDoMenu, string> = {
   cancelar: "Cancelar comanda",
 };
 
-const DA_CONTA: ReadonlySet<AcaoDoMenu> = new Set(["desconto", "transferir", "separar", "juntar", "dividir"]);
+const DA_CONTA: ReadonlySet<AcaoDoMenu> = new Set([
+  "desconto",
+  "transferir",
+  "separar",
+  "juntar",
+  "dividir",
+  "estornar",
+]);
 
 /** The comanda menu: one row per action the caller may do. */
 export function MenuDaComandaSheet({ open, onOpenChange, acoes, onEscolher }: MenuProps) {

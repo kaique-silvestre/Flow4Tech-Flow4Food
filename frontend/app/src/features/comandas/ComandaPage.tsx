@@ -52,6 +52,7 @@ import {
   RenomearSheet,
   TrocarGarcomSheet,
 } from "./EdicaoSheets";
+import { EstornoSheet } from "./EstornoSheet";
 import { FecharContaSheet } from "./FecharConta";
 import { CancelarItemSheet, EnviarRodadaSheet, RepetirRodadaSheet } from "./Folhas";
 import { useGarcons, useHistorico } from "./historico";
@@ -158,6 +159,7 @@ export function ComandaPage() {
   const [folhaGarcom, setFolhaGarcom] = useState(false);
   const [folhaHistorico, setFolhaHistorico] = useState(false);
   const [folhaCancelarComanda, setFolhaCancelarComanda] = useState(false);
+  const [folhaEstorno, setFolhaEstorno] = useState(false);
   const [cancelandoComanda, setCancelandoComanda] = useState(false);
   const [erroCancelarComanda, setErroCancelarComanda] = useState<string | undefined>(undefined);
   const historico = useHistorico(comandaId, pode && folhaHistorico && permissoes.pode("comanda:ver-historico"));
@@ -429,6 +431,8 @@ export function ComandaPage() {
       setAlvoDoDesconto({ item: null });
     } else if (acao === "transferir" || acao === "separar" || acao === "juntar" || acao === "dividir") {
       setFolhaMovimento(acao);
+    } else if (acao === "estornar") {
+      setFolhaEstorno(true);
     } else if (acao === "renomear") {
       setFolhaNome(true);
     } else if (acao === "dados") {
@@ -796,6 +800,7 @@ export function ComandaPage() {
       ["separar", "comanda:transferir-item"],
       ["juntar", "comanda:juntar"],
       ["dividir", "comanda:dividir"],
+      ["estornar", "pagamento:ver"],
       ["renomear", "comanda:renomear"],
       ["dados", "comanda:alterar-dados"],
       ["garcom", "comanda:trocar-garcom"],
@@ -1235,6 +1240,18 @@ export function ComandaPage() {
           versao={versao}
           bloqueio={bloqueioDoMovimento("Dividir a conta")}
           onAtualizar={atualizarDados}
+        />
+      ) : null}
+      {permissoes.pode("pagamento:ver") ? (
+        <EstornoSheet
+          open={folhaEstorno}
+          onOpenChange={setFolhaEstorno}
+          comandaId={comandaId}
+          bloqueio={navigator.onLine ? null : "Sem conexão. Estornar precisa do servidor e não fica na fila."}
+          onEstornado={() => {
+            setAviso("Estorno feito.");
+            void atualizarDados();
+          }}
         />
       ) : null}
       <CancelarComandaSheet
