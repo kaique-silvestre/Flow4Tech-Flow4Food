@@ -122,6 +122,12 @@ public sealed class PostgresPerfilStore : IPerfilStore
         return found == ids.Length;
     }
 
+    public async Task<IReadOnlyCollection<Guid>> DonosAsync(Guid organizationId, CancellationToken cancellationToken)
+    {
+        await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));
+        return await context.Contas.AsNoTracking().Where(c => c.Dono).Select(c => c.Id).ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ContaAtivaExisteAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken)
     {
         await using var context = new PermissoesDbContext(TenantUnitOfWork.Require(organizationId));

@@ -30,7 +30,7 @@ namespace Flow4Tech.Tests;
 /// Dominio do salao, ticket 04: the tables of a unit through the real authenticated route. Real PostgreSQL, application credential (RLS on), real sessions. Covers allowed, denied (403 without
 /// reason, 401 without session) and cross-organization cases, the audit record, uniqueness per unit (also under a race), the use-tables option, validation, rollback and the EF model.
 /// </summary>
-public sealed class PerfisEndpointsTests : IAsyncLifetime
+public sealed partial class PerfisEndpointsTests : IAsyncLifetime
 {
     private const string Key = "chave-de-teste-nao-usar-em-producao-0123456789";
 

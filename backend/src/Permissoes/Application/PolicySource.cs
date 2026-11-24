@@ -22,5 +22,7 @@ public static class ChavesDePerfil
 {
     public static string Personalizado(Guid id) => id.ToString("D");
 
-    public static string DoUsuario(Guid userId) => "usuario:" + userId.ToString("D");
+    public const string PrefixoDoUsuario = "usuario:";
+
+    public static string DoUsuario(Guid userId) => PrefixoDoUsuario + userId.ToString("D");
 }

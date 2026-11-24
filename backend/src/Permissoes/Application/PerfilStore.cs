@@ -43,6 +43,9 @@ public interface IPerfilStore
     /// <summary>True when EVERY unit exists in the organization (RLS: a unit of another organization does not exist here).</summary>
     Task<bool> UnidadesExistemAsync(Guid organizationId, IReadOnlyCollection<Guid> unidades, CancellationToken cancellationToken);
 
+    /// <summary>The ids of the owner accounts of the organization (RLS). Used so a profile edit can never reach an owner with a deny.</summary>
+    Task<IReadOnlyCollection<Guid>> DonosAsync(Guid organizationId, CancellationToken cancellationToken);
+
     /// <summary>True when the account exists in the organization (RLS) and is active.</summary>
     Task<bool> ContaAtivaExisteAsync(Guid organizationId, Guid userId, CancellationToken cancellationToken);
 }

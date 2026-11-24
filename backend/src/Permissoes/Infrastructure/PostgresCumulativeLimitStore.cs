@@ -76,6 +76,8 @@ internal sealed class ContaRow
     public Guid Id { get; set; }
 
     public bool Ativa { get; set; }
+
+    public bool Dono { get; set; }
 }
 
 /// <summary>EF mapping of the cumulative-limit counter and of the profiles, rules, assignments and overrides (schema owned by <c>0003_limites_consumo.sql</c> and <c>0010_perfis_regras.sql</c>). One instance per unit of work, from a tenant transaction.</summary>
@@ -161,6 +163,7 @@ internal sealed class PermissoesDbContext(TenantTransaction transaction) : Tenan
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Ativa).HasColumnName("ativa");
+            e.Property(x => x.Dono).HasColumnName("dono");
         });
     }
 }
