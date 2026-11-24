@@ -1668,6 +1668,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/perfis/matriz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMatrizDePerfis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/perfis/{perfil}/regras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["substituirRegrasDoPerfil"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/contas": {
         parameters: {
             query?: never;
@@ -1929,6 +1961,16 @@ export interface components {
             comandas: components["schemas"]["ComandaDto"][];
             /** Format: int32 */
             total: number | string;
+        };
+        ColunaDaMatrizDto: {
+            chave: string;
+            nome: string;
+            /** Format: uuid */
+            id: null | string;
+            editavel: boolean;
+            modelo: null | string;
+            acompanhaModelo: boolean;
+            regras: components["schemas"]["RegraDto"][];
         };
         ComandaCanceladaDto: {
             comanda: components["schemas"]["ComandaDto"];
@@ -2518,6 +2560,10 @@ export interface components {
             areas: components["schemas"]["AreaNoMapaDto"][];
             semArea: components["schemas"]["MesaNoMapaDto"][];
         };
+        MatrizDto: {
+            permissoes: string[];
+            perfis: components["schemas"]["ColunaDaMatrizDto"][];
+        };
         MesaDto: {
             /** Format: uuid */
             id: string;
@@ -2935,6 +2981,9 @@ export interface components {
         };
         SolicitarRecuperacaoRequest: {
             email: null | string;
+        };
+        SubstituirRegrasRequest: {
+            regras: null | components["schemas"]["RegraDto"][];
         };
         TransferirItensRequest: {
             /** Format: int32 */
@@ -9164,6 +9213,105 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getMatrizDePerfis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrizDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    substituirRegrasDoPerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                perfil: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstituirRegrasRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
             };
         };
     };

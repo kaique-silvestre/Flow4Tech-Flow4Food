@@ -14,6 +14,13 @@ internal sealed record ModeloCriadoDto(string Chave, string Nome, bool Criado, G
 
 internal sealed record DefinirOverridesRequest(List<RegraDto>? Regras);
 
+internal sealed record SubstituirRegrasRequest(List<RegraDto>? Regras);
+
+/// <summary>One column of the matrix: <c>Id</c> is null and <c>Editavel</c> false for a factory profile (read-only, only duplicable).</summary>
+internal sealed record ColunaDaMatrizDto(string Chave, string Nome, Guid? Id, bool Editavel, string? Modelo, bool AcompanhaModelo, List<RegraDto> Regras);
+
+internal sealed record MatrizDto(List<string> Permissoes, List<ColunaDaMatrizDto> Perfis);
+
 internal sealed record PerfisDaPessoaResponse(List<PerfilDto> Perfis, List<RegraDto> Overrides);
 
 internal sealed record ContaDaListaDto(Guid Id, string Nome, string? Usuario, bool Dono, bool Ativa, List<Guid> UnidadeIds, List<Guid> PerfilIds);
@@ -55,6 +62,36 @@ internal static class PerfisEndpoints
             .Produces<List<PerfilDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapGet("/perfis/matriz", async (RequestContextAccessor request, GestaoDePerfis perfis, CancellationToken cancellationToken) =>
+            {
+                var r = await perfis.MatrizAsync(request, cancellationToken);
+                return r.Resultado == ResultadoGestao.Ok
+                    ? Results.Ok(new MatrizDto([.. r.Permissoes], [.. r.Perfis.Select(p => new ColunaDaMatrizDto(p.Chave, p.Nome, p.Id, p.Editavel, p.Modelo, p.AcompanhaModelo, [.. p.Regras.Select(Dto)]))]))
+                    : Erro(r.Resultado);
+            })
+            .WithName("getMatrizDePerfis")
+            .RequireSession()
+            .RequirePermission(PerfisPermissions.Ver)
+            .Produces<MatrizDto>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        app.MapPut("/perfis/{perfil}/regras", async (string perfil, SubstituirRegrasRequest body, RequestContextAccessor request, GestaoDePerfis perfis, CancellationToken cancellationToken) =>
+            {
+                var regras = Regras(body.Regras);
+                return regras is null ? Erro(ResultadoGestao.Invalido) : Resposta(await perfis.SubstituirRegrasAsync(request, perfil, regras, cancellationToken));
+            })
+            .WithName("substituirRegrasDoPerfil")
+            .RequireSession()
+            .WithBodyLimit(Body)
+            .RequirePermission(PerfisPermissions.Gerir)
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces<PerfilErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<PerfilErro>(StatusCodes.Status404NotFound)
+            .Produces<PerfilErro>(StatusCodes.Status409Conflict);
 
         app.MapGet("/contas", async (RequestContextAccessor request, IUnitOfWork unitOfWork, IContaStore contas, IPerfilStore perfis, CancellationToken cancellationToken) =>
             {
@@ -167,6 +204,7 @@ internal static class PerfisEndpoints
     private static IResult Erro(ResultadoGestao resultado) => resultado switch
     {
         ResultadoGestao.Negado or ResultadoGestao.AutoPromocao or ResultadoGestao.EscalacaoNegada => Results.StatusCode(StatusCodes.Status403Forbidden),
+        ResultadoGestao.PerfilDeFabrica => Results.Json(new PerfilErro("perfil-de-fabrica"), statusCode: StatusCodes.Status409Conflict),
         ResultadoGestao.NaoEncontrado => Results.Json(new PerfilErro("nao-encontrado"), statusCode: StatusCodes.Status404NotFound),
         _ => Results.Json(new PerfilErro("invalido"), statusCode: StatusCodes.Status400BadRequest),
     };

@@ -6390,6 +6390,103 @@
         "x-permission": "perfil:ver"
       }
     },
+    "/perfis/matriz": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getMatrizDePerfis",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatrizDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "perfil:ver"
+      }
+    },
+    "/perfis/{perfil}/regras": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "substituirRegrasDoPerfil",
+        "parameters": [
+          {
+            "name": "perfil",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubstituirRegrasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "perfil:gerir"
+      }
+    },
     "/contas": {
       "get": {
         "tags": [
@@ -7429,6 +7526,51 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ColunaDaMatrizDto": {
+        "required": [
+          "chave",
+          "nome",
+          "id",
+          "editavel",
+          "modelo",
+          "acompanhaModelo",
+          "regras"
+        ],
+        "type": "object",
+        "properties": {
+          "chave": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "editavel": {
+            "type": "boolean"
+          },
+          "modelo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "acompanhaModelo": {
+            "type": "boolean"
+          },
+          "regras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegraDto"
+            }
           }
         }
       },
@@ -9830,6 +9972,27 @@
           }
         }
       },
+      "MatrizDto": {
+        "required": [
+          "permissoes",
+          "perfis"
+        ],
+        "type": "object",
+        "properties": {
+          "permissoes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "perfis": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ColunaDaMatrizDto"
+            }
+          }
+        }
+      },
       "MesaDto": {
         "required": [
           "id",
@@ -11600,6 +11763,23 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SubstituirRegrasRequest": {
+        "required": [
+          "regras"
+        ],
+        "type": "object",
+        "properties": {
+          "regras": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RegraDto"
+            }
           }
         }
       },

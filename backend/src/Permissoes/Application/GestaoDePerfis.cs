@@ -37,6 +37,12 @@ public sealed record ModeloCriado(string Chave, string Nome, bool Criado, Guid? 
 
 public sealed record ResultadoModelos(ResultadoGestao Resultado, IReadOnlyList<ModeloCriado> Modelos);
 
+/// <summary>A profile as a column of the profile x permission matrix. A factory profile (<c>Id</c> null) is shown but never editable; a custom one carries only the rules it owns.</summary>
+public sealed record PerfilDaMatriz(string Chave, string Nome, Guid? Id, bool Editavel, string? Modelo, bool AcompanhaModelo, IReadOnlyList<RegraDeAcesso> Regras);
+
+/// <summary>The matrix: every catalog permission (the rows, sorted) and every profile of the organization (the columns).</summary>
+public sealed record ResultadoMatriz(ResultadoGestao Resultado, IReadOnlyList<string> Permissoes, IReadOnlyList<PerfilDaMatriz> Perfis);
+
 public sealed record ResultadoListaDePerfis(ResultadoGestao Resultado, IReadOnlyList<PerfilPersonalizado> Perfis);
 
 public sealed record ResultadoPerfisDaPessoa(ResultadoGestao Resultado, IReadOnlyList<PerfilPersonalizado> Perfis, IReadOnlyList<RegraDeAcesso> Overrides);
@@ -97,6 +103,37 @@ public sealed class GestaoDePerfis(
             async ct => await MayAsync(request, PerfisPermissions.Ver, ct)
                 ? new ResultadoListaDePerfis(ResultadoGestao.Ok, await store.ListarAsync(request.Organization.OrganizationId, ct))
                 : new ResultadoListaDePerfis(ResultadoGestao.Negado, []),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// The profile x permission matrix of the organization (spec 5.4, G9): the catalog rows and one column per profile, factory profiles read-only. Needs <c>perfil:ver</c>; a read is
+    /// not audited. The factory profiles are the keys the policy knows that are neither a custom profile id nor a person's private override; no profile name is read here.
+    /// </summary>
+    public async Task<ResultadoMatriz> MatrizAsync(IRequestContext request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await unitOfWork.ExecuteAsync(
+            request,
+            async ct =>
+            {
+                if (!await MayAsync(request, PerfisPermissions.Ver, ct))
+                {
+                    return new ResultadoMatriz(ResultadoGestao.Negado, [], []);
+                }
+
+                var organizationId = request.Organization.OrganizationId;
+                var set = await policies.ObterAsync(organizationId, ct);
+                var columns = set.Rules
+                    .Select(r => r.Profile)
+                    .Where(key => !Guid.TryParse(key, out _) && !key.StartsWith(ChavesDePerfil.PrefixoDoUsuario, StringComparison.Ordinal))
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
+                    .Select(key => new PerfilDaMatriz(key, key, null, false, null, false, RulesToProposals(PolicyEvaluator.RulesOfProfile(set, key))))
+                    .ToList();
+                columns.AddRange((await store.ListarAsync(organizationId, ct)).Select(p => new PerfilDaMatriz(ChavesDePerfil.Personalizado(p.Id), p.Nome, p.Id, true, p.Modelo, p.AcompanhaModelo, p.Regras)));
+                return new ResultadoMatriz(ResultadoGestao.Ok, [.. set.KnownPermissions.Order(StringComparer.Ordinal)], columns);
+            },
             cancellationToken);
     }
 
@@ -189,7 +226,15 @@ public sealed class GestaoDePerfis(
                 }
 
                 var mine = await perfisDoUsuario.ListarAsync(request.Organization, request.UserId, ct);
-                if (mine.Contains(ChavesDePerfil.Personalizado(id)))
+
+                // The profile AND the profiles that follow it as their template: editing either changes what the caller holds if the caller holds one of them.
+                var organizationId = request.Organization.OrganizationId;
+                var affected = (await store.ListarAsync(organizationId, ct))
+                    .Where(p => p.AcompanhaModelo && Guid.TryParse(p.Modelo, out var template) && template == id)
+                    .Select(p => ChavesDePerfil.Personalizado(p.Id))
+                    .Append(ChavesDePerfil.Personalizado(id))
+                    .ToHashSet(StringComparer.Ordinal);
+                if (mine.Any(affected.Contains))
                 {
                     return new Saida(ResultadoGestao.AutoPromocao, "perfil-proprio");
                 }
@@ -197,6 +242,16 @@ public sealed class GestaoDePerfis(
                 if (!CanGrantAll(set, new Subject(request.UserId, mine), regras))
                 {
                     return new Saida(ResultadoGestao.EscalacaoNegada, "regra-acima-do-que-possui");
+                }
+
+                // The owner is untouchable: a deny written here must never reach an owner, or somebody could lock the owner out (there must always be a working owner).
+                if (HasDeny(regras))
+                {
+                    var owners = await store.DonosAsync(organizationId, ct);
+                    if ((await store.AtribuicoesAsync(organizationId, ct)).Any(a => owners.Contains(a.UsuarioId) && affected.Contains(ChavesDePerfil.Personalizado(a.PerfilId))))
+                    {
+                        return new Saida(ResultadoGestao.EscalacaoNegada, "dono-intocavel");
+                    }
                 }
 
                 await store.SubstituirRegrasAsync(request.Organization.OrganizationId, id, regras, ct);
@@ -261,6 +316,11 @@ public sealed class GestaoDePerfis(
                 if (!CanGrantAll(set, new Subject(request.UserId, mine), regras))
                 {
                     return new Saida(ResultadoGestao.EscalacaoNegada, "regra-acima-do-que-possui");
+                }
+
+                if (HasDeny(regras) && (await store.DonosAsync(organizationId, ct)).Contains(userId))
+                {
+                    return new Saida(ResultadoGestao.EscalacaoNegada, "dono-intocavel");
                 }
 
                 var before = await store.OverridesAsync(organizationId, userId, ct);
@@ -378,6 +438,11 @@ public sealed class GestaoDePerfis(
                     {
                         return new Saida(ResultadoGestao.EscalacaoNegada, "perfil-acima-do-que-possui");
                     }
+
+                    if (HasDeny(effective) && (await store.DonosAsync(organizationId, ct)).Contains(userId))
+                    {
+                        return new Saida(ResultadoGestao.EscalacaoNegada, "dono-intocavel");
+                    }
                 }
 
                 var changed = give
@@ -423,7 +488,7 @@ public sealed class GestaoDePerfis(
         var rules = PolicyEvaluator.RulesOfProfile(set, key);
         return rules.Count == 0
             ? null
-            : [.. rules.Select(r => new RegraDeAcesso(r.Effect, r.Permission, r.UnitId, r.MaxPercent, r.MaxValueCents, r.DailyCapCents))];
+            : RulesToProposals(rules);
     }
 
     /// <summary>A rule scoped to a unit must name a unit of THIS organization (RLS hides the others): without the check the foreign key would surface as a 500.</summary>
@@ -432,6 +497,11 @@ public sealed class GestaoDePerfis(
         var units = regras.Where(r => r.UnitId is not null).Select(r => r.UnitId!.Value).Distinct().ToList();
         return units.Count == 0 || await store.UnidadesExistemAsync(organizationId, units, cancellationToken);
     }
+
+    private static bool HasDeny(IEnumerable<RegraDeAcesso> regras) => regras.Any(r => r.Effect == RuleEffect.Deny);
+
+    private static List<RegraDeAcesso> RulesToProposals(IEnumerable<Rule> rules) =>
+        [.. rules.Select(r => new RegraDeAcesso(r.Effect, r.Permission, r.UnitId, r.MaxPercent, r.MaxValueCents, r.DailyCapCents))];
 
     private static bool IsFactoryKey(PolicySet set, string key) => PolicyEvaluator.RulesOfProfile(set, key).Count > 0;
 
