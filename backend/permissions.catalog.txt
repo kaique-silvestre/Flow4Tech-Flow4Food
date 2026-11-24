@@ -57,6 +57,9 @@ produto:gerenciar
 produto:ver
 recuperacao:redefinir
 recuperacao:solicitar
+reserva:chegou
+reserva:gerenciar
+reserva:ver
 sessao:entrar
 sessao:entrar-google
 sessao:renovar

@@ -13,6 +13,9 @@ public enum StatusDaMesa
 
     /// <summary>At least one open comanda of the table asked for the bill (set once the pre-bill lands, F4-0067).</summary>
     AguardandoConta,
+
+    /// <summary>Free, with a waiting reservation about to start (or late) on it (F4-0153). Only shown on a table with no open comanda.</summary>
+    Reservada,
 }
 
 /// <summary>A table with its derived status.</summary>
@@ -22,7 +25,7 @@ public sealed record MesaComStatus(Mesa Mesa, StatusDaMesa Status);
 public sealed record OcupacaoDaMesa(int ComandasAbertas, int AguardandoConta, DateTimeOffset? AbertaDesde);
 
 /// <summary>A table as the map shows it: derived status, number of open comandas and the opening time of the first one (null when free).</summary>
-public sealed record MesaNoMapa(Mesa Mesa, StatusDaMesa Status, int ComandasAbertas, DateTimeOffset? AbertaDesde);
+public sealed record MesaNoMapa(Mesa Mesa, StatusDaMesa Status, int ComandasAbertas, DateTimeOffset? AbertaDesde, DateTimeOffset? ReservadaPara = null);
 
 public sealed record AreaNoMapa(Area Area, IReadOnlyList<MesaNoMapa> Mesas);
 
@@ -60,15 +63,15 @@ public static class RegrasDeMesa
 
     /// <summary>
     /// The map: each ACTIVE area (ordered by name) with its tables, then the tables with no area or an area that is not active. Tables are ordered by identification inside a group.
-    /// A table missing from <paramref name="ocupacao"/> is free.
+    /// A table missing from <paramref name="ocupacao"/> is free; a free table found in <paramref name="reservadas"/> (waiting reservation due soon, F4-0153) shows as reserved.
     /// </summary>
-    public static MapaDeMesas MontarMapa(IReadOnlyCollection<Area> areas, IReadOnlyCollection<Mesa> mesas, IReadOnlyDictionary<Guid, OcupacaoDaMesa> ocupacao)
+    public static MapaDeMesas MontarMapa(IReadOnlyCollection<Area> areas, IReadOnlyCollection<Mesa> mesas, IReadOnlyDictionary<Guid, OcupacaoDaMesa> ocupacao, IReadOnlyDictionary<Guid, DateTimeOffset>? reservadas = null)
     {
         ArgumentNullException.ThrowIfNull(areas);
         ArgumentNullException.ThrowIfNull(mesas);
         ArgumentNullException.ThrowIfNull(ocupacao);
         var ativas = areas.Where(a => a.Ativa).ToDictionary(a => a.Id);
-        var noMapa = mesas.Where(m => m.Ativa).Select(m => Posicionar(m, ocupacao)).ToList();
+        var noMapa = mesas.Where(m => m.Ativa).Select(m => Posicionar(m, ocupacao, reservadas)).ToList();
         IReadOnlyList<MesaNoMapa> Ordenadas(IEnumerable<MesaNoMapa> grupo) =>
             [.. grupo.OrderBy(x => x.Mesa.Identificacao, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.Mesa.Id)];
 
@@ -79,10 +82,15 @@ public static class RegrasDeMesa
         return new MapaDeMesas(comArea, Ordenadas(noMapa.Where(x => x.Mesa.AreaId is not { } id || !ativas.ContainsKey(id))));
     }
 
-    private static MesaNoMapa Posicionar(Mesa mesa, IReadOnlyDictionary<Guid, OcupacaoDaMesa> ocupacao) =>
-        ocupacao.TryGetValue(mesa.Id, out var o)
+    private static MesaNoMapa Posicionar(Mesa mesa, IReadOnlyDictionary<Guid, OcupacaoDaMesa> ocupacao, IReadOnlyDictionary<Guid, DateTimeOffset>? reservadas)
+    {
+        var noMapa = ocupacao.TryGetValue(mesa.Id, out var o)
             ? new MesaNoMapa(mesa, Status(o.ComandasAbertas, o.AguardandoConta), o.ComandasAbertas, o.AbertaDesde)
             : new MesaNoMapa(mesa, StatusDaMesa.Livre, 0, null);
+        return noMapa.Status == StatusDaMesa.Livre && reservadas is not null && reservadas.TryGetValue(mesa.Id, out var horario)
+            ? noMapa with { Status = StatusDaMesa.Reservada, ReservadaPara = horario }
+            : noMapa;
+    }
 }
 
 /// <summary>Pure input rules of the areas.</summary>

@@ -5,10 +5,10 @@ using Flow4Tech.Kernel.Settings;
 namespace Flow4Tech.Comandas.Application;
 
 /// <summary>
-/// The table map of the active unit (read only): active areas with their tables, each table with the status DERIVED from the open comandas, how many are open and when the first opened.
+/// The table map of the active unit (read only): active areas with their tables, each table with the status DERIVED from the open comandas (and, for a free table, from a waiting reservation due soon), how many are open and when the first opened.
 /// Who may call is the route's job (<c>mesa:ver</c>). When the unit turned tables off the map is empty, without error. The unit comes from the session, never from the client.
 /// </summary>
-public sealed class ConsultaDoMapaDeMesas(IUnitOfWork unitOfWork, IMesasStore store, ISettings settings, IClock clock)
+public sealed class ConsultaDoMapaDeMesas(IUnitOfWork unitOfWork, IMesasStore store, IReservasStore reservas, ISettings settings, IClock clock)
 {
     public Task<MapaDeMesas> ConsultarAsync(IRequestContext request, CancellationToken cancellationToken = default)
     {
@@ -26,7 +26,8 @@ public sealed class ConsultaDoMapaDeMesas(IUnitOfWork unitOfWork, IMesasStore st
                 var areas = await store.ListarAreasAtivasAsync(org.OrganizationId, org.UnitId, ct);
                 var mesas = await store.ListarAtivasAsync(org.OrganizationId, org.UnitId, ct);
                 var ocupacao = await store.OcupacaoAsync(org.OrganizationId, org.UnitId, ct);
-                return RegrasDeMesa.MontarMapa(areas, mesas, ocupacao);
+                var emEspera = await reservas.EmEsperaComMesaAsync(org.OrganizationId, org.UnitId, ct);
+                return RegrasDeMesa.MontarMapa(areas, mesas, ocupacao, RegrasDeReserva.MesasReservadas(emEspera, clock.UtcNow));
             },
             cancellationToken);
     }

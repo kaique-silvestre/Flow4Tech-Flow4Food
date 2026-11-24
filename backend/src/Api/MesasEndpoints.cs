@@ -3,7 +3,7 @@ using Flow4Tech.Comandas.Domain;
 
 namespace Flow4Tech.Api;
 
-/// <summary><c>Status</c> is derived from the open comandas: <c>livre</c> or <c>ocupada</c>. A newly created table is always <c>livre</c>.</summary>
+/// <summary><c>Status</c> is derived from the open comandas and the waiting reservations: <c>livre</c>, <c>ocupada</c>, <c>aguardando-conta</c> or <c>reservada</c>. A newly created table is always <c>livre</c>.</summary>
 internal sealed record MesaDto(Guid Id, Guid UnidadeId, string Identificacao, int? Capacidade, bool Ativa, string Status, Guid? AreaId = null);
 
 /// <summary>Identification nullable on purpose: an absent identification is a 400, never a default. <c>AreaId</c> is optional; when given it must be an active area of the unit.</summary>
@@ -21,10 +21,11 @@ internal sealed record AtualizarAreaRequest(string? Nome, bool Ativa);
 internal sealed record DefinirAreaDaMesaRequest(Guid? AreaId);
 
 /// <summary>
-/// A table on the map. <c>Status</c> is derived from the open comandas: <c>livre</c>, <c>ocupada</c> or <c>aguardando-conta</c>. <c>AbertaDesde</c> is the opening time of the first open comanda (null when free):
-/// the client computes the time since opening from it.
+/// A table on the map. <c>Status</c> is derived from the open comandas and the reservations: <c>livre</c>, <c>ocupada</c>, <c>aguardando-conta</c> or <c>reservada</c> (a free table with a waiting reservation due soon).
+/// <c>AbertaDesde</c> is the opening time of the first open comanda (null when free): the client computes the time since opening from it. <c>ReservadaPara</c> is the booking time of a <c>reservada</c> table (null otherwise);
+/// the guest's name and phone are never part of the map.
 /// </summary>
-internal sealed record MesaNoMapaDto(Guid Id, string Identificacao, int? Capacidade, Guid? AreaId, string Status, int ComandasAbertas, DateTimeOffset? AbertaDesde);
+internal sealed record MesaNoMapaDto(Guid Id, string Identificacao, int? Capacidade, Guid? AreaId, string Status, int ComandasAbertas, DateTimeOffset? AbertaDesde, DateTimeOffset? ReservadaPara = null);
 
 internal sealed record AreaNoMapaDto(Guid Id, string Nome, List<MesaNoMapaDto> Mesas);
 
@@ -157,6 +158,7 @@ internal static class MesasEndpoints
     {
         StatusDaMesa.Ocupada => "ocupada",
         StatusDaMesa.AguardandoConta => "aguardando-conta",
+        StatusDaMesa.Reservada => "reservada",
         _ => "livre",
     };
 
@@ -164,7 +166,7 @@ internal static class MesasEndpoints
         new(m.Id, m.UnidadeId, m.Identificacao, m.Capacidade, m.Ativa, Palavra(status), m.AreaId);
 
     private static MesaNoMapaDto NoMapa(MesaNoMapa m) =>
-        new(m.Mesa.Id, m.Mesa.Identificacao, m.Mesa.Capacidade, m.Mesa.AreaId, Palavra(m.Status), m.ComandasAbertas, m.AbertaDesde);
+        new(m.Mesa.Id, m.Mesa.Identificacao, m.Mesa.Capacidade, m.Mesa.AreaId, Palavra(m.Status), m.ComandasAbertas, m.AbertaDesde, m.ReservadaPara);
 
     private static AreaDto AreaParaDto(Area a) => new(a.Id, a.UnidadeId, a.Nome, a.Ativa);
 
