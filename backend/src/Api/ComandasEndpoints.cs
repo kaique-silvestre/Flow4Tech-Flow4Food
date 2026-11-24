@@ -37,7 +37,7 @@ internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, 
 internal sealed record OpcaoDoItemDto(Guid OpcaoId, Guid GrupoId, string Nome, long PrecoCentavos);
 
 /// <summary><c>PrecoCentavos</c> is the frozen product price; <c>ValorDeTabelaCentavos</c> is (price + options) times quantity; <c>TotalCentavos</c> is what the line charges (zero when <c>Tipo</c> is cortesia or brinde, with <c>MotivoDoTipo</c> saying why).</summary>
-internal sealed record ItemDto(Guid Id, Guid RodadaId, int Posicao, Guid ProdutoId, string ProdutoNome, long PrecoCentavos, int Quantidade, string? Observacao, string Estado, string? MotivoCancelamento, Guid? CanceladoPor, DateTimeOffset? CanceladoEm, List<OpcaoDoItemDto> Opcoes, long TotalCentavos, string Tipo, string? MotivoDoTipo, long ValorDeTabelaCentavos, int? Assento = null);
+internal sealed record ItemDto(Guid Id, Guid RodadaId, int Posicao, Guid ProdutoId, string ProdutoNome, long PrecoCentavos, int Quantidade, string? Observacao, string Estado, string? MotivoCancelamento, Guid? CanceladoPor, DateTimeOffset? CanceladoEm, List<OpcaoDoItemDto> Opcoes, long TotalCentavos, string Tipo, string? MotivoDoTipo, long ValorDeTabelaCentavos, int? Assento = null, Guid? PromocaoId = null, string? PromocaoNome = null, long? PromocaoCentavos = null);
 
 /// <summary><c>ComandaVersao</c> is the comanda version after the write: the one the client sends with its next write.</summary>
 internal sealed record RodadaDto(Guid Id, Guid ComandaId, DateTimeOffset EnviadaEm, DateTimeOffset? DesfeitaEm, int ComandaVersao, List<ItemDto> Itens);
@@ -393,7 +393,7 @@ internal static class ComandasEndpoints
     };
 
     internal static ItemDto ItemParaDto(ItemDaComanda i) =>
-        new(i.Id, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.Palavra(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, i.Opcoes.Select(o => new OpcaoDoItemDto(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos)).ToList(), i.TotalCentavos, RegrasDeDesconto.Palavra(i.Tipo), i.MotivoDoTipo, i.ValorDeTabelaCentavos, i.Assento);
+        new(i.Id, i.RodadaId, i.Posicao, i.ProdutoId, i.ProdutoNome, i.PrecoCentavos, i.Quantidade, i.Observacao, RegrasDeRodada.Palavra(i.Estado), i.MotivoCancelamento, i.CanceladoPor, i.CanceladoEm, i.Opcoes.Select(o => new OpcaoDoItemDto(o.OpcaoId, o.GrupoId, o.Nome, o.PrecoCentavos)).ToList(), i.TotalCentavos, RegrasDeDesconto.Palavra(i.Tipo), i.MotivoDoTipo, i.ValorDeTabelaCentavos, i.Assento, i.PromocaoId, i.PromocaoNome, i.PromocaoId is null ? null : i.PromocaoCentavos);
 
     private static RodadaDto RodadaParaDto(ResultadoDeEscrita r) =>
         new(r.Rodada!.Rodada.Id, r.Rodada.Rodada.ComandaId, r.Rodada.Rodada.EnviadaEm, r.Rodada.Rodada.DesfeitaEm, r.Versao!.Value, r.Rodada.Itens.Select(ItemParaDto).ToList());

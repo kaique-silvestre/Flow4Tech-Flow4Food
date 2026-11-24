@@ -88,6 +88,7 @@ builder.Services.AddSingleton<IPermissaoDoChamador, PermissaoDoChamador>();
 // Permissions on HTTP (ticket 05): one engine (IAuthorizationEngine.DecidirAsync), asked by the handler for every route that declares a permission.
 builder.Services.AddPermissoes(moduleCatalog);
 builder.Services.AddSingleton<IHorarioDeFuncionamento, HorarioDeFuncionamentoDaUnidade>();
+builder.Services.AddSingleton<IHoraLocalDaUnidade, HoraLocalDaUnidadeDaAgenda>();
 // The operating day (cap day, display numbers, agenda) is read from the dia-operacional.* options; replaces the module's own default resolver.
 builder.Services.Replace(ServiceDescriptor.Singleton<IOperatingDayResolver, DiaOperacionalConfigurado>());
 builder.Services.AddAuthorization();
@@ -219,6 +220,7 @@ app.MapReservas();
 app.MapPagamentos();
 app.MapClientes();
 app.MapPerfis();
+app.MapPromocoes();
 app.MapPermissoesDoUsuario(moduleCatalog);
 
 // Fail fast: a route without a catalog permission (or with an unknown one) stops the host from starting.

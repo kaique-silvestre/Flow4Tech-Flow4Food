@@ -37,6 +37,7 @@ public static class ModelosDePerfil
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
         "pagamento:dividir", "pagamento:registrar-gorjeta", "pagamento:estornar", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "caixa:aprovar-diferenca", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
         "comanda:desconto", "comanda:cortesia", "comanda:brinde", "comanda:reimprimir", "cardapio:importar",
+        "promocao:ver", "promocao:gerenciar",
         "cliente:ver", "cliente:cadastrar", "cliente:editar", "cliente:ver-dados-pessoais", "cliente:anonimizar", "cliente:vincular",
         "reserva:ver", "reserva:gerenciar", "reserva:chegou",
     ];

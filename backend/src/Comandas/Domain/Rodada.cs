@@ -27,7 +27,10 @@ public sealed record ItemDaComanda(
     IReadOnlyList<OpcaoDoItem>? OpcoesEscolhidas = null,
     TipoDoItem Tipo = TipoDoItem.Normal,
     string? MotivoDoTipo = null,
-    int? Assento = null)
+    int? Assento = null,
+    Guid? PromocaoId = null,
+    string? PromocaoNome = null,
+    long PromocaoCentavos = 0)
 {
     /// <summary>The options picked for this item, name and price frozen at launch (empty when none).</summary>
     public IReadOnlyList<OpcaoDoItem> Opcoes => OpcoesEscolhidas ?? [];

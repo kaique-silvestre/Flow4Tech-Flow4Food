@@ -1812,6 +1812,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/promocoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listPromocoes"];
+        put?: never;
+        post: operations["criarPromocao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/promocoes/{promocaoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPromocao"];
+        put: operations["alterarPromocao"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessao/permissoes": {
         parameters: {
             query?: never;
@@ -1923,6 +1955,24 @@ export interface components {
             /** @default false */
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
+        };
+        AlterarPromocaoRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            nome: null | string;
+            /** Format: double */
+            percentual: null | number | string;
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            todasAsUnidades: boolean;
+            ativo: boolean;
+            /** Format: date-time */
+            validoDe: null | string;
+            /** Format: date-time */
+            validoAte: null | string;
+            diasDaSemana: null | (number | string)[];
+            horaInicio: null | string;
+            horaFim: null | string;
         };
         AplicarDescontoRequest: {
             /** Format: int32 */
@@ -2315,6 +2365,24 @@ export interface components {
             indisponivel: boolean;
             promocao?: null | components["schemas"]["PromocaoDto"];
         };
+        CriarPromocaoRequest: {
+            nome: null | string;
+            tipo: null | string;
+            /** Format: double */
+            percentual: null | number | string;
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            todasAsUnidades: boolean;
+            ativo: boolean;
+            /** Format: date-time */
+            validoDe: null | string;
+            /** Format: date-time */
+            validoAte: null | string;
+            diasDaSemana: null | (number | string)[];
+            horaInicio: null | string;
+            horaFim: null | string;
+            produtos: null | components["schemas"]["ProdutoDaPromocaoRequest"][];
+        };
         DarComoRequest: {
             /** Format: int32 */
             versao: number | string;
@@ -2357,6 +2425,8 @@ export interface components {
             criadoPor: string;
             /** Format: date-time */
             criadoEm: string;
+            /** Format: uuid */
+            promocaoId?: null | string;
         };
         DesfazerRodadaRequest: {
             /** Format: int32 */
@@ -2581,6 +2651,11 @@ export interface components {
             valorDeTabelaCentavos: number | string;
             /** Format: int32 */
             assento?: null | number | string;
+            /** Format: uuid */
+            promocaoId?: null | string;
+            promocaoNome?: null | string;
+            /** Format: int64 */
+            promocaoCentavos?: null | number | string;
         };
         ItemIgnoradoDto: {
             /** Format: uuid */
@@ -2878,6 +2953,18 @@ export interface components {
             formato: null | string;
             conteudoBase64: null | string;
         };
+        ProdutoDaPromocaoRequest: {
+            /** Format: uuid */
+            produtoId: string;
+            /** Format: int32 */
+            quantidade: null | number | string;
+        };
+        ProdutoDaRegraDto: {
+            /** Format: uuid */
+            produtoId: string;
+            /** Format: int32 */
+            quantidade: number | string;
+        };
         ProdutoDto: {
             /** Format: uuid */
             id: string;
@@ -2905,6 +2992,43 @@ export interface components {
             inicio: string;
             /** Format: date-time */
             fim: string;
+        };
+        PromocaoErro: {
+            codigo: string;
+            /** Format: int32 */
+            versaoAtual?: null | number | string;
+        };
+        PromocaoRegraDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            unidadeId: null | string;
+            todasAsUnidades: boolean;
+            nome: string;
+            tipo: string;
+            /** Format: double */
+            percentual: null | number | string;
+            /** Format: int64 */
+            valorCentavos: null | number | string;
+            ativo: boolean;
+            /** Format: date-time */
+            validoDe: null | string;
+            /** Format: date-time */
+            validoAte: null | string;
+            diasDaSemana: (number | string)[];
+            horaInicio: null | string;
+            horaFim: null | string;
+            /** Format: int32 */
+            versao: number | string;
+            produtos: components["schemas"]["ProdutoDaRegraDto"][];
+            /** Format: uuid */
+            criadoPor: string;
+            /** Format: date-time */
+            criadoEm: string;
+            /** Format: uuid */
+            atualizadoPor: string;
+            /** Format: date-time */
+            atualizadoEm: string;
         };
         ReceberLinhasRequest: {
             /** Format: int32 */
@@ -9903,6 +10027,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+        };
+    };
+    listPromocoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoRegraDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    criarPromocao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriarPromocaoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoRegraDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getPromocao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promocaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoRegraDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoErro"];
+                };
+            };
+        };
+    };
+    alterarPromocao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promocaoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlterarPromocaoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoRegraDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromocaoErro"];
                 };
             };
         };

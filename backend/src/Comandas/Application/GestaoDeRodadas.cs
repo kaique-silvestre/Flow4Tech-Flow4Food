@@ -117,6 +117,7 @@ public sealed class GestaoDeRodadas(
     IComandasStore comandas,
     IRodadasStore rodadas,
     IDescontosStore descontos,
+    AvaliadorDePromocoes promocoes,
     ICardapioStore cardapio,
     IOpcoesStore opcoes,
     IAuditLog audit,
@@ -303,8 +304,21 @@ public sealed class GestaoDeRodadas(
             lista.Add(new ItemDaComanda(EntityId.New().Value, comandaId, rodadaId, i + 1, produto.Id, produto.Nome, produto.PrecoCentavos, itens[i].Quantidade, observacoes[i], EstadoDoItem.Lancado, null, null, null, escolhas[i].Select(e => new OpcaoDoItem(e.OpcaoId, e.GrupoId, e.Nome, e.PrecoCentavos)).ToList(), Assento: itens[i].Assento));
         }
 
+        // Promotions and combos are decided HERE, on the server, from the stored rules and the server clock; the client sends no amount. Each one becomes the ordinary item discount of ADR-018 (step 2, given
+        // before any manual discount) and is also written on the item, so the line says which promotion it took.
+        var aplicadas = await promocoes.AvaliarAsync(org, comanda.UnidadeId, [.. lista.Select((item, i) => new LinhaParaPromocao(i, item.ProdutoId, item.PrecoCentavos, item.PrecoUnitarioCentavos, item.Quantidade))], precoEm, ct);
+        foreach (var p in aplicadas)
+        {
+            lista[p.Indice] = lista[p.Indice] with { PromocaoId = p.PromocaoId, PromocaoNome = p.Nome, PromocaoCentavos = p.DescontoCentavos };
+        }
+
         var resultado = new RodadaComItens(rodada, lista);
         await rodadas.InserirRodadaAsync(org.OrganizationId, resultado, ct);
+        foreach (var p in aplicadas)
+        {
+            await descontos.InserirAsync(org.OrganizationId, comanda.UnidadeId, new Desconto(EntityId.New().Value, comandaId, lista[p.Indice].Id, FormaDoDesconto.Valor, null, p.DescontoCentavos, p.DescontoCentavos, "Promoção: " + p.Nome, request.UserId, enviadaEm, p.PromocaoId), ct);
+        }
+
         await rodadas.RegistrarFrequenciaAsync(org.OrganizationId, comanda.UnidadeId, request.UserId, produtos.Keys.Order().ToList(), ct);
         var usosDeOpcao = lista.SelectMany(i => i.Opcoes.Select(o => (i.ProdutoId, o.OpcaoId))).Distinct().Order().ToList();
         if (usosDeOpcao.Count > 0)
@@ -320,6 +334,12 @@ public sealed class GestaoDeRodadas(
             ["valorCentavos"] = valor,
             ["versao"] = novaVersao,
         };
+        if (aplicadas.Count > 0)
+        {
+            depois["promocaoCentavos"] = aplicadas.Sum(p => p.DescontoCentavos);
+            depois["promocoes"] = aplicadas.Select(p => p.PromocaoId).Distinct().Count();
+        }
+
         if (repeticaoDe is { } origem)
         {
             depois["repeticaoDe"] = origem.ToString("D");

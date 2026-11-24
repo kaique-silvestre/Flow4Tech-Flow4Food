@@ -162,6 +162,16 @@ internal sealed class DiaOperacionalConfigurado(IServiceProvider services, ICloc
         services.GetRequiredService<AgendaDaUnidade>().DiaOperacionalAsync(organizationId, unitId, clock.UtcNow, cancellationToken);
 }
 
+/// <summary>Adapts the unit's agenda to the port Comandas declares: the instant on the unit's wall clock, for the days and time window of a promotion.</summary>
+internal sealed class HoraLocalDaUnidadeDaAgenda(AgendaDaUnidade agenda) : IHoraLocalDaUnidade
+{
+    public Task<DateTime> LocalAsync(OrganizationContext organization, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(organization);
+        return agenda.HoraLocalAsync(organization.OrganizationId, organization.UnitId == Guid.Empty ? null : organization.UnitId, at, cancellationToken);
+    }
+}
+
 /// <summary>Adapts the unit's agenda to the port Comandas declares: launching is refused outside the opening hours, judged by the server clock.</summary>
 internal sealed class HorarioDeFuncionamentoDaUnidade(AgendaDaUnidade agenda) : IHorarioDeFuncionamento
 {

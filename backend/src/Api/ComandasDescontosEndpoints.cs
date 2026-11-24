@@ -12,7 +12,7 @@ internal sealed record AplicarDescontoRequest(int Versao, Guid? ItemId, decimal?
 /// <summary><c>Motivo</c> is required (up to 200 characters).</summary>
 internal sealed record DarComoRequest(int Versao, string Motivo);
 
-internal sealed record DescontoDto(Guid Id, Guid ComandaId, Guid? ItemId, string Forma, decimal? Percentual, long? ValorCentavos, long AplicadoCentavos, string Motivo, Guid CriadoPor, DateTimeOffset CriadoEm);
+internal sealed record DescontoDto(Guid Id, Guid ComandaId, Guid? ItemId, string Forma, decimal? Percentual, long? ValorCentavos, long AplicadoCentavos, string Motivo, Guid CriadoPor, DateTimeOffset CriadoEm, Guid? PromocaoId = null);
 
 /// <summary>The discount, the bill after it and the comanda version the next write carries.</summary>
 internal sealed record DescontoAplicadoDto(DescontoDto Desconto, ContaDto Conta);
@@ -111,7 +111,7 @@ internal static class ComandasDescontosEndpoints
     }
 
     private static DescontoDto Dto(Desconto d) =>
-        new(d.Id, d.ComandaId, d.ItemId, RegrasDeDesconto.Palavra(d.Forma), d.Percentual, d.ValorCentavos, d.AplicadoCentavos, d.Motivo, d.CriadoPor, d.CriadoEm);
+        new(d.Id, d.ComandaId, d.ItemId, RegrasDeDesconto.Palavra(d.Forma), d.Percentual, d.ValorCentavos, d.AplicadoCentavos, d.Motivo, d.CriadoPor, d.CriadoEm, d.PromocaoId);
 
     private static ContaDto Conta(ResultadoDeDescontoDaComanda r) =>
         new(r.Conta!.ConsumoCentavos, r.Conta.TaxaServicoCentavos, r.Conta.TotalCentavos, r.Conta.PagoCentavos, r.Conta.SaldoCentavos, r.Conta.TaxaServicoRemovida, r.Conta.TaxaServicoPercentual, r.Comanda!.Versao, RegrasDeComanda.Palavra(r.Comanda.Estado), r.Conta.DescontoCentavos);
