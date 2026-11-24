@@ -1,3 +1,4 @@
+using Flow4Tech.Clientes.Application;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Comandas.Domain;
 
@@ -7,6 +8,9 @@ namespace Flow4Tech.Api;
 internal sealed record AlterarItemRequest(int Versao, int Quantidade, string? Observacao);
 
 internal sealed record RenomearComandaRequest(int Versao, string Identificacao);
+
+/// <summary><c>ClienteId</c> is a customer of the organization; null unlinks the one that is there.</summary>
+internal sealed record VincularClienteRequest(int Versao, Guid? ClienteId);
 
 /// <summary><c>GarcomId</c> must be an active account of the unit's team.</summary>
 internal sealed record TrocarGarcomRequest(int Versao, Guid GarcomId);
@@ -63,6 +67,22 @@ internal static class ComandasEdicaoEndpoints
             .RequireSession()
             .WithBodyLimit(Body)
             .RequirePermission(ComandaPermissions.Renomear)
+            .Produces<ComandaDto>()
+            .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ComandaErro>(StatusCodes.Status404NotFound)
+            .Produces<ComandaErro>(StatusCodes.Status409Conflict);
+
+        app.MapPut("/comandas/{comandaId:guid}/cliente", async (Guid comandaId, VincularClienteRequest body, RequestContextAccessor request, GestaoDaEdicaoDaComanda edicao, CancellationToken cancellationToken) =>
+            {
+                var r = await edicao.VincularClienteAsync(request, comandaId, body.Versao, body.ClienteId, cancellationToken);
+                return r.Resultado == ResultadoDaEdicao.Ok ? Results.Ok(ComandasEndpoints.Dto(r.Comanda!)) : Erro(r);
+            })
+            .WithName("vincularClienteAComanda")
+            .RequireSession()
+            .WithBodyLimit(Body)
+            .RequirePermission(ClientesPermissions.Vincular)
             .Produces<ComandaDto>()
             .Produces<ComandaErro>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
@@ -157,6 +177,8 @@ internal static class ComandasEdicaoEndpoints
             ResultadoDaEdicao.CaixaSemDinheiro => (StatusCodes.Status409Conflict, "caixa-sem-dinheiro"),
             ResultadoDaEdicao.Negado => (StatusCodes.Status403Forbidden, "negado"),
             ResultadoDaEdicao.GarcomInvalido => (StatusCodes.Status400BadRequest, "garcom-invalido"),
+            ResultadoDaEdicao.ClienteNaoEncontrado => (StatusCodes.Status404NotFound, "cliente-nao-encontrado"),
+            ResultadoDaEdicao.ClienteIndisponivel => (StatusCodes.Status409Conflict, "cliente-indisponivel"),
             _ => (StatusCodes.Status400BadRequest, "invalido"),
         };
         return Results.Json(new ComandaErro(codigo, r.VersaoAtual), statusCode: status);

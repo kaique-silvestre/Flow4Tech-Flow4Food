@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/Pagamentos/Domain/Flow4Tech.Pagamentos.Domain.csproj" />
     <ProjectReference Include="../../src/Caixa/Domain/Flow4Tech.Caixa.Domain.csproj" />
     <ProjectReference Include="../../src/Cardapio/Domain/Flow4Tech.Cardapio.Domain.csproj" />
+    <ProjectReference Include="../../src/Clientes/Domain/Flow4Tech.Clientes.Domain.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Migrator/Flow4Tech.Infrastructure.Migrator.csproj" />
   </ItemGroup>
 

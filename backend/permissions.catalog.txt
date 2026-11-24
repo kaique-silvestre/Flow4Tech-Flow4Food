@@ -8,6 +8,12 @@ caixa:ver
 caixa:ver-todos
 cardapio:importar
 cardapio:preco-alterar
+cliente:anonimizar
+cliente:cadastrar
+cliente:editar
+cliente:ver
+cliente:ver-dados-pessoais
+cliente:vincular
 comanda:abrir
 comanda:alterar-dados
 comanda:alterar-item

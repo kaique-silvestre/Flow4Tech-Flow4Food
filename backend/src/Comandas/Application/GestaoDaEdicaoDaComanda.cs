@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Flow4Tech.Clientes.Application;
 using Flow4Tech.Comandas.Domain;
 using Flow4Tech.Kernel;
 using Flow4Tech.Kernel.Audit;
@@ -39,6 +40,12 @@ public enum ResultadoDaEdicao
     /// <summary>The refund that goes with the cancellation is cash and the drawer holds less than it.</summary>
     CaixaSemDinheiro,
 
+    /// <summary>The customer to link is not one of the organization (or the caller sent no usable id).</summary>
+    ClienteNaoEncontrado,
+
+    /// <summary>The customer is anonymized or revoked the consent: it is not linked to anything new.</summary>
+    ClienteIndisponivel,
+
     /// <summary>The engine refused the refund (not held, or beyond the limit). Answered as 403 with a typed body.</summary>
     Negado,
 }
@@ -62,6 +69,7 @@ public sealed class GestaoDaEdicaoDaComanda(
     IEventosDeComandas eventos,
     IPermissaoDaComanda permissoes,
     GestaoDePagamentos pagamentos,
+    IConsultaDeVinculo vinculo,
     IClock clock)
 {
     /// <summary>Changes the quantity (1 or more; to remove an item cancel it) and the note of a launched item. The frozen price and options never change.</summary>
@@ -151,6 +159,61 @@ public sealed class GestaoDaEdicaoDaComanda(
             comanda => (comanda with { GarcomId = garcomId }, ComandasAuditActions.TrocarGarcom, new JsonObject { ["garcomId"] = comanda.GarcomId.ToString("D") }, new JsonObject { ["garcomId"] = garcomId.ToString("D") }),
             cancellationToken,
             async (comanda, ct) => comanda.GarcomId != garcomId && await garcons.PodeAtenderAsync(request.Organization.OrganizationId, comanda.UnidadeId, garcomId, ct));
+    }
+
+    /// <summary>
+    /// Links the comanda to a customer of the organization, or unlinks it (<paramref name="clienteId"/> null). Same shape as the small edits: version check, write, audit (ids only, no personal data).
+    /// A customer that does not exist for the organization is "not found" (another organization's customer looks the same); an anonymized one or one that revoked the consent is refused.
+    /// </summary>
+    public Task<ResultadoDaEdicaoDaComanda> VincularClienteAsync(IRequestContext request, Guid comandaId, int versao, Guid? clienteId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return unitOfWork.ExecuteAsync(
+            request,
+            async ct =>
+            {
+                if (versao < 1 || clienteId == Guid.Empty)
+                {
+                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Invalido);
+                }
+
+                var org = request.Organization;
+                var comanda = await AcharVisivelAsync(request, comandaId, ct);
+                if (comanda is null)
+                {
+                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoEncontrada);
+                }
+
+                if (comanda.Estado != EstadoDaComanda.Aberta)
+                {
+                    return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.ComandaNaoAberta);
+                }
+
+                if (clienteId is { } id)
+                {
+                    var situacao = await vinculo.SituacaoAsync(org.OrganizationId, id, ct);
+                    if (situacao != SituacaoParaVinculo.Disponivel)
+                    {
+                        return new ResultadoDaEdicaoDaComanda(situacao == SituacaoParaVinculo.NaoEncontrado ? ResultadoDaEdicao.ClienteNaoEncontrado : ResultadoDaEdicao.ClienteIndisponivel);
+                    }
+                }
+
+                if (!await comandas.AvancarVersaoAsync(org.OrganizationId, comandaId, versao, ct))
+                {
+                    return await FalhaDeVersaoAsync(org, comandaId, ct);
+                }
+
+                if (!await comandas.VincularClienteAsync(org.OrganizationId, comandaId, clienteId, ct))
+                {
+                    throw new InvalidOperationException("A comanda mudou durante o vinculo do cliente.");
+                }
+
+                var antes = new JsonObject { ["clienteId"] = comanda.ClienteId?.ToString("D"), ["versao"] = versao };
+                var depois = new JsonObject { ["comandaNumero"] = comanda.Numero, ["clienteId"] = clienteId?.ToString("D"), ["versao"] = versao + 1 };
+                await audit.RecordAsync(request, new AuditEntry { Action = ComandasAuditActions.VincularCliente, ObjectType = "comanda", ObjectId = comandaId.ToString("D"), Before = antes, After = depois }, ct);
+                return new ResultadoDaEdicaoDaComanda(ResultadoDaEdicao.Ok, comanda with { ClienteId = clienteId, Versao = versao + 1 });
+            },
+            cancellationToken);
     }
 
     /// <summary>Replaces the head count and the general note together (null clears each); the screen sends both.</summary>

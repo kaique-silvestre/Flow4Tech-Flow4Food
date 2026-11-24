@@ -17,15 +17,17 @@ public static class ModelosDePerfil
 {
     private static readonly string[] Garcom =
     [
-        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "comanda:dividir", "mesa:ver", "produto:ver",
+        "comanda:abrir", "comanda:ver", "comanda:lancar-item", "comanda:cancelar-item", "comanda:desfazer-rodada", "comanda:transferir-mesa", "comanda:alterar-item", "comanda:renomear", "comanda:alterar-dados", "comanda:transferir-item", "comanda:dividir", "mesa:ver", "produto:ver", "cliente:ver", "cliente:cadastrar", "cliente:vincular",
     ];
 
     private static readonly string[] Caixa =
     [
         "comanda:ver", "comanda:ver-comandas-de-outros", "comanda:receber-pagamento", "comanda:fechar", "comanda:remover-taxa-servico", "comanda:dividir", "comanda:reimprimir",
-        "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "produto:ver", "mesa:ver",
+        "pagamento:registrar", "pagamento:ver", "pagamento:dividir", "pagamento:registrar-gorjeta", "caixa:ver", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "produto:ver", "mesa:ver", "cliente:ver", "cliente:cadastrar", "cliente:editar", "cliente:ver-dados-pessoais", "cliente:vincular",
     ];
 
+    // Customers (F4-0147, decision of the agent, owner has not confirmed): the waiter registers, searches and links but sees personal data masked; the cashier also edits and sees the data (it will charge on credit);
+    // only the manager (and the owner) anonymizes. The permissions are plain allows, no limit.
     // The manager does everything of the salão except managing profiles and permissions (an owner-only decision until the owner says otherwise).
     private static readonly string[] Gerente =
     [
@@ -34,6 +36,7 @@ public static class ModelosDePerfil
         "comanda:trocar-garcom", "comanda:cancelar", "comanda:ver-historico", "comanda:transferir-item", "comanda:juntar", "comanda:dividir", "pagamento:registrar", "pagamento:ver",
         "pagamento:dividir", "pagamento:registrar-gorjeta", "pagamento:estornar", "metodo-pagamento:gerenciar", "caixa:ver", "caixa:ver-todos", "caixa:abrir", "caixa:fechar", "caixa:suprimento", "caixa:sangria", "caixa:fechar-cego", "caixa:aprovar-diferenca", "mesa:ver", "mesa:gerenciar", "produto:ver", "produto:gerenciar",
         "comanda:desconto", "comanda:cortesia", "comanda:brinde", "comanda:reimprimir", "cardapio:importar",
+        "cliente:ver", "cliente:cadastrar", "cliente:editar", "cliente:ver-dados-pessoais", "cliente:anonimizar", "cliente:vincular",
     ];
 
     // Default limits (numbers a restaurant is expected to edit; the owner is the factory profile, uncapped; no daily cap by default).

@@ -182,6 +182,12 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         // A unit price in each organization, so the sweep of the new table is not vacuous either.
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepA.ProdutoId}/preco-unidade", salaoSweepA.Token, new { precoCentavos = 1300 }));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, HttpMethod.Put, $"/cardapio/produtos/{salaoSweepB.ProdutoId}/preco-unidade", salaoSweepB.Token, new { precoCentavos = 1400 }));
+        // One customer in each organization (same phone on purpose: not a duplicate across organizations), so the sweep of the customers table is not vacuous.
+        foreach (var salaoCliente in new[] { salaoSweepA, salaoSweepB })
+        {
+            Assert.Equal(HttpStatusCode.Created, await StatusAsync(client, HttpMethod.Post, "/clientes", salaoCliente.Token, new { nome = "Cliente do sweep", telefone = "11987654321", consentimento = new { concedido = true, finalidade = "relacionamento", versaoDoTexto = "v1" } }));
+        }
+
         // One applied import in each organization (no option groups, so the option tables below keep their counts), so the sweep of the import record is not vacuous.
         foreach (var salaoImportado in new[] { salaoSweepA, salaoSweepB })
         {
@@ -206,6 +212,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
         Assert.Contains("aprovacoes_diferenca", tables);
         Assert.Contains("produtos_preco_unidade", tables);
         Assert.Contains("metodos_pagamento", tables);
+        Assert.Contains("clientes", tables);
         Assert.Contains("grupos_opcao", tables);
         Assert.Contains("item_opcoes", tables);
         Assert.Contains("opcoes_frequencia", tables);
@@ -226,6 +233,7 @@ public sealed class DoisTenantsEndpointsTests : IClassFixture<DoisTenantsDatabas
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM pagamentos", r => r.GetInt64(0))).Single());
             Assert.Equal(7L, (await QueryAsync(tenant, "SELECT count(*) FROM metodos_pagamento", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM produtos_preco_unidade", r => r.GetInt64(0))).Single());
+            Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM clientes", r => r.GetInt64(0))).Single());
             Assert.Equal(1L, (await QueryAsync(tenant, "SELECT count(*) FROM importacoes_cardapio", r => r.GetInt64(0))).Single());
             Assert.Equal((2L, 1L, 1L), (await QueryAsync(tenant, "SELECT (SELECT count(*) FROM movimentos_caixa), (SELECT count(*) FROM contagens_turno), (SELECT count(*) FROM aprovacoes_diferenca)", r => (r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)))).Single());
             foreach (var optionTable in new[] { "grupos_opcao", "opcoes", "produto_grupos_opcao", "item_opcoes", "opcoes_frequencia", "produtos_frequencia_garcom" })

@@ -33,7 +33,8 @@ public sealed record Comanda(
     string? Observacao = null,
     string? MotivoCancelamento = null,
     Guid? JuntadaNaComandaId = null,
-    DateTimeOffset? ContaPedidaEm = null);
+    DateTimeOffset? ContaPedidaEm = null,
+    Guid? ClienteId = null);
 
 /// <summary>The bill of a comanda in cents: consumption of the launched items, service fee, total, what the payments applied and what remains.</summary>
 public sealed record ContaDaComanda(long ConsumoCentavos, long TaxaServicoCentavos, long TotalCentavos, long PagoCentavos, long SaldoCentavos, bool TaxaServicoRemovida, decimal TaxaServicoPercentual, long DescontoCentavos = 0);

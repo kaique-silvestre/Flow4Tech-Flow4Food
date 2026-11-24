@@ -36,6 +36,8 @@ public static class ComandasAuditActions
 
     public const string PedirConta = "comanda:pedir-conta";
 
+    public const string VincularCliente = "comanda:vincular-cliente";
+
     public const string ReimprimirRecibo = "comanda:reimprimir";
 
     public const string AbrirComanda = "comanda:abrir";

@@ -159,6 +159,9 @@ public interface IComandasStore
     /// <summary>Cancels an OPEN comanda with its reason and author; false when it was no longer open. Runs after the version bump of the same unit of work.</summary>
     Task<bool> CancelarAsync(Guid organizationId, Guid comandaId, string motivo, Guid por, DateTimeOffset quando, CancellationToken cancellationToken);
 
+    /// <summary>Links the comanda to a customer (null unlinks); false when the comanda is no longer open. Runs after the version bump of the same unit of work; the composite foreign key refuses a customer of another organization.</summary>
+    Task<bool> VincularClienteAsync(Guid organizationId, Guid comandaId, Guid? clienteId, CancellationToken cancellationToken);
+
     /// <summary>Moves an OPEN comanda to the table (and renames it to <paramref name="identificacao"/>); false when it is no longer open. Runs after the version bump of the same unit of work.</summary>
     Task<bool> TrocarMesaAsync(Guid organizationId, Guid comandaId, Guid mesaId, string identificacao, CancellationToken cancellationToken);
 

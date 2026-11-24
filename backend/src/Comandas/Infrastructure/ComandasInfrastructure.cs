@@ -99,6 +99,8 @@ internal sealed class ComandaRow
     public Guid? JuntadaNaComandaId { get; set; }
 
     public DateTimeOffset? ContaPedidaEm { get; set; }
+
+    public Guid? ClienteId { get; set; }
 }
 
 internal sealed class RodadaRow
@@ -336,6 +338,7 @@ internal sealed class MesasDbContext(TenantTransaction transaction) : TenantDbCo
             e.Property(x => x.MotivoCancelamento).HasColumnName("motivo_cancelamento");
             e.Property(x => x.JuntadaNaComandaId).HasColumnName("juntada_na_comanda_id");
             e.Property(x => x.ContaPedidaEm).HasColumnName("conta_pedida_em");
+            e.Property(x => x.ClienteId).HasColumnName("cliente_id");
         });
         modelBuilder.Entity<RodadaRow>(e =>
         {
@@ -668,6 +671,13 @@ public sealed class PostgresComandasStore : IComandasStore
         return rows == 1;
     }
 
+    public async Task<bool> VincularClienteAsync(Guid organizationId, Guid comandaId, Guid? clienteId, CancellationToken cancellationToken)
+    {
+        await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
+        var rows = await context.Database.ExecuteSqlAsync($"UPDATE comandas SET cliente_id = {clienteId} WHERE id = {comandaId} AND estado = 'aberta'", cancellationToken);
+        return rows == 1;
+    }
+
     public async Task<bool> AtualizarDadosAsync(Guid organizationId, Guid comandaId, int? pessoas, string? observacao, CancellationToken cancellationToken)
     {
         await using var context = new MesasDbContext(TenantUnitOfWork.Require(organizationId));
@@ -734,7 +744,7 @@ public sealed class PostgresComandasStore : IComandasStore
     }
 
     private static Comanda ParaComanda(ComandaRow c) =>
-        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento, c.JuntadaNaComandaId, c.ContaPedidaEm);
+        new(c.Id, c.UnidadeId, c.DiaOperacional, c.Numero, c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Estado(c.Estado), c.AbertaEm, c.FechadaEm, c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.Observacao, c.MotivoCancelamento, c.JuntadaNaComandaId, c.ContaPedidaEm, c.ClienteId);
 
     /// <summary>The last-closed query, exposed so a test can assert its SQL text (unit filter explicit, no organization filter: RLS does it).</summary>
     internal static IQueryable<ComandaRow> UltimaFechadaDaMesa(MesasDbContext context, Guid unitId, Guid mesaId, Guid? garcomId)

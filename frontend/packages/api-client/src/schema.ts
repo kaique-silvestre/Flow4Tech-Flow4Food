@@ -1156,6 +1156,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comandas/{comandaId}/cliente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["vincularClienteAComanda"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comandas/{comandaId}/trocar-garcom": {
         parameters: {
             query?: never;
@@ -1636,6 +1652,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clientes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listClientes"];
+        put?: never;
+        post: operations["cadastrarCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clientes/{clienteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCliente"];
+        put: operations["editarCliente"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clientes/{clienteId}/revogar-consentimento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revogarConsentimentoDoCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clientes/{clienteId}/anonimizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["anonimizarCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/perfis/modelos": {
         parameters: {
             query?: never;
@@ -1896,6 +1976,15 @@ export interface components {
             nome: null | string;
             ativa: boolean;
         };
+        CadastrarClienteRequest: {
+            nome: null | string;
+            telefone: null | string;
+            email: null | string;
+            documento: null | string;
+            consentimento: null | components["schemas"]["ConsentimentoInformadoDto"];
+            /** @default false */
+            confirmarDuplicidade: boolean;
+        };
         CaixaErro: {
             codigo: string;
         };
@@ -1929,6 +2018,23 @@ export interface components {
             comandas: components["schemas"]["ComandaDto"][];
             /** Format: int32 */
             total: number | string;
+        };
+        ClienteDto: {
+            /** Format: uuid */
+            id: string;
+            nome: string;
+            telefone: null | string;
+            email: null | string;
+            documento: null | string;
+            dadosMascarados: boolean;
+            consentimento: components["schemas"]["ConsentimentoDoClienteDto"];
+            estado: string;
+            /** Format: date-time */
+            criadoEm: string;
+        };
+        ClienteErro: {
+            codigo: string;
+            candidatos?: null | components["schemas"]["ClienteDto"][];
         };
         ComandaCanceladaDto: {
             comanda: components["schemas"]["ComandaDto"];
@@ -1967,6 +2073,8 @@ export interface components {
             consumoCentavos?: null | number | string;
             /** Format: date-time */
             ultimaAtividadeEm?: null | string;
+            /** Format: uuid */
+            clienteId?: null | string;
         };
         ComandaErro: {
             codigo: string;
@@ -2077,6 +2185,22 @@ export interface components {
             travadaPelaOrganizacao: boolean;
             valorDaOrganizacao: null | string;
             valorDaUnidade: null | string;
+        };
+        ConsentimentoDoClienteDto: {
+            concedido: boolean;
+            /** Format: date-time */
+            quando: null | string;
+            finalidade: null | string;
+            versaoDoTexto: null | string;
+            /** Format: uuid */
+            registradoPor: null | string;
+            /** Format: date-time */
+            revogadoEm: null | string;
+        };
+        ConsentimentoInformadoDto: {
+            concedido: boolean;
+            finalidade: null | string;
+            versaoDoTexto: null | string;
         };
         ContaDaListaDto: {
             /** Format: uuid */
@@ -2268,6 +2392,14 @@ export interface components {
             codigo: string;
             /** Format: int32 */
             versaoAtual?: null | number | string;
+        };
+        EditarClienteRequest: {
+            nome: null | string;
+            telefone: null | string;
+            email: null | string;
+            documento: null | string;
+            /** @default false */
+            confirmarDuplicidade: boolean;
         };
         ErroDeLinhaDto: {
             /** Format: int32 */
@@ -3049,6 +3181,12 @@ export interface components {
         };
         VersionInfo: {
             version: string;
+        };
+        VincularClienteRequest: {
+            /** Format: int32 */
+            versao: number | string;
+            /** Format: uuid */
+            clienteId: null | string;
         };
         VincularGoogleRequest: {
             senhaAtual: null | string;
@@ -7111,6 +7249,73 @@ export interface operations {
             };
         };
     };
+    vincularClienteAComanda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comandaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VincularClienteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComandaErro"];
+                };
+            };
+        };
+    };
     trocarGarcomDaComanda: {
         parameters: {
             query?: never;
@@ -9086,6 +9291,318 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetodoErro"];
+                };
+            };
+        };
+    };
+    listClientes: {
+        parameters: {
+            query?: {
+                busca?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cadastrarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CadastrarClienteRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+        };
+    };
+    getCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+        };
+    };
+    editarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditarClienteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+        };
+    };
+    revogarConsentimentoDoCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+        };
+    };
+    anonimizarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClienteErro"];
                 };
             };
         };

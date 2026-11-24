@@ -4142,6 +4142,84 @@
         "x-permission": "comanda:renomear"
       }
     },
+    "/comandas/{comandaId}/cliente": {
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "vincularClienteAComanda",
+        "parameters": [
+          {
+            "name": "comandaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VincularClienteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComandaErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:vincular"
+      }
+    },
     "/comandas/{comandaId}/trocar-garcom": {
       "post": {
         "tags": [
@@ -6320,6 +6398,340 @@
         "x-permission": "metodo-pagamento:gerenciar"
       }
     },
+    "/clientes": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "listClientes",
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClienteDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "x-permission": "cliente:ver"
+      },
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "cadastrarCliente",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CadastrarClienteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:cadastrar"
+      }
+    },
+    "/clientes/{clienteId}": {
+      "get": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "getCliente",
+        "parameters": [
+          {
+            "name": "clienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:ver"
+      },
+      "put": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "editarCliente",
+        "parameters": [
+          {
+            "name": "clienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditarClienteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:editar"
+      }
+    },
+    "/clientes/{clienteId}/revogar-consentimento": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "revogarConsentimentoDoCliente",
+        "parameters": [
+          {
+            "name": "clienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:editar"
+      }
+    },
+    "/clientes/{clienteId}/anonimizar": {
+      "post": {
+        "tags": [
+          "Flow4Tech.Api"
+        ],
+        "operationId": "anonimizarCliente",
+        "parameters": [
+          {
+            "name": "clienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteErro"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "cliente:anonimizar"
+      }
+    },
     "/perfis/modelos": {
       "post": {
         "tags": [
@@ -7290,6 +7702,56 @@
           }
         }
       },
+      "CadastrarClienteRequest": {
+        "required": [
+          "nome",
+          "telefone",
+          "email",
+          "documento",
+          "consentimento"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "telefone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentimento": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConsentimentoInformadoDto"
+              }
+            ]
+          },
+          "confirmarDuplicidade": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
       "CaixaErro": {
         "required": [
           "codigo"
@@ -7429,6 +7891,80 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "ClienteDto": {
+        "required": [
+          "id",
+          "nome",
+          "telefone",
+          "email",
+          "documento",
+          "dadosMascarados",
+          "consentimento",
+          "estado",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "telefone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dadosMascarados": {
+            "type": "boolean"
+          },
+          "consentimento": {
+            "$ref": "#/components/schemas/ConsentimentoDoClienteDto"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ClienteErro": {
+        "required": [
+          "codigo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "candidatos": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ClienteDto"
+            }
           }
         }
       },
@@ -7577,6 +8113,13 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "clienteId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -8048,6 +8591,80 @@
             ]
           },
           "valorDaUnidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ConsentimentoDoClienteDto": {
+        "required": [
+          "concedido",
+          "quando",
+          "finalidade",
+          "versaoDoTexto",
+          "registradoPor",
+          "revogadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "concedido": {
+            "type": "boolean"
+          },
+          "quando": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "finalidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "versaoDoTexto": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registradoPor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "revogadoEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ConsentimentoInformadoDto": {
+        "required": [
+          "concedido",
+          "finalidade",
+          "versaoDoTexto"
+        ],
+        "type": "object",
+        "properties": {
+          "concedido": {
+            "type": "boolean"
+          },
+          "finalidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "versaoDoTexto": {
             "type": [
               "null",
               "string"
@@ -8828,6 +9445,45 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "EditarClienteRequest": {
+        "required": [
+          "nome",
+          "telefone",
+          "email",
+          "documento"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "telefone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "confirmarDuplicidade": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -12066,6 +12722,30 @@
         "properties": {
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "VincularClienteRequest": {
+        "required": [
+          "versao",
+          "clienteId"
+        ],
+        "type": "object",
+        "properties": {
+          "versao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "clienteId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

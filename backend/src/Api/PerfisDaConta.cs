@@ -1,5 +1,6 @@
 using Flow4Tech.Caixa.Application;
 using Flow4Tech.Cardapio.Application;
+using Flow4Tech.Clientes.Application;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Identidade.Application;
 using Flow4Tech.Kernel;
@@ -53,7 +54,7 @@ internal sealed class PermissaoDoChamador(IAuthorizationEngine engine, IPerfisDo
 }
 
 /// <summary>Adapts the one authorization engine to the questions the Caixa and Comandas modules ask (<c>caixa:ver-todos</c>, <c>comanda:ver-comandas-de-outros</c>), so those modules read no profile and reference no other module.</summary>
-internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IPermissaoDoOperador, IPermissaoDaComanda
+internal sealed class PermissaoDoOperador(IAuthorizationEngine engine, IPerfisDoUsuario perfis) : IPermissaoDoOperador, IPermissaoDaComanda, IPermissaoDeCliente
 {
     public async Task<bool> PodeAsync(IRequestContext request, string permission, CancellationToken cancellationToken)
     {

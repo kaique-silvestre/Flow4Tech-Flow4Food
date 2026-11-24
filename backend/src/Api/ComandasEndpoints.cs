@@ -6,7 +6,7 @@ namespace Flow4Tech.Api;
 
 /// <summary>
 /// A comanda. The last three fields are filled only by the list (<c>GET /comandas</c>) and are null on every other route: <c>GarcomNome</c> (who holds it), <c>ConsumoCentavos</c> (launched items, the bill's consumption) and
-/// <c>UltimaAtividadeEm</c> (the last launch, the opening when none).
+/// <c>UltimaAtividadeEm</c> (the last launch, the opening when none).  <c>ClienteId</c> is the linked customer (null when none; the customer itself is read at <c>GET /clientes/{id}</c>, with its masking).
 /// </summary>
 internal sealed record ComandaDto(
     Guid Id,
@@ -27,7 +27,8 @@ internal sealed record ComandaDto(
     DateTimeOffset? ContaPedidaEm = null,
     string? GarcomNome = null,
     long? ConsumoCentavos = null,
-    DateTimeOffset? UltimaAtividadeEm = null);
+    DateTimeOffset? UltimaAtividadeEm = null,
+    Guid? ClienteId = null);
 
 /// <summary>Every field is optional on purpose: a comanda opens with a number only. Unit, waiter and channel never come from the body.</summary>
 internal sealed record AbrirComandaRequest(string? Identificacao, Guid? MesaId, int? Pessoas);
@@ -420,7 +421,7 @@ internal static class ComandasEndpoints
     }
 
     internal static ComandaDto Dto(Comanda c) =>
-        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao, c.ContaPedidaEm);
+        new(c.Id, c.UnidadeId, c.Numero, RegrasDeComanda.NumeroDeExibicao(c.Numero), c.Identificacao, c.MesaId, c.Canal, c.GarcomId, c.Pessoas, RegrasDeComanda.Palavra(c.Estado), c.TaxaServicoPercentual, c.TaxaServicoRemovida, c.Versao, c.AbertaEm, c.Observacao, c.ContaPedidaEm, ClienteId: c.ClienteId);
 
     private static bool TryGuid(string? text, out Guid? value)
     {

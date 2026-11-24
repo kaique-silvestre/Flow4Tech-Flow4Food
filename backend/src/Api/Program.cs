@@ -6,6 +6,8 @@ using Flow4Tech.Infrastructure.Data;
 using Flow4Tech.Caixa.Application;
 using Flow4Tech.Caixa.Infrastructure;
 using Flow4Tech.Pagamentos.Infrastructure;
+using Flow4Tech.Clientes.Application;
+using Flow4Tech.Clientes.Infrastructure;
 using Flow4Tech.Comandas.Application;
 using Flow4Tech.Comandas.Infrastructure;
 using Flow4Tech.Cardapio.Application;
@@ -72,6 +74,8 @@ builder.Services.AddOrganizacao(
 builder.Services.AddCardapio();
 builder.Services.AddCaixa();
 builder.Services.AddPagamentos();
+builder.Services.AddClientes();
+builder.Services.AddSingleton<IPermissaoDeCliente, PermissaoDoOperador>();
 builder.Services.AddComandas();
 builder.Services.AddSingleton<IPermissaoDoOperador, PermissaoDoOperador>();
 builder.Services.AddSingleton<IDecisaoDeCaixa, DecisaoDeCaixaDoOperador>();
@@ -212,6 +216,7 @@ app.MapComandas();
 app.MapComandasFluxo();
 app.MapMesas();
 app.MapPagamentos();
+app.MapClientes();
 app.MapPerfis();
 app.MapPermissoesDoUsuario(moduleCatalog);
 

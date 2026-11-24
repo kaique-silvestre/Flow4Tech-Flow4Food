@@ -12,6 +12,10 @@ caixa:suprimento
 cardapio:importar
 categoria:alterar
 categoria:criar
+cliente:anonimizar
+cliente:cadastrar
+cliente:editar
+cliente:revogar-consentimento
 comanda:abrir
 comanda:alterar-dados
 comanda:alterar-item
@@ -32,6 +36,7 @@ comanda:renomear
 comanda:transferir-item
 comanda:transferir-mesa
 comanda:trocar-garcom
+comanda:vincular-cliente
 configuracao:alterar
 configuracao:restaurar
 conta:criar
