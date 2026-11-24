@@ -276,7 +276,8 @@ public sealed partial class PerfisEndpointsTests
         }
 
         Assert.Equal("allow", Assert.Single(await QueryAsync(OrgA, UnitA, $"SELECT efeito FROM perfil_regras WHERE perfil_id = '{shared:D}'", r => r.GetString(0))));
-        using var stillWorks = await SendAsync(client, HttpMethod.Get, "/mesas", dono);
+        // Giving the owner a profile ended the owner's old session (credential version); a fresh one still reaches everything.
+        using var stillWorks = await SendAsync(client, HttpMethod.Get, "/mesas", await TokenAsync(api, DonoA, OrgA, UnitA));
         Assert.Equal(HttpStatusCode.OK, stillWorks.StatusCode);
     }
 
