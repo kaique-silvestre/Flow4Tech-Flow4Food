@@ -1604,6 +1604,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listReservas"];
+        put?: never;
+        post: operations["criarReserva"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservas/{reservaId}/chegou": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reservaChegou"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservas/{reservaId}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelarReserva"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservas/{reservaId}/nao-compareceu": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reservaNaoCompareceu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pagamentos/{pagamentoId}/estornos": {
         parameters: {
             query?: never;
@@ -1741,6 +1805,38 @@ export interface paths {
         };
         get: operations["listPerfis"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/perfis/matriz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMatrizDePerfis"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/perfis/{perfil}/regras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["substituirRegrasDoPerfil"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2069,6 +2165,12 @@ export interface components {
             /** Format: int32 */
             total: number | string;
         };
+        ChegouDaReservaDto: {
+            reserva: components["schemas"]["ReservaDto"];
+            /** Format: uuid */
+            comandaId: string;
+            repetida: boolean;
+        };
         ClienteDto: {
             /** Format: uuid */
             id: string;
@@ -2085,6 +2187,16 @@ export interface components {
         ClienteErro: {
             codigo: string;
             candidatos?: null | components["schemas"]["ClienteDto"][];
+        };
+        ColunaDaMatrizDto: {
+            chave: string;
+            nome: string;
+            /** Format: uuid */
+            id: null | string;
+            editavel: boolean;
+            modelo: null | string;
+            acompanhaModelo: boolean;
+            regras: components["schemas"]["RegraDto"][];
         };
         ComandaCanceladaDto: {
             comanda: components["schemas"]["ComandaDto"];
@@ -2382,6 +2494,17 @@ export interface components {
             horaInicio: null | string;
             horaFim: null | string;
             produtos: null | components["schemas"]["ProdutoDaPromocaoRequest"][];
+        };
+        CriarReservaRequest: {
+            nome: null | string;
+            telefone: null | string;
+            /** Format: int32 */
+            pessoas: null | number | string;
+            /** Format: date-time */
+            horario: null | string;
+            /** Format: uuid */
+            mesaId: null | string;
+            observacao: null | string;
         };
         DarComoRequest: {
             /** Format: int32 */
@@ -2725,6 +2848,10 @@ export interface components {
             areas: components["schemas"]["AreaNoMapaDto"][];
             semArea: components["schemas"]["MesaNoMapaDto"][];
         };
+        MatrizDto: {
+            permissoes: string[];
+            perfis: components["schemas"]["ColunaDaMatrizDto"][];
+        };
         MesaDto: {
             /** Format: uuid */
             id: string;
@@ -2754,6 +2881,8 @@ export interface components {
             comandasAbertas: number | string;
             /** Format: date-time */
             abertaDesde: null | string;
+            /** Format: date-time */
+            reservadaPara?: null | string;
         };
         MetodoDePagamentoDto: {
             /** Format: uuid */
@@ -3091,6 +3220,27 @@ export interface components {
             /** Format: int32 */
             versao: number | string;
         };
+        ReservaDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            mesaId: null | string;
+            nome: string;
+            telefone: null | string;
+            /** Format: int32 */
+            pessoas: number | string;
+            /** Format: date-time */
+            horario: string;
+            /** Format: date */
+            diaOperacional: string;
+            observacao: null | string;
+            estado: string;
+            /** Format: uuid */
+            comandaId: null | string;
+        };
+        ReservaErro: {
+            codigo: string;
+        };
         RestaurarConfiguracaoRequest: {
             camada: null | string;
             /** Format: int32 */
@@ -3191,6 +3341,9 @@ export interface components {
         };
         SolicitarRecuperacaoRequest: {
             email: null | string;
+        };
+        SubstituirRegrasRequest: {
+            regras: null | components["schemas"]["RegraDto"][];
         };
         TransferirItensRequest: {
             /** Format: int32 */
@@ -9148,6 +9301,269 @@ export interface operations {
             };
         };
     };
+    listReservas: {
+        parameters: {
+            query?: {
+                dia?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    criarReserva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriarReservaRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+        };
+    };
+    reservaChegou: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChegouDaReservaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+        };
+    };
+    cancelarReserva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+        };
+    };
+    reservaNaoCompareceu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reservaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservaErro"];
+                };
+            };
+        };
+    };
     listEstornosDoPagamento: {
         parameters: {
             query?: never;
@@ -9805,6 +10221,105 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getMatrizDePerfis: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatrizDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    substituirRegrasDoPerfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                perfil: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstituirRegrasRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilErro"];
+                };
             };
         };
     };
